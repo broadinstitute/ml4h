@@ -33,6 +33,7 @@ from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, R
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
+from ml4h.models.model_factory import _get_custom_objects
 from ml4h.plots import plot_metric_history
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
@@ -337,13 +338,15 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
         if isinstance(layer, Model):
             try:
                 target_layer = layer.get_layer(output_layer_name)
-                parent_model = layer
+                parent_inputs = [layer.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+                logging.info(f'Found {output_layer_name} nested in layer model: {layer.name}')
                 break
             except ValueError:
+                logging.debug(f'Value error searching for layer: {output_layer_name} at layer: {layer.name}')
                 continue
-    else:
+    if not target_layer:
         target_layer = parent_model.get_layer(output_layer_name)
-    parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+        parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
     dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
@@ -897,17 +900,6 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     return final
 
 
-def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
-    custom_objects = {
-        obj.__name__: obj
-        for obj in chain(
-            NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer],
-        )
-    }
-    return {**custom_objects, **get_metric_dict(tensor_maps_out)}
-
-
 def _repeat_dimension(filters: List[int], num_filters_needed: int) -> List[int]:
     if len(filters) < num_filters_needed:
         repeat = num_filters_needed // len(filters) + 1
@@ -1000,7 +992,10 @@ def make_multimodal_multitask_model(
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt, loss=custom_dict['loss'])
+        m.compile(
+            optimizer=opt, loss='mse', #[tm.loss for tm in tensor_maps_out],
+            metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        )
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
@@ -1197,8 +1192,10 @@ def _transfer_layers_by_name(model_layers: str, freeze_model_layers: str, custom
     logging.info(f'Loaded {"and froze " if freeze_model_layers else ""}{loaded} layers from {model_layers}.')
 
 
-def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
-                                      optimizer, model_file: str):
+def _load_model_encoders_and_decoders(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
+    optimizer, model_file: str,
+):
     encoders = {}
     decoders = {}
     merger = None
@@ -1212,8 +1209,10 @@ def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_ma
         logging.warning(f'Could not load some model modules, error: {e}')
     logging.info(f"Attempting to load model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
-    m.compile(optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
-              metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+    m.compile(
+        optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
+        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+    )
     m.summary()
     logging.info(f"Loaded encoders, decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
@@ -1282,12 +1281,16 @@ def make_paired_autoencoder_model(
     # build decoder models
     for tm in kwargs['tensor_maps_out']:
         if tm.axes() > 1:
-            shape = _calc_start_shape(num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
-                                      upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
-                                      channels=kwargs['dense_blocks'][-1])
+            shape = _calc_start_shape(
+                num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
+                upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
+                channels=kwargs['dense_blocks'][-1],
+            )
 
-            restructure = FlatToStructure(output_shape=shape, activation=kwargs['activation'],
-                                          normalization=kwargs['dense_normalize'])
+            restructure = FlatToStructure(
+                output_shape=shape, activation=kwargs['activation'],
+                normalization=kwargs['dense_normalize'],
+            )
 
             decode = ConvDecoder(
                 tensor_map_out=tm,
@@ -1497,13 +1500,13 @@ def get_model_inputs_outputs(
                 m.get_layer(input_tensor_map.input_name())
                 model_inputs_outputs[input_prefix].append(input_tensor_map)
             except ValueError:
-                pass
+                logging.debug(f'Could not find {input_tensor_map.input_name()} in {model_file}')
         for output_tensor_map in tensor_maps_out:
             try:
                 m.get_layer(output_tensor_map.output_name())
                 model_inputs_outputs[output_prefix].append(output_tensor_map)
             except ValueError:
-                pass
+                logging.debug(f'Could not find {output_tensor_map.output_name()} in {model_file}. Outputs: {[l for l in m.layers if "output" in l.name]}')
         if not got_tensor_maps_for_characters:
             try:
                 m.get_layer('input_ecg_rest_text_ecg_text')

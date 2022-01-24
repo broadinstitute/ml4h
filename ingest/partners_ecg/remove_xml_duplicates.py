@@ -9,20 +9,24 @@ from timeit import default_timer as timer
 def _parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--src",
-                        default="/data/partners_ecg/xml",
-                        help="Path to directory containing organized source XMLs")
+    parser.add_argument(
+        "--src",
+        default="/data/partners_ecg/xml",
+        help="Path to directory containing organized source XMLs",
+    )
 
     args = parser.parse_args()
 
     # This is temporary becuase I can't figure out how to import load_config from ml4h.logger
     now_str = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
-                        handlers=[
-                            logging.FileHandler(f"{now_str}_remove_xml_duplicates_log.txt"),
-                            logging.StreamHandler()
-                        ])
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(module)s:%(lineno)d - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(f"{now_str}_remove_xml_duplicates_log.txt"),
+            logging.StreamHandler(),
+        ],
+    )
 
     return args
 

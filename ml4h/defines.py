@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Iterator, Dict
 from enum import Enum, auto
-from collections.abc import Iterable
+from abc import ABC, abstractmethod
 
 
 class StorageType(Enum):
@@ -57,9 +57,11 @@ MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {
     'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
     'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11, 'body': 12,
 }
-LAX_2CH_HEART_LABELS = {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2, 'left_pulmonary_artery': 3,
-                        'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
-                        'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11}
+LAX_2CH_HEART_LABELS = {
+    'aortic_arch': 1, 'left_pulmonary_artery_wall': 2, 'left_pulmonary_artery': 3,
+    'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
+    'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11,
+}
 MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'LV_anteroseptum': 1, 'left_atrium': 2, 'LV_inferior_wall': 3, 'LV_Papillary': 4, 'LV_Cavity': 5}
 LAX_3CH_HEART_LABELS = {'LV_anteroseptum': 1, 'left_atrium': 2, 'LV_inferior_wall': 3, 'LV_Papillary': 4, 'LV_Cavity': 5}
 MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {
@@ -67,11 +69,15 @@ MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {
     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
     'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13, 'ascending_aorta': 14, 'breast_prosthesis': 15,
 }
-LAX_4CH_HEART_LABELS = {'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
-                        'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
-                        'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'ascending_aorta': 14}
-LAX_4CH_MYOCARDIUM_LABELS = {'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
-                             'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7}
+LAX_4CH_HEART_LABELS = {
+    'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+    'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
+    'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'ascending_aorta': 14,
+}
+LAX_4CH_MYOCARDIUM_LABELS = {
+    'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+    'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7,
+}
 MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
     'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
@@ -121,6 +127,12 @@ ECG_REST_MGB_LEADS = {
     'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
     'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 11, 'strip_aVL': 10, 'strip_aVR': 9,
 }
+
+ECG_REST_AMP_LEADS_UKB = {
+    'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 6, 'strip_V2': 7, 'strip_V3': 8,
+    'strip_V4': 9, 'strip_V5': 10, 'strip_V6': 11, 'strip_aVF': 5, 'strip_aVL': 4, 'strip_aVR': 3,
+}
+
 ECG_SEGMENTED_CHANNEL_MAP = {'unknown': 0, 'TP_segment': 1, 'P_wave': 2, 'PQ_segment': 3, 'QRS_complex': 4, 'ST_segment': 5, 'T_wave': 6, 'U_wave': 7}
 
 ECG_BIKE_LEADS = {"I": 0, "2": 1, "3": 2}
@@ -183,4 +195,8 @@ def dataset_name_from_meaning(group: str, fields: List[str]) -> str:
         return joined
     return group + HD5_GROUP_CHAR + joined
 
-TensorGeneratorABC = Iterable
+
+class TensorGeneratorABC(ABC):
+    @abstractmethod
+    def __iter__(self) -> Iterator:
+        pass

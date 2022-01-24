@@ -1,15 +1,16 @@
 import h5py
 import numpy as np
 import scipy
-from typing import List, Tuple
+import logging
+from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
 # from ml4h.tensor_writer_ukbb import tensor_path
-from ml4h.normalizer import ZeroMeanStd1, Standardize
-from ml4h.tensormap.general import tensor_path
+from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
+from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
-from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX
+from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
-from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh
+from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
 from ml4h.tensormap.ukb.demographics import age_in_years_tensor
 
 _HRR_SENTINEL = -1000
@@ -122,11 +123,20 @@ def _warp_ecg(ecg):
     return warped_ecg
 
 
+
 def _make_ecg_rest(
         instance: int = 2, downsample_steps: int = 0,
         short_time_nperseg: int = 0, short_time_noverlap: int = 0,
+        skip_poor: bool = False,
 ):
     def ecg_rest_from_file(tm, hd5, dependents={}):
+        ecg_interpretation = str(
+            tm.hd5_first_dataset_in_group(
+            hd5, 'ukb_ecg_rest/ecg_rest_text/',
+            )[()],
+        )
+        if skip_poor and 'Poor data quality' in ecg_interpretation:
+            raise ValueError(f'Poor data quality skipped by {tm.name}.')
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
@@ -137,10 +147,12 @@ def _make_ecg_rest(
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
+                    #logging.info(f'SHape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
-                    tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[ ::downsample_steps]
-                tensor[:, tm.channel_map[k]] = data
+                    tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
+                else:
+                    tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
         return tensor
     return ecg_rest_from_file
 
@@ -400,17 +412,91 @@ ecg_rest_raw = TensorMap(
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=2000),
 )
 
+ecg_rest_raw_mv = TensorMap(
+    'ecg_rest_raw_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=1000),
+)
+ecg_rest_raw_mv_warp = TensorMap(
+    'ecg_rest_raw_mv_warp', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=1000), augmentations=[_warp_ecg],
+)
+
 ecg_rest_raw_100 = TensorMap(
     'ecg_rest_raw_100', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=100),
 )
+ecg_rest_raw_8s = TensorMap(
+    'ecg_rest_raw_8s', Interpretation.CONTINUOUS, shape=(4096, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=10),
+)
+ecg_rest_raw_8s_random_norm = TensorMap(
+    'ecg_rest_raw_8s', Interpretation.CONTINUOUS, shape=(4096, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map=ECG_REST_LEADS, normalization=RandomStandardize(mean=0, std=10),
+)
+
 ecg_rest_raw_10 = TensorMap(
     'ecg_rest_raw_10', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=10),
 )
+ecg_rest_raw_10_random_norm = TensorMap(
+    'ecg_rest_raw_10', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map=ECG_REST_LEADS, normalization=RandomStandardize(mean=0, std=10), loss='logcosh',
+)
 ecg_rest = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_rest_no_poor = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb = TensorMap(
+    'ecg_5000_std', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_mv = TensorMap(
+    'ecg_5000_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=Standardize(mean=0, std=150),
+)
+ecg_rest_mgb2 = TensorMap(
+    'ecg', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+)
+ecg_rest_mgb_2500 = TensorMap(
+    'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(downsample_steps=2),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+)
+partners_ecg_2500 = TensorMap(
+    'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_I = TensorMap(
+    'ecg_strip_I', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+ecg_rest_mgb_strip_II = TensorMap(
+    'ecg_strip_II', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
+)
+# ecg_rest_mgb_2500 = TensorMap(
+#     'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
+#     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+# )
+ecg_rest_mgb_2500_test = TensorMap(
+    'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_2500_raw = TensorMap(
+    'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_MGB_LEADS, normalization=Standardize(mean=0, std=2000),
+)
+ecg_rest_mse10x = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(), loss=mse_10x,
 )
 ecg_rest_2500_ukb = TensorMap(
     'ecg_rest_2500', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
@@ -418,8 +504,8 @@ ecg_rest_2500_ukb = TensorMap(
 )
 
 ecg_rest_stft = TensorMap(
-    'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(33, 158, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
-    tensor_from_file=_make_ecg_rest(short_time_nperseg=64, short_time_noverlap=32), normalization=ZeroMeanStd1()
+    'ecg_rest_stft', Interpretation.CONTINUOUS, shape=(52, 72, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
+    tensor_from_file=_make_ecg_rest(short_time_nperseg=103, short_time_noverlap=32), normalization=ZeroMeanStd1(),
 )
 ecg_rest_stft_512 = TensorMap(
     'ecg_rest_stft_512', shape=(257, 314, 12), path_prefix='ukb_ecg_rest', channel_map=ECG_REST_LEADS,
@@ -436,9 +522,40 @@ ecg_rest_median_raw = TensorMap(
     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=2000),
 )
 
+ecg_rest_median_mv = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000),
+)
+ecg_rest_median_mv_warp = TensorMap(
+    'median_warp', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000), augmentations=[_warp_ecg],
+)
+
+ecg_rest_median_raw_10 = TensorMap(
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
+)
+ecg_rest_median_raw_10_no_poor = TensorMap(
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
+)
+ecg_rest_median_raw_10_random_norm = TensorMap(
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=_make_ecg_rest(skip_poor=True),
+    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=RandomStandardize(mean=0, std=10),
+)
 ecg_rest_median = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
     metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_median_raw_10_prediction = TensorMap(
+    'ecg_rest_median_raw_10_prediction', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
+)
+ecg_rest_median_raw_10_truth = TensorMap(
+    'ecg_rest_median_raw_10_truth', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
 )
 
 ecg_rest_median_stack = TensorMap(
@@ -459,7 +576,7 @@ ecg_rest_1lead = TensorMap(
 
 ecg_median_1lead_categorical = TensorMap(
     'median',  Interpretation.CATEGORICAL, shape=(600, 32), activation='softmax', tensor_from_file=_make_ecg_rest(),
-    channel_map=_get_lead_cm(32)[0], normalization=ZeroMeanStd1(),
+    channel_map=_get_lead_cm(32)[0],  normalization=ZeroMeanStd1(),
     loss=weighted_crossentropy(
         np.array(_get_lead_cm(32)[1]), 'ecg_median_categorical',
     ),
@@ -753,7 +870,7 @@ qrs_num = TensorMap(
 )
 qt_interval = TensorMap(
     'QTInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'QTInterval': 0}, loss='logcosh', validator=make_range_validator(300, 600),
-    normalization={'mean': 426.1, 'std': 32.24},
+    normalization=Standardize(mean=426.1, std=32.24),
 )
 qt_interval_quintiles = TensorMap(
     'QTInterval', Interpretation.DISCRETIZED, path_prefix='ukb_ecg_rest',

@@ -29,7 +29,8 @@ from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bott
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps, \
+    generate_random_pixel_as_text_tensor_maps
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
@@ -86,8 +87,6 @@ def parse_args():
     )
 
     # Data selection parameters
-    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
-    parser.add_argument('--text_one_hot', default=False, action='store_true', help='Whether to one hot text data or use token indexes.')
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
@@ -140,21 +139,37 @@ def parse_args():
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
-    parser.add_argument('--dense_layers', nargs='*', default=[32, 32], type=int, help='List of number of hidden units in neural nets dense layers.')
+    parser.add_argument('--dense_layers', nargs='*', default=[32], type=int, help='List of number of hidden units in neural nets dense layers.')
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
-    parser.add_argument('--conv_width', default=[71], nargs='*', type=int, help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_x', default=[3], nargs='*', type=int, help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_y', default=[3], nargs='*', type=int, help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_z', default=[2], nargs='*', type=int, help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument(
+        '--conv_width', default=[71], nargs='*', type=int,
+        help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
+    parser.add_argument(
+        '--conv_x', default=[3], nargs='*', type=int,
+        help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
+    parser.add_argument(
+        '--conv_y', default=[3], nargs='*', type=int,
+        help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
+    parser.add_argument(
+        '--conv_z', default=[2], nargs='*', type=int,
+        help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.',
+    )
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
     parser.add_argument('--conv_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for convolutions')
     parser.add_argument('--conv_regularize', default=None, choices=list(CONV_REGULARIZATION_CLASSES), help='Type of regularization layer for convolutions.')
     parser.add_argument('--conv_regularize_rate', default=0.0, type=float, help='Rate parameter for conv_regularize.')
+    parser.add_argument('--conv_strides', default=1, type=int, help='Strides to take during convolution')
+    parser.add_argument('--conv_without_bias', default=False, action='store_true', help='If True, Do not add bias to convolutional layers.')
+    parser.add_argument('--conv_bias_initializer', default='zeros', help='Initializer for the bias vector')
+    parser.add_argument('--conv_kernel_initializer', default='glorot_uniform', help='Initializer for the convolutional weight kernel')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')
@@ -174,9 +189,10 @@ def parse_args():
         '--pairs', nargs=2, action='append',
         help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
     )
-    parser.add_argument('--pair_loss', default='euclid', help='Distance metric between paired embeddings of different TensorMaps')
+
+    parser.add_argument('--pair_loss', default='contrastive', help='Distance metric between paired embeddings', choices=['euclid', 'cosine', 'contrastive'])
+    parser.add_argument('--pair_merge', default='dropout', help='Merging method for paired modality embeddings', choices=['average', 'concat', 'dropout'])
     parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
-    parser.add_argument('--multimodal_merge', default='average', choices=['average', 'concatenate'], help='How to merge modality specific encodings.')
     parser.add_argument(
         '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
@@ -185,7 +201,14 @@ def parse_args():
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
-
+    parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
+    parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
+    parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
+    parser.add_argument(
+         '--transformer_size', default=256, type=int,
+         help='Number of output neurons in Transformer encoders and decoders, '
+              'the number of internal neurons and the number of layers are set by the --dense_layers',
+    )
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
@@ -229,7 +252,8 @@ def parse_args():
     parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
     parser.add_argument(
         '--save_last_model', default=False, action='store_true',
-        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.')
+        help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.',
+    )
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -424,14 +448,15 @@ def _process_args(args):
 
     args.tensor_maps_in = []
     args.tensor_maps_out = []
-    if args.text_file is not None:
-        del args.input_tensors[:2]
+    if args.text_file is not None or args.hd5_as_text is not None:
+        del args.input_tensors[0]
         del args.output_tensors[0]
-        input_map, burn_in, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window, args.text_one_hot)
-        if args.text_one_hot:
-            args.tensor_maps_in.append(input_map)
+        if args.hd5_as_text is not None:
+            window_shape = (int(np.sqrt(args.text_window)), int(np.sqrt(args.text_window)))
+            input_map, output_map = generate_random_pixel_as_text_tensor_maps(args.tensors, args.hd5_as_text, window_shape)
         else:
-            args.tensor_maps_in.extend([input_map, burn_in])
+            input_map, output_map = generate_random_text_tensor_maps(args.text_file, args.text_window)
+        args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])

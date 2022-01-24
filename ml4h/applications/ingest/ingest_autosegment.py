@@ -44,7 +44,7 @@ from two_d_projection import build_z_slices
 
 def uncompress(t: np.ndarray, stored_dtype=np.uint16):
     return np.frombuffer(blosc.decompress(t[()]), dtype=stored_dtype).reshape(
-        t.attrs["shape"]
+        t.attrs["shape"],
     )
 
 
@@ -56,7 +56,7 @@ def pad_center(img: np.ndarray, shape):
     else:
         border_h = int((((shape[1] / shape[0]) * img.shape[0]) - img.shape[1]) / 2)
     img = cv2.copyMakeBorder(
-        img, border_v, border_v, border_h, border_h, cv2.BORDER_CONSTANT, 0
+        img, border_v, border_v, border_h, border_h, cv2.BORDER_CONSTANT, 0,
     )
     img = cv2.resize(img, (shape[1], shape[0]))
     return img
@@ -183,7 +183,7 @@ def autosegment_dixon(meta: str, file: str, destination: str, instance: int = 2)
             "volume": cubic_mm,  # Volume in mm3
             "surface_area": surface_area,  # Contour length in pixels
             "is_leg": leg_flag,  # Boolean flag for whether we believe this axial slice is a leg
-        }
+        },
     )
     p["volume"] /= 1e6  # Convert to L
     p["surface_area"] *= xmm * zmm  # pixel length * mm/pixel * depth of stack in mm
