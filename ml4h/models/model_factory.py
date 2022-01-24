@@ -7,6 +7,7 @@ from itertools import chain
 from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 
+import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
 
@@ -15,20 +16,24 @@ from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
-from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ContrastiveLossLayer
+from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
+from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 
 
 BLOCK_CLASSES = {
     'conv_encode': ConvEncoderBlock,
     'conv_decode': ConvDecoderBlock,
+    'conv_up': ConvUp,
+    'conv_down': ConvDown,
     'residual': ResidualBlock,
     'pool': PoolBlock,
     'concat': FlatConcatDenseBlock,
     'flat': FlatConcatBlock,
     'average': AverageBlock,
+    'mean': ReduceMean,
     'pair': PairLossBlock,
     'gap': GlobalAveragePoolBlock,
     'lstm_encode': LSTMEncoderBlock,
@@ -36,6 +41,8 @@ BLOCK_CLASSES = {
     'dense_encode': DenseEncoder,
     'dense_decode': DenseDecoder,
     'identity': EncodeIdentityBlock,
+    'transformer_encoder': TransformerEncoder,
+    'transformer_decoder': TransformerDecoder,
 }
 
 
@@ -93,9 +100,11 @@ def block_make_multimodal_multitask_model(
     if kwargs.get('model_file', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
 
-    full_model, encoders, decoders, merger = multimodal_multitask_model(tensor_maps_in, tensor_maps_out,
-                                                                        encoder_blocks, decoder_blocks, merge_blocks,
-                                                                        custom_dict, u_connect, **kwargs)
+    full_model, encoders, decoders, merger = multimodal_multitask_model(
+        tensor_maps_in, tensor_maps_out,
+        encoder_blocks, decoder_blocks, merge_blocks,
+        custom_dict, u_connect, **kwargs
+    )
     full_model.compile(
         optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
@@ -145,10 +154,11 @@ def multimodal_multitask_model(
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
             elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
+                serialized_encoder = add_prefix(serialized_encoder, f'encode_block_{tm.name}', custom_dict)
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
                 break  # Don't also reconstruct from scratch if model is serialized, hd5 models must precede BLOCK_CLASS keys
             else:
-                logging.warning(f'No method to handle Encoding block {encode_block}, ignoring.')
+                logging.warning(f'{tm.name} is ignoring encoding block {encode_block}.')
     merge = identity
     for merge_block in merge_blocks:
         if isinstance(merge_block, Block):
@@ -160,25 +170,30 @@ def multimodal_multitask_model(
     for tm in tensor_maps_out:
         for decode_block in decoder_blocks:
             if isinstance(decode_block, Block):
-                decoder_block_functions[tm] = compose(decoder_block_functions[tm], decode_block(
-                    tensor_map=tm,
-                    u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
-                    parents=tm.parents,
-                    **kwargs,
-                ))
+                decoder_block_functions[tm] = compose(
+                    decoder_block_functions[tm], decode_block(
+                        tensor_map=tm,
+                        u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
+                        parents=tm.parents,
+                        **kwargs,
+                    ),
+                )
             elif decode_block in BLOCK_CLASSES:
-                decoder_block_functions[tm] = compose(decoder_block_functions[tm], BLOCK_CLASSES[decode_block](
-                    tensor_map=tm,
-                    u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
-                    parents=tm.parents,
-                    **kwargs,
-                ))
+                decoder_block_functions[tm] = compose(
+                    decoder_block_functions[tm], BLOCK_CLASSES[decode_block](
+                        tensor_map=tm,
+                        u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
+                        parents=tm.parents,
+                        **kwargs,
+                    ),
+                )
             elif decode_block.endswith(f'decoder_{tm.name}.h5'):
                 serialized_decoder = load_model(decode_block, custom_objects=custom_dict, compile=False)
+                serialized_decoder = add_prefix(serialized_decoder, f'decode_block_{tm.name}', custom_dict)
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
                 break
             else:
-                logging.warning(f'No method to handle decoding block {decode_block}, ignoring.')
+                logging.warning(f'{tm.name} is ignoring decoding block {decode_block}.')
 
     return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
 
@@ -218,25 +233,30 @@ def make_multimodal_multitask_model_block(
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
     if isinstance(multimodal_activation, list):
-        multimodal_activation = multimodal_activation[0]
-    latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
+        latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
+    else:
+        latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
     decoders: Dict[TensorMap, Model] = {}
     decoder_outputs = []
     for tm, decoder_block in decoder_block_functions.items():  # TODO this needs to be a topological sorted according to parents hierarchy
         # Do not save isolated decoders for UNETs because they require skip connection inputs as well as latent space
-        if len([tm_in for tm_in, _ in encoder_block_functions.items() if tm in u_connect[tm_in]]) > 0:
+        if len([tm_in for tm_in, _ in encoder_block_functions.items() if ((tm in u_connect[tm_in]) or tm.is_language())]) > 0:
             reconstruction = decoder_block(multimodal_activation, intermediates)
             decoder_outputs.append(reconstruction)
         else:
             reconstruction = decoder_block(latent_inputs, intermediates)
             decoders[tm] = Model(latent_inputs, reconstruction, name=tm.output_name())
             decoder_outputs.append(decoders[tm](multimodal_activation))
+    if len(decoder_outputs) == 0:
+        decoder_outputs = [multimodal_activation]
     return Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model'), encoders, decoders, merge_model
 
 
-def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
-                                      optimizer, model_file: str):
+def _load_model_encoders_and_decoders(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
+    optimizer, model_file: str,
+):
     encoders = {}
     decoders = {}
     merger = None
@@ -250,10 +270,12 @@ def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_ma
         logging.warning(f'Could not load some model modules, error: {e}')
     logging.info(f"Attempting to load model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
-    m.compile(optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
-              metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+    m.compile(
+        optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
+        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+    )
     m.summary()
-    logging.info(f"Loaded encoders, decoders and model file from: {model_file}")
+    logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
 
@@ -262,7 +284,7 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer],
+            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
@@ -285,3 +307,44 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
         else:
             to_process.insert(0, tm)
     return final
+
+
+def add_prefix(model, prefix: str, custom_objects=None):
+    '''Adds a prefix to layers and model name while keeping the pre-trained weights
+    Arguments:
+        model: a tf.keras model
+        prefix: a string that would be added to before each layer name
+        custom_objects: if your model consists of custom layers you shoud add them pass them as a dictionary.
+            For more information read the following:
+            https://keras.io/guides/serialization_and_saving/#custom-objects
+    Returns:
+        new_model: a tf.keras model having same weights as the input model.
+    '''
+
+    config = model.get_config()
+    old_to_new = {}
+    new_to_old = {}
+
+    for layer in config['layers']:
+        new_name = prefix + layer['name']
+        old_to_new[layer['name']], new_to_old[new_name] = new_name, layer['name']
+        layer['name'] = new_name
+        layer['config']['name'] = new_name
+
+        if len(layer['inbound_nodes']) > 0:
+            for in_node in layer['inbound_nodes'][0]:
+                in_node[0] = old_to_new[in_node[0]]
+
+    for input_layer in config['input_layers']:
+        input_layer[0] = old_to_new[input_layer[0]]
+
+    for output_layer in config['output_layers']:
+        output_layer[0] = old_to_new[output_layer[0]]
+
+    config['name'] = prefix + config['name']
+    new_model = tf.keras.Model().from_config(config, custom_objects)
+
+    for layer in new_model.layers:
+        layer.set_weights(model.get_layer(new_to_old[layer.name]).get_weights())
+
+    return new_model

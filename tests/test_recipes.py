@@ -1,13 +1,14 @@
 import os
 import pytest
+import logging
 import pandas as pd
 import numpy as np
 
 from ml4h.recipes import inference_file_name, _hidden_file_name
-from ml4h.recipes import train_multimodal_multitask, train_block
+from ml4h.recipes import train_legacy, train_multimodal_multitask
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
-from ml4h.explorations import _continuous_explore_header, _categorical_explore_header, _should_error_detect, explore
+from ml4h.explorations import _categorical_explore_header, _should_error_detect, explore
 # Imports with test in their name
 from ml4h.recipes import test_multimodal_multitask as tst_multimodal_multitask
 from ml4h.recipes import test_multimodal_scalar_tasks as tst_multimodal_scalar_tasks
@@ -20,8 +21,8 @@ class TestRecipes:
     def test_train(self, default_arguments):
         train_multimodal_multitask(default_arguments)
 
-    def test_train_block(self, default_arguments):
-        train_block(default_arguments)
+    def test_train_legacy(self, default_arguments):
+        train_legacy(default_arguments)
 
     def test_test(self, default_arguments):
         tst_multimodal_multitask(default_arguments)
@@ -61,28 +62,31 @@ class TestRecipes:
         _find_learning_rate(default_arguments)
 
     def test_explore(self, default_arguments, tmpdir_factory):
-        temp_dir = tmpdir_factory.mktemp('explore_tensors')
+        temp_dir = tmpdir_factory.mktemp('explore_tensors2')
         default_arguments.tensors = str(temp_dir)
         tmaps = TMAPS_UP_TO_4D[:]
         tmaps.append(TensorMap(f'scalar', shape=(1,), interpretation=Interpretation.CONTINUOUS))
-        explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS)
+        explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS, keys_are_paths=False)
         default_arguments.num_workers = 3
         default_arguments.tensor_maps_in = tmaps
         explore(default_arguments)
+
         csv_path = os.path.join(
-            default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
+            default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv',
         )
         explore_result = pd.read_csv(csv_path)
+        logging.info(f'Tested explore {[c for c in explore_expected]}')
+        logging.info(f'Tested explore_result {[c for c in explore_result["fpath"]]}')
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
-                row_expected = explore_expected[(row['fpath'], tm)]
+                row_expected = explore_expected[(row['fpath'], tm.name)]
                 if _should_error_detect(tm):
-                    actual = getattr(row, _continuous_explore_header(tm))
+                    actual = getattr(row, tm.name)
                     assert not np.isnan(actual)
                     continue
                 if tm.is_continuous():
-                    actual = getattr(row, _continuous_explore_header(tm))
+                    actual = getattr(row, tm.name)
                     assert actual == row_expected
                     continue
                 if tm.is_categorical():

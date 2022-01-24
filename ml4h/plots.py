@@ -152,7 +152,7 @@ def evaluate_predictions(
     title: str,
     folder: str,
     test_paths: List[str] = None,
-    max_melt: int = 150000,
+    max_melt: int = 2500000,
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
@@ -346,20 +346,28 @@ def evaluate_predictions(
             tm.days_window,
         )
     elif tm.is_language():
+        prediction_1hot = y_predictions.reshape((y_predictions.shape[0]*y_predictions.shape[1], y_predictions.shape[2]))
+        truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
+        logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder,
+                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                prediction_1hot, truth_1hot, tm.channel_map, title, folder,
             ),
         )
-        rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.axes() > 1 or tm.is_mesh():
         prediction_flat = tm.rescale(y_predictions).flatten()[:max_melt]
         truth_flat = tm.rescale(y_truth).flatten()[:max_melt]
+        protected_repeated = {}
+        for ptm in protected:
+            repeat_axis = 0 if ptm.shape[0] > 1 else None
+            protected_repeated[ptm] = np.repeat(protected[ptm], np.prod(tm.shape), axis=repeat_axis)
+            logging.info(f'Protected TM {ptm} had shape {protected[ptm].shape} now has {protected_repeated[ptm].shape} ')
+            protected_repeated[ptm] = protected_repeated[ptm][:max_melt]
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel]
             y_truth = y_truth[y_truth != tm.sentinel]
@@ -370,7 +378,7 @@ def evaluate_predictions(
                     prediction_flat,
                     truth_flat,
                     tm.channel_map,
-                    protected,
+                    protected_repeated,
                     title,
                     prefix=folder,
                 ),
@@ -401,16 +409,23 @@ def evaluate_predictions(
     return performance_metrics
 
 
+def make_one_hot(y, num_labels):
+    ohy = np.zeros((y.shape[-1], num_labels))
+    for i in range(0, y.shape[-1]):
+        ohy[i, int(y[i])] = 1.0
+    return ohy
+
+
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/"):
     row = 0
     col = 0
     total_plots = int(
-        math.ceil(len(history.history) / 2)
+        math.ceil(len(history.history) / 2),
     )  # divide by 2 because we plot validation and train histories together
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(
-        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE))
+        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)),
     )
     logging.info(f"all keys {list(sorted(history.history.keys()))}")
     for k in sorted(history.history.keys()):
@@ -781,6 +796,8 @@ def subplot_pearson_per_class(
     alpha = 0.5
     labels_to_areas = {}
     total_plots = len(protected) + 1
+    if total_plots == 1:
+        return plot_scatter(prediction, truth, title, prefix)
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -2995,14 +3012,17 @@ def plot_reconstruction(
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(
-                tm.shape[1], 2, figsize=(2 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
+                tm.shape[1], 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
             )  # , sharey=True)
             for j in range(tm.shape[1]):
                 axes[j, 0].plot(y[:, j], c="k", label="original")
                 axes[j, 1].plot(yp[:, j], c="b", label="reconstruction")
+                axes[j, 2].plot(y[:, j], c="k", label="original")
+                axes[j, 2].plot(yp[:, j], c="b", label="reconstruction")
                 axes[j, 0].set_title(f"Lead: {index2channel[j]}")
                 axes[j, 0].legend()
                 axes[j, 1].legend()
+                axes[j, 2].legend()
             plt.tight_layout()
             plt.savefig(os.path.join(folder, title + IMAGE_EXT))
         elif tm.axes() == 3:
@@ -3018,16 +3038,26 @@ def plot_reconstruction(
                     cmap="plasma",
                 )
             else:
-                plt.imsave(
-                    f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
-                    y[:, :, 0],
-                    cmap="gray",
-                )
-                plt.imsave(
-                    f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
-                    yp[:, :, 0],
-                    cmap="gray",
-                )
+                if y.shape[-1] == 0:
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
+                        y[:, :, 0],
+                        cmap="gray",
+                    )
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
+                        yp[:, :, 0],
+                        cmap="gray",
+                    )
+                else:
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
+                        (y[:, :, :]-y.min())/ (1e-6+ y.max()-y.min()),
+                    )
+                    plt.imsave(
+                        f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
+                        (yp[:, :, :]-yp.min())/ (1e-6+ yp.max()-yp.min()),
+                    )
         elif tm.axes() == 4:
             for j in range(y.shape[3]):
                 image_path_base = f"{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}"

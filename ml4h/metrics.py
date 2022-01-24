@@ -46,6 +46,16 @@ def weighted_crossentropy(weights, name='anonymous'):
     return loss_fxn
 
 
+def sparse_cross_entropy(window_size: int):
+    def _sparse_cross_entropy(y_true, y_pred):
+        y_true = tf.reshape(y_true, shape=(-1, window_size))
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(
+            from_logits=True, reduction='none',
+        )(y_true, y_pred)
+        return tf.reduce_mean(loss)
+    return _sparse_cross_entropy
+
+
 def angle_between_batches(tensors):
     l0 = K.sqrt(K.sum(K.square(tensors[0]), axis=-1, keepdims=True) + K.epsilon())
     l1 = K.sqrt(K.sum(K.square(tensors[1]), axis=-1, keepdims=True) + K.epsilon())
@@ -113,6 +123,10 @@ def y_true_times_mse(y_true, y_pred):
     return K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
 
 
+def mse_10x(y_true, y_pred):
+    return 10.0*mean_squared_error(y_true, y_pred)
+
+
 def y_true_squared_times_mse(y_true, y_pred):
     return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*mean_squared_error(y_true, y_pred)
 
@@ -123,14 +137,6 @@ def y_true_cubed_times_mse(y_true, y_pred):
 
 def y_true_squared_times_logcosh(y_true, y_pred):
     return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*logcosh(y_true, y_pred)
-
-
-def asymmetric_outlier_mse(y_true, y_pred):
-    """Loss function which asymmetrically penalizes over estimations of large values."""
-    top_over = 40.0 * K.maximum(y_true - 2.0, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
-    top_over += 20.0 * K.maximum(y_true - 1.0, 0.0) * K.maximum(y_true - y_pred, 0.0) * mean_squared_error(y_true, y_pred)
-    top_under = 5.0 * K.maximum(y_true - 1.0, 0.0) * K.maximum(y_pred - y_true, 0.0) * mean_squared_error(y_true, y_pred)
-    return top_over + top_under + logcosh(y_true, y_pred)
 
 
 def two_batch_euclidean(tensors):
@@ -462,15 +468,19 @@ def log_aucs(**aucs):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     def dashes(n): return '-' * n
 
-    header = "{:<35} {:<20} {:<15}"
-    row = "{:<35} {:<20} {:<15.10f}"
-    width = 85
+    header = "{:<40} {:<28} {:<15}"
+    row = "{:<40} {:<28} {:<15.4f}"
+    width = 90
     logging.info(dashes(width))
+
     for auc_name, auc_value in aucs.items():
         logging.info(header.format('Model', 'Label', auc_name+' AUC'))
+        triplets = []
         for model, model_value in auc_value.items():
             for label, auc in model_value.items():
-                logging.info(row.format(model, label, auc))
+                triplets.append((model, label, auc))
+        for model, label, auc in sorted(triplets, key=lambda x: x[1]):
+            logging.info(row.format(model, label, auc))
         logging.info(dashes(width))
 
 
