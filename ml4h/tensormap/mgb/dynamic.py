@@ -721,7 +721,7 @@ def _get_measurement_matrix_entry(matrix: np.ndarray, key_idx: int, lead_idx: Un
                 matrix_values.append(np.nan)
             else:
                 matrix_values.append(matrix[idx])
-        return max(matrix_values)        
+        return max(matrix_values)
     else:
         idx = lead_start + lead_idx * lead_words + (key_idx-1)*2+1
     value = np.nan if matrix[idx] > nan_threshold else matrix[idx]

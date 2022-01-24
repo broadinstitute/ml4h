@@ -55,8 +55,12 @@ def run(args):
         )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     stop_early = EarlyStopping(monitor='val_loss', patience=args.patience)
-    tuner.search(generate_train, epochs=args.epochs, steps_per_epoch=args.training_steps,
-                 validation_data=generate_valid, validation_steps=args.validation_steps, callbacks=[stop_early])
+
+    tuner.search(
+        generate_train, epochs=args.epochs, steps_per_epoch=args.training_steps,
+        validation_data=generate_valid, validation_steps=args.validation_steps, callbacks=[stop_early],
+    )
+
     logging.info(f"Tuning done best models below!")
     end_time = timer()
     tuner.search_space_summary()
@@ -94,8 +98,10 @@ def make_model_builder(args):
         args.__dict__['pool_type'] = 'max' if hp.Boolean('pool_type_is_max') else 'average'
         model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
         nonlocal model_count
-        logging.info(f'Hyper-tuner is {100.0*(model_count / (args.max_models*args.min_samples)):0.1f}% complete. '
-                     f'Built model #{model_count} with {model.count_params()} parameters of a maximum of {args.max_models*args.min_samples}.')
+        logging.info(
+            f'Hyper-tuner is {100.0*(model_count / (args.max_models*args.min_samples)):0.1f}% complete. '
+            f'Built model #{model_count} with {model.count_params()} parameters of a maximum of {args.max_models*args.min_samples}.',
+        )
         model_count += 1
         return model
     return model_builder

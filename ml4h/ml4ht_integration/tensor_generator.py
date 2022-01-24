@@ -47,11 +47,11 @@ class TensorMapDataLoader(TensorGeneratorABC):
         """Can you substitute this TensorGenerator for the ml4h legacy TensorGenerator"""
         if isinstance(paths[0], list):
             raise NotImplementedError(
-                "TensorMapDataLoader cannot sample from multiple lists of paths. Pass a list of paths for the paths argument"
+                "TensorMapDataLoader cannot sample from multiple lists of paths. Pass a list of paths for the paths argument",
             )
         if weights is not None:
             raise NotImplementedError(
-                "TensorMapDataLoader cannot sample from multiple lists of paths. Do not pass 'weights' argument."
+                "TensorMapDataLoader cannot sample from multiple lists of paths. Do not pass 'weights' argument.",
             )
         if mixup:
             raise NotImplementedError("Mixup not implemented for TensorMapDataLoader")

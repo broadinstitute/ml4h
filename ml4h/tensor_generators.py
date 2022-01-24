@@ -834,15 +834,18 @@ def test_train_valid_tensor_generators(
         train_dataset = tf.data.Dataset.from_generator(
             generate_train,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes))
+            output_shapes=(in_shapes, out_shapes),
+        )
         valid_dataset = tf.data.Dataset.from_generator(
             generate_valid,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes))
+            output_shapes=(in_shapes, out_shapes),
+        )
         test_dataset = tf.data.Dataset.from_generator(
             generate_test,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes))
+            output_shapes=(in_shapes, out_shapes),
+        )
         return train_dataset, valid_dataset, test_dataset
     else:
         return generate_train, generate_valid, generate_test

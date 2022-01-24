@@ -72,7 +72,7 @@ class TestRecipes:
         explore(default_arguments)
 
         csv_path = os.path.join(
-            default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv'
+            default_arguments.output_folder, default_arguments.id, 'tensors_all_union.csv',
         )
         explore_result = pd.read_csv(csv_path)
         logging.info(f'Tested explore {[c for c in explore_expected]}')

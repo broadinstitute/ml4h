@@ -137,8 +137,10 @@ class ConvDecoderBlock(Block):
         self.conv_label = conv_layer(tensor_map.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map.activation, name=tensor_map.output_name())
         self.upsamples = [_upsampler(dimension, pool_x, pool_y, pool_z) for _ in range(len(dense_blocks) + 1)]
         self.u_connect_parents = u_connect_parents or []
-        self.start_shape = _start_shape_before_pooling(num_upsamples=len(dense_blocks), output_shape=tensor_map.shape,
-                                                       upsample_rates=[pool_x, pool_y, pool_z], channels=dense_blocks[-1])
+        self.start_shape = _start_shape_before_pooling(
+            num_upsamples=len(dense_blocks), output_shape=tensor_map.shape,
+            upsample_rates=[pool_x, pool_y, pool_z], channels=dense_blocks[-1],
+        )
         self.reshape = FlatToStructure(output_shape=self.start_shape, activation=activation, normalization=conv_normalize)
         logging.info(f'Built a decoder with: {len(self.dense_conv_blocks)} and reshape {self.start_shape}')
 
@@ -278,9 +280,13 @@ class ConvDown(Block):
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(self.tensor_map.axes(), conv_type, x_filters, y_filters, z_filters)
         self.conv_layers = []
         for i, (num_filters, kernel) in enumerate(zip(conv_layers, kernels)):
-            self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, strides=conv_strides, use_bias=not conv_without_bias,
-                                               kernel_initializer=conv_kernel_initializer, bias_initializer=conv_bias_initializer,
-                                               padding='same', dilation_rate=2**i if conv_dilate else 1))
+            self.conv_layers.append(
+                conv_layer(
+                    filters=num_filters, kernel_size=kernel, strides=conv_strides, use_bias=not conv_without_bias,
+                    kernel_initializer=conv_kernel_initializer, bias_initializer=conv_bias_initializer,
+                    padding='same', dilation_rate=2**i if conv_dilate else 1,
+                ),
+            )
 
         self.activations = [_activation_layer(activation) for _ in range(block_size)]
         self.normalizations = [_normalization_layer(conv_normalize) for _ in range(block_size)]
@@ -343,16 +349,23 @@ class ConvUp(Block):
         conv_layer, kernels = _conv_layer_from_kind_and_dimension(self.tensor_map.axes(), conv_type, x_filters, y_filters, z_filters)
         self.conv_layers = []
         for i, (num_filters, kernel) in enumerate(zip(conv_layers, kernels)):
-            self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, use_bias=not conv_without_bias,
-                                               kernel_initializer=conv_kernel_initializer, bias_initializer=conv_bias_initializer,
-                                               padding='same', dilation_rate=2**i if conv_dilate else 1))
+            self.conv_layers.append(
+                conv_layer(
+                    filters=num_filters, kernel_size=kernel, use_bias=not conv_without_bias,
+                    kernel_initializer=conv_kernel_initializer, bias_initializer=conv_bias_initializer,
+                    padding='same', dilation_rate=2**i if conv_dilate else 1,
+                ),
+            )
 
         self.activations = [_activation_layer(activation) for _ in range(len(conv_layers))]
         self.normalizations = [_normalization_layer(conv_normalize) for _ in range(len(conv_layers))]
         self.upsamples = [_upsampler(tensor_map.axes(), pool_x, pool_y, pool_z) for _ in range(len(conv_layers))]
         self.regularizations = [_regularization_layer(self.tensor_map.axes(), conv_regularize, conv_regularize_rate) for _ in range(len(conv_layers))]
-        self.start_shape = _start_shape_before_pooling(num_upsamples=len(conv_layers), output_shape=tensor_map.shape,
-                                                       upsample_rates=[pool_x, pool_y, pool_z], channels=conv_layers[-1])
+        self.start_shape = _start_shape_before_pooling(
+            num_upsamples=len(conv_layers), output_shape=tensor_map.shape,
+            upsample_rates=[pool_x, pool_y, pool_z], channels=conv_layers[-1],
+        )
+
         self.reshape = FlatToStructure(output_shape=self.start_shape, activation=activation, normalization=conv_normalize)
         conv_layer, _ = _conv_layer_from_kind_and_dimension(tensor_map.axes(), 'conv', conv_x, conv_y, conv_z)
         self.conv_label = conv_layer(tensor_map.shape[-1], _one_by_n_kernel(tensor_map.axes()), activation=tensor_map.activation, name=tensor_map.output_name())

@@ -21,7 +21,7 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
+from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model, pca_on_tsv
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
 from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -94,10 +94,6 @@ def run(args):
             train_char_model(args)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
-        elif 'train_paired' == args.mode:
-            train_paired_model(args)
-        elif 'inspect_paired' == args.mode:
-            inspect_paired_model(args)
         elif 'write_tensor_maps' == args.mode:
             write_tensor_maps(args)
         elif 'append_continuous_csv' == args.mode:
@@ -146,7 +142,7 @@ def train_legacy(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model
+        save_last_model=args.save_last_model,
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
@@ -163,7 +159,7 @@ def train_multimodal_multitask(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model
+        save_last_model=args.save_last_model,
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -478,56 +474,6 @@ def train_siamese_model(args):
     )
 
 
-def train_paired_model(args):
-    full_model, encoders, decoders = make_paired_autoencoder_model(**args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    full_model = train_model_from_generators(
-        full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model
-    )
-    for tm in encoders:
-        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
-    for tm in decoders:
-        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
-    out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    samples = min(args.test_steps * args.batch_size, 12)
-    predictions_list = full_model.predict(test_data)
-    predictions_dict = {name: pred for name, pred in zip(full_model.output_names, predictions_list)}
-    logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
-    performance_metrics = {}
-    for tm in args.tensor_maps_out:
-        if tm.axes() == 1:
-            y = predictions_dict[tm.output_name()]
-            y_truth = np.array(test_labels[tm.output_name()])
-            metrics = evaluate_predictions(tm, y, y_truth, {}, tm.name, os.path.join(args.output_folder, args.id), test_paths)
-            performance_metrics.update(metrics)
-    for i, etm in enumerate(encoders):
-        embed = encoders[etm].predict(test_data[etm.input_name()])
-        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
-        # fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path,
-        #                                                              frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
-
-        #plot_reconstruction(etm, test_data[etm.input_name()], fixed_point_predictions[etm.output_name()], out_path, test_paths, samples)
-        # test_data[etm.input_name()] = np.random.random(test_data[etm.input_name()].shape)
-        # plot_autoencoder_towards_attractor(full_model, test_data, etm, rows=samples, folder=out_path+'random/',
-        #                                    frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
-        for dtm in decoders:
-            reconstruction = decoders[dtm].predict(embed)
-            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
-            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-            os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
-
-            # fixed_point_predictions = plot_autoencoder_towards_attractor(full_model, test_data, dtm,  reconstruction=reconstruction, rows=samples, folder=my_out_path,
-            #                                                              frames=min(5, args.attractor_iterations), steps=args.attractor_iterations)
-            if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
-            else:
-                evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
-    return performance_metrics
-
-
 def infer_encoders_block_multimodal_multitask(args):
     args.num_workers = 0
     tsv_style_is_genetics = 'genetics' in args.tsv_style
@@ -577,23 +523,6 @@ def infer_encoders_block_multimodal_multitask(args):
                 stats['count'] += 1
                 if stats['count'] % 500 == 0:
                     logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
-
-
-def inspect_paired_model(args):
-    full_model, encoders, decoders, merger = block_make_multimodal_multitask_model(**args.__dict__)
-    infer_hidden_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
-    latent_df = latent_space_dataframe(infer_hidden_tsv, args.app_csv)
-    out_folder = os.path.join(args.output_folder, args.id, 'latent_transformations/')
-    for tm in args.tensor_maps_protected:
-        index2channel = {v: k for k, v in tm.channel_map.items()}
-        thresh = 1 if tm.is_categorical() else tm.normalization.mean
-        plot_hit_to_miss_transforms(latent_df, decoders,
-                                    feature=index2channel[0],
-                                    thresh=thresh,
-                                    scalar=args.alpha,
-                                    latent_dimension=args.dense_layers[0],
-                                    prefix=out_folder,
-                                    test_csv=args.test_csv)
 
 
 def pca_on_hidden_inference(args):
@@ -901,8 +830,10 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             plot_prediction_calibrations(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder)
         elif tm.is_survival_curve():
             for m in predictions[tm]:
-                plot_survival(predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}',
-                              tm.days_window, prefix=plot_folder)
+                plot_survival(
+                    predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}',
+                    tm.days_window, prefix=plot_folder,
+                )
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
             plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)

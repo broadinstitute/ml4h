@@ -100,9 +100,11 @@ def block_make_multimodal_multitask_model(
     if kwargs.get('model_file', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
 
-    full_model, encoders, decoders, merger = multimodal_multitask_model(tensor_maps_in, tensor_maps_out,
-                                                                        encoder_blocks, decoder_blocks, merge_blocks,
-                                                                        custom_dict, u_connect, **kwargs)
+    full_model, encoders, decoders, merger = multimodal_multitask_model(
+        tensor_maps_in, tensor_maps_out,
+        encoder_blocks, decoder_blocks, merge_blocks,
+        custom_dict, u_connect, **kwargs
+    )
     full_model.compile(
         optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
@@ -168,19 +170,23 @@ def multimodal_multitask_model(
     for tm in tensor_maps_out:
         for decode_block in decoder_blocks:
             if isinstance(decode_block, Block):
-                decoder_block_functions[tm] = compose(decoder_block_functions[tm], decode_block(
-                    tensor_map=tm,
-                    u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
-                    parents=tm.parents,
-                    **kwargs,
-                ))
+                decoder_block_functions[tm] = compose(
+                    decoder_block_functions[tm], decode_block(
+                        tensor_map=tm,
+                        u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
+                        parents=tm.parents,
+                        **kwargs,
+                    ),
+                )
             elif decode_block in BLOCK_CLASSES:
-                decoder_block_functions[tm] = compose(decoder_block_functions[tm], BLOCK_CLASSES[decode_block](
-                    tensor_map=tm,
-                    u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
-                    parents=tm.parents,
-                    **kwargs,
-                ))
+                decoder_block_functions[tm] = compose(
+                    decoder_block_functions[tm], BLOCK_CLASSES[decode_block](
+                        tensor_map=tm,
+                        u_connect_parents=[tm_in for tm_in in tensor_maps_in if tm in u_connect[tm_in]],
+                        parents=tm.parents,
+                        **kwargs,
+                    ),
+                )
             elif decode_block.endswith(f'decoder_{tm.name}.h5'):
                 serialized_decoder = load_model(decode_block, custom_objects=custom_dict, compile=False)
                 serialized_decoder = add_prefix(serialized_decoder, f'decode_block_{tm.name}', custom_dict)
@@ -248,8 +254,10 @@ def make_multimodal_multitask_model_block(
     return Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model'), encoders, decoders, merge_model
 
 
-def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
-                                      optimizer, model_file: str):
+def _load_model_encoders_and_decoders(
+    tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
+    optimizer, model_file: str,
+):
     encoders = {}
     decoders = {}
     merger = None
@@ -263,8 +271,10 @@ def _load_model_encoders_and_decoders(tensor_maps_in: List[TensorMap], tensor_ma
         logging.warning(f'Could not load some model modules, error: {e}')
     logging.info(f"Attempting to load model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
-    m.compile(optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
-              metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
+    m.compile(
+        optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
+        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+    )
     m.summary()
     logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger

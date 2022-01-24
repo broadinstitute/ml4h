@@ -76,7 +76,7 @@ def prevalent_incident_tensor(start_date_key, event_date_key):
     return _prevalent_incident_tensor_from_file
 
 
-def prevalent_tensor(start_date_key: str, event_date_key: str, start_date_is_attribute: bool = False,):
+def prevalent_tensor(start_date_key: str, event_date_key: str, start_date_is_attribute: bool = False):
     def _prevalent_tensor_from_file(
         tm: TensorMap,
         hd5: h5py.File,
@@ -279,6 +279,28 @@ age_2_patientage = TensorMap(
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 
+af_dummy = TensorMap(
+    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
+)
+sex_dummy = TensorMap(
+    'sex_from_wide', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=2,
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+)
+
+age_2_wide = TensorMap(
+    'age_from_wide_csv', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+)
+age_2_patientage = TensorMap(
+    'patientage', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+)
+
 af_dummy = TensorMap('af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
                              channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1})
 sex_dummy = TensorMap('sex_from_wide', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=2,
@@ -306,8 +328,8 @@ cholesterol = TensorMap(
     normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=1, loss='logcosh',
 )
 
-cigarettes = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259 }, annotation_units=1)
-alcohol = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108 }, annotation_units=1)
+cigarettes = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259}, annotation_units=1)
+alcohol = TensorMap('5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'5364_Average-weekly-intake-of-other-alcoholic-drinks_0_0': 0}, normalization = {'mean': 0.03852570253005904, 'std':0.512608370266108}, annotation_units=1)
 
 
 def alcohol_channel_map(instance=0, array_idx=0):
@@ -375,12 +397,12 @@ walk_duration = TensorMap(
 )
 physical_activities = TensorMap(
     '884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
-    channel_map={'884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0': 0 },
+    channel_map={'884_Number-of-daysweek-of-moderate-physical-activity-10-minutes_0_0': 0},
     normalization={'mean': 3.6258833281089258, 'std': 2.3343738999823676}, annotation_units=1,
 )
 physical_activity = TensorMap(
     '894_Duration-of-moderate-activity_0_0', Interpretation.CONTINUOUS, path_prefix='continuous',
-    channel_map={'894_Duration-of-moderate-activity_0_0': 0 },
+    channel_map={'894_Duration-of-moderate-activity_0_0': 0},
     normalization={'mean': 66.2862593866103, 'std': 77.28681218835422}, annotation_units=1,
 )
 physical_activity_vigorous = TensorMap(

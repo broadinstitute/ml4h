@@ -420,12 +420,12 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     row = 0
     col = 0
     total_plots = int(
-        math.ceil(len(history.history) / 2)
+        math.ceil(len(history.history) / 2),
     )  # divide by 2 because we plot validation and train histories together
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(
-        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE))
+        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)),
     )
     logging.info(f"all keys {list(sorted(history.history.keys()))}")
     for k in sorted(history.history.keys()):
@@ -3052,11 +3052,11 @@ def plot_reconstruction(
                 else:
                     plt.imsave(
                         f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
-                        (y[:, :, :]-y.min() )/ (1e-6+ y.max()-y.min()),
+                        (y[:, :, :]-y.min())/ (1e-6+ y.max()-y.min()),
                     )
                     plt.imsave(
                         f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}",
-                        (yp[:, :, :]-yp.min() )/ (1e-6+ yp.max()-yp.min()),
+                        (yp[:, :, :]-yp.min())/ (1e-6+ yp.max()-yp.min()),
                     )
         elif tm.axes() == 4:
             for j in range(y.shape[3]):

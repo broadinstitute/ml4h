@@ -58,7 +58,7 @@ train_cox_times = fp.ParquetFile('development_data_survival_times.pq').to_pandas
 
 # 2. ----------------------
 # Cross-validate model on development data
-# 
+#
 # Perform 5-fold cross-validation using a fixed seed: this ascertains that we always get
 # the same 5 train-test splits.
 #
@@ -97,7 +97,7 @@ for train_index, test_index in kf:
     # array([(False, 4044.), (True, 4437.), (False, 4004.), (True, 3781.),
     #   (False, 4498.)], dtype=[('f0', '?'), ('f1', '<f8')])
     cox_tuples = np.array(train_cox_times.iloc[train_index].to_records(index=False).tolist(), dtype=np.dtype('bool,float'))
-    
+
     # Define the CoxNet model we want to fit
     estimator = CoxnetSurvivalAnalysis(
             normalize=False, # Do not normalize, the data is already normalized in our case
@@ -106,14 +106,15 @@ for train_index, test_index in kf:
             fit_baseline_model=True, # Fit the baselines
             copy_X=False, # Do not copy the data in this case as our data frames are very large
             tol=1e-9,
-            alphas=alphas)
-    
+            alphas=alphas,
+    )
+
     # Fit the model using the training set of individuals
     estimator.fit(X_train.iloc[train_index], cox_tuples)
-    
+
     # Pickle the actual model to disk
     pickle.dump(estimator, open(f'coxnet_survival_05_fold{current_fold}.pickle', 'wb'))
-    
+
     # Increment fold
     current_fold = current_fold + 1
 
@@ -124,7 +125,7 @@ for train_index, test_index in kf:
 #   2. Compute C-statistics for that alpha
 #   3. Compute absolute risk given that fold
 class CoxNetEvaluateHelper:
-    """This convience class computes the discrimination (C-index) for train 
+    """This convience class computes the discrimination (C-index) for train
     and test each level of regulariziation (parameter alpha) given a provided
     fitted model. The model interface must have the `predict` function available
     ---this is true for all sklearn and sksurv models which we explicitly target.
@@ -142,7 +143,7 @@ class CoxNetEvaluateHelper:
         self._n_features = []
         self._abs_risk   = []
         self._base_haz   = []
-    
+
     def predict(self, verbose=True):
         for a, i in zip(self._estimator.alphas_, range(len(self._estimator.alphas_))):
             if verbose:
@@ -152,31 +153,33 @@ class CoxNetEvaluateHelper:
             except Exception as e:
                 print("Failed inner loop.")
                 raise Exception(e)
-    
+
     def run_cox(self, offset: int):
         # Select alpha at the current offset
         alpha = self._alphas[offset]
-        
+
         # Coefficients at the given alpha
         p = self._coefs.loc[alpha]
-        
+
         # Remove covariates with coefficients reduced to zero
         p = p[p!=0]
-        
+
         # Make predictions on test data at a given alpha
         predictions = self._estimator.predict(self._data.iloc[self._test_index], alpha=alpha)
-        
+
         # Select target individuals in the follow-up time table
         cox_times_local = self._times.iloc[self._test_index]
-        
+
         # Compute the C-statistic for the test fold
-        result = concordance_index_censored(cox_times_local["outcome"], 
-                                            cox_times_local["time"], 
-                                            predictions)
-        
+        result = concordance_index_censored(
+            cox_times_local["outcome"],
+            cox_times_local["time"],
+            predictions,
+        )
+
         # Predict on train data for reference
         predictions = self._estimator.predict(self._data.iloc[self._train_index], alpha=alpha)
-        
+
         # Compute absolute risk at year 10.
         # Compute the baseline hazard S_0(t) at timepoint 10*365 (10 years)
         s0_10 = self._estimator._get_baseline_model(alpha).cum_baseline_hazard_(10*365)
@@ -184,17 +187,19 @@ class CoxNetEvaluateHelper:
 
         # Select target individuals in the follow-up time table
         cox_times_local = self._times.iloc[self._train_index]
-        
+
         # Compute the C-statistic for training data predicting training data
-        result_train = concordance_index_censored(cox_times_local["outcome"], 
-                                                    cox_times_local["time"], 
-                                                    predictions)
-        
-        # Store the C-statistics for both test and train data and the number of 
+        result_train = concordance_index_censored(
+            cox_times_local["outcome"],
+            cox_times_local["time"],
+            predictions,
+        )
+
+        # Store the C-statistics for both test and train data and the number of
         # non-zero features.
         self._c_test.append(result[0])
         self._c_train.append(result_train[0])
-        self._n_features.append(len(p)) 
+        self._n_features.append(len(p))
         self._abs_risk.append(abs_risk)
         self._base_haz.append(s0_10)
         return True
@@ -209,7 +214,7 @@ current_fold = 0 # Keep track of which fold we're currently on in the loop
 for train_index, test_index in kf:
     # Load the fitted estimator as saved above for a given fold
     estimator = pickle.load(open(f'coxnet_survival_05_fold{current_fold}.pickle', 'rb'))
-    
+
     # Create a coefficient matrix for each hyperparameter alpha
     coefs = pd.DataFrame(estimator.coef_)
     coefs.columns = estimator.alphas_
@@ -220,10 +225,10 @@ for train_index, test_index in kf:
     # risk.
     cox_data_class = CoxNetEvaluateHelper(estimator, coefs, estimator.alphas_, X_train, train_index, test_index, train_cox_times)
     cox_data_class.predict(verbose=True)
-    
+
     # Keep the results for each fold
     data_classes.append(cox_data_class)
-    
+
     # Increment fold counter
     current_fold = current_fold + 1
 
@@ -242,17 +247,17 @@ for b in range(100):
     # Randomly draw N samples from the original dataset where N is the number
     # of samples.
     train_targets = np.random.choice(X_train.index.values, len(X_train), replace=True)
-    
+
     # Samples not drawn from the sampling procedure are used as an out-of-bag
     # (OOB) dataset for testing.
     test_oob = list(set(train_targets).symmetric_difference(set(X_train.index.values)))
 
     # Grab the target times
     cox_tuples = train_cox_times.loc[train_targets].to_records(index=False).tolist()
-    
+
     # Current bootstrapped dataset
     X_boot = X_train.loc[train_targets]
-    
+
     # Coxnet estimator
     estimator = CoxnetSurvivalAnalysis(
             normalize=False,
@@ -261,8 +266,9 @@ for b in range(100):
             fit_baseline_model=True,
             copy_X=False,
             tol=1e-9,
-            alphas=[0.0011765691116882482])
-    
+            alphas=[0.0011765691116882482],
+    )
+
     # Fit the model
     try:
         estimator.fit(X_boot, np.array(cox_tuples, dtype=np.dtype('bool,float')))
@@ -275,10 +281,12 @@ for b in range(100):
 
     # Compute the C-index
     boot_times = train_cox_times.loc[test_oob]
-    result = concordance_index_censored(boot_times["outcome"], 
-                                        boot_times["time"], 
-                                        predictions)
-    
+    result = concordance_index_censored(
+        boot_times["outcome"],
+        boot_times["time"],
+        predictions,
+    )
+
     # Store results
     boot_c_scores.append(result[0])
 
@@ -306,7 +314,8 @@ estimator = CoxnetSurvivalAnalysis(
         fit_baseline_model=True,
         copy_X=False,
         tol=1e-9,
-        alphas=[target_alpha])
+        alphas=[target_alpha],
+)
 
 cox_tuples = train_cox_times.to_records(index=False).tolist()
 estimator.fit(X_train, np.array(cox_tuples, dtype=np.dtype('bool,float')))
@@ -329,7 +338,7 @@ y_holdout['sex']          = X_holdout_unscaled['c_sex']
 # Make predictions
 predictions_holdout = estimator.predict(X_holdout)
 
-# Compute the C-statistic for the entire holdout and for a variety 
+# Compute the C-statistic for the entire holdout and for a variety
 # of stratifications
 c_scores = []
 c_scores_under55 = []
@@ -338,46 +347,60 @@ c_scores_male    = []
 c_scores_female  = []
 
 # Compute the C-statistic for the test fold
-result = concordance_index_censored(holdout_cox_times["outcome"], 
-                                    holdout_cox_times["time"], 
-                                    predictions_holdout)
+result = concordance_index_censored(
+    holdout_cox_times["outcome"],
+    holdout_cox_times["time"],
+    predictions_holdout,
+)
 c_scores.append(result[0])
 
 # Under 55
-result = concordance_index_censored(holdout_cox_times[y_holdout['age_under_55']==True]['outcome'], 
-                                    holdout_cox_times[y_holdout['age_under_55']==True]['time'], 
-                                    predictions_holdout[y_holdout['age_under_55']==True])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['age_under_55']==True]['outcome'],
+    holdout_cox_times[y_holdout['age_under_55']==True]['time'],
+    predictions_holdout[y_holdout['age_under_55']==True],
+)
 c_scores_under55.append(result[0])
 
 # Under 55
-result = concordance_index_censored(holdout_cox_times[y_holdout['age_over_55']==True]['outcome'], 
-                                    holdout_cox_times[y_holdout['age_over_55']==True]['time'], 
-                                    predictions_holdout[y_holdout['age_over_55']==True])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['age_over_55']==True]['outcome'],
+    holdout_cox_times[y_holdout['age_over_55']==True]['time'],
+    predictions_holdout[y_holdout['age_over_55']==True],
+)
 c_scores_over55.append(result[0])
 
 # Males
-result = concordance_index_censored(holdout_cox_times[y_holdout['sex']==1.0]['outcome'], 
-                                    holdout_cox_times[y_holdout['sex']==1.0]['time'], 
-                                    predictions_holdout[y_holdout['sex']==1.0])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['sex']==1.0]['outcome'],
+    holdout_cox_times[y_holdout['sex']==1.0]['time'],
+    predictions_holdout[y_holdout['sex']==1.0],
+)
 c_scores_male.append(result[0])
 
 # Females
-result = concordance_index_censored(holdout_cox_times[y_holdout['sex']==0.0]['outcome'], 
-                                    holdout_cox_times[y_holdout['sex']==0.0]['time'], 
-                                    predictions_holdout[y_holdout['sex']==0.0])
+result = concordance_index_censored(
+    holdout_cox_times[y_holdout['sex']==0.0]['outcome'],
+    holdout_cox_times[y_holdout['sex']==0.0]['time'],
+    predictions_holdout[y_holdout['sex']==0.0],
+)
 c_scores_female.append(result[0])
 
 
 # Construct a data frame of the above results and save to disk
-holdout_results = pd.concat([pd.DataFrame({
-        'alpha':   estimator.alphas_,
-        'all':     c_scores,
-        'under55': c_scores_under55,
-        'over55':  c_scores_over55,
-        'male':    c_scores_male,
-        'female':  c_scores_female
-    }),
-    (coefs!=0.0).sum().reset_index()], axis=1)
+holdout_results = pd.concat(
+    [
+        pd.DataFrame({
+            'alpha':   estimator.alphas_,
+            'all':     c_scores,
+            'under55': c_scores_under55,
+            'over55':  c_scores_over55,
+            'male':    c_scores_male,
+            'female':  c_scores_female,
+        }),
+        (coefs!=0.0).sum().reset_index(),
+    ], axis=1,
+)
 
 holdout_results.to_csv('coxnet_survival_05_all_training_data__holdout__c_scores.txt',sep="\t")
 
@@ -402,9 +425,11 @@ abs_risk_holdut.to_csv("coxnet__absolute_risk_with_ids__holdout_model_0_00117656
 # Compute feature importance.
 
 ## Initial prediction
-result = concordance_index_censored(holdout_cox_times["outcome"], 
-                                    holdout_cox_times["time"], 
-                                    predictions_holdout)
+result = concordance_index_censored(
+    holdout_cox_times["outcome"],
+    holdout_cox_times["time"],
+    predictions_holdout,
+)
 reference_c_statistic = result[0]
 
 # Foreach coulmn we randomly permute (shuffle) its values
@@ -416,21 +441,23 @@ for c in X_holdout.columns:
     # Perform 100-times permutations per feature
     for i in range(100):
         X_holdout_cox_internal    = X_holdout.copy()
-        
+
         # Make permutation
         X_holdout_cox_internal[c] = X_holdout_cox_internal[c].sample(frac=1).values
-        
+
         # Make predictions with this permuted matrix
         predictions = estimator.predict(X_holdout_cox_internal)
-        
+
         # Compute C-statistics
-        permutation_result = concordance_index_censored(holdout_cox_times["outcome"], 
-                                            holdout_cox_times["time"], 
-                                            predictions)
-        
+        permutation_result = concordance_index_censored(
+            holdout_cox_times["outcome"],
+            holdout_cox_times["time"],
+            predictions,
+        )
+
         # Store difference compared to the reference C-statistics
         difference_c_stats.append(reference_c_statistic - permutation_result[0])
-    
+
     # Store results
     permute_importance_c.append({c: difference_c_stats})
 
@@ -444,4 +471,3 @@ permutation_importance = permutation_importance[permutation_importance.mean().ab
 # Save to disk
 permutation_importance.to_csv("coxnet_final_model_permutation_importance__model_0_0011765691116882482.txt",sep="\t")
 permutation_importance.melt().to_csv("coxnet_final_model_permutation_importance_melted__model_0_0011765691116882482.txt",sep="\t")
-
