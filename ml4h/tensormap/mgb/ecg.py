@@ -1144,3 +1144,11 @@ partners_ecg_supranodal_6_weighted = TensorMap(
         },
     ),
 )
+
+patientage = TensorMap(
+    'patientage', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'patientage': 0},
+)
+
