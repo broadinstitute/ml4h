@@ -4,8 +4,6 @@ from abc import ABC, abstractmethod
 from ml4h.defines import EPS
 from tensorflow.python.keras.applications import imagenet_utils
 
-from torch_ml4h.ml4ht.data.defines import LoadingOption
-
 
 class Normalizer(ABC):
     @abstractmethod
