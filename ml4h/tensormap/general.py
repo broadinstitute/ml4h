@@ -18,6 +18,11 @@ def tensor_path(path_prefix: str, name: str) -> str:
 def tensor_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     return np.array(hd5[tm.name])
 
+def named_tensor_from_hd5(name):
+    def _tensor_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+        return np.array(hd5[name])
+    return _tensor_from_hd5
+
 
 def all_dates(hd5: h5py.File, path_prefix: str, name: str) -> List[str]:
     """
