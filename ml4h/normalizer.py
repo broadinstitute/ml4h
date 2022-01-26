@@ -11,7 +11,7 @@ class Normalizer(ABC):
         """Shape preserving transformation"""
         pass
 
-    def normalize_loading_option(self, tensor: np.ndarray, loading_option: LoadingOption) -> np.ndarray:
+    def normalize_loading_option(self, tensor: np.ndarray, _) -> np.ndarray:
         """Shape preserving transformation for use with DataDescription.
          Defaults to the normalize function if not defined in the descendant"""
         return self.normalize(tensor)
