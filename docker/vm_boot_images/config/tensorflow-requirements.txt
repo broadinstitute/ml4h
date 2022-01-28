@@ -13,7 +13,7 @@ pillow==9.0.0
 notebook
 pytest
 pysam
-tensorflow==2.5.0
+tensorflow==2.5.2
 tensorflow-addons==0.13.0
 tensorflow_probability==0.13.0-rc0
 keras-tuner
