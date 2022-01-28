@@ -3056,7 +3056,7 @@ def plot_reconstruction(
                     cmap="plasma",
                 )
             else:
-                if y.shape[-1] == 0:
+                if y.shape[-1] not in [3, 4]:
                     plt.imsave(
                         f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
                         y[:, :, 0],
