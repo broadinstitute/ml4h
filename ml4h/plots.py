@@ -674,11 +674,11 @@ def _pearson_wrapper(prediction, truth):
 def bootstrap_confidence_interval(
         prediction, truth, n_boot: int = 200, bottom: float = 2.5, top: float = 97.5,
         max_n: int = 500000, metric_fxn: Callable = _pearson_wrapper,
-) -> Tuple[float, float]:
+) -> Tuple[float, List[float, float]]:
     n = min(max_n, len(truth))
     sample_idxs = np.random.randint(n, size=(n_boot, n))
     r2s = [metric_fxn(truth[idx], prediction[idx]) for idx in sample_idxs]
-    return np.percentile(r2s, [bottom, top])
+    return np.mean(r2s), np.percentile(r2s, [bottom, top])
 
 
 def plot_scatter(
@@ -698,10 +698,12 @@ def plot_scatter(
         1, 0,
     ]  # corrcoef returns full covariance matrix
     big_r_squared = coefficient_of_determination(truth, prediction)
-    label = f"Pearson:{pearson:0.3f} $r^2$:{pearson*pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
+
     if bootstrap:
-        ci = bootstrap_confidence_interval(prediction, truth)
-        label = f'{label}, 95% Confidence:({ci[0]:0.3f}, {ci[1]:0.3f})'
+        pearson, ci = bootstrap_confidence_interval(prediction, truth)
+        label = f'Pearson:{pearson:0.3f} $R^2$:{big_r_squared:0.3f}, 95% Confidence:({ci[0]:0.3f}, {ci[1]:0.3f})'
+    else:
+        label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     logging.info(f"{label}")
     ax1.scatter(
         prediction,
