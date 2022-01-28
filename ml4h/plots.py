@@ -667,8 +667,14 @@ def plot_prediction_calibration(
     plt.savefig(figure_path)
 
 
+def bootstrap_r2_confidence_interval(prediction, truth, n_boot: int = 1000, bottom: float = 2.5, top: float = 97.5):
+    sample_idxs = np.random.randint(len(truth), size=(n_boot, len(truth)))
+    r2s = [coefficient_of_determination(truth[idx], prediction[idx]) for idx in sample_idxs]
+    return np.percentile(r2s, [bottom, top])
+
+
 def plot_scatter(
-    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
+    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, bootstrap=True,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
@@ -684,13 +690,16 @@ def plot_scatter(
         1, 0,
     ]  # corrcoef returns full covariance matrix
     big_r_squared = coefficient_of_determination(truth, prediction)
+    label = f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}"
+    if bootstrap:
+        label = f'{label} 95% Confidence: {bootstrap_r2_confidence_interval(prediction, truth)}'
     logging.info(
         f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}",
     )
     ax1.scatter(
         prediction,
         truth,
-        label=f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}",
+        label=label,
         marker=".",
         alpha=alpha,
     )
