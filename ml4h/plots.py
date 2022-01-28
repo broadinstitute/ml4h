@@ -667,7 +667,9 @@ def plot_prediction_calibration(
     plt.savefig(figure_path)
 
 
-def bootstrap_r2_confidence_interval(prediction, truth, n_boot: int = 1000, bottom: float = 2.5, top: float = 97.5):
+def bootstrap_r2_confidence_interval(
+        prediction, truth, n_boot: int = 200, bottom: float = 2.5, top: float = 97.5, max_n: int = 500000
+) -> Tuple[float, float]:
     sample_idxs = np.random.randint(len(truth), size=(n_boot, len(truth)))
     r2s = [coefficient_of_determination(truth[idx], prediction[idx]) for idx in sample_idxs]
     return np.percentile(r2s, [bottom, top])
