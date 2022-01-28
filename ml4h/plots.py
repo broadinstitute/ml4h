@@ -701,7 +701,7 @@ def plot_scatter(
 
     if bootstrap:
         pearson, ci = bootstrap_confidence_interval(prediction, truth)
-        label = f'Pearson:{pearson:0.3f} $R^2$:{big_r_squared:0.3f}, 95% Confidence:({ci[0]:0.3f}, {ci[1]:0.3f})'
+        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}, 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
     else:
         label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     logging.info(f"{label}")
