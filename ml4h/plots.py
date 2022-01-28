@@ -690,9 +690,10 @@ def plot_scatter(
         1, 0,
     ]  # corrcoef returns full covariance matrix
     big_r_squared = coefficient_of_determination(truth, prediction)
-    label = f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}"
+    label = f"Pearson:{pearson:0.3f} $r^2$:{pearson*pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     if bootstrap:
-        label = f'{label} 95% Confidence: {bootstrap_r2_confidence_interval(prediction, truth)}'
+        ci = bootstrap_r2_confidence_interval(prediction, truth)
+        label = f'{label}, 95% Confidence: ({ci[0]}, {ci[1]})'
     logging.info(
         f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}",
     )
