@@ -673,7 +673,7 @@ def _pearson_wrapper(prediction, truth):
 
 def bootstrap_confidence_interval(
         prediction, truth, n_boot: int = 200, bottom: float = 2.5, top: float = 97.5,
-        max_n: int = 500000, metric_fxn: Callable = _pearson_wrapper,
+        max_n: int = 1000000, metric_fxn: Callable = _pearson_wrapper,
 ) -> Tuple[float, Tuple[float, float]]:
     n = min(max_n, len(truth))
     sample_idxs = np.random.randint(n, size=(n_boot, n))
