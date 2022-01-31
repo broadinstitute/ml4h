@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Sequence
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+import tensorflow_hub as hub
 from tensorflow.keras.layers import Dense, Flatten, Reshape, LayerNormalization, DepthwiseConv2D, concatenate, Concatenate, Add
 
 from ml4h.models.Block import Block
@@ -25,20 +26,47 @@ class ResNetEncoder(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-        self.base_model = keras.applications.Xception(
-            weights="imagenet",  # Load weights pre-trained on ImageNet.
+        self.base_model = keras.applications.ResNet50V2(
             input_shape=self.tensor_map.shape,
+            weights="imagenet",  # Load weights pre-trained on ImageNet.
+            pooling = "avg",
             include_top=False,
         )  # Do not include the ImageNet classifier at the top.
         self.base_model.trainable = False
 
     def can_apply(self):
-        return self.tensor_map.axes() > 1
+        return self.tensor_map.axes() == 3 and self.tensor_map.shape[-1] == 3
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         x = self.base_model(x, training=False)
+        x = keras.layers.GlobalAveragePooling2D()(x)
+        intermediates[self.tensor_map].append(x)
+        return x
+
+
+class MoviNetEncoder(Block):
+    def __init__(
+            self,
+            *,
+            tensor_map: TensorMap,
+            path='https://tfhub.dev/tensorflow/movinet/a2/base/kinetics-600/classification/3',
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        if not self.can_apply():
+            return
+        self.base_model = hub.KerasLayer(path, trainable=True)
+        #self.base_model.trainable = False
+
+    def can_apply(self):
+        return self.tensor_map.axes() == 4
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+        if not self.can_apply():
+            return x
+        x = self.base_model(x, training=True)
         x = keras.layers.GlobalAveragePooling2D()(x)
         intermediates[self.tensor_map].append(x)
         return x
