@@ -21,6 +21,7 @@ class ResNetEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
+            pretrain_trainable: bool,
             **kwargs,
     ):
         self.tensor_map = tensor_map
@@ -32,7 +33,7 @@ class ResNetEncoder(Block):
             #pooling = "avg",
             include_top=False,
         )  # Do not include the ImageNet classifier at the top.
-        self.base_model.trainable = False
+        self.base_model.trainable = pretrain_trainable
 
     def can_apply(self):
         return self.tensor_map.axes() == 3 and self.tensor_map.shape[-1] == 3
@@ -51,14 +52,15 @@ class MoviNetEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
+            pretrain_trainable: bool,
             path='https://tfhub.dev/tensorflow/movinet/a2/base/kinetics-600/classification/3',
             **kwargs,
     ):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-        self.base_model = hub.KerasLayer(path, trainable=True)
-        #self.base_model.trainable = False
+        self.base_model = hub.KerasLayer(path, trainable=pretrain_trainable)
+        self.base_model.trainable = pretrain_trainable
 
     def can_apply(self):
         return self.tensor_map.axes() == 4
