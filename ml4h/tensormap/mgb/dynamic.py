@@ -57,14 +57,15 @@ def make_waveform_maps(desired_map_name: str) -> TensorMap:
     for length, exact_length, normalization in product(length_options, exact_options, normalize_options):
         norm = '_std' if isinstance(normalization, ZeroMeanStd1) else '_mv' if isinstance(normalization, Standardize) else '_raw'
         exact = '_exact' if exact_length else ''
-        name = f'mgb_ecg_{length}{norm}{exact}'
+        #name = f'mgb_ecg_{length}{norm}{exact}'
+        name = f'partners_ecg_{length}_newest'
         if name == desired_map_name:
             return TensorMap(
                 name,
                 shape=(length, 12),
                 path_prefix=PARTNERS_PREFIX,
                 tensor_from_file=make_voltage(exact_length),
-                normalization=normalization,
+                normalization=ZeroMeanStd1(), #normalization,
                 channel_map=ECG_REST_AMP_LEADS,
             )
 
