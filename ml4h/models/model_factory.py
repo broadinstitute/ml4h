@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
+from tensorflow_hub import KerasLayer
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
@@ -287,7 +288,8 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention],
+            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention,
+             KerasLayer],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
