@@ -676,7 +676,7 @@ def bootstrap_confidence_interval(
         max_n: int = 1000000, metric_fxn: Callable = _pearson_wrapper,
 ) -> Tuple[float, Tuple[float, float]]:
     n = min(max_n, len(truth))
-    sample_idxs = np.random.randint(n, size=(n_boot, n))
+    sample_idxs = np.random.randint(n_boot, size=(n, n))
     r2s = [metric_fxn(truth[idx], prediction[idx]) for idx in sample_idxs]
     return np.mean(r2s), np.percentile(r2s, [bottom, top])
 
