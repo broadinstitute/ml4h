@@ -1799,6 +1799,12 @@ lax_4ch_heart_center = TensorMap(
     'lax_4ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
 )
+
+lax_4ch_heart_center_4d = TensorMap(
+    'lax_4ch_heart_center_4d', Interpretation.CONTINUOUS, shape=(50, 96, 96, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
+)
+
 lax_3ch_heart_center = TensorMap(
     'lax_3ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_3ch/2/', 'cine_segmented_lax_3ch_annotated_', LAX_3CH_HEART_LABELS),
@@ -1807,10 +1813,7 @@ lax_2ch_heart_center = TensorMap(
     'lax_2ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_', LAX_2CH_HEART_LABELS),
 )
-lax_4ch_heart_center_4d = TensorMap(
-    'lax_4ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50, 1), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
-    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
-)
+
 lax_4ch_heart_center_rotate = TensorMap(
     'lax_4ch_heart_center_rotate', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
@@ -1831,6 +1834,31 @@ lax_4ch_heart_center_prediction = TensorMap(
 lax_4ch_heart_center_truth = TensorMap(
     'lax_4ch_heart_center_truth', Interpretation.CONTINUOUS, shape=(96, 96, 50), loss='logcosh', activation='linear',
     tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'],
+)
+
+
+def _heart_mask_movies(mri_keys, segmentation_keys, labels):
+    def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for k, (mri_key, segmentation_key, label) in enumerate(zip(mri_keys, segmentation_keys, labels)):
+            diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{1}')
+            heart_mask = np.isin(diastole_categorical, list(label.values()))
+            i, j = np.where(heart_mask)
+            indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), np.arange(50), indexing='ij')
+            mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')
+            mri = pad_or_crop_array_to_shape((96, 96, 50), mri[tuple(indices)])
+            mri = np.rollaxis(mri, axis=-1, start=0) # Movie frames to the first channel
+            tensor[..., k] = mri
+        return tensor
+    return _heart_mask_tensor_from_file
+
+
+lax_keys = ['cine_segmented_lax_4ch/2/', 'cine_segmented_lax_3ch/2/', 'cine_segmented_lax_2ch/2/']
+lax_seg_keys = ['cine_segmented_lax_4ch_annotated_', 'cine_segmented_lax_3ch_annotated_', 'cine_segmented_lax_2ch_annotated_',]
+lax_seg_labels = [LAX_4CH_HEART_LABELS, LAX_3CH_HEART_LABELS, LAX_2CH_HEART_LABELS]
+lax_4ch_heart_center_4d = TensorMap(
+    'lax_4ch_heart_center_4d', Interpretation.CONTINUOUS, shape=(50, 96, 96, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_movies(lax_keys, lax_seg_keys, lax_seg_labels),
 )
 
 def _segmented_heart_mask_instances(segmentation_key, labels, frames=50, one_hot=True):
