@@ -29,7 +29,7 @@ class ResNetEncoder(Block):
         self.base_model = keras.applications.ResNet50V2(
             input_shape=self.tensor_map.shape,
             weights="imagenet",  # Load weights pre-trained on ImageNet.
-            pooling = "avg",
+            #pooling = "avg",
             include_top=False,
         )  # Do not include the ImageNet classifier at the top.
         self.base_model.trainable = False
@@ -67,6 +67,6 @@ class MoviNetEncoder(Block):
         if not self.can_apply():
             return x
         x = self.base_model({'image': x}, training=True)
-        x = keras.layers.GlobalAveragePooling2D()(x)
+        #x = keras.layers.GlobalAveragePooling2D()(x)
         intermediates[self.tensor_map].append(x)
         return x
