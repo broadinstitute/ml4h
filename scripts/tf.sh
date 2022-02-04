@@ -8,7 +8,7 @@
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-cpu"
+DOCKER_IMAGE_NO_GPU="tensorflow/tensorflow:2.5.0"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
@@ -198,8 +198,17 @@ DEV_INSTRUCTIONS="
     pip install skan;
     pip install numba;
     pip install blosc;
+    pip install h5py;
+    pip install numpy;
     pip install zstandard;
+    pip install --upgrade google-cloud-storage;
+    pip install --upgrade vtk;
+    pip install --upgrade pandas;
+    pip install pydicom;
     export NUMBA_CACHE_DIR=/home/pdiachil;
+    export DEBIAN_FRONTEND=noninteractive;
+    apt update -y --no-install-recommends;
+    apt-get install python3-tk libgl1-mesa-glx libxt-dev -y --no-install-recommends;
     cd /home/pdiachil/pypoisson;
     python setup.py install;
     cd ${WORKDIR}/notebooks/mri"
@@ -210,6 +219,7 @@ ${GPU_DEVICE} \
 --env GROUP_IDS \
 --rm \
 --ipc=host \
+-ti \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
