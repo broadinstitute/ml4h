@@ -24,6 +24,7 @@ end = int(sys.argv[2])
 import random
 
 df_dic = {'sample_id': []}
+df_dic['rep_time'] = []
 for stra, strain in enumerate(['circ', 'rad']):
     for sli, slice in enumerate(['bas', 'mid', 'api']):
         for sec, sector in enumerate(['S', 'A', 'L', 'P']):
@@ -131,6 +132,9 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
             ncols = sample['Columns'].values[0]
             height = sample['Pixel Spacing'].values[0][0].real
             width = sample['Pixel Spacing'].values[0][1].real
+            rep_time = sample['Repetition Time'].values[0]
+            if sss == 0:
+                df_dic['rep_time'].append(rep_time)
             positions = np.array([
                 sample['Image Position (Patient)'].values[0][0].real,
                 sample['Image Position (Patient)'].values[0][1].real,
