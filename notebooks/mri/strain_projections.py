@@ -3,8 +3,6 @@
 # from ml4h.applications.ingest.two_d_projection import build_projection_hd5, build_z_slices, normalize
 from vtk.util import numpy_support
 from google.cloud import storage
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import os
 import h5py
 import pandas as pd
@@ -18,6 +16,8 @@ import sys
 from pydicom.valuerep import DSfloat
 
 #%%
+
+mri_notebooks_dir = '/home/pdiachil/ml/notebooks/mri/'
 
 start = int(sys.argv[1])
 end = int(sys.argv[2])
@@ -56,14 +56,14 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
         blob_cnt = 0
         for blob in blobs:
             filename = os.path.basename(blob.name)
-            blob.download_to_filename(filename)
+            blob.download_to_filename(os.path.join(mri_notebooks_dir, filename))
             blob_cnt += 1
 
         if blob_cnt < 1:
             logging.warning(f'Patient {patient} does not have MRI images. Skipping')
             continue
 
-        hd5 = h5py.File(filename, 'r')
+        hd5 = h5py.File(os.path.join(mri_notebooks_dir, filename), 'r')
         try:
             slices = hd5['field/20211/instance/2'].keys()
         except KeyError:
@@ -75,14 +75,14 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
         blob_cnt = 0
         for blob in blobs:
             filename = os.path.basename(blob.name)
-            blob.download_to_filename(filename)
+            blob.download_to_filename(os.path.join(mri_notebooks_dir, filename))
             blob_cnt += 1
 
         if blob_cnt < 1:
             logging.warning(f'Patient {patient} does not have RV reconstruction. Skipping')
             continue
 
-        rv_filename = filename.split('.')[0]
+        rv_filename = os.path.join(mri_notebooks_dir, filename.split('.')[0])
         rv_hd5 = h5py.File(f'{rv_filename}.hd5', 'r')
         rv_points = rv_hd5['points_0'][()]
         rv_cells = rv_hd5['cells_0'][()]
@@ -102,13 +102,13 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
         blob_cnt = 0
         for blob in blobs:
             filename = os.path.basename(blob.name)
-            blob.download_to_filename(filename)
+            blob.download_to_filename(os.path.join(mri_notebooks_dir, filename))
             blob_cnt += 1
         if blob_cnt < 1:
             logging.warning(f'Patient {patient} does not have strain landmarks. Skipping')
             continue
 
-        strain_hd5 = h5py.File(filename)
+        strain_hd5 = h5py.File(os.path.join(mri_notebooks_dir, filename))
 
         C_sector_rad = np.ones((len(slices), 20, 4))*(-1e3)
         C_sector_circ = np.ones((len(slices), 20, 4))*(-1e3)
@@ -468,15 +468,17 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
                 # slice_writer.SetFileName(f'{patient}_{slice_name}_slice_{t}.vtp')
                 # slice_writer.Update()
 
-        remove_list = glob.glob(f'*{patient}*')
-        remove_list += glob.glob(f'*.h5')
-        remove_list += glob.glob(f'*.hd5')
+        remove_list = glob.glob(f'{mri_notebooks_dir}*{patient}*')
+        remove_list += glob.glob(f'{mri_notebooks_dir}*.h5')
+        remove_list += glob.glob(f'{mri_notebooks_dir}*.hd5')
         for r in remove_list:
             if os.path.isfile(r):
                 os.remove(r)
 
         df = pd.DataFrame(df_dic)
-        df.to_csv(f'df_strain_{start}_{end}.csv')
+        df.to_csv(os.path.join(mri_notebooks_dir, f'df_strain_{start}_{end}.csv'))
+
+
 
 
 # # %%
