@@ -219,7 +219,6 @@ ${GPU_DEVICE} \
 --env GROUP_IDS \
 --rm \
 --ipc=host \
--ti \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
