@@ -19,4 +19,4 @@ cnt2=$((VMTAG*STEP+STEP-1))
 /home/pdiachil/ml/scripts/tf.sh -c /home/pdiachil/ml/notebooks/mri/strain_projections.py $cnt1 $cnt2
 cd /home/pdiachil/ml/notebooks/mri
 /snap/bin/gsutil cp df_strain*.csv gs://ml4cvd/pdiachil/cardiac_strain/
-# yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
