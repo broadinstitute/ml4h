@@ -42,6 +42,7 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
         logging.warning(f'Processing {patient}; {ccc}')
 
         df_dic['sample_id'].append(patient)
+        df_dic['rep_time'].append(-1e-3)
         for stra, strain in enumerate(['circ', 'rad']):
             for sli, slice in enumerate(['bas', 'mid', 'api']):
                 for sec, sector in enumerate(['S', 'A', 'L', 'P']):
@@ -134,7 +135,7 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
             width = sample['Pixel Spacing'].values[0][1].real
             rep_time = sample['Repetition Time'].values[0]
             if sss == 0:
-                df_dic['rep_time'].append(rep_time)
+                df_dic['rep_time'][-1] = rep_time
             positions = np.array([
                 sample['Image Position (Patient)'].values[0][0].real,
                 sample['Image Position (Patient)'].values[0][1].real,
