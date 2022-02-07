@@ -148,7 +148,7 @@ class BayesianSearchEdit(BayesianOptimization):
         self._display.on_trial_end(self.oracle.get_trial(trial.trial_id))
         self.save()
 
-    def _build_and_fit_model(self, trial, fit_args, fit_kwargs, epochs = 12):
+    def _build_and_fit_model(self, trial, fit_args, fit_kwargs, **kwargs):
         model = self.hypermodel.build(trial.hyperparameters)
         model_size = self.maybe_compute_model_size(model)
         print("Considering model with size: {}".format(model_size))
