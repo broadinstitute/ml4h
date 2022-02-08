@@ -51,7 +51,7 @@ def run(args):
             directory=args.output_folder,
             project_name=args.id,
             seed=args.random_seed,
-            beta=2.3,  # Explore exploit tradeoff, higher value mean more exploration
+            beta=4.6,  # Explore exploit tradeoff, higher value mean more exploration
         )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     stop_early = EarlyStopping(monitor='val_loss', patience=args.patience)
@@ -72,7 +72,7 @@ def make_model_builder(args):
     model_count = 0
 
     def model_builder(hp):
-        conv_width = hp.Int('conv_width', 3, 91, step=4)
+        conv_width = hp.Int('conv_width', 15, 91, step=15)
         args.__dict__['conv_width'] = [conv_width]
         num_conv_layers = hp.Int('num_conv_layers', 0, 3)
         if num_conv_layers > 0:
@@ -81,14 +81,14 @@ def make_model_builder(args):
         else:
             conv_layer_size = 0
         args.__dict__['conv_layers'] = [conv_layer_size] * num_conv_layers
-        num_dense_blocks = hp.Int('num_dense_blocks', 1, 4)
+        num_dense_blocks = hp.Int('num_dense_blocks', 1, 6)
         dense_block_size = hp.Int('dense_block_size', 16, 64, step=16)
         args.__dict__['dense_blocks'] = [dense_block_size] * num_dense_blocks
-        args.__dict__['block_size'] = hp.Int('block_size', 1, 6)
-        num_dense_layers = hp.Int('num_dense_layers', 1, 3)
-        dense_layer_size = hp.Int('dense_layer_size', 16, 256, sampling='log')
-        args.__dict__['dense_layers'] = [dense_layer_size] * num_dense_layers
-        args.__dict__['activation'] = hp.Choice('activation', ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu'])
+        args.__dict__['block_size'] = hp.Int('block_size', 1, 8)
+        # num_dense_layers = hp.Int('num_dense_layers', 1, 3)
+        # dense_layer_size = hp.Int('dense_layer_size', 16, 256, sampling='log')
+        # args.__dict__['dense_layers'] = [dense_layer_size] * num_dense_layers
+        args.__dict__['activation'] = hp.Choice('activation', ['gelu', 'lisht', 'leaky', 'swish', 'relu', 'selu', 'mish'])
         dense_normalize = hp.Choice('dense_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
         args.__dict__['dense_normalize'] = None if dense_normalize == 'None' else dense_normalize
         conv_normalize = hp.Choice('conv_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
