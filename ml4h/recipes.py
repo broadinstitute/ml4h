@@ -284,7 +284,7 @@ def infer_multimodal_multitask(args):
         for ot in model.output_names:
             otm = output_maps[ot]
             logging.info(f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}.")
-            if (len(otm.shape) == 1 and otm.is_continuous()):
+            if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([otm.name + '_prediction', otm.name + '_actual'])
             elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []

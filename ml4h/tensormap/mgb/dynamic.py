@@ -29,7 +29,7 @@ WIDE_FILE = '/home/sam/ml/hf-wide-2020-09-15-with-lvh-and-lbbb.tsv'
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     tensor_map_maker_fxns = [
-        make_waveform_maps, make_partners_diagnosis_maps
+        make_waveform_maps, make_partners_diagnosis_maps, make_waveform_maps_for_ukb
     ]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
@@ -69,6 +69,30 @@ def make_waveform_maps(desired_map_name: str) -> TensorMap:
                 channel_map=ECG_REST_AMP_LEADS,
             )
 
+def _dummy_tensor_from_file(tm, hd5, dependents={}):
+    return np.zeros(tm.shape, dtype=np.float32)
+
+def make_waveform_maps_for_ukb(desired_map_name: str) -> TensorMap:
+    """Creates Tensor Maps and returns the desired one or None
+    :param desired_map_name: The name of the TensorMap and
+    :return: The desired TensorMap
+    """
+    if 'strip' == desired_map_name:
+        return TensorMap(
+            desired_map_name,
+            shape=(5000, 12),
+            path_prefix=PARTNERS_PREFIX,
+            tensor_from_file=make_voltage(False),
+            normalization=ZeroMeanStd1(), #normalization,
+            channel_map=ECG_REST_AMP_LEADS,
+        )
+    elif 'ecg_rest_median_raw_10' == desired_map_name:
+        return TensorMap(
+            desired_map_name,
+            shape=(600, 12),
+            tensor_from_file=_dummy_tensor_from_file,
+            channel_map=ECG_REST_AMP_LEADS,
+        )
 
 def make_lead_maps(desired_map_name: str) -> TensorMap:
     for lead in ECG_REST_AMP_LEADS:
