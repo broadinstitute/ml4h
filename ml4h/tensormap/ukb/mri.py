@@ -472,6 +472,15 @@ t1_dicom_16_slices_128_144 = TensorMap(
         't1_p2_1mm_fov256_sag_ti_880_1', 128, 144, 1, pad_shape=(192, 256, 208),
     ),
 )
+t1_dicom_16_slices_96_112 = TensorMap(
+    't1_dicom_16_slices_96_112',
+    shape=(192, 256, 16),
+    path_prefix='ukb_brain_mri',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_subset_tensor(
+        't1_p2_1mm_fov256_sag_ti_880_1', 96, 112, 1, pad_shape=(192, 256, 208),
+    ),
+)
 t2_40_slices_1 = TensorMap(
     't2_40_slices_1',
     shape=(256, 256, 40),
