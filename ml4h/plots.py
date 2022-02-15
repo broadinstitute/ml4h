@@ -427,7 +427,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     f, axes = plt.subplots(
         rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)),
     )
-    logging.info(f"all keys {list(sorted(history.history.keys()))}")
+
     for k in sorted(history.history.keys()):
         if not k.startswith("val_"):
             if isinstance(history.history[k][0], LearningRateSchedule):
@@ -445,6 +445,9 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 labels = ["train", "valid"]
             else:
                 labels = [k]
+            if 'loss' in k:
+                logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:  {history.history["loss"][-1]:0.3f}')
+                logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.3f}')
             axes[row, col].legend(labels, loc="upper left")
 
             row += 1
