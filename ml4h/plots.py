@@ -445,9 +445,6 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 labels = ["train", "valid"]
             else:
                 labels = [k]
-            if 'loss' in k:
-                logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:  {history.history["loss"][-1]:0.3f}')
-                logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.3f}')
             axes[row, col].legend(labels, loc="upper left")
 
             row += 1
@@ -463,6 +460,10 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
+    if 'loss' in history.history:
+        logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:  {history.history["loss"][-1]:0.3f}')
+    if 'val_loss' in history.history:
+        logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.3f}')
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
