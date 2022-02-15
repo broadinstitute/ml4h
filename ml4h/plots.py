@@ -463,7 +463,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if 'loss' in history.history:
         logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:   {history.history["loss"][-1]:0.4f}')
     if 'val_loss' in history.history:
-        logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}')
+        logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}, '
+                     f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}')
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
