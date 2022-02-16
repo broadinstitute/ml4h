@@ -223,6 +223,7 @@ def latent_space_gwas(
                 data = {'y': all_dots, 'genotypes': all_genotypes}
                 for k, col in enumerate(clean_cols):
                     data[col] = all_adjustments[:, k]
+
                 df = pd.DataFrame.from_dict(data)
 
                 results = smf.ols(formula, data=df).fit()
