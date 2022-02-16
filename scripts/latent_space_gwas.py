@@ -209,6 +209,7 @@ def latent_space_gwas(
                     genotype_vector = optimize_genotype_vector(snp_id, new_df, latent_cols, verbose=True)
                 else:
                     genotype_vector, angle = get_genotype_vector_and_angle(snp_id, latent_cols, new_df)
+                new_df = new_df[[snp_id] + latent_cols + adjust_cols].dropna()
                 space = new_df[latent_cols].to_numpy()
                 all_dots = np.array([np.dot(genotype_vector, v) for v in space])
                 all_genotypes = new_df[snp_id].to_numpy()
