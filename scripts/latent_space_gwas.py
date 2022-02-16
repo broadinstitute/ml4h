@@ -9,13 +9,13 @@ from statsmodels.multivariate.manova import MANOVA
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge
 
 
-adjust_cols = [
-    'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', #'PC11',
-    #'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20',
-    # 'PC21', 'PC22', 'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30',
-    #   'PC31', 'PC32', 'PC33', 'PC34', 'PC35', 'PC36', 'PC37', 'PC38', 'PC39', 'PC40',
-     'gt_array_axiom', 'gt_batch', 'assessment_center', 'age', 'age_squared', 'sex',
-    #'21001_Body-mass-index-BMI_2_0',
+ADJUST = [
+    'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11',
+    'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20',
+    'PC21', 'PC22', 'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30',
+    'PC31', 'PC32', 'PC33', 'PC34', 'PC35', 'PC36', 'PC37', 'PC38', 'PC39', 'PC40',
+    'gt_batch', 'assessment_center', 'age', 'sex',
+    #'bmi',
 ]
 
 
@@ -32,7 +32,7 @@ def run():
     latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
 
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv)
+    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, adjust_cols=ADJUST)
 
 
 def unit_vector(vector):
@@ -179,7 +179,7 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
 
 def latent_space_gwas(
     input_bcf, chrom, start, stop, latent_df, latent_cols, output_file,
-    manova=True, optimize=False,
+    manova=False, optimize=False, adjust_cols=[],
 ):
     remap = [1, 0]
     gv_dict = defaultdict(list)
@@ -213,8 +213,15 @@ def latent_space_gwas(
                 all_dots = np.array([np.dot(genotype_vector, v) for v in space])
                 all_genotypes = new_df[snp_id].to_numpy()
 
-                formula = f'y ~ genotypes'
+                if len(adjust_cols) > 0:
+                    all_adjustments = latent_df[adjust_cols].to_numpy()
+                    clean_cols = [col.replace('22009', '').replace('21003', '').replace('-', '').replace('_', '') for col in adjust_cols]
+                    formula = f'y ~ genotypes + {" + ".join(clean_cols)}'
+                else:
+                    formula = f'y ~ genotypes'
                 data = {'y': all_dots, 'genotypes': all_genotypes}
+                for k, col in enumerate(clean_cols):
+                    data[col] = all_adjustments[:, k]
                 df = pd.DataFrame.from_dict(data)
 
                 results = smf.ols(formula, data=df).fit()
