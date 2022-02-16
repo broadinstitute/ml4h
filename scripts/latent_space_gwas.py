@@ -215,7 +215,7 @@ def latent_space_gwas(
                 all_genotypes = new_df[snp_id].to_numpy()
 
                 if len(adjust_cols) > 0:
-                    all_adjustments = latent_df[adjust_cols].to_numpy()
+                    all_adjustments = new_df[adjust_cols].to_numpy()
                     clean_cols = [col.replace('22009', '').replace('21003', '').replace('-', '').replace('_', '') for col in adjust_cols]
                     formula = f'y ~ genotypes + {" + ".join(clean_cols)}'
                 else:
