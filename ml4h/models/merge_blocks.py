@@ -184,7 +184,7 @@ class PairLossBlock(Block):
             krons = []
             tf_y = tf.convert_to_tensor(y)
             tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
-            for i in range(tf_y.shape[0]):
+            for i in range(4):
                 operator_1 = tf.linalg.LinearOperatorFullMatrix(tf_y[i, 0])
                 operator_2 = tf.linalg.LinearOperatorFullMatrix(tf_y[i, 1])
 
