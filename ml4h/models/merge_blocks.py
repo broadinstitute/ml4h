@@ -183,7 +183,7 @@ class PairLossBlock(Block):
                 eshape = tf.shape(intermediates[left][-1])
                 logging.info(f'eshape is : {eshape}')
                 kron = tf.einsum('...i,...j->...ij', intermediates[left][-1], intermediates[right][-1])
-                kron = tf.reshape(kron, [4, 256*256])
+                kron = tf.reshape(kron, [eshape[0], 256*256])
                 kron = Dense(256)(kron)
             return kron
         else:
