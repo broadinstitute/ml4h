@@ -3035,7 +3035,7 @@ def plot_reconstruction(
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(
-                tm.shape[1], 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
+                max(2,tm.shape[1]), 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
             )  # , sharey=True)
             for j in range(tm.shape[1]):
                 axes[j, 0].plot(y[:, j], c="k", label="original")
