@@ -183,9 +183,9 @@ class PairLossBlock(Block):
             #kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker([tensors[0], tensors[1]]))
             krons = []
             tf_y = tf.convert_to_tensor(y)
-            #tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
-            operator_1 = tf.linalg.LinearOperatorFullMatrix(tf_y[0, :])
-            operator_2 = tf.linalg.LinearOperatorFullMatrix(tf_y[1, :])
+            tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
+            operator_1 = tf.linalg.LinearOperatorFullMatrix(tf_y[:, 0, :])
+            operator_2 = tf.linalg.LinearOperatorFullMatrix(tf_y[:, 1, :])
 
             krons = tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()
             #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
