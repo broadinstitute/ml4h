@@ -171,7 +171,7 @@ class PairLossBlock(Block):
             out = tf.transpose(tf_g)
             return out
         elif self.pair_merge == 'kronecker':
-            return Dense(32)(y[0])
+            return Dense(256)(y[0])
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
 
