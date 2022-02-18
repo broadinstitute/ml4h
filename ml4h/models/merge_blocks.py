@@ -171,7 +171,7 @@ class PairLossBlock(Block):
             out = tf.transpose(tf_g)
             return out
         elif self.pair_merge == 'kronecker':
-            tf_y = tf.convert_to_tensor(y)
+
             tf.print(f'tf_y1 {tf_y.shape}')
             tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
             tf_y0 = tf.convert_to_tensor(y[0])
@@ -181,7 +181,14 @@ class PairLossBlock(Block):
             operator_2 = tf.linalg.LinearOperatorFullMatrix(tf_y1)
             kron = tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()
             #kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker([tensors[0], tensors[1]]))
+            krons = []
+            tf_y = tf.convert_to_tensor(y)
+            tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
+            for i in range(tf_y.shape[0]):
+                operator_1 = tf.linalg.LinearOperatorFullMatrix(tf_y[i, 0])
+                operator_2 = tf.linalg.LinearOperatorFullMatrix(tf_y[i, 1])
 
+                krons.append(tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense())
             #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
             #return kron_layer([tf_y0, tf_y1])
            # y3 = [LinearTransform()(yi) for yi in y]
