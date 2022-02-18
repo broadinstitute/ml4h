@@ -178,7 +178,7 @@ class PairLossBlock(Block):
 
             #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
             #return kron_layer([tf_y0, tf_y1])
-            y3 = LinearTransform()(y[0])
+            y3 = LinearTransform()(y)
             return Dense(256)(y3)
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
