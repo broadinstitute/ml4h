@@ -170,6 +170,11 @@ class PairLossBlock(Block):
             tf_g = tf.gather_nd(tf_y, indices)
             out = tf.transpose(tf_g)
             return out
+        elif self.pair_merge == 'kronecker':
+            tf_y0 = tf.convert_to_tensor(y[0])
+            tf_y1 = tf.convert_to_tensor(y[1])
+            kron_operator = tf.linalg.LinearOperatorKronecker([tf_y0, tf_y1])
+            return kron_operator.to_dense()
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
 
