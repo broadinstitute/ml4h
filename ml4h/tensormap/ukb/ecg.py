@@ -1127,4 +1127,4 @@ def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.nda
     return ppg
 
 
-ppg_2 = TensorMap('ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5)
+ppg_2 = TensorMap('ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, normalization=Standardize(mean=4824.6, std=3235.8))
