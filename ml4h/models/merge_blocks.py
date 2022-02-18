@@ -319,7 +319,7 @@ class LinearTransform(tf.keras.layers.Layer):
         )
 
     def call(self, inputs):
-        return self.gamma * inputs + self.beta
+        return self.gamma * inputs[0] + self.beta
 
 # class ContrastiveLossLayer(Layer):
 #     """Layer that creates a Contrastive between modalities"""
