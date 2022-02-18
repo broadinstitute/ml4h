@@ -171,14 +171,8 @@ class PairLossBlock(Block):
             out = tf.transpose(tf_g)
             return out
         elif self.pair_merge == 'kronecker':
-            tf_y0 = tf.convert_to_tensor(y[0])
-            tf_y1 = tf.convert_to_tensor(y[1])
-            tf.print(f'tf_y1 {tf_y1.shape}')
 
-            #kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker([tensors[0], tensors[1]]))
-
-            #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
-            return tf_y0
+            return LinearTransform()(y)
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
 
@@ -294,23 +288,56 @@ class ContrastiveLossLayer(Layer):
         return inputs
 
 
-class ContrastiveLossLayer(Layer):
-    """Layer that creates a Contrastive between modalities"""
+class LinearTransform(tf.keras.layers.Layer):
+    """Layer that implements y=m*x+b, where m and b are
+    learnable parameters.
+    """
+    def __init__(
+        self,
+        gamma_initializer="ones",
+        beta_initializer="zeros",
+        dtype=None,
+        **kwargs
+    ):
+        super().__init__(dtype=dtype, **kwargs)
+        self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
 
-    def __init__(self, weight, batch_size, **kwargs):
-        super(ContrastiveLossLayer, self).__init__(**kwargs)
-        self.weight = weight
-        self.batch_size = batch_size
-        self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({'weight': self.weight, 'batch_size': self.batch_size})
-        return config
+    def build(self, input_shape):
+        num_channels = int(input_shape[-1])
+        self.gamma = self.add_weight(
+            "gamma",
+            shape=[num_channels],
+            initializer=self.gamma_initializer,
+            dtype=self.dtype,
+        )
+        self.beta = self.add_weight(
+            "beta",
+            shape=[num_channels],
+            initializer=self.beta_initializer,
+            dtype=self.dtype,
+        )
 
     def call(self, inputs):
-        self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
-        return inputs
+        return self.gamma * inputs + self.beta
+
+# class ContrastiveLossLayer(Layer):
+#     """Layer that creates a Contrastive between modalities"""
+#
+#     def __init__(self, weight, batch_size, **kwargs):
+#         super(ContrastiveLossLayer, self).__init__(**kwargs)
+#         self.weight = weight
+#         self.batch_size = batch_size
+#         self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
+#
+#     def get_config(self):
+#         config = super().get_config().copy()
+#         config.update({'weight': self.weight, 'batch_size': self.batch_size})
+#         return config
+#
+#     def call(self, inputs):
+#         self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
+#         return inputs
 
 
 class VariationalDiagNormal(Layer):
