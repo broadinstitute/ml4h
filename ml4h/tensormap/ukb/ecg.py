@@ -1123,7 +1123,8 @@ ecg_bike_raw_full = TensorMap(
 
 def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ppg = np.zeros(tm.shape,  dtype=np.float32)
-    return ppg[:, 0] = hd5[tm.name]
+    ppg[:, 0] = hd5[tm.name]
+    return ppg
 
 
 ppg_2 = TensorMap('ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5)
