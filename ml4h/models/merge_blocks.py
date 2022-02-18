@@ -174,11 +174,11 @@ class PairLossBlock(Block):
             tf_y0 = tf.convert_to_tensor(y[0])
             tf_y1 = tf.convert_to_tensor(y[1])
             tf.print(f'tf_y1 {tf_y1.shape}')
-            
-            kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker([tensors[0], tensors[1]]))
+
+            #kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker([tensors[0], tensors[1]]))
 
             #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
-            return kron_layer([tf_y0, tf_y1])
+            return tf_y0
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
 
