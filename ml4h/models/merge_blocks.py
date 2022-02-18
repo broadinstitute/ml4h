@@ -6,7 +6,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 from tensorflow.keras.losses import categorical_crossentropy
-from tensorflow.keras.layers import concatenate, Flatten, Average, Layer
+from tensorflow.keras.layers import concatenate, Flatten, Average, Layer, Lambda
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
@@ -174,8 +174,9 @@ class PairLossBlock(Block):
             tf_y0 = tf.convert_to_tensor(y[0])
             tf_y1 = tf.convert_to_tensor(y[1])
             #tf.print()
-            kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
-            return kron_operator.to_dense()
+            kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker(tensors[0], tensors[1]))
+            #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
+            return kron_layer(y)
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
 
