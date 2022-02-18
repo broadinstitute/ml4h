@@ -152,7 +152,7 @@ class PairLossBlock(Block):
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
-    @tf.function
+    #@tf.function
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
         for left, right in self.pairs:
