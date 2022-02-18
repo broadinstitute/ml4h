@@ -183,7 +183,7 @@ class PairLossBlock(Block):
                 eshape = tf.shape(intermediates[left][-1])
                 kron = tf.einsum('...i,...j->...ij', intermediates[left][-1], intermediates[right][-1])
                 kron = tf.reshape(kron, [4, eshape[1]*eshape[1]])
-                kron = Dense(256)(kron)
+                #kron = Dense(256)(kron)
             return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
