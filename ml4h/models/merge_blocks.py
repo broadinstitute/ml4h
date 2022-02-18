@@ -180,7 +180,10 @@ class PairLossBlock(Block):
             #     krons.append(tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()[0])
             # kron = Dense(256)(tf.convert_to_tensor(krons))
             for left, right in self.pairs:
-                kron = intermediates[left][-1]*intermediates[right][-1]
+                eshape = tf.shape(intermediates[left][-1])
+                kron = tf.einsum('...i,...j->...ij', intermediates[left][-1], intermediates[right][-1])
+                kron = tf.reshape(kron, [eshape[0], eshape[1]*eshape[1]])
+                kron = Dense(256)(kron)
             return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
