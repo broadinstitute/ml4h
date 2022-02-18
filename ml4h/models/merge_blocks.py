@@ -170,28 +170,18 @@ class PairLossBlock(Block):
             out = tf.transpose(tf_g)
             return out
         elif self.pair_merge == 'kronecker':
-
-            # tf.print(f'tf_y1 {tf_y.shape}')
-            # tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
-            # tf_y0 = tf.convert_to_tensor(y[0])
-            # tf_y1 = tf.convert_to_tensor(y[1])
-            # tf.print(f'tf_y1 {tf_y.shape}')
-            # operator_1 = tf.linalg.LinearOperatorFullMatrix(tf_y0)
-            # operator_2 = tf.linalg.LinearOperatorFullMatrix(tf_y1)
-            # kron = tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()
-            #kron_layer = Lambda(lambda tensors: tf.linalg.LinearOperatorKronecker([tensors[0], tensors[1]]))
-            krons = []
-            tf_y = tf.convert_to_tensor(y)
-            tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
-            for i in range(4):
-                operator_1 = tf.linalg.LinearOperatorFullMatrix([tf_y[i, 0, :]])
-                operator_2 = tf.linalg.LinearOperatorFullMatrix([tf_y[i, 1, :]])
-
-                krons.append(tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()[0])
-            #kron_operator = tf.linalg.LinearOperatorKronecker([y[0], y[1]])
-            #return kron_layer([tf_y0, tf_y1])
-           # y3 = [LinearTransform()(yi) for yi in y]
-            return Dense(256)(tf.convert_to_tensor(krons))
+            # krons = []
+            # tf_y = tf.convert_to_tensor(y)
+            # tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
+            # for i in range(4):
+            #     operator_1 = tf.linalg.LinearOperatorFullMatrix([tf_y[i, 0, :]])
+            #     operator_2 = tf.linalg.LinearOperatorFullMatrix([tf_y[i, 1, :]])
+            #
+            #     krons.append(tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()[0])
+            # kron = Dense(256)(tf.convert_to_tensor(krons))
+            for left, right in self.pairs:
+                kron = intermediates[left][-1]*intermediates[right][-1]
+            return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
 
