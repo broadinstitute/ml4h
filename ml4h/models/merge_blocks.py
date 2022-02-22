@@ -143,6 +143,7 @@ class PairLossBlock(Block):
         self.pairs = pairs
         self.pair_merge = pair_merge
         self.batch_size = batch_size
+        self.encoding_size = 256
         if pair_loss == 'cosine':
             self.loss_layer = CosineLossLayer(pair_loss_weight)
         elif pair_loss == 'euclid':
@@ -170,23 +171,20 @@ class PairLossBlock(Block):
             out = tf.transpose(tf_g)
             return out
         elif self.pair_merge == 'kronecker':
-            # krons = []
-            # tf_y = tf.convert_to_tensor(y)
-            # tf_y = tf.transpose(tf_y, perm=[1, 0, 2])
-            # for i in range(4):
-            #     operator_1 = tf.linalg.LinearOperatorFullMatrix([tf_y[i, 0, :]])
-            #     operator_2 = tf.linalg.LinearOperatorFullMatrix([tf_y[i, 1, :]])
-            #
-            #     krons.append(tf.linalg.LinearOperatorKronecker([operator_1, operator_2]).to_dense()[0])
-            # kron = Dense(256)(tf.convert_to_tensor(krons))
+            encodings = {}
             for left, right in self.pairs:
+                encodings[left] = intermediates[left][-1]
+                encodings[right] = intermediates[right][-1]
                 eshape = tf.shape(intermediates[left][-1])
-                logging.info(f'eshape is : {eshape}')
-                #kron = tf.einsum('...i,...j->...ij', intermediates[left][-1], intermediates[right][-1])
+            if len(encodings) == 2:
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-                kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
-                kron = tf.reshape(kron, [eshape[0], 256*256])
-                kron = Dense(256)(kron)
+                kron = kron_layer(list(encodings.values()))
+                kron = tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size])
+            elif len(encodings) == 3:
+                kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j,...k->...ijk', tensors[0], tensors[1], tensors[2]))
+                kron = kron_layer(list(encodings.values()))
+                kron = tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size*self.encoding_size])
+            kron = Dense(self.encoding_size)(kron)
             return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
