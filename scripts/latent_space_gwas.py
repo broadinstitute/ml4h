@@ -195,7 +195,7 @@ def latent_space_gwas(
                 continue
             sample_id = int(s.name.split("_")[0])
             sample2genos[sample_id] = remap[g[0]] + remap[g[1]]
-        if sum(sample2genos.values()) > 100:
+        if sum(sample2genos.values()) > 1000:
             snp_id = f"snp_{rec.id.replace(':', '_').replace('-', '_')}"
             data = {'sample_id': list(sample2genos.keys()), snp_id: list(sample2genos.values())}
             genos = pd.DataFrame.from_dict(data)
@@ -208,6 +208,10 @@ def latent_space_gwas(
             else:
                 train = new_df.sample(frac=train_ratio)
                 test = new_df.drop(train.index)
+                t1 = train[snp_id].value_counts()
+                t2 = test[snp_id].value_counts()
+                if len(t1) != 3 or len(t2) != 3:
+                    continue
                 if optimize:
                     genotype_vector = optimize_genotype_vector(snp_id, train, latent_cols, verbose=True)
                 else:
