@@ -172,19 +172,13 @@ class PairLossBlock(Block):
             out = tf.transpose(tf_g)
             return out
         elif self.pair_merge == 'kronecker':
-            encodings = {}
+            krons = []
             for left, right in self.pairs:
-                encodings[left] = intermediates[left][-1]
-                encodings[right] = intermediates[right][-1]
                 eshape = tf.shape(intermediates[left][-1])
-            if len(encodings) == 2:
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-                kron = kron_layer(list(encodings.values()))
-                kron = tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size])
-            elif len(encodings) == 3:
-                kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j,...k->...ijk', tensors[0], tensors[1], tensors[2]))
-                kron = kron_layer(list(encodings.values()))
-                kron = tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size*self.encoding_size])
+                kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
+                krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
+            kron = concatenate(krons)
             kron = Dense(self.encoding_size)(kron)
             return kron
         else:
