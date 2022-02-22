@@ -138,12 +138,13 @@ class PairLossBlock(Block):
             pair_loss_weight: float = 1.0,
             pair_merge: str = 'dropout',
             batch_size: int = 4,
+            dense_layers: List[int] = [32],
             **kwargs,
     ):
         self.pairs = pairs
         self.pair_merge = pair_merge
         self.batch_size = batch_size
-        self.encoding_size = 256
+        self.encoding_size = dense_layers[-1]
         if pair_loss == 'cosine':
             self.loss_layer = CosineLossLayer(pair_loss_weight)
         elif pair_loss == 'euclid':
