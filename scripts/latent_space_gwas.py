@@ -137,7 +137,8 @@ def manova_latent_space(stratify_column, latent_cols, latent_df):
     maov = MANOVA.from_formula(formula, data=latent_df)
     test = maov.mv_test()
     s = test[stratify_column]['stat']
-    return s['F Value'][0], s['Pr > F'][0], s['Value'][0], s['Value'][0]
+    # Return Pillai's trace the second of the listed stats
+    return s['Value'][1], s['Pr > F'][1], s['F Value'][1], s['Pr > F'][0]
 
 
 def merge_snp(latent_df, snp_vcf, snp_id):
