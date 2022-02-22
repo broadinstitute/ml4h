@@ -180,7 +180,7 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
 
 def latent_space_gwas(
     input_bcf, chrom, start, stop, latent_df, latent_cols, output_file,
-    manova=True, optimize=False, adjust_cols=[], train_ratio=0.5,
+    manova=False, optimize=False, adjust_cols=[], train_ratio=0.5,
 ):
     remap = [1, 0]
     gv_dict = defaultdict(list)
