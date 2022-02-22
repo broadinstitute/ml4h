@@ -219,12 +219,11 @@ def latent_space_gwas(
 
                 if len(adjust_cols) > 0:
                     all_adjustments = test[adjust_cols].to_numpy()
-                    clean_cols = [col.replace('22009', '').replace('21003', '').replace('-', '').replace('_', '') for col in adjust_cols]
-                    formula = f'y ~ genotypes + {" + ".join(clean_cols)}'
+                    formula = f'y ~ genotypes + {" + ".join(adjust_cols)}'
                 else:
                     formula = f'y ~ genotypes'
                 data = {'y': all_dots, 'genotypes': all_genotypes}
-                for k, col in enumerate(clean_cols):
+                for k, col in enumerate(adjust_cols):
                     data[col] = all_adjustments[:, k]
 
                 df = pd.DataFrame.from_dict(data)
