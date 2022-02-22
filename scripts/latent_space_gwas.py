@@ -180,7 +180,7 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
 
 def latent_space_gwas(
     input_bcf, chrom, start, stop, latent_df, latent_cols, output_file,
-    manova=True, optimize=False, adjust_cols=[],
+    manova=True, optimize=False, adjust_cols=[], train_ratio=0.5,
 ):
     remap = [1, 0]
     gv_dict = defaultdict(list)
@@ -206,14 +206,16 @@ def latent_space_gwas(
             if manova:
                 t_stat, p_value, coef, se = manova_latent_space(snp_id, latent_cols, new_df)
             else:
+                train = new_df.sample(frac=train_ratio)
+                test = new_df.drop(train.index)
                 if optimize:
-                    genotype_vector = optimize_genotype_vector(snp_id, new_df, latent_cols, verbose=True)
+                    genotype_vector = optimize_genotype_vector(snp_id, train, latent_cols, verbose=True)
                 else:
-                    genotype_vector, angle = get_genotype_vector_and_angle(snp_id, latent_cols, new_df)
-                new_df = new_df[[snp_id] + latent_cols + adjust_cols].dropna()
-                space = new_df[latent_cols].to_numpy()
+                    genotype_vector, angle = get_genotype_vector_and_angle(snp_id, latent_cols, train)
+                test = test[[snp_id] + latent_cols + adjust_cols].dropna()
+                space = test[latent_cols].to_numpy()
                 all_dots = np.array([np.dot(genotype_vector, v) for v in space])
-                all_genotypes = new_df[snp_id].to_numpy()
+                all_genotypes = test[snp_id].to_numpy()
 
                 if len(adjust_cols) > 0:
                     all_adjustments = new_df[adjust_cols].to_numpy()
