@@ -29,10 +29,12 @@ def run():
 
     latent_prefix =  os.environ['LATENT_PREFIX']
     latent_total = os.environ['LATENT_TOTAL']
+    stat_model = os.environ['STAT_MODEL']
+
     latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
 
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, adjust_cols=ADJUST)
+    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, stat_model, adjust_cols=ADJUST)
 
 
 def unit_vector(vector):
@@ -180,7 +182,7 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
 
 def latent_space_gwas(
     input_bcf, chrom, start, stop, latent_df, latent_cols, output_file,
-    manova=False, optimize=False, adjust_cols=[], train_ratio=0.5,
+    stat_model='manova', optimize=False, adjust_cols=[], train_ratio=0.5,
 ):
     remap = [1, 0]
     gv_dict = defaultdict(list)
@@ -203,9 +205,9 @@ def latent_space_gwas(
             counts = new_df[snp_id].value_counts()
             if len(counts) != 3:
                 continue
-            if manova:
+            if stat_model == 'manova':
                 t_stat, p_value, coef, se = manova_latent_space(snp_id, latent_cols, new_df)
-            else:
+            elif stat_model == 'ols':
                 train = new_df.sample(frac=train_ratio)
                 test = new_df.drop(train.index)
                 t1 = train[snp_id].value_counts()
@@ -237,6 +239,8 @@ def latent_space_gwas(
                 t_stat = float(results.summary2().tables[1]['t']['genotypes'])
                 coef = float(results.summary2().tables[1]['Coef.']['genotypes'])
                 se = float(results.summary2().tables[1]['Std.Err.']['genotypes'])
+            else:
+                raise ValueError(f'Unknown stat model: {stat_model}')
 
             gv_dict['t_stat'].append(t_stat)
             gv_dict['p_value'].append(p_value)
