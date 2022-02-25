@@ -20,11 +20,11 @@ from pydicom.valuerep import DSfloat
 
 mri_notebooks_dir = '/home/pdiachil/ml/notebooks/mri/'
 
-# start = int(sys.argv[1])
-# end = int(sys.argv[2])
+start = int(sys.argv[1])
+end = int(sys.argv[2])
 
-start = 78
-end = 79
+# start = 78
+# end = 79
 import random
 
 df_dic = {'sample_id': []}
