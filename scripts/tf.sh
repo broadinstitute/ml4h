@@ -199,6 +199,7 @@ DEV_INSTRUCTIONS="
     pip install numba;
     pip install blosc;
     pip install h5py;
+    pip install scipy;
     pip install numpy;
     pip install zstandard;
     pip install --upgrade google-cloud-storage;
