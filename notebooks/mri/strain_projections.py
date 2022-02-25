@@ -23,8 +23,8 @@ mri_notebooks_dir = '/home/pdiachil/ml/notebooks/mri/'
 start = int(sys.argv[1])
 end = int(sys.argv[2])
 
-# start = 78
-# end = 79
+# start = 5000
+# end = 5010
 import random
 
 df_dic = {'sample_id': []}
@@ -528,19 +528,19 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
                 circ_spline = np.zeros((dim*20, 2))
                 rad_spline = np.zeros((dim*20, 2))
                 max_t = min(img.shape[0], 20)
-                for t in range(max_t):
-                    circ_spline[t*dim:(t+1)*dim, 0] = t
-                    circ_spline[t*dim:(t+1)*dim, 1] = unstructured[f'circ_{slice_name}_{sector}_{t}'][0]
-                    rad_spline[t*dim:(t+1)*dim, 0] = t
-                    rad_spline[t*dim:(t+1)*dim, 1] = unstructured[f'rad_{slice_name}_{sector}_{t}'][0]
+                for ttt in range(max_t):
+                    circ_spline[ttt*dim:(ttt+1)*dim, 0] = ttt
+                    circ_spline[ttt*dim:(ttt+1)*dim, 1] = unstructured[f'circ_{slice_name}_{sector}_{ttt}'][-1]
+                    rad_spline[ttt*dim:(ttt+1)*dim, 0] = ttt
+                    rad_spline[ttt*dim:(ttt+1)*dim, 1] = unstructured[f'rad_{slice_name}_{sector}_{ttt}'][-1]
                 c_spline = scipy.interpolate.UnivariateSpline(circ_spline[:max_t*dim, 0], circ_spline[:max_t*dim, 1], k=5)
                 r_spline = scipy.interpolate.UnivariateSpline(rad_spline[:max_t*dim, 0], rad_spline[:max_t*dim, 1], k=5)
                 xs = np.linspace(0, max_t-1, max_t*2)
                 c_spline_evals = c_spline(xs)
                 r_spline_evals = r_spline(xs)
-                for t in range(max_t*2):
-                    df_dic[f'circ_{slice_name}_{sector}_spline_{t}'][-1] = c_spline_evals[t]
-                    df_dic[f'rad_{slice_name}_{sector}_spline_{t}'][-1] = r_spline_evals[t]
+                for ttt in range(max_t*2):
+                    df_dic[f'circ_{slice_name}_{sector}_spline_{ttt}'][-1] = c_spline_evals[ttt]
+                    df_dic[f'rad_{slice_name}_{sector}_spline_{ttt}'][-1] = r_spline_evals[ttt]
 
         remove_list = glob.glob(f'{mri_notebooks_dir}*{patient}*')
         remove_list += glob.glob(f'{mri_notebooks_dir}*.h5')
