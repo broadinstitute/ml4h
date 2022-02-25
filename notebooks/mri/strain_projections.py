@@ -12,6 +12,7 @@ import pickle
 import logging
 import glob
 import blosc
+import scipy.interpolate
 import sys
 from pydicom.valuerep import DSfloat
 
@@ -19,17 +20,25 @@ from pydicom.valuerep import DSfloat
 
 mri_notebooks_dir = '/home/pdiachil/ml/notebooks/mri/'
 
-start = int(sys.argv[1])
-end = int(sys.argv[2])
+# start = int(sys.argv[1])
+# end = int(sys.argv[2])
+
+start = 78
+end = 79
 import random
 
 df_dic = {'sample_id': []}
 df_dic['rep_time'] = []
+unstructured = {}
 for stra, strain in enumerate(['circ', 'rad']):
     for sli, slice in enumerate(['bas', 'mid', 'api']):
         for sec, sector in enumerate(['S', 'A', 'L', 'P']):
             for t in range(20):
-                df_dic[f'{strain}_{slice}_{sector}_{t}'] = []
+                df_dic[f'{strain}_{slice}_{sector}_mean_{t}'] = []
+                df_dic[f'{strain}_{slice}_{sector}_median_{t}'] = []
+                unstructured[f'{strain}_{slice}_{sector}_{t}'] = []
+            for t in range(40):
+                df_dic[f'{strain}_{slice}_{sector}_spline_{t}'] = []
 
 with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patient_list:
     for ccc, line in enumerate(patient_list):
@@ -47,7 +56,10 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
             for sli, slice in enumerate(['bas', 'mid', 'api']):
                 for sec, sector in enumerate(['S', 'A', 'L', 'P']):
                     for t in range(20):
-                        df_dic[f'{strain}_{slice}_{sector}_{t}'].append(-1e-3)
+                        df_dic[f'{strain}_{slice}_{sector}_mean_{t}'].append(-1e-3)
+                        df_dic[f'{strain}_{slice}_{sector}_median_{t}'].append(-1e-3)
+                    for t in range(40):
+                        df_dic[f'{strain}_{slice}_{sector}_spline_{t}'].append(-1e-3)
 
         storage_client = storage.Client('broad-ml4cvd')
         bucket = storage_client.get_bucket('ml4cvd')
@@ -264,36 +276,36 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
                 strain_y_coors = strain_landmarks[t, 1, :].reshape(-1, 1) - pad_y
                 strain_z_coors = np.zeros_like(strain_x_coors)
 
-    #             if t == 5:
-    #                 break
-    #         break
-    #     break
-    # f, ax = plt.subplots()
+                    #             if t == 5:
+                    #                 break
+                    #         break
+                    #     break
+                    # f, ax = plt.subplots()
 
-    
-    # if (nx != ny):
-    #     max_size = max(nx,ny)
-    #     pad_x = (max_size-nx)//2
-    #     pad_y = (max_size-ny)//2
-    #     new_img = np.pad(img[5, :, :], ((pad_x,pad_x),(pad_y,pad_y)), 'constant')
-    # else:
-    #     new_img = img[5, :, :]
+                    
+                    # if (nx != ny):
+                    #     max_size = max(nx,ny)
+                    #     pad_x = (max_size-nx)//2
+                    #     pad_y = (max_size-ny)//2
+                    #     new_img = np.pad(img[5, :, :], ((pad_x,pad_x),(pad_y,pad_y)), 'constant')
+                    # else:
+                    #     new_img = img[5, :, :]
 
-    # # new_img = np.full((256, 256), 0)
-    # # x_center = (256 - ncols) // 2
-    # # y_center = (256 - nrows) // 2
+                    # # new_img = np.full((256, 256), 0)
+                    # # x_center = (256 - ncols) // 2
+                    # # y_center = (256 - nrows) // 2
 
-    # # new_img[y_center:y_center+nrows, x_center:x_center+ncols] = img[0, :, :]
-    # ax.imshow(img[5, :, :])
-    # rect = patches.Rectangle((bbox[0], bbox[1]), bbox[2]-bbox[0], bbox[3]-bbox[1], linewidth=1, edgecolor='r', facecolor='none')
-    # ax.set_title(f'{patient} {slice_name}')
-    # ax.add_patch(rect)
-    # ax.plot(strain_x_coors, strain_y_coors, 'o', markersize=2)
+                    # # new_img[y_center:y_center+nrows, x_center:x_center+ncols] = img[0, :, :]
+                    # ax.imshow(img[5, :, :])
+                    # rect = patches.Rectangle((bbox[0], bbox[1]), bbox[2]-bbox[0], bbox[3]-bbox[1], linewidth=1, edgecolor='r', facecolor='none')
+                    # ax.set_title(f'{patient} {slice_name}')
+                    # ax.add_patch(rect)
+                    # ax.plot(strain_x_coors, strain_y_coors, 'o', markersize=2)
 
-    # # f, ax = plt.subplots()
-    # # ax.imshow(new_img[int(bbox[0]):int(bbox[2]), int(bbox[1]):int(bbox[3])])
+                    # # f, ax = plt.subplots()
+                    # # ax.imshow(new_img[int(bbox[0]):int(bbox[2]), int(bbox[1]):int(bbox[3])])
 
-    # # %%
+                    # # %%
                 strain_xyz = np.hstack([strain_x_coors, strain_y_coors, strain_z_coors])
                 strain_grid = vtk.vtkPolyData()
                 strain_vtk_points = vtk.vtkPoints()
@@ -443,21 +455,53 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
                 C_sector_circ[sss, t, 1] = np.mean(C_cell_array[anterior_elements, 4])
                 C_sector_circ[sss, t, 2] = np.mean(C_cell_array[left_elements, 4])
                 C_sector_circ[sss, t, 3] = np.mean(C_cell_array[posterior_elements, 4])
+                unstructured[f'circ_{slice_name}_S_{t}'].append(C_cell_array[rv_close_elements, 4])
+                unstructured[f'circ_{slice_name}_A_{t}'].append(C_cell_array[anterior_elements, 4])
+                unstructured[f'circ_{slice_name}_L_{t}'].append(C_cell_array[left_elements, 4])
+                unstructured[f'circ_{slice_name}_P_{t}'].append(C_cell_array[posterior_elements, 4])
+
 
                 C_sector_rad[sss, t, 0] = np.mean(C_cell_array[rv_close_elements, 0])
                 C_sector_rad[sss, t, 1] = np.mean(C_cell_array[anterior_elements, 0])
                 C_sector_rad[sss, t, 2] = np.mean(C_cell_array[left_elements, 0])
                 C_sector_rad[sss, t, 3] = np.mean(C_cell_array[posterior_elements, 0])
 
-                df_dic[f'circ_{slice_name}_S_{t}'][-1] = C_sector_circ[sss, t, 0]
-                df_dic[f'circ_{slice_name}_A_{t}'][-1] = C_sector_circ[sss, t, 1]
-                df_dic[f'circ_{slice_name}_L_{t}'][-1] = C_sector_circ[sss, t, 2]
-                df_dic[f'circ_{slice_name}_P_{t}'][-1] = C_sector_circ[sss, t, 3]
+                unstructured[f'rad_{slice_name}_S_{t}'].append(C_cell_array[rv_close_elements, 0])
+                unstructured[f'rad_{slice_name}_A_{t}'].append(C_cell_array[anterior_elements, 0])
+                unstructured[f'rad_{slice_name}_L_{t}'].append(C_cell_array[left_elements, 0])
+                unstructured[f'rad_{slice_name}_P_{t}'].append(C_cell_array[posterior_elements, 0])
 
-                df_dic[f'rad_{slice_name}_S_{t}'][-1] = C_sector_rad[sss, t, 0]
-                df_dic[f'rad_{slice_name}_A_{t}'][-1] = C_sector_rad[sss, t, 1]
-                df_dic[f'rad_{slice_name}_L_{t}'][-1] = C_sector_rad[sss, t, 2]
-                df_dic[f'rad_{slice_name}_P_{t}'][-1] = C_sector_rad[sss, t, 3]
+
+                df_dic[f'circ_{slice_name}_S_mean_{t}'][-1] = C_sector_circ[sss, t, 0]
+                df_dic[f'circ_{slice_name}_A_mean_{t}'][-1] = C_sector_circ[sss, t, 1]
+                df_dic[f'circ_{slice_name}_L_mean_{t}'][-1] = C_sector_circ[sss, t, 2]
+                df_dic[f'circ_{slice_name}_P_mean_{t}'][-1] = C_sector_circ[sss, t, 3]
+
+                df_dic[f'rad_{slice_name}_S_mean_{t}'][-1] = C_sector_rad[sss, t, 0]
+                df_dic[f'rad_{slice_name}_A_mean_{t}'][-1] = C_sector_rad[sss, t, 1]
+                df_dic[f'rad_{slice_name}_L_mean_{t}'][-1] = C_sector_rad[sss, t, 2]
+                df_dic[f'rad_{slice_name}_P_mean_{t}'][-1] = C_sector_rad[sss, t, 3]
+
+                C_sector_circ[sss, t, 0] = np.median(C_cell_array[rv_close_elements, 4])
+                C_sector_circ[sss, t, 1] = np.median(C_cell_array[anterior_elements, 4])
+                C_sector_circ[sss, t, 2] = np.median(C_cell_array[left_elements, 4])
+                C_sector_circ[sss, t, 3] = np.median(C_cell_array[posterior_elements, 4])
+
+
+                C_sector_rad[sss, t, 0] = np.median(C_cell_array[rv_close_elements, 0])
+                C_sector_rad[sss, t, 1] = np.median(C_cell_array[anterior_elements, 0])
+                C_sector_rad[sss, t, 2] = np.median(C_cell_array[left_elements, 0])
+                C_sector_rad[sss, t, 3] = np.median(C_cell_array[posterior_elements, 0])
+
+                df_dic[f'circ_{slice_name}_S_median_{t}'][-1] = C_sector_circ[sss, t, 0]
+                df_dic[f'circ_{slice_name}_A_median_{t}'][-1] = C_sector_circ[sss, t, 1]
+                df_dic[f'circ_{slice_name}_L_median_{t}'][-1] = C_sector_circ[sss, t, 2]
+                df_dic[f'circ_{slice_name}_P_median_{t}'][-1] = C_sector_circ[sss, t, 3]
+
+                df_dic[f'rad_{slice_name}_S_median_{t}'][-1] = C_sector_rad[sss, t, 0]
+                df_dic[f'rad_{slice_name}_A_median_{t}'][-1] = C_sector_rad[sss, t, 1]
+                df_dic[f'rad_{slice_name}_L_median_{t}'][-1] = C_sector_rad[sss, t, 2]
+                df_dic[f'rad_{slice_name}_P_median_{t}'][-1] = C_sector_rad[sss, t, 3]
 
                 # writer = vtk.vtkXMLPolyDataWriter()
                 # writer.SetFileName(f'{patient}_{slice_name}_strain_grid_{t}.vtp')
@@ -473,6 +517,31 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
                 # slice_writer.SetFileName(f'{patient}_{slice_name}_slice_{t}.vtp')
                 # slice_writer.Update()
 
+            sector_dims = {
+                'S': len(rv_close_elements),
+                'A': len(anterior_elements),
+                'L': len(left_elements),
+                'P': len(posterior_elements),
+            }
+
+            for sector, dim in sector_dims.items():
+                circ_spline = np.zeros((dim*20, 2))
+                rad_spline = np.zeros((dim*20, 2))
+                max_t = min(img.shape[0], 20)
+                for t in range(max_t):
+                    circ_spline[t*dim:(t+1)*dim, 0] = t
+                    circ_spline[t*dim:(t+1)*dim, 1] = unstructured[f'circ_{slice_name}_{sector}_{t}'][0]
+                    rad_spline[t*dim:(t+1)*dim, 0] = t
+                    rad_spline[t*dim:(t+1)*dim, 1] = unstructured[f'rad_{slice_name}_{sector}_{t}'][0]
+                c_spline = scipy.interpolate.UnivariateSpline(circ_spline[:max_t*dim, 0], circ_spline[:max_t*dim, 1], k=5)
+                r_spline = scipy.interpolate.UnivariateSpline(rad_spline[:max_t*dim, 0], rad_spline[:max_t*dim, 1], k=5)
+                xs = np.linspace(0, max_t-1, max_t*2)
+                c_spline_evals = c_spline(xs)
+                r_spline_evals = r_spline(xs)
+                for t in range(max_t*2):
+                    df_dic[f'circ_{slice_name}_{sector}_spline_{t}'][-1] = c_spline_evals[t]
+                    df_dic[f'rad_{slice_name}_{sector}_spline_{t}'][-1] = r_spline_evals[t]
+
         remove_list = glob.glob(f'{mri_notebooks_dir}*{patient}*')
         remove_list += glob.glob(f'{mri_notebooks_dir}*.h5')
         remove_list += glob.glob(f'{mri_notebooks_dir}*.hd5')
@@ -483,156 +552,25 @@ with open('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', 'r') as patien
         df = pd.DataFrame(df_dic)
         df.to_csv(os.path.join(mri_notebooks_dir, f'df_strain_{start}_{end}.csv'))
 
-
-
-
 # # %%
 # import matplotlib.pyplot as plt
-
-# sector_colors = {
-#     'S': [1.0, 0.0, 0.0],
-#     'A': [0.0, 1.0, 0.0],
-#     'L': [0.0, 0.0, 1.0],
-#     'P': [0.0, 0.0, 0.0]
-# }
+# xs = np.linspace(0, 19, 40)
 # f, ax = plt.subplots()
-# time = np.arange(20)
-# for i, (label, color) in enumerate(sector_colors.items()):
-#     ax.plot(time, np.sqrt(C_sector_circ[2, :, i]), color = color, label = label)
-# ax.set_xlabel('Frame')
-# ax.set_ylabel('Circumferential stretch')
-# ax.set_xlim([0, 19])
-# ax.set_xticks([5, 10, 15])
-# ax.legend()
+# ax.plot(list(range(20)), [df_dic[f'circ_bas_S_median_{t}'][-1] for t in range(20)])
+# ax.plot(list(range(20)), [df_dic[f'circ_bas_S_mean_{t}'][-1] for t in range(20)])
+# ax.plot(np.linspace(0, 19, 40), [df_dic[f'circ_bas_S_spline_{t}'][-1] for t in range(40)])
+
+
+# # %%
+# import matplotlib.pyplot as plt
+# xs = np.linspace(0, 19, 40)
 # f, ax = plt.subplots()
-# for i, (label, color) in enumerate(sector_colors.items()):
-#     ax.plot(time, np.sqrt(C_sector_rad[2, :, i]), color = color, label = label)
-# ax.set_xlabel('Frame')
-# ax.set_ylabel('Radial stretch')
-# ax.set_xlim([0, 19])
-# ax.set_xticks([5, 10, 15])
-# # %%
-# # !rm bodymri_allraw_1000107_2_0/projected/bodymri_1000107.h5
+# #ax.plot(list(range(20)), [df_dic[f'rad_bas_S_median_{t}'][-1] for t in range(20)])
+# #ax.plot(list(range(20)), [df_dic[f'rad_bas_S_mean_{t}'][-1] for t in range(20)])
+# ax.plot(np.linspace(0, 19, 40), [df_dic[f'rad_bas_S_spline_{t}'][-1] for t in range(40)])
+# ax.plot(np.linspace(0, 19, 40), [df_dic[f'rad_bas_A_spline_{t}'][-1] for t in range(40)])
+# ax.plot(np.linspace(0, 19, 40), [df_dic[f'rad_bas_L_spline_{t}'][-1] for t in range(40)])
+# ax.plot(np.linspace(0, 19, 40), [df_dic[f'rad_bas_P_spline_{t}'][-1] for t in range(40)])
 
-
-# # %%
-# import h5py
-# hd5 = h5py.File('bodymri_allraw_1000107_2_0/projected/bodymri_1000107.h5')
-# # %%
-# arr = read_compressed(hd5['instance/2/w_sagittal'])
-# # %%
-# import matplotlib.pyplot as plt
-# plt.imshow(arr)
-# # %%
-# old_hd5 = h5py.File('bodymri_allraw_1000107_2_0/bodymri_1000107.h5', 'r')
-# # %%
-# instance = 2
-# data = {
-#                 int(name): read_compressed(old_hd5[f'instance/{instance}/series/{name}'])
-#                 for name in old_hd5[f'instance/{instance}/series']
-#             }
-# # %%
-# import matplotlib.pyplot as plt
-# plt.imshow(data[4][:, 119, :])
-# # %%
-
-# # %%
-# import h5py
-# import pandas as pd
-# from scipy.ndimage import zoom
-# import numpy as np
-
-# def center_pad_3d(x: np.ndarray, width: int) -> np.ndarray:
-#     """Pad an image on the left and right with 0s to a specified
-#     target width.
-#     Args:
-#         x (np.ndarray): Input data.
-#         width (int): Desired width.
-#     Returns:
-#         np.ndarray: Padded data.
-#     """
-#     new_x = np.zeros((width, x.shape[1], x.shape[2]))
-#     offset = (width - x.shape[0]) // 2
-#     new_x[offset : offset+x.shape[0], ...] = x
-#     return new_x
-
-
-# def center_pad_stack_3d(xs: np.ndarray) -> np.ndarray:
-#     """Center and pad input data and then stack the images
-#     with different widths.
-#     Args:
-#         xs (np.ndarray): Input data.
-#     Returns:
-#         np.ndarray: Center-padded and stacked data.
-#     """
-#     max_width = max(x.shape[0] for x in xs)
-#     return np.concatenate([center_pad_3d(x, max_width) for x in xs], axis=2)
-
-# hd5 = h5py.File('/home/pdiachil/ml/notebooks/mri/bodymri_allraw_1000107_2_0/bodymri_1000107.h5', 'r')
-# meta_data = pd.read_parquet('/home/pdiachil/ml/notebooks/mri/bodymri_allraw_1000107_2_0/bodymri_1000107_2.pq')
-
-# station_z_scales = 3.0, 4.5, 4.5, 4.5, 3.5, 4.0
-# # station_z_scales = [scale / 3 for scale in station_z_scales]
-# station_xscale = meta_data['col_pixel_spacing_mm'].mean()
-# station_yscale = meta_data['row_pixel_spacing_mm'].mean()
-
-# data = {
-#         int(name): read_compressed(hd5[f'instance/2/series/{name}'])
-#         for name in hd5[f'instance/2/series']
-#        }
-
-# z_pos = meta_data.groupby("series_number")["image_position_z"].agg(["min", "max"])
-# slices = build_z_slices(
-#            [data[i].shape[-1] for i in range(1, 25, 4)],
-#            [z_pos.loc[i] for i in range(1, 25, 4)],
-#         )
-
-# horizontal_lines = [
-#         (idx.stop - idx.start) * scale for idx, scale in zip(slices, station_z_scales)
-#     ]
-# horizontal_lines = np.cumsum(horizontal_lines).astype(np.uint16)[:-1]
-# body = {"horizontal_line_idx": horizontal_lines}
-
-# for type_idx, series_type_name in zip(range(4), ("in", "opp", "f", "w")):
-#     full_slice_to_stack = []
-#     for station_idx in range(1, 25, 4):  # neck, upper ab, lower ab, legs
-#         series_num = station_idx + type_idx
-#         station_slice = slices[station_idx // 4]
-#         scale = station_z_scales[station_idx // 4]
-#         full_slice = data[series_num][..., station_slice]
-#         full_slice_scaled = zoom(full_slice, [station_xscale, station_yscale, scale])
-#         full_slice_to_stack.append(full_slice_scaled)
-#     body[f"{series_type_name}"] = normalize(center_pad_stack_3d(full_slice_to_stack))
-# # %%
-# import vtk
-# from vtk.util import numpy_support as ns
-# for b, bb in body.items():
-#     if 'line' in b:
-#         continue
-#     img = vtk.vtkImageData()
-#     img.SetOrigin(0.0, 0.0, 0.0)
-#     img.SetExtent(0, bb.shape[1]-1, 0, bb.shape[0]-1, 0, bb.shape[2]-1)
-#     img.SetSpacing(1.0, 1.0, 1.0)
-    
-
-#     bbt = bb.swapaxes(0, 1)
-#     bbt = np.flip(bbt, axis=2)
-#     # bbt = bbt.reshape(*reversed(bb.shape))
-#     # nslice = bbt.shape[0]*bb.shape[1]
-#     # for z_slice in range(bbt.shape[2]):
-#     #     arr[nslice*z_slice:nslice*(z_slice+1)] = bbt[:, :, z_slice].ravel('F')
-#     arr_vtk = ns.numpy_to_vtk(bbt.ravel('F'), deep=True, array_type=vtk.VTK_INT)
-#     arr_vtk.SetName('ImageScalars')
-#     img.GetPointData().SetScalars(arr_vtk)
-
-#     resize = vtk.vtkImageResize()
-#     resize.SetInputData(img)
-#     resize.SetOutputDimensions(bbt.shape[0]//2, bbt.shape[1]//2, bbt.shape[2]//2)
-#     resize.Update()
-#     img_writer = vtk.vtkXMLImageDataWriter()
-#     img_writer.SetInputConnection(resize.GetOutputPort())
-#     img_writer.SetFileName(f'{b}.vti')
-#     img_writer.Update()
-# # %%
 
 # %%
