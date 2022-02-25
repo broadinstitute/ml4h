@@ -258,6 +258,7 @@ def latent_space_gwas(
             gv_dict['ref_count'].append(counter[0])
             gv_dict['het_count'].append(counter[1])
             gv_dict['hom_count'].append(counter[2])
+            gv_dict['n'].append(counter[0] + counter[1] + counter[2])
             if len(gv_dict['rsid']) % 100 == 0:
                 print(f'Processed SNPs {len(gv_dict["rsid"])}, P_value: {p_value:0.4E}, pos: {rec.pos}')
 
