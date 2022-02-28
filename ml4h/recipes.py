@@ -371,7 +371,7 @@ def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: st
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
-    inference_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
+    inference_tsv = _hidden_file_name(args.output_folder, args.hidden_layer, args.id, '.tsv')
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
