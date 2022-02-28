@@ -178,7 +178,10 @@ class PairLossBlock(Block):
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
                 kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
                 krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
-            kron = concatenate(krons)
+            if len(self.pairs) > 1:
+                kron = concatenate(krons)
+            else:
+                kron = krons[0]
             kron = Dense(self.encoding_size)(kron)
             return kron
         else:
