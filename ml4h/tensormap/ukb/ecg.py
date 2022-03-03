@@ -1123,6 +1123,8 @@ def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.nda
     ppg[:, 0] = hd5[tm.name]
     return ppg
 
+ppg_0 = TensorMap('ppg_0', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_0': 0},
+                  normalization=Standardize(mean=4824.6, std=3235.8))
 
 ppg_2 = TensorMap('ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
                   normalization=Standardize(mean=4824.6, std=3235.8))
