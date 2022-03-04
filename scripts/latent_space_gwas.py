@@ -17,7 +17,7 @@ ADJUST = [
     #'gt_batch', 'assessment_center', 'age', 'sex',
     #'bmi',
 ]
-TRAIN_RATIO_OLS=0.1
+TRAIN_RATIO_OLS=0.2
 
 def run():
     input_bcf = os.environ['INPUT_BCF']
