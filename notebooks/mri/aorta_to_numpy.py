@@ -5,7 +5,14 @@ from vtk.util import numpy_support as ns
 import glob
 
 #%%
-patient = 1000107
+blobmris = glob.glob('bodymri_allraw*')
+for blobmri in blobmris:
+    patient = int(blobmri.split('_')[-3])
+    vti = f'{blobmri}/w.vti'
+
+#%%
+
+patient = 2698988
 
 vti = glob.glob(f'/home/pdiachil/projects/aorta/simvascular/{patient}/Images/*.vti')[0]
 vtp = glob.glob(f'/home/pdiachil/projects/aorta/simvascular/{patient}/Models/*.vtp')[0]
@@ -43,7 +50,7 @@ imgstenc.SetBackgroundValue(100.0)
 imgstenc.Update()
 
 aorta_arr = ns.vtk_to_numpy(imgstenc.GetOutput().GetPointData().GetArray('Scalars_')).reshape(size, order='F')
-#aorta_arr = np.array(aorta_arr > 0.0, dtype=np.uint8)
+aorta_arr = np.array(aorta_arr < 50.0, dtype=np.uint8)
 
 #%%
 import matplotlib.pyplot as plt
@@ -51,9 +58,15 @@ import numpy as np
 
 z = 360
 f, ax = plt.subplots()
-aorta_ma = np.ma.masked_array(aorta_arr, mask=aorta_arr>50.0)
+aorta_ma = np.ma.masked_array(aorta_arr, mask=aorta_arr<0.5)
 ax.imshow(images_arr[:, :, 377], cmap='gray')
 ax.imshow(aorta_ma[:, :, 377])
 
 np.save(f'{patient}_images', images_arr)
 np.save(f'{patient}_aorta', aorta_arr)
+# %%
+plt.imshow(aorta_arr[:, :, 377])
+# %%
+cc = np.load('1285274_aorta.npy')
+plt.imshow(cc[:, :, 377])
+# %%
