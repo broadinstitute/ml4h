@@ -13,7 +13,8 @@ pillow==8.4.0
 notebook
 pytest
 pysam
-tensorflow==2.5.2
+#tensorflow==2.5.2
+tensorflow==2.5.0
 tensorflow-addons
 tensorflow_probability
 tensorflow_hub
