@@ -206,6 +206,10 @@ DEV_INSTRUCTIONS="
     pip install --upgrade vtk;
     pip install --upgrade pandas;
     pip install pydicom;
+    pip install fastparquet;
+    pip install pyarrow;
+    pip install xxhash;
+    pip install -e /home/pdiachil/ml;
     export NUMBA_CACHE_DIR=/home/pdiachil;
     export DEBIAN_FRONTEND=noninteractive;
     apt update -y --no-install-recommends;
