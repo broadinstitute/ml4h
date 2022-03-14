@@ -3,13 +3,26 @@ import pandas as pd
 from google.cloud import storage
 
 #%%
-
 projections_dir = '/home/pdiachil/projects/strain/'
 
 df = pd.DataFrame()
 for i in range(0, 45000, 1000):
     df = pd.concat([df, pd.read_csv(f'{projections_dir}/df_strain_{i}_{i+999}.csv')])
 
+# %%
+lbb = pd.read_csv('lbbb_on_ecg_list.csv')
+
+list_of_patients = pd.read_csv('/home/pdiachil/ml/notebooks/mri/list_of_patients.csv', names=['gcp'])
+list_of_patients['sample_id'] = list_of_patients['gcp'].str.split('__').str[-2].apply(float)
+list_of_patients = list_of_patients.dropna(subset=['sample_id'])
+list_of_patients['sample_id'] = list_of_patients['sample_id'].apply(int)
+
+list_of_patients[list_of_patients['sample_id'].isin(lbb['SekID'])]
+
+# %%
+
+df = df[
+df['sample_id'].isin(lbb['SekID'])]
 # %%
 import seaborn as sns
 import numpy as np
@@ -39,10 +52,20 @@ circ_mid_s = np.ma.masked_array(df[circ_cols['mid']['S']].values, mask=df[circ_c
 circ_mid_a = np.ma.masked_array(df[circ_cols['mid']['A']].values, mask=df[circ_cols['mid']['A']].values<0.0)
 circ_mid_l = np.ma.masked_array(df[circ_cols['mid']['L']].values, mask=df[circ_cols['mid']['L']].values<0.0)
 circ_mid_p = np.ma.masked_array(df[circ_cols['mid']['P']].values, mask=df[circ_cols['mid']['P']].values<0.0)
-time_mid_to_peak_s = np.argmin(circ_mid_s, axis=1)#*df['rep_time'].values
-time_mid_to_peak_a = np.argmin(circ_mid_a, axis=1)#*df['rep_time'].values
-time_mid_to_peak_l = np.argmin(circ_mid_l, axis=1)#*df['rep_time'].values
-time_mid_to_peak_p = np.argmin(circ_mid_p, axis=1)#*df['rep_time'].values
+time_mid_to_peak_s = np.argmin(circ_mid_s, axis=1)*df['rep_time'].values
+time_mid_to_peak_a = np.argmin(circ_mid_a, axis=1)*df['rep_time'].values
+time_mid_to_peak_l = np.argmin(circ_mid_l, axis=1)*df['rep_time'].values
+time_mid_to_peak_p = np.argmin(circ_mid_p, axis=1)*df['rep_time'].values
+
+# %%
+circ_api_s = np.ma.masked_array(df[circ_cols['api']['S']].values, mask=df[circ_cols['api']['S']].values<0.0)
+circ_api_a = np.ma.masked_array(df[circ_cols['api']['A']].values, mask=df[circ_cols['api']['A']].values<0.0)
+circ_api_l = np.ma.masked_array(df[circ_cols['api']['L']].values, mask=df[circ_cols['api']['L']].values<0.0)
+circ_api_p = np.ma.masked_array(df[circ_cols['api']['P']].values, mask=df[circ_cols['api']['P']].values<0.0)
+time_api_to_peak_s = np.argmin(circ_api_s, axis=1)*df['rep_time'].values
+time_api_to_peak_a = np.argmin(circ_api_a, axis=1)*df['rep_time'].values
+time_api_to_peak_l = np.argmin(circ_api_l, axis=1)*df['rep_time'].values
+time_api_to_peak_p = np.argmin(circ_api_p, axis=1)*df['rep_time'].values
 
 
 # %%
@@ -65,6 +88,52 @@ std_bas = np.std(time_bas_to_peak_salp, axis=1)
 df['std_bas'] = std_bas
 
 # %%
+time_mid_to_peak_salp = np.hstack([
+    time_mid_to_peak_s.reshape(-1, 1),
+    time_mid_to_peak_a.reshape(-1, 1),
+    time_mid_to_peak_l.reshape(-1, 1),
+    time_mid_to_peak_p.reshape(-1, 1)
+    ])
+
+sns.distplot(np.std(time_mid_to_peak_salp, axis=1), kde=False, bins=range(0, 50, 1))
+
+std_mid = np.std(time_mid_to_peak_salp, axis=1)
+df['std_mid'] = std_mid
+
+# %%
+time_api_to_peak_salp = np.hstack([
+    time_api_to_peak_s.reshape(-1, 1),
+    time_api_to_peak_a.reshape(-1, 1),
+    time_api_to_peak_l.reshape(-1, 1),
+    time_api_to_peak_p.reshape(-1, 1)
+    ])
+
+sns.distplot(np.std(time_api_to_peak_salp, axis=1), kde=False, bins=range(0, 50, 1))
+
+# %%
+time_to_peak_salp = np.hstack([time_api_to_peak_salp, time_mid_to_peak_salp, time_bas_to_peak_salp])
+
+std_api = np.std(time_api_to_peak_salp, axis=1)
+df['std_api'] = std_api
+
+df['std'] = np.std(time_to_peak_salp, axis=1)
+
+#%% 
+f, ax = plt.subplots()
+sns.distplot(df['std'], bins=range(0, 100, 1), kde=False, ax=ax)
+ax.set_xlabel('STD [ms], circ-bas-s')
+
+# %%
+f, ax = plt.subplots()
+sns.distplot(df[df['sample_id'].isin(lbb['StevenID'])]['std_bas'], bins=range(0, 100, 5), kde=False, ax=ax)
+ax.set_xlabel('STD [ms], circ-bas-s')
+# %%
+set(df['sample_id']).intersection(lbb['StevenID'])
+
+# %%
+df[df['sample_id'].isin(lbb['StevenID'])]
+
+# %%
 import os
 import h5py
 import logging
@@ -76,9 +145,12 @@ mri_notebooks_dir = '/home/pdiachil/ml/notebooks/mri/'
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('ml4cvd')
 
-df_bas = df.sort_values('std_bas')
-for i in range(1, 100, 1):
-    row = df_bas.iloc[len(df_bas)//100*i]
+df_bas = df.sort_values('std', ascending=False)
+for i in range(0, 10, 1):
+    # row = df_bas.iloc[len(df_bas)//100*i]
+    if i == len(df):
+        break
+    row = df_bas.iloc[i]
     patient = int(row['sample_id'])
     prefix = f'mdrk/ukb_bulk/cardiac/ingested/BROAD_ml4h_mdrk__cardiac__{patient}'
     blobs = storage_client.list_blobs(bucket, prefix=prefix)
@@ -123,10 +195,10 @@ for i in range(1, 100, 1):
             ax[0].set_xticks([])
             ax[0].set_yticks([])
             for sec in ['S', 'A', 'L', 'P']:
-                masked = np.ma.masked_array(row[circ_cols['bas'][sec]], mask=row[circ_cols['bas'][sec]]<0.1)
+                masked = np.ma.masked_array(row[circ_cols[slice_name][sec]], mask=row[circ_cols[slice_name][sec]]<0.1)
                 ax[1].plot(range(40), masked, label=sec)
             ax[1].legend()
-            ax[1].set_title(f'Dissynchrony: {row["std_bas"]:.0f} ms')
+            ax[1].set_title(f'Dissynchrony: {row[f"std_{slice_name}"]:.0f} ms')
             
             ax[1].set_xticks([])
             ax[1].set_yticks([])
@@ -137,8 +209,7 @@ for i in range(1, 100, 1):
                 f.canvas.tostring_rgb()
             ))
             plt.close(f)
-        layers[0].save(f'{patient}_{slice_name}_{i}.gif', append_images=layers[1:], save_all=True, loop=0)
-        break
+        layers[0].save(f'lbbb_{patient}_{slice_name}_{i}.gif', append_images=layers[1:], save_all=True, loop=0)
 
     os.remove(os.path.join(mri_notebooks_dir, filename))
 

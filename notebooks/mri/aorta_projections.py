@@ -1,47 +1,10 @@
 # %%
 import os
 import pandas as pd
+import sys
 from google.cloud import storage
 from ml4h.applications.ingest.ingest_mri import ingest_mri_dicoms_zipped, read_compressed
 from ml4h.applications.ingest.two_d_projection import build_projection_hd5, build_z_slices, normalize
-
-#%%
-bodymris = pd.read_csv('/home/pdiachil/projects/aorta/bodymris.csv')
-rows = bodymris.sample(50)
-storage_client = storage.Client('broad-ml4cvd')
-bucket = storage_client.get_bucket('bulkml4cvd')
-rows['patient'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
-
-for i, row in rows.iterrows():
-    prefix = f'bodymri/all/raw/{row["patient"]}_20201_2_0.zip'
-    blobs = storage_client.list_blobs(bucket, prefix=prefix)
-    for blob in blobs:
-        blob.download_to_filename(f'/home/pdiachil/projects/aorta/{row["patient"]}_20201_2_0.zip')
-        print(row['patient'])
-# %%
-for i, row in rows.iterrows():
-    patient = row['patient']
-    ingest_mri_dicoms_zipped(
-        sample_id=patient,
-        instance=2,
-        file=f'/home/pdiachil/projects/aorta/{patient}_20201_2_0.zip',
-        destination=f'bodymri_allraw_{patient}_2_0',
-        in_memory=True,
-        save_dicoms=False,
-        output_name=f'bodymri_{patient}',
-    )
-
-# %%
-for i, row in rows.iterrows():
-    patient = row['patient']
-    os.makedirs(f'bodymri_allraw_{patient}_2_0/projected', exist_ok=True)
-    build_projection_hd5(
-        f'bodymri_allraw_{patient}_2_0/bodymri_{patient}.h5',
-        f'bodymri_allraw_{patient}_2_0',
-        f'bodymri_allraw_{patient}_2_0/projected'
-    )
-
-# %%
 import h5py
 import pandas as pd
 from scipy.ndimage import zoom
@@ -49,6 +12,7 @@ import numpy as np
 import vtk
 from vtk.util import numpy_support as ns
 
+# %%
 def center_pad_3d(x: np.ndarray, width: int) -> np.ndarray:
     """Pad an image on the left and right with 0s to a specified
     target width.
@@ -75,11 +39,51 @@ def center_pad_stack_3d(xs: np.ndarray) -> np.ndarray:
     max_width = max(x.shape[0] for x in xs)
     return np.concatenate([center_pad_3d(x, max_width) for x in xs], axis=2)
 
-for i, row in rows.iterrows():
-    patient = row['patient']
 
-    hd5 = h5py.File(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_2_0/bodymri_{patient}.h5', 'r')
-    meta_data = pd.read_parquet(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_2_0/bodymri_{patient}_2.pq')
+#%%
+# start = int(sys.argv[1])
+# end = int(sys.argv[2])
+
+start = 0
+end = 1
+
+bodymris = pd.read_csv('/home/pdiachil/projects/aorta/bodymris.csv')
+rows = bodymris.iloc[start:end]
+storage_client = storage.Client('broad-ml4cvd')
+bucket = storage_client.get_bucket('bulkml4cvd')
+rows['patient'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
+rows['instance'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
+
+
+"# %%
+
+for i, row in rows.iterrows():
+    prefix = f'bodymri/all/raw/{row["patient"]}_20201_{row["instance"]}_0.zip'
+    blobs = storage_client.list_blobs(bucket, prefix=prefix)
+    for blob in blobs:
+        blob.download_to_filename(f'/home/pdiachil/projects/aorta/{row["patient"]}_20201_{row["instance"]}_0.zip')
+
+    patient = row['patient']
+    ingest_mri_dicoms_zipped(
+        sample_id=patient,
+        instance=2,
+        file=f'/home/pdiachil/projects/aorta/{patient}_20201_{row["instance"]}_0.zip',
+        destination=f'bodymri_allraw_{patient}_{row["instance"]}_0',
+        in_memory=True,
+        save_dicoms=False,
+        output_name=f'bodymri_{patient}_{row["instance"]}_0',
+    )
+
+    patient = row['patient']
+    os.makedirs(f'bodymri_allraw_{patient}_{row["instance"]}_0/projected', exist_ok=True)
+    build_projection_hd5(
+        f'bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0.h5',
+        f'bodymri_allraw_{patient}_{row["instance"]}_0',
+        f'bodymri_allraw_{patient}_{row["instance"]}_0/projected'
+    )
+
+    hd5 = h5py.File(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0.h5', 'r')
+    meta_data = pd.read_parquet(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0_{row["instance"]}.pq')
 
     station_z_scales = 3.0, 4.5, 4.5, 4.5, 3.5, 4.0
     # station_z_scales = [scale / 3 for scale in station_z_scales]
@@ -87,8 +91,8 @@ for i, row in rows.iterrows():
     station_yscale = meta_data['row_pixel_spacing_mm'].mean()
 
     data = {
-            int(name): read_compressed(hd5[f'instance/2/series/{name}'])
-            for name in hd5[f'instance/2/series']
+            int(name): read_compressed(hd5[f'instance/{row["instance"]}/series/{name}'])
+            for name in hd5[f'instance/{row["instance"]}/series']
         }
 
     z_pos = meta_data.groupby("series_number")["image_position_z"].agg(["min", "max"])
@@ -105,6 +109,8 @@ for i, row in rows.iterrows():
 
     for type_idx, series_type_name in zip(range(4), ("in", "opp", "f", "w")):
         print(type_idx)
+        if type_idx < 3:
+            continue
         full_slice_to_stack = []
         for station_idx in range(1, 25, 4):  # neck, upper ab, lower ab, legs
             print(station_idx)
@@ -118,6 +124,8 @@ for i, row in rows.iterrows():
 
     for b, bb in body.items():
         if 'line' in b:
+            continue
+        if b != 'w':
             continue
         img = vtk.vtkImageData()
         img.SetOrigin(0.0, 0.0, 0.0)
@@ -137,7 +145,16 @@ for i, row in rows.iterrows():
         resize.Update()
         img_writer = vtk.vtkXMLImageDataWriter()
         img_writer.SetInputConnection(resize.GetOutputPort())
-        img_writer.SetFileName(f'bodymri_allraw_{patient}_2_0/{b}.vti')
+        img_writer.SetFileName(f'bodymri_allraw_{patient}_{row["instance"]}_0/{b}.vti')
         img_writer.Update()
+
+        size = [
+            resize.GetOutput().GetExtent()[1]+1,
+            resize.GetOutput().GetExtent()[3]+1,
+            resize.GetOutput().GetExtent()[5]+1
+        ]
+        images_arr = ns.vtk_to_numpy(resize.GetOutput().GetPointData().GetArray('ImageScalars')).reshape(size, order='F')
+
+        np.save(f'{patient}_20201_{row["instance"]}_0_images', images_arr)
 
 # %%
