@@ -41,11 +41,11 @@ def center_pad_stack_3d(xs: np.ndarray) -> np.ndarray:
 
 
 #%%
-# start = int(sys.argv[1])
-# end = int(sys.argv[2])
+start = int(sys.argv[1])
+end = int(sys.argv[2])
 
-start = 0
-end = 1
+#start = 0
+#end = 1
 
 bodymris = pd.read_csv('/home/pdiachil/projects/aorta/bodymris.csv')
 rows = bodymris.iloc[start:end]
@@ -55,7 +55,7 @@ rows['patient'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[0].
 rows['instance'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
 
 
-"# %%
+# %%
 
 for i, row in rows.iterrows():
     prefix = f'bodymri/all/raw/{row["patient"]}_20201_{row["instance"]}_0.zip'
