@@ -44,6 +44,8 @@ def center_pad_stack_3d(xs: np.ndarray) -> np.ndarray:
 start = int(sys.argv[1])
 end = int(sys.argv[2])
 
+os.chdir('/home/pdiachil/ml/notebooks/mri')
+
 #start = 0
 #end = 1
 
@@ -75,7 +77,7 @@ for i, row in rows.iterrows():
     )
 
     patient = row['patient']
-    os.makedirs(f'bodymri_allraw_{patient}_{row["instance"]}_0/projected', exist_ok=True)
+    os.makedirs(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_{row["instance"]}_0/projected', exist_ok=True)
     build_projection_hd5(
         f'bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0.h5',
         f'bodymri_allraw_{patient}_{row["instance"]}_0',
