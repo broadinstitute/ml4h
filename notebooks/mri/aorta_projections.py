@@ -49,14 +49,22 @@ os.chdir('/home/pdiachil/ml/notebooks/mri')
 #start = 0
 #end = 1
 
-bodymris = pd.read_csv('/home/pdiachil/projects/aorta/bodymris.csv')
+bodymris = pd.read_csv('/home/pdiachil/ml/notebooks/mri/bodymris.csv')
+
+# bodymris_done = pd.read_csv('/home/pdiachil/projects/aorta/bodymris_done.csv')
 rows = bodymris.iloc[start:end]
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.get_bucket('bulkml4cvd')
-rows['patient'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
-rows['instance'] = rows['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
+# bodymris['patient'] = bodymris['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
+# bodymris['instance'] = bodymris['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
+# bodymris['patient_instance'] = bodymris['patient'].apply(str)+'_'+bodymris['instance'].apply(str)
+# bodymris_done['patient'] = bodymris_done['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
+# bodymris_done['instance'] = bodymris_done['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
+# bodymris_done['patient_instance'] = bodymris_done['patient'].apply(str)+'_'+bodymris['instance'].apply(str)
 
-
+# todo_still = list(set(bodymris['patient_instance'])-set(bodymris_done['patient_instance']))
+# bodymris = bodymris[bodymris['patient_instance'].isin(todo_still)]
+# bodymris.to_csv('/home/pdiachil/ml/notebooks/mri/bodymris.csv')
 # %%
 
 for i, row in rows.iterrows():
