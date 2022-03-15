@@ -20,4 +20,4 @@ cnt2=$((VMTAG*STEP+STEP))
 cd /home/pdiachil/ml/notebooks/mri
 /snap/bin/gsutil cp *.npy gs://ml4cvd/pdiachil/aorta_for_marcus/aorta_numpy_46k/
 /snap/bin/gsutil cp -r bodymri* gs://ml4cvd/pdiachil/aorta_for_marcus/aorta_vti_46k/
-yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+#yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
