@@ -16,7 +16,7 @@ cnt2=$((VMTAG*STEP+STEP-1))
 # cnt1=$1
 # cnt2=$2
 
-/home/pdiachil/ml/scripts/tf.sh -c \
+/home/pdiachil/ml/scripts/tf.sh \
 "for i in $(seq $cnt1 $cnt2); do python /home/pdiachil/ml/notebooks/mri/aorta_projections.py $i $((i+1)); done"
 
 cd /home/pdiachil/ml/notebooks/mri
