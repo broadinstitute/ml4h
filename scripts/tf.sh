@@ -228,4 +228,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "eval ${DEV_INSTRUCTIONS}; eval ${CALL_DOCKER_AS_USER} ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "eval ${DEV_INSTRUCTIONS}; eval ${CALL_DOCKER_AS_USER}; ${PYTHON_ARGS}"
