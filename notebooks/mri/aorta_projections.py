@@ -12,6 +12,20 @@ import numpy as np
 import vtk
 from vtk.util import numpy_support as ns
 
+# # %%
+# bodymris = pd.read_csv('/home/pdiachil/projects/aorta/bodymris.csv')
+# bodymris_done = pd.read_csv('/home/pdiachil/projects/aorta/bodymris_done_2.csv')
+# bodymris['patient'] = bodymris['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
+# bodymris['instance'] = bodymris['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
+# bodymris['patient_instance'] = bodymris['patient'].apply(str)+'_'+bodymris['instance'].apply(str)
+# bodymris_done['patient'] = bodymris_done['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
+# bodymris_done['instance'] = bodymris_done['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
+# bodymris_done['patient_instance'] = bodymris_done['patient'].apply(str)+'_'+bodymris_done['instance'].apply(str)
+
+# todo_still = list(set(bodymris['patient_instance'])-set(bodymris_done['patient_instance']))
+# bodymris = bodymris[bodymris['patient_instance'].isin(todo_still)]
+# bodymris.to_csv('/home/pdiachil/ml/notebooks/mri/bodymris.csv')
+
 # %%
 def center_pad_3d(x: np.ndarray, width: int) -> np.ndarray:
     """Pad an image on the left and right with 0s to a specified
@@ -41,13 +55,13 @@ def center_pad_stack_3d(xs: np.ndarray) -> np.ndarray:
 
 
 #%%
-start = int(sys.argv[1])
-end = int(sys.argv[2])
+#start = int(sys.argv[1])
+#end = int(sys.argv[2])
 
 os.chdir('/home/pdiachil/ml/notebooks/mri')
 
-#start = 0
-#end = 1
+start = 0
+end = 1
 
 bodymris = pd.read_csv('/home/pdiachil/ml/notebooks/mri/bodymris.csv')
 
@@ -93,7 +107,7 @@ for i, row in rows.iterrows():
     )
 
     hd5 = h5py.File(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0.h5', 'r')
-    meta_data = pd.read_parquet(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0_{row["instance"]}.pq')
+    meta_data = pd.read_parquet(f'/home/pdiachil/ml/notebooks/mri/bodymri_allraw_{patient}_{row["instance"]}_0/bodymri_{patient}_{row["instance"]}_0_2.pq')
 
     station_z_scales = 3.0, 4.5, 4.5, 4.5, 3.5, 4.0
     # station_z_scales = [scale / 3 for scale in station_z_scales]
@@ -101,8 +115,8 @@ for i, row in rows.iterrows():
     station_yscale = meta_data['row_pixel_spacing_mm'].mean()
 
     data = {
-            int(name): read_compressed(hd5[f'instance/{row["instance"]}/series/{name}'])
-            for name in hd5[f'instance/{row["instance"]}/series']
+            int(name): read_compressed(hd5[f'instance/2/series/{name}'])
+            for name in hd5[f'instance/2/series']
         }
 
     z_pos = meta_data.groupby("series_number")["image_position_z"].agg(["min", "max"])
