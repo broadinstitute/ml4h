@@ -55,13 +55,13 @@ def center_pad_stack_3d(xs: np.ndarray) -> np.ndarray:
 
 
 #%%
-#start = int(sys.argv[1])
-#end = int(sys.argv[2])
+start = int(sys.argv[1])
+end = int(sys.argv[2])
 
 os.chdir('/home/pdiachil/ml/notebooks/mri')
 
-start = 0
-end = 1
+# start = 0
+# end = 1
 
 bodymris = pd.read_csv('/home/pdiachil/ml/notebooks/mri/bodymris.csv')
 
