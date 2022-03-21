@@ -173,10 +173,12 @@ class PairLossBlock(Block):
             return out
         elif self.pair_merge == 'kronecker':
             krons = []
+            losses = []
             for left, right in self.pairs:
                 eshape = tf.shape(intermediates[left][-1])
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-                kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
+                y = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
+                kron = kron_layer(y)
                 krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
             if len(self.pairs) > 1:
                 kron = concatenate(krons)
@@ -186,22 +188,6 @@ class PairLossBlock(Block):
             return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
-
-
-def contrastive_difference(left: tf.Tensor, right: tf.Tensor, batch_size: int, temperature: tf.Tensor):
-    left_normed = left / l2_norm(left, axis=-1)
-    right_normed = right / l2_norm(right, axis=-1)
-    logits_left = tf.linalg.matmul(left_normed, right_normed, transpose_b=True) * tf.math.exp(temperature)
-    logits_right = tf.linalg.matmul(right_normed, left_normed, transpose_b=True) * tf.math.exp(temperature)
-    prob_left = tf.keras.activations.softmax(logits_left, axis=-1)
-    prob_right = tf.keras.activations.softmax(logits_right, axis=-1)
-
-    # identity matrix (np.eye) matches left row modality with right column modality
-    labels = tf.convert_to_tensor(np.eye(batch_size), dtype=tf.float32)
-    loss_left = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_left, labels)
-    loss_right = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_right, labels)
-    loss = (loss_left + loss_right)/2
-    return loss / batch_size
 
 
 def l2_norm(x, axis=None):
