@@ -503,8 +503,8 @@ def _process_args(args):
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was: {command_line}")
-    logging.info(f'Input SHA256: {[(tm, generate_tensormap_id(tm)) for tm in args.tensor_maps_in]}')
-    logging.info(f'Output SHA256: {[(tm, generate_tensormap_id(tm)) for tm in args.tensor_maps_out]}')
+    logging.info(f'Input SHA256s: {[(tm.name, generate_tensormap_id(tm)) for tm in args.tensor_maps_in]}')
+    logging.info(f'Output SHA256s: {[(tm.name, generate_tensormap_id(tm)) for tm in args.tensor_maps_out]}')
     logging.info(f'Model SHA256: {generate_model_id(args.tensor_maps_in, args.tensor_maps_out)}')
     logging.info(f"Arguments are {args}\n")
 
