@@ -14,6 +14,7 @@ import os
 import sys
 import copy
 import logging
+import hashlib
 import argparse
 import operator
 import datetime
@@ -436,6 +437,17 @@ def _process_pair_args(pairs: Optional[List[List]], tensormap_prefix) -> List[Tu
     return new_pairs
 
 
+def generate_tensormap_id(tm):
+    return hashlib.sha256(str(tm).encode("utf-8")).hexdigest()
+
+
+def generate_model_id(tensor_maps_in, tensor_maps_out):
+    str_i = '_'.join([str(tmi) for tmi in tensor_maps_in])
+    str_o = '_'.join([str(tmo) for tmo in tensor_maps_out])
+    model_str = f'{str_i}&{str_o}'
+    return hashlib.sha256(model_str.encode("utf-8")).hexdigest()
+
+
 def _process_args(args):
     now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     args_file = os.path.join(args.output_folder, args.id, 'arguments_' + now_string + '.txt')
@@ -491,6 +503,9 @@ def _process_args(args):
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was: {command_line}")
+    logging.info(f'Input SHA256: {[(tm, generate_tensormap_id(tm)) for tm in args.tensor_maps_in]}')
+    logging.info(f'Output SHA256: {[(tm, generate_tensormap_id(tm)) for tm in args.tensor_maps_out]}')
+    logging.info(f'Model SHA256: {generate_model_id(args.tensor_maps_in, args.tensor_maps_out)}')
     logging.info(f"Arguments are {args}\n")
 
     if args.eager:
