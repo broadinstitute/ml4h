@@ -29,7 +29,7 @@ WIDE_FILE = '/home/sam/ml/hf-wide-2020-09-15-with-lvh-and-lbbb.tsv'
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     tensor_map_maker_fxns = [
-        make_waveform_maps, make_partners_diagnosis_maps, make_waveform_maps_for_ukb
+        make_waveform_maps, make_partners_diagnosis_maps, make_waveform_maps_for_ukb, make_waveform_maps_lead_I
     ]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)
@@ -68,6 +68,30 @@ def make_waveform_maps(desired_map_name: str) -> TensorMap:
                 normalization=normalization,
                 channel_map=ECG_REST_AMP_LEADS,
             )
+
+
+def make_waveform_maps_lead_I(desired_map_name: str) -> TensorMap:
+    """Creates 12 possible Tensor Maps and returns the desired one or None:
+    :param desired_map_name: The name of the TensorMap and
+    :return: The desired TensorMap
+    """
+    length_options = [2500, 5000]
+    exact_options = [True, False]
+    normalize_options = [ZeroMeanStd1(), Standardize(mean=0, std=1000), None]
+    for length, exact_length, normalization in product(length_options, exact_options, normalize_options):
+        norm = '_std' if isinstance(normalization, ZeroMeanStd1) else '_mv' if isinstance(normalization, Standardize) else '_raw'
+        exact = '_exact' if exact_length else ''
+        name = f'ecg_lead_I_{length}{norm}{exact}'
+        if name == desired_map_name:
+            return TensorMap(
+                name,
+                shape=(length, 1),
+                path_prefix=PARTNERS_PREFIX,
+                tensor_from_file=make_voltage(exact_length),
+                normalization=normalization,
+                channel_map={'I': 0},
+            )
+
 
 def _dummy_tensor_from_file(tm, hd5, dependents={}):
     return np.zeros(tm.shape, dtype=np.float32)
