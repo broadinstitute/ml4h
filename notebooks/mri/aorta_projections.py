@@ -68,7 +68,8 @@ bodymris = pd.read_csv('/home/pdiachil/ml/notebooks/mri/bodymris.csv')
 # bodymris_done = pd.read_csv('/home/pdiachil/projects/aorta/bodymris_done.csv')
 rows = bodymris.iloc[start:end]
 storage_client = storage.Client('broad-ml4cvd')
-bucket = storage_client.get_bucket('bulkml4cvd')
+bucket = storage_client.get_bucket('ml4cvd')
+
 # bodymris['patient'] = bodymris['filepath'].str.split('/').str[-1].str.split('_').str[0].apply(int)
 # bodymris['instance'] = bodymris['filepath'].str.split('/').str[-1].str.split('_').str[2].apply(int)
 # bodymris['patient_instance'] = bodymris['patient'].apply(str)+'_'+bodymris['instance'].apply(str)

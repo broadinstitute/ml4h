@@ -27,6 +27,7 @@ aorta_vti_paolo_arr = numpy_support.numpy_to_vtk(aorta_paolo.ravel(order='F'))
 aorta_vti_paolo_arr.SetName('segmentation')
 aorta_vti_reader.GetOutput().GetPointData().AddArray(aorta_vti_model_arr)
 aorta_vti_reader.GetOutput().GetPointData().AddArray(aorta_vti_paolo_arr)
+aorta_vti_reader.GetOutput().GetPointData().SetActiveScalars('segmentation')
 
 aorta_vti_writer = vtk.vtkXMLImageDataWriter()
 aorta_vti_writer.SetFileName(f'{patient}_model.vti')
