@@ -27,12 +27,10 @@ bucket = storage_client.bucket('ml4cvd')
 patients = pd.read_csv('/home/pdiachil/projects/aorta/remaining.csv')
 patient_rows = patients.iloc[start:end]
 for i, (j, row) in enumerate(patient_rows.iterrows()):
-    if not(row['predicted'].endswith('.bin')):
-        continue
-    blob_path = row['predicted'].replace('gs://ml4cvd/', '')
+    patient_instance = row['predicted']
+    blob_path = f'mdrk/whole_body_mri/aorta/temp/{patient_instance}__prediction.bin'
     blob = bucket.blob(blob_path)
     blob_basename = blob_path.split('/')[-1]
-    patient_instance = blob_basename.split('__')[0]
     patient_instance_nofield = patient_instance.split('_')[0] +'_'+patient_instance.split('_')[2]
     model_fname = f'/home/pdiachil/projects/aorta/{blob_basename}'
     blob.download_to_filename(model_fname)
@@ -182,15 +180,15 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
         if jjj > 0:
             mid_loc = np.argmin(np.abs(pq_df_z - (extremes_top[idx] + prev_bottom)*0.5))
             rows_to_keep.append(mid_loc)
-            extractor = vtk.vtkExtractVOI()
-            extractor.SetInputConnection(aorta_vti_reader.GetOutputPort())
-            extractor.SetVOI(0, images.shape[0]-1, 0, images.shape[1]-1, int((extremes_top[idx] + prev_bottom)*0.5//z_resolution), int((extremes_top[idx] + prev_bottom)*0.5//z_resolution)+1)
-            extractor.Update()
+            # extractor = vtk.vtkExtractVOI()
+            # extractor.SetInputConnection(aorta_vti_reader.GetOutputPort())
+            # extractor.SetVOI(0, images.shape[0]-1, 0, images.shape[1]-1, int((extremes_top[idx] + prev_bottom)*0.5//z_resolution), int((extremes_top[idx] + prev_bottom)*0.5//z_resolution)+1)
+            # extractor.Update()
 
-            image_writer = vtk.vtkXMLImageDataWriter()
-            image_writer.SetInputConnection(extractor.GetOutputPort())
-            image_writer.SetFileName(f'/home/pdiachil/projects/aorta/{blob_basename}mid{jjj+1}.vti')
-            image_writer.Update()
+            # image_writer = vtk.vtkXMLImageDataWriter()
+            # image_writer.SetInputConnection(extractor.GetOutputPort())
+            # image_writer.SetFileName(f'/home/pdiachil/projects/aorta/{blob_basename}mid{jjj+1}.vti')
+            # image_writer.Update()
         prev_bottom = extremes_bottom[idx]
 
     pq_to_keep = pq_df.iloc[rows_to_keep]
