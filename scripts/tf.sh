@@ -8,7 +8,7 @@
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2-latest-gpu"
-DOCKER_IMAGE_NO_GPU="tensorflow/tensorflow:2.5.0"
+DOCKER_IMAGE_NO_GPU="tensorflow/aorta"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
@@ -228,4 +228,4 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "eval ${DEV_INSTRUCTIONS}; eval ${CALL_DOCKER_AS_USER}; ${PYTHON_ARGS}"
+${DOCKER_IMAGE} /bin/bash -c "${PYTHON_ARGS}"
