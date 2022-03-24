@@ -28,24 +28,27 @@ patients = pd.read_csv('/home/pdiachil/ml/notebooks/mri/remaining2.csv')
 patient_rows = patients.iloc[start:end]
 for i, (j, row) in enumerate(patient_rows.iterrows()):
     patient_instance = row['predicted']
-    blob_path = f'mdrk/whole_body_mri/aorta/temp/{patient_instance}__prediction.bin'
-    blob = bucket.blob(blob_path)
-    blob_basename = blob_path.split('/')[-1]
-    patient_instance_nofield = patient_instance.split('_')[0] +'_'+patient_instance.split('_')[2]
-    model_fname = f'/home/pdiachil/projects/aorta/{blob_basename}'
-    blob.download_to_filename(model_fname)
+    try:
+        blob_path = f'mdrk/whole_body_mri/aorta/temp/{patient_instance}__prediction.bin'
+        blob = bucket.blob(blob_path)
+        blob_basename = blob_path.split('/')[-1]
+        patient_instance_nofield = patient_instance.split('_')[0] +'_'+patient_instance.split('_')[2]
+        model_fname = f'/home/pdiachil/projects/aorta/{blob_basename}'
+        blob.download_to_filename(model_fname)
 
-    blob = bucket.blob(f'pdiachil/aorta_for_marcus/aorta_numpy_46k/{patient_instance}_0_images.npy')
-    images_fname = f'/home/pdiachil/projects/aorta/{patient_instance}_images.npy'
-    blob.download_to_filename(images_fname)
+        blob = bucket.blob(f'pdiachil/aorta_for_marcus/aorta_numpy_46k/{patient_instance}_0_images.npy')
+        images_fname = f'/home/pdiachil/projects/aorta/{patient_instance}_images.npy'
+        blob.download_to_filename(images_fname)
 
-    blob = bucket.blob(f'pdiachil/aorta_for_marcus/aorta_vti_46k/bodymri_allraw_{patient_instance_nofield}_0/w.vti')
-    vti_fname = f'/home/pdiachil/projects/aorta/{patient_instance}.vti'
-    blob.download_to_filename(vti_fname)
+        blob = bucket.blob(f'pdiachil/aorta_for_marcus/aorta_vti_46k/bodymri_allraw_{patient_instance_nofield}_0/w.vti')
+        vti_fname = f'/home/pdiachil/projects/aorta/{patient_instance}.vti'
+        blob.download_to_filename(vti_fname)
 
-    blob = bucket.blob(f'pdiachil/aorta_for_marcus/aorta_vti_46k/bodymri_allraw_{patient_instance_nofield}_0/bodymri_{patient_instance_nofield}_0_2.pq')
-    pq_fname = f'/home/pdiachil/projects/aorta/{patient_instance}.pq'
-    blob.download_to_filename(pq_fname)
+        blob = bucket.blob(f'pdiachil/aorta_for_marcus/aorta_vti_46k/bodymri_allraw_{patient_instance_nofield}_0/bodymri_{patient_instance_nofield}_0_2.pq')
+        pq_fname = f'/home/pdiachil/projects/aorta/{patient_instance}.pq'
+        blob.download_to_filename(pq_fname)
+    except:
+        continue
 
     with open(model_fname, 'rb') as f: 
         model_predictions = blosc.unpack_array(f.read())
