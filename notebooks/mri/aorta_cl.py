@@ -24,7 +24,7 @@ end = int(sys.argv[2])
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.bucket('ml4cvd')
 
-patients = pd.read_csv('/home/pdiachil/projects/aorta/remaining.csv')
+patients = pd.read_csv('/home/pdiachil/ml/notebooks/mri/remaining2.csv')
 patient_rows = patients.iloc[start:end]
 for i, (j, row) in enumerate(patient_rows.iterrows()):
     patient_instance = row['predicted']
@@ -206,8 +206,7 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
 # import glob
 # csvs = glob.glob('/home/pdiachil/projects/aorta/*slices_to_segment.csv')
 # results = pd.DataFrame()
-# for csv in csvs:
-#     results = pd.concat([results, pd.read_csv(csv)])
+# results = pd.concat([pd.read_csv(csv) for csv in csvs])
 
 # # %%
 # patients = pd.read_csv('/home/pdiachil/projects/aorta/aortas_predicted.csv', names=['predicted'])
@@ -220,8 +219,8 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
 # remaining_df = pd.DataFrame({'predicted': list(remaining)})
 
 # # %%
-# remaining_df.to_csv('/home/pdiachil/projects/aorta/remaining.csv', index=False)
-# # %%
+# remaining_df.to_csv('/home/pdiachil/projects/aorta/remaining2.csv', index=False)
+# # # %%
 # import seaborn as sns
 
 # f, ax = plt.subplots()
@@ -381,3 +380,5 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
 # # # %%
 
 # # %%
+
+# %%
