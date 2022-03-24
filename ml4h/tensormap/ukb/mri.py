@@ -2604,10 +2604,10 @@ ejection_fractionp = TensorMap(
     parents=[end_systole_volume, end_diastole_volume],
 )
 
-cine_segmented_sax_b1 = TensorMap('cine_segmented_sax_b1', shape=(256, 256, 50), loss='mse')
-cine_segmented_sax_b2 = TensorMap('cine_segmented_sax_b2', shape=(256, 256, 50), loss='mse')
-cine_segmented_sax_b4 = TensorMap('cine_segmented_sax_b4', shape=(256, 256, 50), loss='mse')
-cine_segmented_sax_b6 = TensorMap('cine_segmented_sax_b6', shape=(256, 256, 50), loss='mse')
+cine_segmented_sax_b1 = TensorMap('cine_segmented_sax_b1', shape=(256, 256, 50), normalization=ZeroMeanStd1())
+cine_segmented_sax_b2 = TensorMap('cine_segmented_sax_b2', shape=(256, 256, 50), normalization=ZeroMeanStd1())
+cine_segmented_sax_b4 = TensorMap('cine_segmented_sax_b4', shape=(256, 256, 50), normalization=ZeroMeanStd1())
+cine_segmented_sax_b6 = TensorMap('cine_segmented_sax_b6', shape=(256, 256, 50), normalization=ZeroMeanStd1())
 
 cine_segmented_lax_2ch = TensorMap('cine_segmented_lax_2ch', shape=(256, 256, 50), normalization=ZeroMeanStd1())
 cine_segmented_lax_3ch = TensorMap('cine_segmented_lax_3ch', shape=(256, 256, 50), normalization=ZeroMeanStd1())
