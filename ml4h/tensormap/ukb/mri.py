@@ -9,6 +9,7 @@ import numpy as np
 from scipy.signal import convolve2d
 from scipy.ndimage import median_filter
 from scipy.ndimage.interpolation import rotate
+import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
 from ml4h.metrics import weighted_crossentropy
@@ -1941,6 +1942,7 @@ segmented_lax_4ch_diastole_frame = TensorMap(
     'segmented_lax_4ch_diastole_frame', Interpretation.CONTINUOUS,
     shape=(96, 96, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(),
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=1),
 )
 segmented_lax_4ch_48_frame = TensorMap(
