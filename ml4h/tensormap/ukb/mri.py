@@ -1927,7 +1927,7 @@ def _segmented_heart_mask_instances(segmentation_key, labels, frames=50, one_hot
                 slice_one_hot = to_categorical(reshape_categorical, len(tm.channel_map))
                 tensor[..., frame-1, :] = slice_one_hot
             else:
-                tensor[..., frame-1] = reshape_categorical
+                tensor[..., frame-1, 0] = reshape_categorical
         return tensor
     return _heart_mask_tensor_from_file
 
