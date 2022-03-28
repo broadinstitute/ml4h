@@ -1927,7 +1927,7 @@ def _segmented_heart_mask_instances(segmentation_key, labels, frames=50, one_hot
                 slice_one_hot = to_categorical(reshape_categorical, len(tm.channel_map))
                 tensor[..., frame-1, :] = slice_one_hot
             else:
-                tensor[..., frame-1] = reshape_categorical
+                tensor[..., frame-1, 0] = reshape_categorical
         return tensor
     return _heart_mask_tensor_from_file
 
@@ -1953,7 +1953,7 @@ segmented_lax_4ch_48_frame = TensorMap(
 )
 segmented_lax_4ch_50_frame_4d = TensorMap(
     'segmented_lax_4ch_50_frame_4d', Interpretation.CATEGORICAL,
-    shape=(96, 96, 50),
+    shape=(96, 96, 50, 1),
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     loss='sparse_categorical_crossentropy',
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
@@ -1962,7 +1962,7 @@ segmented_lax_4ch_48_frame_4d = TensorMap(
     'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
     shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48),
+    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
 )
 
 
