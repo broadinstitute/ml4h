@@ -1960,9 +1960,10 @@ segmented_lax_4ch_50_frame_4d = TensorMap(
 )
 segmented_lax_4ch_48_frame_4d = TensorMap(
     'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
-    shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+    shape=(96, 96, 48, 1),
+    loss='sparse_categorical_crossentropy',
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
+    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=False),
 )
 
 
