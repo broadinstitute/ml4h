@@ -1946,7 +1946,7 @@ segmented_lax_4ch_diastole_frame = TensorMap(
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=1),
 )
 segmented_lax_4ch_48_frame = TensorMap(
-    'segmented_lax_4ch_48_frame', Interpretation.CATEGORICAL,
+    'segmented_lax_4ch_48_frame', Interpretation.CONTINUOUS,
     shape=(96, 96, 48),
     path_prefix='ukb_cardiac_mri',
     loss='sparse_categorical_crossentropy',
@@ -1960,7 +1960,7 @@ segmented_lax_4ch_50_frame_4d = TensorMap(
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
 )
 segmented_lax_4ch_48_frame_4d = TensorMap(
-    'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
+    'segmented_lax_4ch_48_frame_4d', Interpretation.CONTINUOUS,
     shape=(96, 96, 48, 1),
     loss='sparse_categorical_crossentropy',
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
