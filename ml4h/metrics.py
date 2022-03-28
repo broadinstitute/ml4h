@@ -7,7 +7,8 @@ import tensorflow.keras.backend as K
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
 
-from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
+from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
@@ -409,6 +410,8 @@ def get_metric_dict(output_tensor_maps):
 
         if tm.loss == 'categorical_crossentropy':
             losses.append(categorical_crossentropy)
+        elif tm.loss == 'sparse_categorical_crossentropy':
+            losses.append(sparse_categorical_crossentropy)
         elif tm.loss == 'binary_crossentropy':
             losses.append(binary_crossentropy)
         elif tm.loss == 'mean_absolute_error' or tm.loss == 'mae':
