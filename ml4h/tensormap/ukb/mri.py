@@ -1956,7 +1956,7 @@ def _sparse_cross_entropy(y_true, y_pred):
     y_t = tf.reshape(y_true, shape=[-1, 460800])
     y_p = tf.reshape(y_pred, shape=[-1, 460800])
     loss = tf.keras.losses.SparseCategoricalCrossentropy(
-        from_logits=True
+        from_logits=False
     )(y_t, y_p)
     return loss #tf.reduce_mean(loss)
 segmented_lax_4ch_50_frame_4d = TensorMap(
