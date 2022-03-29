@@ -1956,11 +1956,11 @@ def _sparse_cross_entropy(y_true, y_pred):
     y_true = tf.reshape(y_true, shape=(-1,96,96,50))
     y_pred = tf.reshape(y_pred, shape=(-1,96,96,50))
     loss = tf.keras.losses.SparseCategoricalCrossentropy(
-        from_logits=False, reduction='none',
+        from_logits=True, reduction='none',
     )(y_true, y_pred)
     return tf.reduce_mean(loss)
 segmented_lax_4ch_50_frame_4d = TensorMap(
-    'segmented_lax_4ch_50_frame_4d', Interpretation.CATEGORICAL,
+    'segmented_lax_4ch_50_frame_4d', Interpretation.CONTINUOUS,
     shape=(96, 96, 50),
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     loss=_sparse_cross_entropy, metrics=['mse'],
