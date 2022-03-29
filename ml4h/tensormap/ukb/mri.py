@@ -1953,12 +1953,12 @@ segmented_lax_4ch_48_frame = TensorMap(
 )
 
 def _sparse_cross_entropy(y_true, y_pred):
-    y_true = tf.reshape(y_true, shape=(-1,96,96,50))
-    y_pred = tf.reshape(y_pred, shape=(-1,96,96,50))
+    y_t = tf.reshape(y_true, shape=[-1])
+    y_p = tf.reshape(y_pred, shape=[-1])
     loss = tf.keras.losses.SparseCategoricalCrossentropy(
-        from_logits=True, reduction='none',
-    )(y_true, y_pred)
-    return tf.reduce_mean(loss)
+        from_logits=True
+    )(y_t, y_p)
+    return loss #tf.reduce_mean(loss)
 segmented_lax_4ch_50_frame_4d = TensorMap(
     'segmented_lax_4ch_50_frame_4d', Interpretation.CONTINUOUS,
     shape=(96, 96, 50),
