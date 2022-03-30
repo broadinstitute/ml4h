@@ -495,6 +495,21 @@ rest_strip_II_random = TensorMap(
     tensor_from_file=_make_ecg_rest(random_offset=904),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
 )
+rest_strip_I_random_1s = TensorMap(
+    'rest_strip_I_random_1s', Interpretation.CONTINUOUS, shape=(500, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4500),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+rest_strip_I_random_2s = TensorMap(
+    'rest_strip_I_random_2s', Interpretation.CONTINUOUS, shape=(1000, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4000),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+rest_strip_II_random_2s = TensorMap(
+    'rest_strip_II_random_2s', Interpretation.CONTINUOUS, shape=(1000, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4000),
+    channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
+)
 ecg_rest_mgb_2500_test = TensorMap(
     'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
