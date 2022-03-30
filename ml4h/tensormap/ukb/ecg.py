@@ -532,10 +532,15 @@ ecg_rest_median_raw = TensorMap(
     metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=2000),
 )
 ecg_rest_median_lead_I = TensorMap(
-    'ecg_rest_median_lead_I', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 1), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    'ecg_rest_median_lead_I', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest',
+    shape=(600, 1), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
     metrics=['mse', 'mae'], channel_map={'median_I': 0}, normalization=ZeroMeanStd1(),
 )
-
+ecg_rest_median_lead_II = TensorMap(
+    'ecg_rest_median_lead_II', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest',
+    shape=(600, 1), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae'], channel_map={'median_II': 0}, normalization=ZeroMeanStd1(),
+)
 ecg_rest_median_mv = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
     metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000),
