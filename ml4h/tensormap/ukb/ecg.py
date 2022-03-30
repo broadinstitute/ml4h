@@ -484,6 +484,7 @@ ecg_rest_mgb_strip_II = TensorMap(
     'ecg_strip_II', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
 )
+
 ecg_rest_mgb_strip_I_random = TensorMap(
     'ecg_strip_I', Interpretation.CONTINUOUS, shape=(4096, 1), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest(random_offset=904),
