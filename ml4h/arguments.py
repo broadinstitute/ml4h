@@ -375,10 +375,6 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
     if isinstance(tm, TensorMap) == True:
         return tm
 
-    tm = _build_mgb_time_series_tensor_maps(module_string)
-    if isinstance(tm, TensorMap) == True:
-        return tm
-
     tm = make_test_tensor_maps(module_string)
     if isinstance(tm, TensorMap) == True:
         return tm
