@@ -127,7 +127,7 @@ def _warp_ecg(ecg):
 def _make_ecg_rest(
         instance: int = 2, downsample_steps: int = 0,
         short_time_nperseg: int = 0, short_time_noverlap: int = 0,
-        skip_poor: bool = False,
+        skip_poor: bool = False, random_offset: int = 0,
 ):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         ecg_interpretation = str(
@@ -143,11 +143,13 @@ def _make_ecg_rest(
                 data = tm.hd5_first_dataset_in_group(
                     hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
                 )
+                if random_offset > 0:
+                    offset = np.random.randint(random_offset)
+                    data = data[offset:]
                 if short_time_nperseg > 0 and short_time_noverlap > 0:
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
-                    #logging.info(f'SHape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
@@ -482,10 +484,16 @@ ecg_rest_mgb_strip_II = TensorMap(
     'ecg_strip_II', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
 )
-# ecg_rest_mgb_2500 = TensorMap(
-#     'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
-#     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
-# )
+ecg_rest_mgb_strip_I_random = TensorMap(
+    'ecg_strip_I', Interpretation.CONTINUOUS, shape=(4096, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=904),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+ecg_rest_mgb_strip_II_random = TensorMap(
+    'ecg_strip_II', Interpretation.CONTINUOUS, shape=(4096, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=904),
+    channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
+)
 ecg_rest_mgb_2500_test = TensorMap(
     'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
