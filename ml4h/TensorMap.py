@@ -210,7 +210,7 @@ class TensorMap(object):
             self.shape = self.input_shape[:-1] + (len(self.discretization_bounds)+1,)
             self.channel_map = {f'channel_{k}': k for k in range(len(self.discretization_bounds) + 1)}
 
-        #self.infer_metrics()
+        self.infer_metrics()
 
         if self.tensor_from_file is None:
             self.tensor_from_file = _default_tensor_from_file
