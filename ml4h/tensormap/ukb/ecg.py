@@ -587,6 +587,16 @@ ecg_rest_median_raw_10_prediction = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=named_tensor_from_hd5('ecg_rest_median_raw_10_prediction'), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
 )
+
+
+def ecg_prediction_lead_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    ecg = np.array(hd5[tm.name], dtype=np.float32)
+    return ecg[:, 0]
+ecg_rest_median_raw_10_prediction_lead_I = TensorMap(
+    'ecg_rest_median_raw_10_lead_I', Interpretation.CONTINUOUS, shape=(600, 1), loss='logcosh', activation='linear',
+    tensor_from_file=ecg_prediction_lead_from_hd5, metrics=['mse', 'mae'], channel_map={'median_I': 0},
+)
+
 ecg_rest_median_raw_10_truth = TensorMap(
     'ecg_rest_median_raw_10_truth', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
