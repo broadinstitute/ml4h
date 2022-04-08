@@ -591,7 +591,9 @@ ecg_rest_median_raw_10_prediction = TensorMap(
 
 def ecg_prediction_lead_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ecg = np.array(hd5['ecg_rest_median_raw_10_prediction'], dtype=np.float32)
-    return ecg[:, 0]
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    tensor[:, 0] = ecg[:, 0]
+    return tensor
 ecg_rest_median_raw_10_prediction_lead_I = TensorMap(
     'ecg_rest_median_raw_10_lead_I', Interpretation.CONTINUOUS, shape=(600, 1), loss='logcosh', activation='linear',
     tensor_from_file=ecg_prediction_lead_from_hd5, metrics=['mse', 'mae'], channel_map={'median_I': 0},
