@@ -1944,35 +1944,35 @@ segmented_lax_4ch_diastole_frame = TensorMap(
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=1),
 )
-segmented_lax_4ch_48_frame = TensorMap(
-    'segmented_lax_4ch_48_frame', Interpretation.CATEGORICAL,
-    shape=(96, 96, 48),
-    path_prefix='ukb_cardiac_mri',
-    loss='sparse_categorical_crossentropy',
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=False),
-)
-
-def _sparse_cross_entropy(y_true, y_pred):
-    y_t = tf.reshape(y_true, shape=[-1, 460800])
-    y_p = tf.reshape(y_pred, shape=[-1, 460800])
-    loss = tf.keras.losses.SparseCategoricalCrossentropy(
-        from_logits=False
-    )(y_t, y_p)
-    return loss #tf.reduce_mean(loss)
-segmented_lax_4ch_50_frame_4d = TensorMap(
-    'segmented_lax_4ch_50_frame_4d', Interpretation.CONTINUOUS,
-    shape=(96, 96, 50),
-    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    loss=_sparse_cross_entropy, metrics=['mse'],
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
-)
-segmented_lax_4ch_48_frame_4d = TensorMap(
-    'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
-    shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
-    loss='categorical_crossentropy', metrics=['mse'],
-    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=True),
-)
+# segmented_lax_4ch_48_frame = TensorMap(
+#     'segmented_lax_4ch_48_frame', Interpretation.CATEGORICAL,
+#     shape=(96, 96, 48),
+#     path_prefix='ukb_cardiac_mri',
+#     loss='sparse_categorical_crossentropy',
+#     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=False),
+# )
+#
+# def _sparse_cross_entropy(y_true, y_pred):
+#     y_t = tf.reshape(y_true, shape=[-1, 460800])
+#     y_p = tf.reshape(y_pred, shape=[-1, 460800])
+#     loss = tf.keras.losses.SparseCategoricalCrossentropy(
+#         from_logits=False
+#     )(y_t, y_p)
+#     return loss #tf.reduce_mean(loss)
+# segmented_lax_4ch_50_frame_4d = TensorMap(
+#     'segmented_lax_4ch_50_frame_4d', Interpretation.CONTINUOUS,
+#     shape=(96, 96, 50),
+#     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+#     loss=_sparse_cross_entropy, metrics=['mse'],
+#     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
+# )
+# segmented_lax_4ch_48_frame_4d = TensorMap(
+#     'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
+#     shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+#     loss='categorical_crossentropy', metrics=['mse'],
+#     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+#     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=True),
+# )
 
 
 def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str ='ukb_cardiac_mri') -> Callable:
