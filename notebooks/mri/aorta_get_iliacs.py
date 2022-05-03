@@ -30,7 +30,7 @@ tmp = patients['filepath'].str.replace('gs://bulkml4cvd/bodymri/all/raw/', '')
 tmp = tmp.str.replace('_0.zip', '')
 patients['predicted'] = tmp
 patient_rows = patients.iloc[start:end]
-good = {}
+good = {'patient': [], 'ratio': []}
 for i, (j, row) in enumerate(patient_rows.iterrows()):
     patient_instance = row['predicted']
     print(patient_instance)
@@ -147,7 +147,8 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
     volumes_arr = np.array(volumes)
     sorted_indices = np.argsort(volumes)[::-1]
     ratio = volumes[sorted_indices[0]] / volumes[sorted_indices[1]]
-    good[patient_instance] = ratio
+    good['patient'].append(patient_instance)
+    good['ratio'].append(ratio)
     indices_to_keep = [sorted_indices[0]]
     max_vol = volumes[sorted_indices[0]]
     # volumes_to_keep = [max_vol]
@@ -197,10 +198,10 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
         )
         extractor.Update()
 
-        image_writer = vtk.vtkXMLImageDataWriter()
-        image_writer.SetInputConnection(extractor.GetOutputPort())
-        image_writer.SetFileName(f'/home/pdiachil/projects/aorta/{patient_instance}img{jjj+1}.vti')
-        image_writer.Update()
+        # image_writer = vtk.vtkXMLImageDataWriter()
+        # image_writer.SetInputConnection(extractor.GetOutputPort())
+        # image_writer.SetFileName(f'/home/pdiachil/projects/aorta/{patient_instance}img{jjj+1}.vti')
+        # image_writer.Update()
 
         chunk = numpy_support.vtk_to_numpy(extractor.GetOutput().GetPointData().GetArray('ImageScalars')).reshape((maxx-minx+1, maxy-miny+1, maxz-minz+1), order='F')
         chunk_model = numpy_support.vtk_to_numpy(extractor.GetOutput().GetPointData().GetArray('ImageScalars2')).reshape((maxx-minx+1, maxy-miny+1, maxz-minz+1), order='F')
@@ -262,5 +263,6 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
     os.remove(images_fname)
     os.remove(model_fname)
 
-print(good)
+good_df = pd.DataFrame(good)
+good_df.to_csv('/home/pdiachil/projects/aorta/gifs_ratio.csv', index=False)
 
