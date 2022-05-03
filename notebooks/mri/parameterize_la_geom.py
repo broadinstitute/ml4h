@@ -7,9 +7,7 @@ import sys
 import pandas as pd
 from google.cloud import storage
 import numpy as np
-from vtk.util import numpy_support as ns
-from sklearn import svm
-from notebooks.mri.mri_atria import to_xdmf
+from mri_atria import to_xdmf
 from parameterize_segmentation import annotation_to_poisson, clip_by_separation_plane
 from ml4h.tensormap.ukb.mri_vtk import _mri_hd5_to_structured_grids, _mri_tensor_4d
 from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
@@ -32,6 +30,7 @@ version='fastai_sax-v20201202-2ch-v20200809-3ch-v20200603-4ch-v20201122'
 
 # %%
 views = ['lax_2ch', 'lax_3ch', 'lax_4ch']
+views = ['lax_2ch', 'lax_4ch']
 view_format_string = 'cine_segmented_{view}'
 annot_format_string = 'cine_segmented_{view}_annotated'
 annot_time_format_string = 'cine_segmented_{view}_annotated_{t}'
@@ -40,7 +39,7 @@ annot_time_instance_format_string = 'cine_segmented_{view}_annotated_{t}/{instan
 channels = [
     [
         MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP['LA_cavity'],
-        MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
+        # MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP['left_atrium'],
         MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['LA_cavity'],
     ],
 ]
