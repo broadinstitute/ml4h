@@ -264,5 +264,5 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
     os.remove(model_fname)
 
 good_df = pd.DataFrame(good)
-good_df.to_csv('/home/pdiachil/projects/aorta/gifs_ratio.csv', index=False)
+good_df.to_csv(f'/home/pdiachil/projects/aorta/gifs_ratio_{start}_{end}.csv', index=False)
 
