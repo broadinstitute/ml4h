@@ -228,7 +228,7 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
             # image = image / np.max(image)
             # image = np.asarray(image*255., dtype=np.uint8)
             slices.append(np.flip(np.transpose(image, (1, 0, 2)), axis=0))
-        imageio.mimsave(f'{patient_instance}_coronal.gif', slices)
+        imageio.mimsave(f'/home/pdiachil/projects/aorta/{patient_instance}_coronal.gif', slices)
         slices = np.array(slices)
         slices_MIP = slices.max(axis=0)
         imageio.imsave(f'/home/pdiachil/projects/aorta/{patient_instance}_coronal_MIP.gif', slices_MIP)
