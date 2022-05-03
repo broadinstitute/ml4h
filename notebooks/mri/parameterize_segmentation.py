@@ -4,6 +4,7 @@ from typing import List
 from ml4h.tensormap.ukb.mri_vtk import _project_structured_grids
 import vtk, vtk.util.numpy_support
 from pypoisson import poisson_reconstruction
+import open3d
 import logging
 import os
 import scipy
@@ -198,7 +199,16 @@ def points_normals_to_poisson(
     normals: np.ndarray,
 )->vtk.vtkPolyData:
 
-    faces, vertices = poisson_reconstruction(points, normals, depth=9)
+    points_o3d = open3d.utility.Vector3dVector(points)
+    normals_o3d = open3d.utility.Vector3dVector(normals)
+    pcld = open3d.geometry.PointCloud()
+    pcld.points = points_o3d
+    pcld.normals = normals_o3d
+    poisson_mesh, densities = open3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+        pcld, depth=9)
+    faces = np.asarray(poisson_mesh.triangles)
+    vertices = np.asarray(poisson_mesh.vertices)
+    # faces, vertices = poisson_reconstruction(points, normals, depth=9)
     # vtk encodes triangle faces as 4 element-arrays starting with 3
     faces_for_vtk = np.zeros((len(faces), 4), dtype=np.int64)
     faces_for_vtk[:, 0] = 3
@@ -502,9 +512,9 @@ def annotation_to_poisson(
             sphere.Update()
             poisson_polydatas.append(sphere.GetOutput())
         else:
-            tmp_polydata = points_normals_to_poisson(points_arr, normals_arr)
-            tmp_points = vtk.util.numpy_support.vtk_to_numpy(tmp_polydata.GetPoints().GetData())
-            tmp_cog = np.mean(tmp_points, axis=0)
+            # tmp_polydata = points_normals_to_poisson(points_arr, normals_arr)
+            # tmp_points = vtk.util.numpy_support.vtk_to_numpy(tmp_polydata.GetPoints().GetData())
+            # tmp_cog = np.mean(tmp_points, axis=0)
 
             for j, (dataset_points, dataset_normals) in enumerate(zip(points, normals)):
                 tmp_cog = np.mean(dataset_points, axis=0)
