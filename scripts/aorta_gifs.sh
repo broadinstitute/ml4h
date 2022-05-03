@@ -16,7 +16,7 @@ cnt2=$((VMTAG*STEP+STEP))
 # cnt1=$1
 # cnt2=$2
 /home/pdiachil/ml/scripts/tf.sh -c \
-"python /home/pdiachil/ml/notebooks/mri/aorta_get_iliacs.py $cnt1 $cnt2"
+"pip install imageio; python /home/pdiachil/ml/notebooks/mri/aorta_get_iliacs.py $cnt1 $cnt2"
 
 cd /home/pdiachil/projects/aorta
 /snap/bin/gsutil cp *.gif gs://ml4cvd/pdiachil/aorta_for_marcus/aorta_gifs_46k/
