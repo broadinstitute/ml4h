@@ -20,4 +20,4 @@ cnt2=$((VMTAG*STEP+STEP))
 
 cd /home/pdiachil/projects/aorta
 /snap/bin/gsutil cp *.gif gs://ml4cvd/pdiachil/aorta_for_marcus/aorta_gifs_46k/
-yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
+# yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
