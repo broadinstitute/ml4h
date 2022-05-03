@@ -12,7 +12,7 @@ from parameterize_segmentation import annotation_to_poisson, clip_by_separation_
 from ml4h.tensormap.ukb.mri_vtk import _mri_hd5_to_structured_grids, _mri_tensor_4d
 from ml4h.defines import MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_FRAMES
 
-
+ 
 # %%
 import logging
 logging.getLogger().setLevel('INFO')
@@ -149,8 +149,7 @@ for i, hd5 in enumerate(hd5s):
                 atria, volumes = annotation_to_poisson(
                     annot_datasets, channel, views,
                     annot_time_format_string,
-                    range(MRI_FRAMES),
-                )
+                    range(MRI_FRAMES))
                 # atria, volumes = clip_by_separation_plane(annot_datasets[0], 
                 #                                         annot_datasets[1:3],
                 #                                         [MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP['RV_cavity'], 
@@ -164,14 +163,14 @@ for i, hd5 in enumerate(hd5s):
                 for t, atrium in enumerate(poisson_chambers[-1]):
                     write_footer = True if t == MRI_FRAMES-1 else False
                     append = False if t == 0 else True
-                    to_xdmf(atrium, f'/home/pdiachil/projects/chambers/poisson_{version}_{chamber}_{sample_id}_{instance}', append=append, append_time=t, write_footer=write_footer)
+                    to_xdmf(atrium, f'/home/pdiachil/projects/la_biplane/poisson_biplane_{version}_{chamber}_{sample_id}_{instance}', append=append, append_time=t, write_footer=write_footer)
                 end_time = time.time()
                 logging.info(f'Job for {sample_id} instance {instance} completed. Time elapsed: {end_time-start_time:.0f} s')
                 start_time = time.time()
-    except Exception as e:
+    except ValueError as e:
         logging.info(f'Caught exception at {sample_id}: {e}')
         continue
     
 for chamber, result in zip(chambers, results):
     results_df = pd.DataFrame(result)
-    results_df.to_csv(f'{chamber}_processed_{version}_{start}_{end}.csv', index=False)
+    results_df.to_csv(f'{chamber}_processed_biplane_{version}_{start}_{end}.csv', index=False)
