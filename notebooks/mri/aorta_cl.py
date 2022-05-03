@@ -24,7 +24,7 @@ end = int(sys.argv[2])
 storage_client = storage.Client('broad-ml4cvd')
 bucket = storage_client.bucket('ml4cvd')
 
-patients = pd.read_csv('/home/pdiachil/ml/notebooks/mri/remaining2.csv')
+patients = pd.read_csv('/home/pdiachil/ml/notebooks/mri/slicer.csv')
 patient_rows = patients.iloc[start:end]
 for i, (j, row) in enumerate(patient_rows.iterrows()):
     patient_instance = row['predicted']
@@ -83,6 +83,11 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
     aorta_surf.SetInputConnection(aorta_vti_reader.GetOutputPort())
     aorta_surf.SetValue(0, 0.5)
     aorta_surf.Update()
+
+    surf_writer = vtk.vtkSTLWriter()
+    surf_writer.SetInputConnection(aorta_surf.GetOutputPort())
+    surf_writer.SetFileName(f'/home/pdiachil/projects/aorta/{patient_instance}_predictions.stl')
+    surf_writer.Update()
 
     aorta_connectivity = vtk.vtkPolyDataConnectivityFilter()
     aorta_connectivity.SetInputConnection(aorta_surf.GetOutputPort())
@@ -205,12 +210,41 @@ for i, (j, row) in enumerate(patient_rows.iterrows()):
     os.remove(images_fname)
     os.remove(model_fname)
 
-# # %%
-# import glob
-# csvs = glob.glob('/home/pdiachil/projects/aorta/*slices_to_segment.csv')
-# results = pd.DataFrame()
-# results = pd.concat([pd.read_csv(csv) for csv in csvs])
+# %%
+import glob
+csvs = glob.glob('/home/pdiachil/projects/aorta/*slices_to_segment.csv')
+results = pd.DataFrame()
+results = pd.concat([pd.read_csv(csv) for csv in csvs])
 
+# %%
+results_no_dup = results.drop_duplicates()
+results.to_csv('/home/pdiachil/projects/aorta/all_slices_to_segment_20220324.csv', index=False)
+results_no_dup.to_csv('/home/pdiachil/projects/aorta/all_slices_to_segment_cleaned_20220324.csv', index=False)
+
+# %%
+results_no_dup[['patient_instance', 'dicom_name', 'n_regions_for_extremes']].to_csv('/home/pdiachil/projects/aorta/all_slices_to_segment_cleaned_dicomnames_20220324.csv', index=False)
+
+# %%
+len(set(results_no_dup['patient_instance']))
+
+# %%
+arr = results_no_dup[results_no_dup['n_regions_for_extremes']==2].groupby('patient_instance').count()
+
+# %%
+import pandas as pd
+
+results = pd.read_csv('/home/pdiachil/projects/aorta/all_slices_to_segment_cleaned_dicomnames_20220324.csv')
+# %%
+results.describe()
+
+# %%
+tmp = results.groupby('patient_instance').head(1).sample(100)
+
+# %%
+tmp.to_csv('/home/pdiachil/projects/aorta/sample_100_forslicer.csv', index=False)
+
+
+# %%
 # # %%
 # patients = pd.read_csv('/home/pdiachil/projects/aorta/aortas_predicted.csv', names=['predicted'])
 # patient_list = [p['predicted'].split('__')[0].split('/')[-1] for i, p in patients.iterrows() if p['predicted'].endswith('.bin')]

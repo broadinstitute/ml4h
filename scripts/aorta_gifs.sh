@@ -16,8 +16,8 @@ cnt2=$((VMTAG*STEP+STEP))
 # cnt1=$1
 # cnt2=$2
 /home/pdiachil/ml/scripts/tf.sh -c \
-"python /home/pdiachil/ml/notebooks/mri/aorta_cl.py $cnt1 $cnt2"
+"python /home/pdiachil/ml/notebooks/mri/aorta_get_iliacs.py $cnt1 $cnt2"
 
 cd /home/pdiachil/projects/aorta
-/snap/bin/gsutil cp *.stl gs://ml4cvd/pdiachil/aorta_for_marcus/aorta_stls_46k/
+/snap/bin/gsutil cp *.gif gs://ml4cvd/pdiachil/aorta_for_marcus/aorta_gifs_46k/
 yes | /snap/bin/gcloud compute instances delete $(hostname) --zone ${gcp_zone}
