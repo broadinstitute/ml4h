@@ -628,6 +628,7 @@ def ecg_median_biosppy(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> 
     tensor = np.zeros(tm.shape, dtype=np.float32)
     for lead in tm.channel_map:
         tensor[:, tm.channel_map[lead]] = hd5[f'{tm.path_prefix}{lead}']
+    tensor = np.nan_to_num(tensor)
     return tensor
 
 
