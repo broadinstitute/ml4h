@@ -632,12 +632,12 @@ def ecg_median_biosppy(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> 
 
 
 ecg_biosppy_median = TensorMap(
-    'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy(),
+    'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
 ecg_biosppy_median_60bpm = TensorMap(
-    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy(),
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
