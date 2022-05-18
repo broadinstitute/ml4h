@@ -632,7 +632,7 @@ def ecg_median_biosppy(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
                 data = tm.hd5_first_dataset_in_group(
                     hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
                 )
-                ecg_10s[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
+                ecg_10s[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((ecg_10s_shape[0],), data)
         return make_biosspy_median(ecg_10s, tm.channel_map, median_size=tm.shape[0], bpm=bpm)
     return _ecg_median_tensor_from_file
 
