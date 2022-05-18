@@ -624,7 +624,25 @@ def make_biosspy_median(example, channel_map, median_size = 600, bpm = 0):
     return medians
 
 
-def ecg_median_biosppy(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
+def ecg_median_biosppy(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    for lead in tm.channel_map:
+        tensor[:, tm.channel_map[lead]] = hd5[f'{tm.path_prefix}{lead}']
+    return tensor
+
+
+ecg_biosppy_median = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy(),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
+ecg_biosppy_median_60bpm = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy(),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
+
+def ecg_median_biosppy_on_the_fly(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
     def _ecg_median_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
         ecg_10s = np.zeros(ecg_10s_shape, dtype=np.float32)
         for k in hd5[tm.path_prefix]:
@@ -637,12 +655,12 @@ def ecg_median_biosppy(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
     return _ecg_median_tensor_from_file
 
 
-ecg_biosppy_median = TensorMap(
-    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy(),
+ecg_biosppy_median_otf = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy_on_the_fly(),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
-ecg_biosppy_median_60bpm = TensorMap(
-    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy(bpm=60),
+ecg_biosppy_median_60bpm_otf = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy_on_the_fly(bpm=60),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
