@@ -2,6 +2,8 @@ import h5py
 import numpy as np
 import scipy
 import logging
+
+import biosppy
 from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
 # from ml4h.tensor_writer_ukbb import tensor_path
@@ -121,7 +123,6 @@ def _warp_ecg(ecg):
     for j in range(ecg.shape[1]):
         warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
     return warped_ecg
-
 
 
 def _make_ecg_rest(
@@ -437,6 +438,7 @@ ecg_rest_raw_10 = TensorMap(
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=10),
 )
 
+
 ecg_rest = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
@@ -589,11 +591,69 @@ ecg_rest_median_raw_10_prediction = TensorMap(
 )
 
 
+def stretch_ecg(x, n=0):
+    """
+    stretches input ECG to n bpm
+    """
+    out = biosppy.signals.ecg.ecg(x.copy(), sampling_rate=500, show=False)
+    hr = out[-1].mean()
+    t = np.arange(len(x))
+    if n == 0:
+        tp = np.arange(len(x))
+    else:
+        tp = np.arange(len(x)) * n / hr
+    stretched = np.interp(tp, t, x)
+    out2 = biosppy.signals.ecg.ecg(stretched, show=False)
+    return stretched, out2[2]
+
+
+def make_biosspy_median(example, channel_map, median_size = 600, bpm = 0):
+    medians = np.zeros((median_size, len(channel_map)))
+    for lead in channel_map:
+        waves = []
+
+        stretched, peaks = stretch_ecg(example[:,channel_map[lead]], bpm)
+
+        for j, p0 in enumerate(peaks[:-2]):
+            p11 = peaks[j+1]
+            middle = (p0+p11)//2
+            waves.append(stretched[middle:middle+median_size])
+        waves = np.array(waves)
+        medians[:, channel_map[lead]] = np.median(waves, axis=0)
+
+    return medians
+
+
+def ecg_median_biosppy(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
+    def _ecg_median_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+        ecg_10s = np.zeros(ecg_10s_shape, dtype=np.float32)
+        for k in hd5[tm.path_prefix]:
+            if k in tm.channel_map:
+                data = tm.hd5_first_dataset_in_group(
+                    hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
+                )
+                ecg_10s[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
+        return make_biosspy_median(ecg_10s, tm.channel_map, median_size=tm.shape[0], bpm=bpm)
+    return _ecg_median_tensor_from_file
+
+
+ecg_biosppy_median = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy(),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_biosppy_median_60bpm = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy(bpm=60),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
+
 def ecg_prediction_lead_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ecg = np.array(hd5['ecg_rest_median_raw_10_prediction'], dtype=np.float32)
     tensor = np.zeros(tm.shape, dtype=np.float32)
     tensor[:, 0] = ecg[:, 0]
     return tensor
+
+
 ecg_rest_median_raw_10_prediction_lead_I = TensorMap(
     'ecg_rest_median_raw_10_lead_I', Interpretation.CONTINUOUS, shape=(600, 1), loss='logcosh', activation='linear',
     tensor_from_file=ecg_prediction_lead_from_hd5, metrics=['mse', 'mae'], channel_map={'median_I': 0},
