@@ -642,6 +642,16 @@ ecg_biosppy_median_60bpm = TensorMap(
     channel_map=ECG_REST_LEADS,
 )
 
+ecg_biosppy_median_mgb = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map=ECG_REST_AMP_LEADS,
+)
+
+ecg_biosppy_median_60bpm_mgb = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map=ECG_REST_AMP_LEADS,
+)
+
 
 def ecg_median_biosppy_on_the_fly(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
     def _ecg_median_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
