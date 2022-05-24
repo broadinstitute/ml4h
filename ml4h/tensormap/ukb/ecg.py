@@ -642,6 +642,11 @@ ecg_biosppy_median_60bpm = TensorMap(
     channel_map=ECG_REST_LEADS,
 )
 
+ecg_biosppy_median_60bpm_lead_I = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map={'strip_I': 0},
+)
+
 ecg_biosppy_median_mgb = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
     channel_map=ECG_REST_AMP_LEADS,
@@ -650,6 +655,10 @@ ecg_biosppy_median_mgb = TensorMap(
 ecg_biosppy_median_60bpm_mgb = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
     channel_map=ECG_REST_AMP_LEADS,
+)
+ecg_biosppy_median_60bpm_mgb_lead_I = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map={'I': 0},
 )
 
 
