@@ -15,8 +15,8 @@ pytest
 pysam
 #tensorflow==2.5.2
 tensorflow==2.5.0
-tensorflow-addons
-tensorflow_probability
+tensorflow-addons==0.13.0
+tensorflow_probability==0.13.0-rc0
 tensorflow_hub
 keras-tuner
 numcodecs
