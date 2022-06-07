@@ -293,7 +293,7 @@ def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
 t1_slice_80 = TensorMap(
     'axial_80',
     shape=(216, 256, 1),
-    path_prefix='ukb_brain_mri/T1/',
+    path_prefix='ukb_brain_mri/T1_brain/',
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
