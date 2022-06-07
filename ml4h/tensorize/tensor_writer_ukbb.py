@@ -42,7 +42,6 @@ from ml4h.defines import StorageType, IMAGE_EXT, TENSOR_EXT, DICOM_EXT, JOIN_CHA
 from ml4h.defines import MRI_PIXEL_WIDTH, MRI_PIXEL_HEIGHT, MRI_SLICE_THICKNESS, MRI_PATIENT_ORIENTATION, MRI_PATIENT_POSITION
 
 
-
 MRI_MIN_RADIUS = 2
 MRI_MAX_MYOCARDIUM = 20
 MRI_BIG_RADIUS_FACTOR = 0.9
@@ -906,7 +905,8 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
         if MRI_NIFTI_FIELD_ID_TO_ROOT[field_id] == 'SWI' and nifti_array.shape[-1] == MRI_SWI_SLICES_TO_AXIS_SHIFT and nifti_array.shape[0] > nifti_array.shape[1]:
             nifti_array = np.moveaxis(nifti_array, 0, 1)
             stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
-        create_tensor_in_hd5(hd5=hd5, path_prefix='ukb_brain_mri', name=nii_name, value=nifti_array, stats=stats)
+        for i in range(nifti_array.shape[-1]):
+            create_tensor_in_hd5(hd5=hd5, path_prefix=f'ukb_brain_mri/{nii_name}', name=f'axial_{i}', value=nifti_array[..., i], stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:
