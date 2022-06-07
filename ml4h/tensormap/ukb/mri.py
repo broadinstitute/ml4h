@@ -290,10 +290,18 @@ def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
     return tm.zero_mean_std1(tensor)
 
 
-t1_firstseg_slice_143 = TensorMap(
+t1_slice_143 = TensorMap(
+    't1_axial_143',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
+
+t1_seg_slice_143 = TensorMap(
     'axial_143',
     shape=(216, 256, 1),
-    path_prefix='ukb_brain_mri/T1_first_all_fast_firstseg/',
+    path_prefix='ukb_brain_mri/T1_fast_T1_brain_seg/',
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
