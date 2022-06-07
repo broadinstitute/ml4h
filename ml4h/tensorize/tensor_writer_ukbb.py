@@ -907,7 +907,7 @@ def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats
             nifti_array = np.moveaxis(nifti_array, 0, 1)
             stats[f'{nii_name} shape post SWI shift:{nifti_array.shape}'] += 1
         for i in range(nifti_array.shape[-1]):
-            create_tensor_in_hd5(hd5=hd5, path_prefix=f'ukb_brain_mri/{nii_name}', name=f'axial_{i}', value=nifti_array[..., -1], stats=stats)
+            create_tensor_in_hd5(hd5=hd5, path_prefix=f'ukb_brain_mri/{nii_name}', name=f'axial_{i}', value=nifti_array[..., i], stats=stats)
 
 
 def _xml_path_to_float(root: et, path: str) -> float:
