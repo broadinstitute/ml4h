@@ -323,7 +323,7 @@ t1_seg_slice_80 = TensorMap(
     'axial_80',
     interpretation=Interpretation.CATEGORICAL,
     shape=(216, 256, len(brain_channel_map)),
-    path_prefix='ukb_brain_mri/T1_fast_T1_brain_seg/',
+    path_prefix='ukb_brain_mri/T1_first_all_fast_firstseg/',
     channel_map=brain_channel_map,
     tensor_from_file=_segmented_brain_tensor_from_file,
 )
