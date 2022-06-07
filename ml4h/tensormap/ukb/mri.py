@@ -322,7 +322,7 @@ brain_channel_map = {'Background': 0, 'Left_Thalamus_Proper': 1, 'Left_Caudate':
 t1_seg_slice_80 = TensorMap(
     'axial_80',
     interpretation=Interpretation.CATEGORICAL,
-    shape=(216, 256, 15),
+    shape=(216, 256, len(brain_channel_map)),
     path_prefix='ukb_brain_mri/T1_fast_T1_brain_seg/',
     channel_map=brain_channel_map,
     tensor_from_file=_segmented_brain_tensor_from_file,
