@@ -313,7 +313,7 @@ def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
 t1_seg_slice_80 = TensorMap(
     'axial_80',
     interpretation=Interpretation.CATEGORICAL,
-    shape=(216, 256, 1),
+    shape=(216, 256, 15),
     path_prefix='ukb_brain_mri/T1_fast_T1_brain_seg/',
     channel_map={f'brain_{i}': i for i in range(15)},
     tensor_from_file=_segmented_brain_tensor_from_file,
