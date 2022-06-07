@@ -293,16 +293,30 @@ def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
 t1_slice_80 = TensorMap(
     'axial_80',
     shape=(216, 256, 1),
-    path_prefix='ukb_brain_mri/T1_brain/',
+    path_prefix='ukb_brain_mri/T1/',
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
 
-t1_seg_slice_143 = TensorMap(
-    'axial_143',
+
+def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    if tm.axes() == 3:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+        categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+        tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+    else:
+        raise ValueError(f'No method to get segmented slices for TensorMap: {tm}')
+    return tensor
+
+
+t1_seg_slice_80 = TensorMap(
+    'axial_80',
+    interpretation=Interpretation.CATEGORICAL,
     shape=(216, 256, 1),
     path_prefix='ukb_brain_mri/T1_fast_T1_brain_seg/',
-    tensor_from_file=normalized_first_date,
+    channel_map={f'brain_{i}': i for i in range(15)},
+    tensor_from_file=_segmented_brain_tensor_from_file,
     normalization=ZeroMeanStd1(),
 )
 
