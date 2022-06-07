@@ -326,7 +326,6 @@ t1_seg_slice_80 = TensorMap(
     path_prefix='ukb_brain_mri/T1_fast_T1_brain_seg/',
     channel_map=brain_channel_map,
     tensor_from_file=_segmented_brain_tensor_from_file,
-    normalization=ZeroMeanStd1(),
 )
 
 t2_flair_sag_p2_1mm_fs_ellip_pf78_1 = TensorMap(
