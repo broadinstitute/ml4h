@@ -313,6 +313,22 @@ t1_slice_160 = TensorMap(
 )
 
 
+def random_slice(tm: TensorMap, hd5: h5py.File, dependents=None):
+    rand_int = np.random.randint(204)
+    tensor = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}{rand_int}')
+    return pad_or_crop_array_to_shape(tm.shape, tensor)
+
+
+t1_slice_random = TensorMap(
+    'axial_',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=random_slice,
+    normalization=ZeroMeanStd1(),
+)
+
+
+
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
     num2idx = {0: 0, 10: 1, 11: 2, 12: 3, 13: 4, 16: 5, 17: 6, 18: 7, 26: 8, 49: 9, 50: 10, 51: 11, 52: 12, 53: 13, 54: 14, 58: 15}
