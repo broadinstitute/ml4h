@@ -297,6 +297,13 @@ t1_slice_80 = TensorMap(
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
+t1_slice_160 = TensorMap(
+    'axial_160',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
 
 
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
