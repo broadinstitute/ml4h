@@ -361,6 +361,7 @@ t1_seg_slice_80 = TensorMap(
     shape=(216, 256, len(brain_channel_map)),
     path_prefix='ukb_brain_mri/T1_first_all_fast_firstseg/',
     channel_map=brain_channel_map,
+    loss=weighted_crossentropy([0.1]+[10.0]*15),
     tensor_from_file=_segmented_brain_tensor_from_file,
 )
 
