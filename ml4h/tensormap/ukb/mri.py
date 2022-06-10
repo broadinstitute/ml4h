@@ -297,6 +297,13 @@ t1_slice_80 = TensorMap(
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
+t1_slice_85 = TensorMap(
+    'axial_85',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
 t1_slice_120 = TensorMap(
     'axial_120',
     shape=(216, 256, 1),
@@ -328,7 +335,6 @@ t1_slice_random = TensorMap(
 )
 
 
-
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
     num2idx = {0: 0, 10: 1, 11: 2, 12: 3, 13: 4, 16: 5, 17: 6, 18: 7, 26: 8, 49: 9, 50: 10, 51: 11, 52: 12, 53: 13, 54: 14, 58: 15}
@@ -351,6 +357,15 @@ brain_channel_map = {'Background': 0, 'Left_Thalamus_Proper': 1, 'Left_Caudate':
 
 t1_seg_slice_80 = TensorMap(
     'axial_80',
+    interpretation=Interpretation.CATEGORICAL,
+    shape=(216, 256, len(brain_channel_map)),
+    path_prefix='ukb_brain_mri/T1_first_all_fast_firstseg/',
+    channel_map=brain_channel_map,
+    tensor_from_file=_segmented_brain_tensor_from_file,
+)
+
+t1_seg_slice_85 = TensorMap(
+    'axial_85',
     interpretation=Interpretation.CATEGORICAL,
     shape=(216, 256, len(brain_channel_map)),
     path_prefix='ukb_brain_mri/T1_first_all_fast_firstseg/',
