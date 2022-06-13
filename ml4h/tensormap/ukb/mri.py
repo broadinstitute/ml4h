@@ -405,7 +405,20 @@ t1_slice_80_hippocampus = TensorMap(
     tensor_from_file=_brain_label_masked(hippocampus_channel_map),
     normalization=ZeroMeanStd1(),
 )
-
+t1_slice_80_putamen = TensorMap(
+    'axial_80',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_label_masked({'Left_Putamen': 3, 'Right_Putamen': 11}),
+    normalization=ZeroMeanStd1(),
+)
+t1_slice_80_brainstem = TensorMap(
+    'axial_80',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_label_masked({'Brain_Stem': 5}),
+    normalization=ZeroMeanStd1(),
+)
 t2_flair_sag_p2_1mm_fs_ellip_pf78_1 = TensorMap(
     't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
     shape=(256, 256, 192),
