@@ -412,8 +412,8 @@ t1_slice_92_putamen = TensorMap(
     tensor_from_file=_brain_label_masked({'Left_Putamen': 3, 'Right_Putamen': 11}),
     normalization=ZeroMeanStd1(),
 )
-t1_slice_80_brainstem = TensorMap(
-    'axial_80',
+t1_slice_63_brainstem = TensorMap(
+    'axial_63',
     shape=(216, 256, 1),
     path_prefix='ukb_brain_mri/T1/',
     tensor_from_file=_brain_label_masked({'Brain_Stem': 5}),
