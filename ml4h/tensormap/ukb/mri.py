@@ -374,6 +374,38 @@ t1_seg_slice_85 = TensorMap(
     tensor_from_file=_segmented_brain_tensor_from_file,
 )
 
+
+def _brain_label_masked(labels, segmentation_key='ukb_brain_mri/T1_first_all_fast_firstseg/'):
+    def _masked_brain_tensor(tm, hd5, dependents={}):
+        # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
+        num2idx = {0: 0, 10: 1, 11: 2, 12: 3, 13: 4, 16: 5, 17: 6, 18: 7, 26: 8, 49: 9, 50: 10, 51: 11, 52: 12, 53: 13, 54: 14, 58: 15}
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        if tm.axes() == 3:
+            mri = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+            categorical_index_slice = get_tensor_at_first_date(hd5, segmentation_key, tm.name)
+            index_remap = np.zeros_like(categorical_index_slice)
+            for key in num2idx:
+                index_remap[categorical_index_slice == key] = num2idx[key]
+
+            label_mask = np.isin(categorical_index_slice, list(labels.values()))
+            mri = label_mask * mri
+            tensor = pad_or_crop_array_to_shape(tensor.shape, mri)
+        else:
+            raise ValueError(f'No method to get segmented slices for TensorMap: {tm}')
+        return tensor
+    return _masked_brain_tensor
+
+
+hippocampus_channel_map = {'Left_Hippocampus': 6, 'Right_Hippocampus': 13}
+
+t1_slice_80_hippocampus = TensorMap(
+    'axial_80',
+    shape=(216, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_label_masked(hippocampus_channel_map),
+    normalization=ZeroMeanStd1(),
+)
+
 t2_flair_sag_p2_1mm_fs_ellip_pf78_1 = TensorMap(
     't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
     shape=(256, 256, 192),
