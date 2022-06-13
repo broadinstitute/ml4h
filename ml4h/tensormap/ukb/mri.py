@@ -387,7 +387,7 @@ def _brain_label_masked(labels, segmentation_key='ukb_brain_mri/T1_first_all_fas
             for key in num2idx:
                 index_remap[categorical_index_slice == key] = num2idx[key]
 
-            label_mask = np.isin(categorical_index_slice, list(labels.values()))
+            label_mask = np.isin(index_remap, list(labels.values()))
             mri = label_mask * mri
             tensor = pad_or_crop_array_to_shape(tensor.shape, mri)
         else:
