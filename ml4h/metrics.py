@@ -168,6 +168,10 @@ def pearson(y_true, y_pred):
     return pearson_correlation
 
 
+def abs_pearson(y_true, y_pred):
+    return tf.math.abs(pearson(y_true, y_pred))
+
+
 def _make_riskset(follow_up_times):
     # sort in descending order
     follow_up_times_np = tf.make_ndarray(tf.make_tensor_proto(follow_up_times))
