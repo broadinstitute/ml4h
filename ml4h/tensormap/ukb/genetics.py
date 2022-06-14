@@ -1,5 +1,6 @@
 import numpy as np
 
+import tensorflow as tf
 from tensorflow.keras.losses import mean_squared_error
 
 from ml4h.TensorMap import TensorMap, Interpretation
@@ -276,7 +277,7 @@ negative_genetic_pca_1 = TensorMap(
 
 
 def abs_pearson(y_true, y_pred):
-    return np.abs(pearson(y_true, y_pred))
+    return tf.math.abs(pearson(y_true, y_pred))
 
 
 pearson_loss_genetic_pca_1 = TensorMap(
