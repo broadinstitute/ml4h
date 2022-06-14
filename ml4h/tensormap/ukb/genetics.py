@@ -1,6 +1,6 @@
 import numpy as np
 
-from tensorflow.keras.losses mean_squared_error
+from tensorflow.keras.losses import mean_squared_error
 
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.defines import StorageType
