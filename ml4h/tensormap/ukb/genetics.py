@@ -267,7 +267,7 @@ genetic_caucasian_weighted = TensorMap(
 def negative_mean_squared_error(y_true, y_pred):
     return -1*mean_squared_error(y_true, y_pred)
 
-genetic_pca_1 = TensorMap(
+negative_genetic_pca_1 = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
     loss=negative_mean_squared_error, activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
