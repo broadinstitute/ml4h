@@ -2,7 +2,7 @@ from tensorflow.keras.losses import mean_squared_error
 
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.defines import StorageType
-from ml4h.metrics import weighted_crossentropy, abs_pearson
+from ml4h.metrics import weighted_crossentropy, abs_pearson, pearson
 
 
 diploid_cm = {'homozygous_reference': 0, 'heterozygous': 1, 'homozygous_variant': 2}
@@ -274,7 +274,7 @@ negative_genetic_pca_1 = TensorMap(
 
 pearson_loss_genetic_pca_1 = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0},
+    loss=abs_pearson, metrics=['mse', 'mae', 'logcosh', abs_pearson, pearson] channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
 
 
