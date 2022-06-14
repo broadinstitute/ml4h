@@ -274,7 +274,7 @@ negative_genetic_pca_1 = TensorMap(
 
 pearson_loss_genetic_pca_1 = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=['mse', 'mae', 'logcosh', abs_pearson, pearson] channel_map={'22009_Genetic-principal-components_0_1': 0},
+    loss=abs_pearson, metrics=['mse', 'mae', 'logcosh', abs_pearson, pearson], channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
 
 
