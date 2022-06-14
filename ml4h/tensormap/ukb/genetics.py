@@ -274,9 +274,14 @@ negative_genetic_pca_1 = TensorMap(
     loss=negative_mean_squared_error, activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
 
+
+def abs_pearson(y_true, y_pred):
+    return np.abs(pearson(y_true, y_pred))
+
+
 pearson_loss_genetic_pca_1 = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=pearson, activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0},
+    loss=abs_pearson, activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
 
 
