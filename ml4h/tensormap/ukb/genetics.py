@@ -1,4 +1,7 @@
 import numpy as np
+
+from tensorflow.keras.losses mean_squared_error
+
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.defines import StorageType
 from ml4h.metrics import weighted_crossentropy
@@ -260,3 +263,13 @@ genetic_caucasian_weighted = TensorMap(
     'Genetic-ethnic-grouping_Caucasian_0_0', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
     channel_map={'no_caucasian': 0, 'Genetic-ethnic-grouping_Caucasian_0_0': 1}, loss=weighted_crossentropy([10.0, 1.0], 'caucasian_loss'),
 )
+
+def negative_mean_squared_error(y_true, y_pred):
+    return -1*mean_squared_error(y_true, y_pred)
+
+genetic_pca_1 = TensorMap(
+    '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
+    loss=negative_mean_squared_error, activation='linear', channel_map={'22009_Genetic-principal-components_0_1': 0},
+)
+
+
