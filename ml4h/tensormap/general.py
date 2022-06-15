@@ -103,7 +103,6 @@ def build_tensor_from_file(
     file_name: str,
     target_column: str,
     normalization: bool = False,
-    delimiter: str = '\t',
 ):
     """
     Build a tensor_from_file function from a column in a file.
@@ -113,6 +112,8 @@ def build_tensor_from_file(
     error = None
     try:
         with open(file_name, 'r') as f:
+            ext = file_name.split('.')[1]
+            delimiter = ',' if ext == 'csv' else '\t'
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
             index = header.index(target_column)
