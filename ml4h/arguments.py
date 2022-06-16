@@ -89,6 +89,7 @@ def parse_args():
 
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
+    parser.add_argument('--continuous_file_columns', nargs='*', default=[], help='Column headers in file from which continuous TensorMap(s) will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
         '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
@@ -474,16 +475,17 @@ def _process_args(args):
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
-        # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
-        args.tensor_maps_out.append(
-            generate_continuous_tensor_map_from_file(
-                args.continuous_file,
-                args.continuous_file_column,
-                args.output_tensors.pop(0),
-                args.continuous_file_normalize,
-                args.continuous_file_discretization_bounds,
-            ),
-        )
+        # Continuous TensorMap(s) generated from file is given the name specified by the first output_tensors argument
+        for column in args.continuous_file_column:
+            args.tensor_maps_out.append(
+                generate_continuous_tensor_map_from_file(
+                    args.continuous_file,
+                    column,
+                    args.output_tensors.pop(0),
+                    args.continuous_file_normalize,
+                    args.continuous_file_discretization_bounds,
+                ),
+            )
 
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
