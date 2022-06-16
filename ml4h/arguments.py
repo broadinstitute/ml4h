@@ -476,7 +476,7 @@ def _process_args(args):
 
     if args.continuous_file is not None:
         # Continuous TensorMap(s) generated from file is given the name specified by the first output_tensors argument
-        for column in args.continuous_file_column:
+        for column in args.continuous_file_columns:
             args.tensor_maps_out.append(
                 generate_continuous_tensor_map_from_file(
                     args.continuous_file,
