@@ -273,43 +273,162 @@ negative_genetic_pca_1 = TensorMap(
 )
 
 pearson_loss_genetic_pca_1 = TensorMap(
-    '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_1': 0},
-)
+        '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_1': 0},
+    )
 pearson_loss_genetic_pca_2 = TensorMap(
-    '22009_Genetic-principal-components_0_2', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_2': 0},
-)
+        '22009_Genetic-principal-components_0_2', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_2': 0},
+    )
 pearson_loss_genetic_pca_3 = TensorMap(
-    '22009_Genetic-principal-components_0_3', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_3': 0},
-)
+        '22009_Genetic-principal-components_0_3', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_3': 0},
+    )
 pearson_loss_genetic_pca_4 = TensorMap(
-    '22009_Genetic-principal-components_0_4', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_4': 0},
-)
+        '22009_Genetic-principal-components_0_4', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_4': 0},
+    )
 pearson_loss_genetic_pca_5 = TensorMap(
-    '22009_Genetic-principal-components_0_5', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_5': 0},
-)
+        '22009_Genetic-principal-components_0_5', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_5': 0},
+    )
 pearson_loss_genetic_pca_6 = TensorMap(
-    '22009_Genetic-principal-components_0_6', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_6': 0},
-)
+        '22009_Genetic-principal-components_0_6', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_6': 0},
+    )
 pearson_loss_genetic_pca_7 = TensorMap(
-    '22009_Genetic-principal-components_0_7', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_7': 0},
-)
+        '22009_Genetic-principal-components_0_7', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_7': 0},
+    )
 pearson_loss_genetic_pca_8 = TensorMap(
-    '22009_Genetic-principal-components_0_8', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_8': 0},
-)
+        '22009_Genetic-principal-components_0_8', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_8': 0},
+    )
 pearson_loss_genetic_pca_9 = TensorMap(
-    '22009_Genetic-principal-components_0_9', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_9': 0},
-)
+        '22009_Genetic-principal-components_0_9', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_9': 0},
+    )
 pearson_loss_genetic_pca_10 = TensorMap(
-    '22009_Genetic-principal-components_0_10', Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_10': 0},
-)
-
+        '22009_Genetic-principal-components_0_10', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_10': 0},
+    )
+pearson_loss_genetic_pca_11 = TensorMap(
+        '22009_Genetic-principal-components_0_11', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_11': 0},
+    )
+pearson_loss_genetic_pca_12 = TensorMap(
+        '22009_Genetic-principal-components_0_12', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_12': 0},
+    )
+pearson_loss_genetic_pca_13 = TensorMap(
+        '22009_Genetic-principal-components_0_13', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_13': 0},
+    )
+pearson_loss_genetic_pca_14 = TensorMap(
+        '22009_Genetic-principal-components_0_14', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_14': 0},
+    )
+pearson_loss_genetic_pca_15 = TensorMap(
+        '22009_Genetic-principal-components_0_15', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_15': 0},
+    )
+pearson_loss_genetic_pca_16 = TensorMap(
+        '22009_Genetic-principal-components_0_16', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_16': 0},
+    )
+pearson_loss_genetic_pca_17 = TensorMap(
+        '22009_Genetic-principal-components_0_17', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_17': 0},
+    )
+pearson_loss_genetic_pca_18 = TensorMap(
+        '22009_Genetic-principal-components_0_18', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_18': 0},
+    )
+pearson_loss_genetic_pca_19 = TensorMap(
+        '22009_Genetic-principal-components_0_19', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_19': 0},
+    )
+pearson_loss_genetic_pca_20 = TensorMap(
+        '22009_Genetic-principal-components_0_20', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_20': 0},
+    )
+pearson_loss_genetic_pca_21 = TensorMap(
+        '22009_Genetic-principal-components_0_21', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_21': 0},
+    )
+pearson_loss_genetic_pca_22 = TensorMap(
+        '22009_Genetic-principal-components_0_22', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_22': 0},
+    )
+pearson_loss_genetic_pca_23 = TensorMap(
+        '22009_Genetic-principal-components_0_23', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_23': 0},
+    )
+pearson_loss_genetic_pca_24 = TensorMap(
+        '22009_Genetic-principal-components_0_24', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_24': 0},
+    )
+pearson_loss_genetic_pca_25 = TensorMap(
+        '22009_Genetic-principal-components_0_25', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_25': 0},
+    )
+pearson_loss_genetic_pca_26 = TensorMap(
+        '22009_Genetic-principal-components_0_26', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_26': 0},
+    )
+pearson_loss_genetic_pca_27 = TensorMap(
+        '22009_Genetic-principal-components_0_27', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_27': 0},
+    )
+pearson_loss_genetic_pca_28 = TensorMap(
+        '22009_Genetic-principal-components_0_28', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_28': 0},
+    )
+pearson_loss_genetic_pca_29 = TensorMap(
+        '22009_Genetic-principal-components_0_29', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_29': 0},
+    )
+pearson_loss_genetic_pca_30 = TensorMap(
+        '22009_Genetic-principal-components_0_30', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_30': 0},
+    )
+pearson_loss_genetic_pca_31 = TensorMap(
+        '22009_Genetic-principal-components_0_31', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_31': 0},
+    )
+pearson_loss_genetic_pca_32 = TensorMap(
+        '22009_Genetic-principal-components_0_32', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_32': 0},
+    )
+pearson_loss_genetic_pca_33 = TensorMap(
+        '22009_Genetic-principal-components_0_33', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_33': 0},
+    )
+pearson_loss_genetic_pca_34 = TensorMap(
+        '22009_Genetic-principal-components_0_34', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_34': 0},
+    )
+pearson_loss_genetic_pca_35 = TensorMap(
+        '22009_Genetic-principal-components_0_35', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_35': 0},
+    )
+pearson_loss_genetic_pca_36 = TensorMap(
+        '22009_Genetic-principal-components_0_36', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_36': 0},
+    )
+pearson_loss_genetic_pca_37 = TensorMap(
+        '22009_Genetic-principal-components_0_37', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_37': 0},
+    )
+pearson_loss_genetic_pca_38 = TensorMap(
+        '22009_Genetic-principal-components_0_38', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_38': 0},
+    )
+pearson_loss_genetic_pca_39 = TensorMap(
+        '22009_Genetic-principal-components_0_39', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_39': 0},
+    )
+pearson_loss_genetic_pca_40 = TensorMap(
+        '22009_Genetic-principal-components_0_40', Interpretation.CONTINUOUS, path_prefix='continuous',
+        loss=abs_pearson, metrics=[pearson], channel_map={'22009_Genetic-principal-components_0_40': 0},
+    )
