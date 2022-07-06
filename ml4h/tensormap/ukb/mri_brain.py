@@ -71,6 +71,14 @@ t1_slices_68_100 = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
+t1_mni_slices_48_80 = TensorMap(
+    'axial_48_80',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+
 
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
