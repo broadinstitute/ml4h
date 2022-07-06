@@ -52,7 +52,7 @@ def _brain_volume_from_file(tm, hd5, dependents={}):
     end_slice = int(tm.name.split('_')[-1])
     for i in range(begin_slice, end_slice):
         slicer = get_tensor_at_first_date(hd5, tm.path_prefix, f'axial_{i}')
-        tensor[..., i] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
+        tensor[..., i-begin_slice] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
     return tensor
 
 
