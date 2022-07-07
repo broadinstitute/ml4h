@@ -22,10 +22,10 @@ from ml4ht.data.sample_getter import DataDescriptionSampleGetter
 # Tests
 def test_tensor_map_from_data_description():
     tmap_in = tensor_map_from_data_description(
-        DD1, Interpretation.CONTINUOUS, (1,),
+        DD1_INPUT, Interpretation.CONTINUOUS, (1,),
     )
     tmap_out = tensor_map_from_data_description(
-        DD2, Interpretation.CONTINUOUS, (1,),
+        DD2_OUTPUT, Interpretation.CONTINUOUS, (1,),
         loss='logcosh',
         metrics=['mae', 'mse'],
     )
@@ -154,16 +154,16 @@ class DictionaryDataDescription(DataDescription):
         return self.data[sample_id][dt]
 
 
-DD1 = DictionaryDataDescription(RAW_DATA, 1, 'dd1')
-DD2 = DictionaryDataDescription(RAW_DATA, 2, 'dd2')
+DD1_INPUT = DictionaryDataDescription(RAW_DATA, 1, 'input_dd1_continuous')
+DD2_OUTPUT = DictionaryDataDescription(RAW_DATA, 2, 'output_dd2_continuous')
 DATE_OPTION_PICKER = DateRangeOptionPicker(
-    reference_data_description=DD1,
+    reference_data_description=DD1_INPUT,
     reference_date_chooser=first_dt,
     time_before=timedelta(days=0),
     time_after=timedelta(days=5),
 )
 SAMPLE_GETTER = DataDescriptionSampleGetter(
-    input_data_descriptions=[DD1],
-    output_data_descriptions=[DD2],
+    input_data_descriptions=[DD1_INPUT],
+    output_data_descriptions=[DD2_OUTPUT],
     option_picker=DATE_OPTION_PICKER,
 )

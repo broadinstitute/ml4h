@@ -32,29 +32,27 @@ class TestRecipes:
 
     def test_infer(self, default_arguments):
         infer_multimodal_multitask(default_arguments)
-        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
+        tsv = _hidden_file_name(default_arguments.output_folder, default_arguments.hidden_layer, default_arguments.id, '.tsv')
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['sample_id'])) == pytest.N_TENSORS
 
     def test_infer_genetics(self, default_arguments):
         default_arguments.tsv_style = 'genetics'
         infer_multimodal_multitask(default_arguments)
-        default_arguments.tsv_style = 'standard'
-        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
+        tsv = _hidden_file_name(default_arguments.output_folder, default_arguments.hidden_layer, default_arguments.id, '.tsv')
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
 
     def test_infer_hidden(self, default_arguments):
         infer_hidden_layer_multimodal_multitask(default_arguments)
-        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
+        tsv = _hidden_file_name(default_arguments.output_folder, default_arguments.hidden_layer, default_arguments.id, '.tsv')
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['sample_id'])) == pytest.N_TENSORS
 
     def test_infer_hidden_genetics(self, default_arguments):
         default_arguments.tsv_style = 'genetics'
         infer_hidden_layer_multimodal_multitask(default_arguments)
-        default_arguments.tsv_style = 'standard'
-        tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
+        tsv = _hidden_file_name(default_arguments.output_folder, default_arguments.hidden_layer, default_arguments.id, '.tsv')
         inferred = pd.read_csv(tsv, sep='\t')
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
 
