@@ -1,4 +1,4 @@
-pydot==1.2.4
+pydot
 nibabel==2.5.0
 pydicom==1.2.2
 hyperopt==0.1.2
