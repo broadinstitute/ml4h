@@ -55,6 +55,7 @@ class TestRecipes:
     def test_explore(self, default_arguments, tmpdir_factory):
         temp_dir = tmpdir_factory.mktemp('explore_tensors2')
         default_arguments.tensors = str(temp_dir)
+        default_arguments.tsv_style = 'standard'
         tmaps = TMAPS_UP_TO_4D[:]
         tmaps.append(TensorMap(f'scalar', shape=(1,), interpretation=Interpretation.CONTINUOUS))
         explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS, keys_are_paths=False)
