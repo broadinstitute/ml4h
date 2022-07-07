@@ -57,6 +57,7 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
     legend = {}
     for n in dot.get_nodes():
         if n.get_label():
+            logging.info(f'Got label {n.get_label()} \nFull node n{n}\n\n')
             if 'Conv1' in n.get_label():
               #  legend['Conv1'] = "cyan"
                 n.set_fillcolor("cyan")
