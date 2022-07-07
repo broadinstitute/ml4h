@@ -2,7 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from ml4h.defines import EPS
-from tensorflow.python.keras.applications import imagenet_utils
+from tensorflow.keras.applications import imagenet_utils
 
 
 class Normalizer(ABC):
