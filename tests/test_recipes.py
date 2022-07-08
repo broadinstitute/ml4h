@@ -41,6 +41,7 @@ class TestRecipes:
         infer_multimodal_multitask(default_arguments)
         tsv = inference_file_name(default_arguments.output_folder, default_arguments.id)
         inferred = pd.read_csv(tsv, sep='\t')
+        default_arguments.tsv_style = 'standard'
         assert len(set(inferred['FID'])) == pytest.N_TENSORS
 
     def test_infer_hidden(self, default_arguments):
@@ -55,7 +56,6 @@ class TestRecipes:
     def test_explore(self, default_arguments, tmpdir_factory):
         temp_dir = tmpdir_factory.mktemp('explore_tensors2')
         default_arguments.tensors = str(temp_dir)
-        default_arguments.tsv_style = 'standard'
         tmaps = TMAPS_UP_TO_4D[:]
         tmaps.append(TensorMap(f'scalar', shape=(1,), interpretation=Interpretation.CONTINUOUS))
         explore_expected = build_hdf5s(temp_dir, tmaps, n=pytest.N_TENSORS, keys_are_paths=False)
