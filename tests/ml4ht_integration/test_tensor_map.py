@@ -22,10 +22,10 @@ from ml4ht.data.sample_getter import DataDescriptionSampleGetter
 # Tests
 def test_tensor_map_from_data_description():
     tmap_in = tensor_map_from_data_description(
-        DD1_INPUT, Interpretation.CONTINUOUS, (1,),
+        DD1_INPUT, Interpretation.CONTINUOUS, (1,), name='dd1',
     )
     tmap_out = tensor_map_from_data_description(
-        DD2_OUTPUT, Interpretation.CONTINUOUS, (1,),
+        DD2_OUTPUT, Interpretation.CONTINUOUS, (1,), name='dd2',
         loss='logcosh',
         metrics=['mae', 'mse'],
     )
