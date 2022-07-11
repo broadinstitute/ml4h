@@ -303,7 +303,7 @@ def infer_multimodal_multitask(args):
                 next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
-            prediction = model.predict(input_data)
+            prediction = model.predict(input_data, verbose=0)
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
             predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
@@ -402,7 +402,7 @@ def infer_hidden_layer_multimodal_multitask(args):
                 break
 
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-            prediction = embed_model.predict(input_data)
+            prediction = embed_model.predict(input_data, verbose=0)
             prediction = np.reshape(prediction, (latent_dimensions,))
             csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
             csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
@@ -512,7 +512,7 @@ def infer_encoders_block_multimodal_multitask(args):
                     break
 
                 sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-                prediction = encoders[e].predict(input_data)
+                prediction = encoders[e].predict(input_data, verbose=0)
                 prediction = np.reshape(prediction, (latent_dimensions,))
                 csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
                 csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
