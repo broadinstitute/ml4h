@@ -152,7 +152,7 @@ def evaluate_predictions(
     title: str,
     folder: str,
     test_paths: List[str] = None,
-    max_melt: int = 2500000,
+    max_melt: int = 10000000,
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
 ) -> Dict[str, float]:
@@ -427,7 +427,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     f, axes = plt.subplots(
         rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)),
     )
-    logging.info(f"all keys {list(sorted(history.history.keys()))}")
+
     for k in sorted(history.history.keys()):
         if not k.startswith("val_"):
             if isinstance(history.history[k][0], LearningRateSchedule):
@@ -460,6 +460,11 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
+    if 'loss' in history.history:
+        logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:   {history.history["loss"][-1]:0.4f}')
+    if 'val_loss' in history.history:
+        logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}, '
+                     f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}')
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
@@ -667,8 +672,22 @@ def plot_prediction_calibration(
     plt.savefig(figure_path)
 
 
+def _pearson_wrapper(prediction, truth):
+    return np.corrcoef(prediction.flatten(), truth.flatten())[1, 0]
+
+
+def bootstrap_confidence_interval(
+        prediction, truth, n_boot: int = 1000, bottom: float = 2.5, top: float = 97.5,
+        max_n: int = 1000000, metric_fxn: Callable = _pearson_wrapper,
+) -> Tuple[float, Tuple[float, float]]:
+    n = min(max_n, len(truth))
+    sample_idxs = np.random.randint(n, size=(n_boot, n_boot))
+    r2s = [metric_fxn(truth[idx], prediction[idx]) for idx in sample_idxs]
+    return np.mean(r2s), np.percentile(r2s, [bottom, top])
+
+
 def plot_scatter(
-    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
+    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, bootstrap=True,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE))
@@ -684,13 +703,17 @@ def plot_scatter(
         1, 0,
     ]  # corrcoef returns full covariance matrix
     big_r_squared = coefficient_of_determination(truth, prediction)
-    logging.info(
-        f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}",
-    )
+
+    if bootstrap:
+        pearson, ci = bootstrap_confidence_interval(prediction, truth)
+        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}, 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
+    else:
+        label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
+    logging.info(f"{label}")
     ax1.scatter(
         prediction,
         truth,
-        label=f"Pearson:{pearson:0.3f} r^2:{pearson*pearson:0.3f} R^2:{big_r_squared:0.3f}",
+        label=label,
         marker=".",
         alpha=alpha,
     )
@@ -1046,7 +1069,7 @@ def plot_survival(
     :return: Dictionary mapping metric names to their floating point values
     """
     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
-    logging.info(f"C-index:{c_index} concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
+
     intervals = truth.shape[-1] // 2
     plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE))
 
@@ -1055,22 +1078,19 @@ def plot_survival(
     alive_per_step = np.sum(truth[:, :intervals], axis=0)
     sick_per_step = np.sum(truth[:, intervals:], axis=0)
     survivorship = np.cumprod(1 - (sick_per_step / alive_per_step))
-    logging.debug(f"Sick per step is: {sick_per_step} out of {truth.shape[0]}")
-    logging.debug(f"Predicted sick per step is: {list(map(int, np.sum(1-prediction[:, :intervals], axis=0)))} out of {truth.shape[0]}")
-    logging.debug(f"Survivors at each step is: {alive_per_step} out of {truth.shape[0]}")
-    logging.debug(f"Cumulative Censored: {cumulative_censored} or {np.max(truth[:, :intervals]+truth[:, intervals:])}")
     predicted_proportion = np.sum(np.cumprod(prediction[:, :intervals], axis=1), axis=0) / truth.shape[0]
 
     plt.plot(range(0, days_window, 1 + days_window // intervals), predicted_proportion, marker='o', label=f'Predicted Proportion C-Index:{c_index:0.3f}')
     plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    plt.title(
-        f'{title} C-Index: {c_index:.4f}'
-        f'Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, '
-        f'Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years.',
-    )
+    full_title = f"""{title} C-Index: {c_index:.4f} 
+        Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, 
+        Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years."""
+    plt.title(full_title)
     plt.legend(loc="upper right")
+    logging.info(f"Concordant:{concordant} discordant:{discordant} tied_risk:{tied_risk} tied_time:{tied_time}")
+    logging.info(full_title)
 
     figure_path = os.path.join(prefix, f'survivorship_{title}_c_{c_index:.3f}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -3012,7 +3032,7 @@ def plot_reconstruction(
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(
-                tm.shape[1], 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
+                max(2,tm.shape[1]), 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
             )  # , sharey=True)
             for j in range(tm.shape[1]):
                 axes[j, 0].plot(y[:, j], c="k", label="original")
@@ -3038,7 +3058,7 @@ def plot_reconstruction(
                     cmap="plasma",
                 )
             else:
-                if y.shape[-1] == 0:
+                if y.shape[-1] not in [3, 4]:
                     plt.imsave(
                         f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}",
                         y[:, :, 0],

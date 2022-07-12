@@ -6,7 +6,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 from tensorflow.keras.losses import categorical_crossentropy
-from tensorflow.keras.layers import concatenate, Flatten, Average, Layer
+from tensorflow.keras.layers import concatenate, Flatten, Average, Layer, Lambda, Dense
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
@@ -138,11 +138,13 @@ class PairLossBlock(Block):
             pair_loss_weight: float = 1.0,
             pair_merge: str = 'dropout',
             batch_size: int = 4,
+            dense_layers: List[int] = [32],
             **kwargs,
     ):
         self.pairs = pairs
         self.pair_merge = pair_merge
         self.batch_size = batch_size
+        self.encoding_size = dense_layers[-1]
         if pair_loss == 'cosine':
             self.loss_layer = CosineLossLayer(pair_loss_weight)
         elif pair_loss == 'euclid':
@@ -151,7 +153,6 @@ class PairLossBlock(Block):
             self.loss_layer = ContrastiveLossLayer(pair_loss_weight, batch_size)
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
-
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
@@ -170,24 +171,23 @@ class PairLossBlock(Block):
             tf_g = tf.gather_nd(tf_y, indices)
             out = tf.transpose(tf_g)
             return out
+        elif self.pair_merge == 'kronecker':
+            krons = []
+            losses = []
+            for left, right in self.pairs:
+                eshape = tf.shape(intermediates[left][-1])
+                kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
+                y = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
+                kron = kron_layer(y)
+                krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
+            if len(self.pairs) > 1:
+                kron = concatenate(krons)
+            else:
+                kron = krons[0]
+            kron = Dense(self.encoding_size)(kron)
+            return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
-
-
-def contrastive_difference(left: tf.Tensor, right: tf.Tensor, batch_size: int, temperature: tf.Tensor):
-    left_normed = left / l2_norm(left, axis=-1)
-    right_normed = right / l2_norm(right, axis=-1)
-    logits_left = tf.linalg.matmul(left_normed, right_normed, transpose_b=True) * tf.math.exp(temperature)
-    logits_right = tf.linalg.matmul(right_normed, left_normed, transpose_b=True) * tf.math.exp(temperature)
-    prob_left = tf.keras.activations.softmax(logits_left, axis=-1)
-    prob_right = tf.keras.activations.softmax(logits_right, axis=-1)
-
-    # identity matrix (np.eye) matches left row modality with right column modality
-    labels = tf.convert_to_tensor(np.eye(batch_size), dtype=tf.float32)
-    loss_left = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_left, labels)
-    loss_right = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_right, labels)
-    loss = (loss_left + loss_right)/2
-    return loss / batch_size
 
 
 def l2_norm(x, axis=None):
@@ -285,23 +285,56 @@ class ContrastiveLossLayer(Layer):
         return inputs
 
 
-class ContrastiveLossLayer(Layer):
-    """Layer that creates a Contrastive between modalities"""
+class LinearTransform(tf.keras.layers.Layer):
+    """Layer that implements y=m*x+b, where m and b are
+    learnable parameters.
+    """
+    def __init__(
+        self,
+        gamma_initializer="ones",
+        beta_initializer="zeros",
+        dtype=None,
+        **kwargs
+    ):
+        super().__init__(dtype=dtype, **kwargs)
+        self.gamma_initializer = gamma_initializer
+        self.beta_initializer = beta_initializer
 
-    def __init__(self, weight, batch_size, **kwargs):
-        super(ContrastiveLossLayer, self).__init__(**kwargs)
-        self.weight = weight
-        self.batch_size = batch_size
-        self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({'weight': self.weight, 'batch_size': self.batch_size})
-        return config
+    def build(self, input_shape):
+        num_channels = int(input_shape[-1])
+        self.gamma = self.add_weight(
+            "gamma",
+            shape=[num_channels],
+            initializer=self.gamma_initializer,
+            dtype=self.dtype,
+        )
+        self.beta = self.add_weight(
+            "beta",
+            shape=[num_channels],
+            initializer=self.beta_initializer,
+            dtype=self.dtype,
+        )
 
     def call(self, inputs):
-        self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
-        return inputs
+        return self.gamma * inputs[0] + self.beta
+
+# class ContrastiveLossLayer(Layer):
+#     """Layer that creates a Contrastive between modalities"""
+#
+#     def __init__(self, weight, batch_size, **kwargs):
+#         super(ContrastiveLossLayer, self).__init__(**kwargs)
+#         self.weight = weight
+#         self.batch_size = batch_size
+#         self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
+#
+#     def get_config(self):
+#         config = super().get_config().copy()
+#         config.update({'weight': self.weight, 'batch_size': self.batch_size})
+#         return config
+#
+#     def call(self, inputs):
+#         self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
+#         return inputs
 
 
 class VariationalDiagNormal(Layer):
