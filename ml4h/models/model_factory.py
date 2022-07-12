@@ -10,10 +10,12 @@ from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
+from tensorflow_hub import KerasLayer
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
+from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
@@ -43,6 +45,8 @@ BLOCK_CLASSES = {
     'identity': EncodeIdentityBlock,
     'transformer_encoder': TransformerEncoder,
     'transformer_decoder': TransformerDecoder,
+    'resnet_encoder': ResNetEncoder,
+    'movinet_encoder': MoviNetEncoder,
 }
 
 
@@ -284,7 +288,8 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention],
+            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention,
+             KerasLayer],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}

@@ -9,15 +9,15 @@ from statsmodels.multivariate.manova import MANOVA
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge
 
 
-adjust_cols = [
-    'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', #'PC11',
-    #'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20',
-    # 'PC21', 'PC22', 'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30',
-    #   'PC31', 'PC32', 'PC33', 'PC34', 'PC35', 'PC36', 'PC37', 'PC38', 'PC39', 'PC40',
-     'gt_array_axiom', 'gt_batch', 'assessment_center', 'age', 'age_squared', 'sex',
-    #'21001_Body-mass-index-BMI_2_0',
+ADJUST = [
+    #'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10',
+    #'PC11', 'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20',
+    #'PC21', 'PC22', 'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30',
+    #'PC31', 'PC32', 'PC33', 'PC34', 'PC35', 'PC36', 'PC37', 'PC38', 'PC39', 'PC40',
+    #'gt_batch', 'assessment_center', 'age', 'sex',
+    #'bmi',
 ]
-
+TRAIN_RATIO_OLS=0.2
 
 def run():
     input_bcf = os.environ['INPUT_BCF']
@@ -29,10 +29,13 @@ def run():
 
     latent_prefix =  os.environ['LATENT_PREFIX']
     latent_total = os.environ['LATENT_TOTAL']
+    stat_model = os.environ['STAT_MODEL']
+
     latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
 
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv)
+    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, stat_model,
+                      adjust_cols=ADJUST, train_ratio_ols=0.1)
 
 
 def unit_vector(vector):
@@ -137,7 +140,8 @@ def manova_latent_space(stratify_column, latent_cols, latent_df):
     maov = MANOVA.from_formula(formula, data=latent_df)
     test = maov.mv_test()
     s = test[stratify_column]['stat']
-    return s['F Value'][0], s['Pr > F'][0], s['Value'][0], s['Value'][0]
+    # Return Pillai's trace the second of the listed stats
+    return s['Value'][1], s['Pr > F'][1], s['F Value'][1], s['Pr > F'][0]
 
 
 def merge_snp(latent_df, snp_vcf, snp_id):
@@ -179,7 +183,7 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
 
 def latent_space_gwas(
     input_bcf, chrom, start, stop, latent_df, latent_cols, output_file,
-    manova=True, optimize=False,
+    stat_model='manova', optimize=False, adjust_cols=[], train_ratio_ols=0.5,
 ):
     remap = [1, 0]
     gv_dict = defaultdict(list)
@@ -194,7 +198,7 @@ def latent_space_gwas(
                 continue
             sample_id = int(s.name.split("_")[0])
             sample2genos[sample_id] = remap[g[0]] + remap[g[1]]
-        if sum(sample2genos.values()) > 100:
+        if sum(sample2genos.values()) > 1000:
             snp_id = f"snp_{rec.id.replace(':', '_').replace('-', '_')}"
             data = {'sample_id': list(sample2genos.keys()), snp_id: list(sample2genos.values())}
             genos = pd.DataFrame.from_dict(data)
@@ -202,19 +206,33 @@ def latent_space_gwas(
             counts = new_df[snp_id].value_counts()
             if len(counts) != 3:
                 continue
-            if manova:
+            if stat_model == 'manova':
                 t_stat, p_value, coef, se = manova_latent_space(snp_id, latent_cols, new_df)
-            else:
+            elif stat_model == 'ols':
+                train = new_df.sample(frac=train_ratio_ols)
+                test = new_df.drop(train.index)
+                t1 = train[snp_id].value_counts()
+                t2 = test[snp_id].value_counts()
+                if len(t1) != 3 or len(t2) != 3:
+                    continue
                 if optimize:
-                    genotype_vector = optimize_genotype_vector(snp_id, new_df, latent_cols, verbose=True)
+                    genotype_vector = optimize_genotype_vector(snp_id, train, latent_cols, verbose=True)
                 else:
-                    genotype_vector, angle = get_genotype_vector_and_angle(snp_id, latent_cols, new_df)
-                space = new_df[latent_cols].to_numpy()
+                    genotype_vector, angle = get_genotype_vector_and_angle(snp_id, latent_cols, train)
+                test = test[[snp_id] + latent_cols + adjust_cols].dropna()
+                space = test[latent_cols].to_numpy()
                 all_dots = np.array([np.dot(genotype_vector, v) for v in space])
-                all_genotypes = new_df[snp_id].to_numpy()
+                all_genotypes = test[snp_id].to_numpy()
 
-                formula = f'y ~ genotypes'
+                if len(adjust_cols) > 0:
+                    all_adjustments = test[adjust_cols].to_numpy()
+                    formula = f'y ~ genotypes + {" + ".join(adjust_cols)}'
+                else:
+                    formula = f'y ~ genotypes'
                 data = {'y': all_dots, 'genotypes': all_genotypes}
+                for k, col in enumerate(adjust_cols):
+                    data[col] = all_adjustments[:, k]
+
                 df = pd.DataFrame.from_dict(data)
 
                 results = smf.ols(formula, data=df).fit()
@@ -222,6 +240,8 @@ def latent_space_gwas(
                 t_stat = float(results.summary2().tables[1]['t']['genotypes'])
                 coef = float(results.summary2().tables[1]['Coef.']['genotypes'])
                 se = float(results.summary2().tables[1]['Std.Err.']['genotypes'])
+            else:
+                raise ValueError(f'Unknown stat model: {stat_model}')
 
             gv_dict['t_stat'].append(t_stat)
             gv_dict['p_value'].append(p_value)
@@ -243,6 +263,7 @@ def latent_space_gwas(
             gv_dict['ref_count'].append(counter[0])
             gv_dict['het_count'].append(counter[1])
             gv_dict['hom_count'].append(counter[2])
+            gv_dict['n'].append(counter[0] + counter[1] + counter[2])
             if len(gv_dict['rsid']) % 100 == 0:
                 print(f'Processed SNPs {len(gv_dict["rsid"])}, P_value: {p_value:0.4E}, pos: {rec.pos}')
 

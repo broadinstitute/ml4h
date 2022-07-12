@@ -14,6 +14,7 @@ import os
 import sys
 import copy
 import logging
+import hashlib
 import argparse
 import operator
 import datetime
@@ -88,6 +89,7 @@ def parse_args():
 
     # Data selection parameters
     parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
+    parser.add_argument('--continuous_file_columns', nargs='*', default=[], help='Column headers in file from which continuous TensorMap(s) will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
         '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
@@ -191,7 +193,7 @@ def parse_args():
     )
 
     parser.add_argument('--pair_loss', default='contrastive', help='Distance metric between paired embeddings', choices=['euclid', 'cosine', 'contrastive'])
-    parser.add_argument('--pair_merge', default='dropout', help='Merging method for paired modality embeddings', choices=['average', 'concat', 'dropout'])
+    parser.add_argument('--pair_merge', default='dropout', help='Merging method for paired modality embeddings', choices=['average', 'concat', 'dropout', 'kronecker'])
     parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
     parser.add_argument(
         '--max_parameters', default=50000000, type=int,
@@ -209,6 +211,8 @@ def parse_args():
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
     )
+    parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
+
     # Training and Hyper-Parameter Optimization Parameters
     parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
     parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
@@ -372,10 +376,6 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
     if isinstance(tm, TensorMap) == True:
         return tm
 
-    tm = _build_mgb_time_series_tensor_maps(module_string)
-    if isinstance(tm, TensorMap) == True:
-        return tm
-
     tm = make_test_tensor_maps(module_string)
     if isinstance(tm, TensorMap) == True:
         return tm
@@ -402,7 +402,9 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
     try:
         tm = getattr(i, path_string.split('.')[-1])
     except AttributeError:
-        raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
+        logging.warning(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
+        return None
+        #raise AttributeError(f"Module {'.'.join(path_string.split('.')[:-1])} has no TensorMap called {path_string.split('.')[-1]}")
 
     if isinstance(tm, TensorMap) == False:
         raise TypeError(f"Target value is not a TensorMap object. Returned: {type(tm)}")
@@ -430,6 +432,17 @@ def _process_pair_args(pairs: Optional[List[List]], tensormap_prefix) -> List[Tu
     for pair in pairs:
         new_pairs.append((tensormap_lookup(pair[0], tensormap_prefix), tensormap_lookup(pair[1], tensormap_prefix)))
     return new_pairs
+
+
+def generate_tensormap_id(tm):
+    return hashlib.sha256(str(tm).encode("utf-8")).hexdigest()
+
+
+def generate_model_id(tensor_maps_in, tensor_maps_out):
+    str_i = '_'.join([str(tmi) for tmi in tensor_maps_in])
+    str_o = '_'.join([str(tmo) for tmo in tensor_maps_out])
+    model_str = f'{str_i}&{str_o}'
+    return hashlib.sha256(model_str.encode("utf-8")).hexdigest()
 
 
 def _process_args(args):
@@ -462,16 +475,17 @@ def _process_args(args):
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
-        # Continuous TensorMap generated from file is given the name specified by the first output_tensors argument
-        args.tensor_maps_out.append(
-            generate_continuous_tensor_map_from_file(
-                args.continuous_file,
-                args.continuous_file_column,
-                args.output_tensors.pop(0),
-                args.continuous_file_normalize,
-                args.continuous_file_discretization_bounds,
-            ),
-        )
+        # Continuous TensorMap(s) generated from file is given the name specified by the first output_tensors argument
+        for column in args.continuous_file_columns:
+            args.tensor_maps_out.append(
+                generate_continuous_tensor_map_from_file(
+                    args.continuous_file,
+                    column,
+                    args.output_tensors.pop(0),
+                    args.continuous_file_normalize,
+                    args.continuous_file_discretization_bounds,
+                ),
+            )
 
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
@@ -487,6 +501,9 @@ def _process_args(args):
     np.random.seed(args.random_seed)
 
     logging.info(f"Command Line was: {command_line}")
+    logging.info(f'Input SHA256s: {[(tm.name, generate_tensormap_id(tm)) for tm in args.tensor_maps_in]}')
+    logging.info(f'Output SHA256s: {[(tm.name, generate_tensormap_id(tm)) for tm in args.tensor_maps_out]}')
+    logging.info(f'Model SHA256: {generate_model_id(args.tensor_maps_in, args.tensor_maps_out)}')
     logging.info(f"Arguments are {args}\n")
 
     if args.eager:

@@ -1,4 +1,4 @@
-pydot==1.2.4
+pydot
 nibabel==2.5.0
 pydicom==1.2.2
 hyperopt==0.1.2
@@ -9,13 +9,15 @@ vtk==9.0.3
 imageio==2.6.1
 ipywidgets>=7.5.1
 bokeh
-pillow==8.4.0
+pillow
 notebook
 pytest
 pysam
-tensorflow==2.5.2
-tensorflow-addons==0.13.0
-tensorflow_probability==0.13.0-rc0
+tensorflow==2.9.1
+#tensorflow==2.5.0
+tensorflow-addons==0.17.1
+tensorflow_probability==0.17.0
+tensorflow_hub
 keras-tuner
 numcodecs
 beautifulsoup4

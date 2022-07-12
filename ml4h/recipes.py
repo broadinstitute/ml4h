@@ -198,8 +198,6 @@ def train_multimodal_multitask(args):
     return performance_metrics
 
 
-
-
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
@@ -286,7 +284,7 @@ def infer_multimodal_multitask(args):
         for ot in model.output_names:
             otm = output_maps[ot]
             logging.info(f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}.")
-            if (len(otm.shape) == 1 and otm.is_continuous()):
+            if len(otm.shape) == 1 and otm.is_continuous():
                 header.extend([otm.name + '_prediction', otm.name + '_actual'])
             elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
@@ -305,7 +303,7 @@ def infer_multimodal_multitask(args):
                 next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
-            prediction = model.predict(input_data)
+            prediction = model.predict(input_data, verbose=0)
             if len(no_fail_tmaps_out) == 1:
                 prediction = [prediction]
             predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
@@ -373,7 +371,7 @@ def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: st
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
-    inference_tsv = _hidden_file_name(args.output_folder, 'hidden_inference_', args.id, '.tsv')
+    inference_tsv = _hidden_file_name(args.output_folder, args.hidden_layer, args.id, '.tsv')
     tsv_style_is_genetics = 'genetics' in args.tsv_style
     tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
@@ -404,7 +402,7 @@ def infer_hidden_layer_multimodal_multitask(args):
                 break
 
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-            prediction = embed_model.predict(input_data)
+            prediction = embed_model.predict(input_data, verbose=0)
             prediction = np.reshape(prediction, (latent_dimensions,))
             csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
             csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
@@ -514,7 +512,7 @@ def infer_encoders_block_multimodal_multitask(args):
                     break
 
                 sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-                prediction = encoders[e].predict(input_data)
+                prediction = encoders[e].predict(input_data, verbose=0)
                 prediction = np.reshape(prediction, (latent_dimensions,))
                 csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
                 csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]

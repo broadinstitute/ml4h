@@ -9,6 +9,7 @@ import numpy as np
 from scipy.signal import convolve2d
 from scipy.ndimage import median_filter
 from scipy.ndimage.interpolation import rotate
+import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
 from ml4h.metrics import weighted_crossentropy
@@ -289,592 +290,6 @@ def _mri_slice_blackout_tensor_from_file(tm, hd5, dependents={}):
     return tm.zero_mean_std1(tensor)
 
 
-t2_flair_sag_p2_1mm_fs_ellip_pf78_1 = TensorMap(
-    't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
-    shape=(256, 256, 192),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=normalized_first_date,
-    normalization=ZeroMeanStd1(),
-)
-t2_flair_sag_p2_1mm_fs_ellip_pf78_2 = TensorMap(
-    't2_flair_sag_p2_1mm_fs_ellip_pf78_2',
-    shape=(256, 256, 192),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=normalized_first_date,
-    normalization=ZeroMeanStd1(),
-)
-t2_flair_slice_1 = TensorMap(
-    't2_flair_slice_1',
-    shape=(256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_random_slice_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
-    ),
-    normalization=ZeroMeanStd1(),
-)
-t2_flair_slice_2 = TensorMap(
-    't2_flair_slice_2',
-    shape=(256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_random_slice_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_2',
-    ),
-    normalization=ZeroMeanStd1(),
-)
-t1_p2_1mm_fov256_sag_ti_880_1 = TensorMap(
-    't1_p2_1mm_fov256_sag_ti_880_1',
-    shape=(256, 256, 208),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t1_p2_1mm_fov256_sag_ti_880_2 = TensorMap(
-    't1_p2_1mm_fov256_sag_ti_880_2',
-    shape=(256, 256, 208),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t1_dicom_30_slices = TensorMap(
-    't1_dicom_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't1_p2_1mm_fov256_sag_ti_880_1',
-        130,
-        190,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-)
-t1_dicom_64_slices = TensorMap(
-    't1_dicom_64_slices',
-    shape=(192, 256, 64),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't1_p2_1mm_fov256_sag_ti_880_1',
-        90,
-        218,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-)
-t1_dicom_128_slices = TensorMap(
-    't1_dicom_128_slices',
-    shape=(192, 256, 128),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't1_p2_1mm_fov256_sag_ti_880_1',
-        90,
-        218,
-        1,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-)
-t2_dicom_30_slices = TensorMap(
-    't2_dicom_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri/',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
-        130,
-        190,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-)
-
-t1_slice_1 = TensorMap(
-    't1_slice_1',
-    shape=(256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_1'),
-)
-t1_slice_2 = TensorMap(
-    't1_slice_2',
-    shape=(256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_random_slice_tensor('t1_p2_1mm_fov256_sag_ti_880_2'),
-)
-t1_20_slices_1 = TensorMap(
-    't1_20_slices_1',
-    shape=(256, 256, 20),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't1_p2_1mm_fov256_sag_ti_880_1', 94,
-        114, pad_shape=(256, 256, 208),
-    ),
-)
-t1_20_slices_2 = TensorMap(
-    't1_20_slices_2',
-    shape=(256, 256, 20),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't1_p2_1mm_fov256_sag_ti_880_2', 94,
-        114, pad_shape=(256, 256, 208),
-    ),
-)
-t2_20_slices_1 = TensorMap(
-    't2_20_slices_1',
-    shape=(256, 256, 20),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_1', 86, 106,
-    ),
-)
-t2_20_slices_2 = TensorMap(
-    't2_20_slices_2',
-    shape=(256, 256, 20),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_2', 86, 106,
-    ),
-)
-t1_40_slices_1 = TensorMap(
-    't1_40_slices_1',
-    shape=(256, 256, 40),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't1_p2_1mm_fov256_sag_ti_880_1', 64,
-        144, 2, pad_shape=(256, 256, 208),
-    ),
-)
-t2_40_slices_1 = TensorMap(
-    't2_40_slices_1',
-    shape=(256, 256, 40),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        't2_flair_sag_p2_1mm_fs_ellip_pf78_1', 56, 136, 2, pad_shape=(256, 256, 208),
-    ),
-)
-sos_te1 = TensorMap(
-    'SOS_TE1',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-sos_te2 = TensorMap(
-    'SOS_TE2',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-swi = TensorMap(
-    'SWI',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-swi_total_mag = TensorMap(
-    'SWI_TOTAL_MAG',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-swi_total_mag_te2_orig = TensorMap(
-    'SWI_TOTAL_MAG_TE2_orig',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-swi_total_mag_orig = TensorMap(
-    'SWI_TOTAL_MAG_orig',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t2star = TensorMap(
-    'T2star',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-brain_mask_normed = TensorMap(
-    'brain_mask_normed',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-
-filtered_phase = TensorMap(
-    'filtered_phase',
-    shape=(256, 288, 48),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-swi_to_t1_40_slices = TensorMap(
-    'swi_to_t1_40_slices',
-    shape=(173, 231, 40),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor('SWI_TOTAL_MAG_to_T1', 60, 140, 2),
-)
-t2star_to_t1_40_slices = TensorMap(
-    't2star_to_t1_40_slices',
-    shape=(173, 231, 40),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor('T2star_to_T1', 60, 140, 2),
-)
-
-t1 = TensorMap(
-    'T1',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t1_brain = TensorMap(
-    'T1_brain',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t1_brain_30_slices = TensorMap(
-    't1_brain_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T1_brain',
-        66,
-        126,
-        2,
-        pad_shape=(192, 256, 256),
-    ),
-)
-t1_30_slices = TensorMap(
-    't1_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T1', 90, 150, 2, pad_shape=(192, 256, 256),
-    ),
-)
-t1_30_slices_4d = TensorMap(
-    't1_30_slices_4d',
-    shape=(192, 256, 30, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T1',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256, 1),
-    ),
-)
-t1_30_slices_fs = TensorMap(
-    't1_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T1',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-        swap_axes=1,
-    ),
-)
-t1_30_slices_4d_fs = TensorMap(
-    't1_30_slices_4d',
-    shape=(192, 256, 30, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T1',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256, 1),
-        flip_swap=True,
-        swap_axes=1,
-    ),
-)
-
-t1_brain_to_mni = TensorMap(
-    'T1_brain_to_MNI',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t1_fast_t1_brain_bias = TensorMap(
-    'T1_fast_T1_brain_bias',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-
-t2_flair = TensorMap(
-    'T2_FLAIR',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t2_flair_brain = TensorMap(
-    'T2_FLAIR_brain',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-t2_flair_brain_30_slices = TensorMap(
-    't2_flair_brain_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T2_FLAIR_brain',
-        66,
-        126,
-        2,
-        pad_shape=(192, 256, 256),
-    ),
-)
-t2_flair_30_slices = TensorMap(
-    't2_flair_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T2_FLAIR',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256),
-    ),
-)
-t2_flair_30_slices_4d = TensorMap(
-    't2_flair_30_slices_4d',
-    shape=(192, 256, 30, 1),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_slice_subset_tensor(
-        'T2_FLAIR',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256, 1),
-    ),
-    normalization=ZeroMeanStd1(),
-)
-t2_flair_30_slices_fs = TensorMap(
-    't2_flair_30_slices',
-    shape=(192, 256, 30),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T2_FLAIR',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-        swap_axes=1,
-    ),
-)
-t2_flair_30_slices_4d_fs = TensorMap(
-    't2_flair_30_slices_4d',
-    shape=(192, 256, 30, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_subset_tensor(
-        'T2_FLAIR',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256, 1),
-        flip_swap=True,
-        swap_axes=1,
-    ),
-)
-t2_flair_unbiased_brain = TensorMap(
-    'T2_FLAIR_unbiased_brain',
-    shape=(192, 256, 256, 1),
-    path_prefix='ukb_brain_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=normalized_first_date,
-)
-
-swi_brain_mask = TensorMap(
-    'SWI_brain_mask',
-    Interpretation.CATEGORICAL,
-    shape=(256, 288, 48, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_mask_from_file,
-    channel_map={
-        'not_brain': 0,
-        'brain': 1,
-    },
-)
-t1_brain_mask = TensorMap(
-    'T1_brain_mask',
-    Interpretation.CATEGORICAL,
-    shape=(192, 256, 256, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_mask_from_file,
-    channel_map={
-        'not_brain': 0,
-        'brain': 1,
-    },
-)
-t1_seg = TensorMap(
-    'T1_fast_T1_brain_seg',
-    Interpretation.CATEGORICAL,
-    shape=(192, 256, 256, 4),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_mask_from_file,
-    channel_map={
-        'not_brain_tissue': 0,
-        'csf': 1,
-        'grey': 2,
-        'white': 3,
-    },
-)
-t1_seg_30_slices = TensorMap(
-    'T1_fast_T1_brain_seg_30_slices',
-    Interpretation.CATEGORICAL,
-    shape=(192, 256, 30, 4),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_mask_subset_tensor(
-        'T1_fast_T1_brain_seg',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256, 1),
-    ),
-    channel_map={
-        'not_brain_tissue': 0,
-        'csf': 1,
-        'grey': 2,
-        'white': 3,
-    },
-)
-t1_brain_mask_30_slices = TensorMap(
-    'T1_brain_mask_30_slices',
-    Interpretation.CATEGORICAL,
-    shape=(192, 256, 30, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_mask_subset_tensor(
-        'T1_brain_mask',
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256, 1),
-    ),
-    channel_map={
-        'not_brain': 0,
-        'brain': 1,
-    },
-)
-lesions = TensorMap(
-    'lesions_final_mask',
-    Interpretation.CATEGORICAL,
-    shape=(192, 256, 256, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_mask_from_file,
-    channel_map={
-        'not_lesion': 0,
-        'lesion': 1,
-    },
-    loss=weighted_crossentropy([0.01, 10.0], 'lesion'),
-)
-
-t1_and_t2_flair_30_slices = TensorMap(
-    't1_and_t2_flair_30_slices',
-    Interpretation.CONTINUOUS,
-    shape=(192, 256, 30, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_combined_subset_tensor(
-        ['T1', 'T2_FLAIR'],
-        90,
-        150,
-        2,
-        pad_shape=(192, 256, 256),
-    ),
-    normalization=ZeroMeanStd1(),
-)
-_dicom_keys = [
-    't1_p2_1mm_fov256_sag_ti_880_1', 't2_flair_sag_p2_1mm_fs_ellip_pf78_1',
-]
-t1_t2_dicom_30_slices = TensorMap(
-    't1_t2_dicom_30_slices',
-    Interpretation.CONTINUOUS,
-    shape=(192, 256, 30, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_combined_subset_tensor(
-        _dicom_keys,
-        130,
-        190,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-    normalization=ZeroMeanStd1(),
-)
-t1_t2_dicom_32_slices = TensorMap(
-    't1_t2_dicom_32_slices',
-    Interpretation.CONTINUOUS,
-    shape=(192, 256, 32, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_combined_subset_tensor(
-        _dicom_keys,
-        130,
-        190,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-    normalization=ZeroMeanStd1(),
-)
-t1_t2_dicom_50_slices = TensorMap(
-    't1_t2_dicom_50_slices',
-    Interpretation.CONTINUOUS,
-    shape=(192, 256, 50, 2),
-    path_prefix='ukb_brain_mri',
-    tensor_from_file=_combined_subset_tensor(
-        _dicom_keys,
-        100,
-        200,
-        2,
-        pad_shape=(192, 256, 256),
-        flip_swap=True,
-    ),
-    normalization=ZeroMeanStd1(),
-)
-
 mri_slice_blackout_segmented_weighted = TensorMap(
     'mri_slice_segmented',
     Interpretation.CATEGORICAL,
@@ -1093,9 +508,17 @@ cine_ao_dist_4d = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 cine_lax_4ch_192 = TensorMap(
-    'cine_segmented_lax_3ch',
+    'cine_segmented_lax_4ch',
     Interpretation.CONTINUOUS,
     shape=(192, 192, 50),
+    path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_pad_crop_tensor,
+    normalization=ZeroMeanStd1(),
+)
+cine_lax_4ch_160x224 = TensorMap(
+    'cine_segmented_lax_4ch',
+    Interpretation.CONTINUOUS,
+    shape=(160, 224, 50),
     path_prefix='ukb_cardiac_mri',
     tensor_from_file=_pad_crop_tensor,
     normalization=ZeroMeanStd1(),
@@ -1562,6 +985,10 @@ sax_slices_jamesp_4b = TensorMap(
     'sax_slices_jamesp_4b', shape=(224, 224, 4), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
 )
+sax_slices_jamesp_3b = TensorMap(
+    'sax_slices_jamesp_3b', shape=(224, 224, 3), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
 sax_slices_jamesp_7b = TensorMap(
     'sax_slices_jamesp_7b', shape=(224, 224, 7), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
@@ -1584,6 +1011,10 @@ sax_slices_both_5b_5t = TensorMap(
 )
 sax_slices_both_3b_gauss = TensorMap(
     'sax_slices_both', shape=(224, 224, 3), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
+)
+sax_slices_both_3b = TensorMap(
+    'sax_slices_both', shape=(224, 224, 3), normalization=ZeroMeanStd1(),
     tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
 )
 sax_slices_both_5b_sharpen_median = TensorMap(
@@ -1659,6 +1090,11 @@ cine_segmented_lax_3ch_diastole = TensorMap(
 cine_segmented_lax_4ch_diastole = TensorMap(
     'cine_segmented_lax_4ch_diastole', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lax_4ch_diastole_weighted = TensorMap(
+    'cine_segmented_lax_4ch_diastole', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    loss=weighted_crossentropy([100.0]*len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP), 'lax_4ch_seg_weighted')
 )
 cine_segmented_lvot_diastole_slice = TensorMap(
     'cine_segmented_lvot_diastole_slice', Interpretation.CATEGORICAL, shape=(208, 160, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
@@ -1799,10 +1235,7 @@ lax_2ch_heart_center = TensorMap(
     'lax_2ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_', LAX_2CH_HEART_LABELS),
 )
-lax_4ch_heart_center_4d = TensorMap(
-    'lax_4ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50, 1), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
-    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
-)
+
 lax_4ch_heart_center_rotate = TensorMap(
     'lax_4ch_heart_center_rotate', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
@@ -1823,6 +1256,31 @@ lax_4ch_heart_center_prediction = TensorMap(
 lax_4ch_heart_center_truth = TensorMap(
     'lax_4ch_heart_center_truth', Interpretation.CONTINUOUS, shape=(96, 96, 50), loss='logcosh', activation='linear',
     tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'],
+)
+
+
+def _heart_mask_movies(mri_keys, segmentation_keys, labels):
+    def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for k, (mri_key, segmentation_key, label) in enumerate(zip(mri_keys, segmentation_keys, labels)):
+            diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{1}')
+            heart_mask = np.isin(diastole_categorical, list(label.values()))
+            i, j = np.where(heart_mask)
+            indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), np.arange(50), indexing='ij')
+            mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')
+            mri = pad_or_crop_array_to_shape((96, 96, 50), mri[tuple(indices)])
+            mri = np.rollaxis(mri, axis=-1, start=0) # Movie frames to the first channel
+            tensor[..., k] = mri
+        return tensor
+    return _heart_mask_tensor_from_file
+
+
+lax_keys = ['cine_segmented_lax_4ch/2/', 'cine_segmented_lax_3ch/2/', 'cine_segmented_lax_2ch/2/']
+lax_seg_keys = ['cine_segmented_lax_4ch_annotated_', 'cine_segmented_lax_3ch_annotated_', 'cine_segmented_lax_2ch_annotated_',]
+lax_seg_labels = [LAX_4CH_HEART_LABELS, LAX_3CH_HEART_LABELS, LAX_2CH_HEART_LABELS]
+lax_4ch_heart_center_4d = TensorMap(
+    'lax_4ch_heart_center_4d', Interpretation.CONTINUOUS, shape=(50, 96, 96, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_movies(lax_keys, lax_seg_keys, lax_seg_labels),
 )
 
 def _segmented_heart_mask_instances(segmentation_key, labels, frames=50, one_hot=True):
@@ -1854,29 +1312,40 @@ segmented_lax_4ch_50_frame = TensorMap(
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
 )
 segmented_lax_4ch_diastole_frame = TensorMap(
-    'segmented_lax_4ch_diastole_frame', Interpretation.CONTINUOUS,
+    'segmented_lax_4ch_diastole_frame', Interpretation.CATEGORICAL,
     shape=(96, 96, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=1),
 )
-segmented_lax_4ch_48_frame = TensorMap(
-    'segmented_lax_4ch_48_frame', Interpretation.CONTINUOUS,
-    shape=(96, 96, 48),
-    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=False),
-)
-segmented_lax_4ch_50_frame_4d = TensorMap(
-    'segmented_lax_4ch_50_frame_4d', Interpretation.CATEGORICAL,
-    shape=(96, 96, 50, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
-    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
-)
-segmented_lax_4ch_48_frame_4d = TensorMap(
-    'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
-    shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
-    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
-    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48),
-)
+# segmented_lax_4ch_48_frame = TensorMap(
+#     'segmented_lax_4ch_48_frame', Interpretation.CATEGORICAL,
+#     shape=(96, 96, 48),
+#     path_prefix='ukb_cardiac_mri',
+#     loss='sparse_categorical_crossentropy',
+#     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=False),
+# )
+#
+# def _sparse_cross_entropy(y_true, y_pred):
+#     y_t = tf.reshape(y_true, shape=[-1, 460800])
+#     y_p = tf.reshape(y_pred, shape=[-1, 460800])
+#     loss = tf.keras.losses.SparseCategoricalCrossentropy(
+#         from_logits=False
+#     )(y_t, y_p)
+#     return loss #tf.reduce_mean(loss)
+# segmented_lax_4ch_50_frame_4d = TensorMap(
+#     'segmented_lax_4ch_50_frame_4d', Interpretation.CONTINUOUS,
+#     shape=(96, 96, 50),
+#     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+#     loss=_sparse_cross_entropy, metrics=['mse'],
+#     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
+# )
+# segmented_lax_4ch_48_frame_4d = TensorMap(
+#     'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
+#     shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+#     loss='categorical_crossentropy', metrics=['mse'],
+#     path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+#     tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=True),
+# )
 
 
 def _segmented_index_slices(key_prefix: str, shape: Tuple[int], path_prefix: str ='ukb_cardiac_mri') -> Callable:
@@ -2485,20 +1954,24 @@ liver_fat_echo_predicted_sentinel = TensorMap(
     normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', path_prefix='continuous', sentinel=0.0,
 )
 
-gre_mullti_echo_10_te_liver = TensorMap('gre_mullti_echo_10_te_liver', shape=(160, 160, 10), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-gre_mullti_echo_10_te_liver_12bit = TensorMap('gre_mullti_echo_10_te_liver_12bit', shape=(160, 160, 10), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-lms_ideal_optimised_low_flip_6dyn = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-lms_ideal_optimised_low_flip_6dyn_12bit = TensorMap('lms_ideal_optimised_low_flip_6dyn_12bit', shape=(232, 256, 36), loss='logcosh', normalization={'zero_mean_std1': 1.0})
-lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap('lms_ideal_optimised_low_flip_6dyn_4slice', shape=(232, 256, 4), loss='logcosh', normalization={'zero_mean_std1': 1.0})
+gre_mullti_echo_10_te_liver = TensorMap('gre_mullti_echo_10_te_liver', shape=(160, 160, 10), tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
+gre_mullti_echo_10_te_liver_12bit = TensorMap('gre_mullti_echo_10_te_liver_12bit', shape=(160, 160, 10),
+                                              tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
+lms_ideal_optimised_low_flip_6dyn = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
+                                              tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
+lms_ideal_optimised_low_flip_6dyn_12bit = TensorMap('lms_ideal_optimised_low_flip_6dyn_12bit', shape=(232, 256, 36),
+                                                    tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
+lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap('lms_ideal_optimised_low_flip_6dyn_4slice', shape=(232, 256, 4),
+                                                     tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
 
-shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-shmolli_192i_liver = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
+shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization=ZeroMeanStd1())
+shmolli_192i_liver = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), normalization=ZeroMeanStd1())
 shmolli_192i_12bit = TensorMap(
-    'shmolli_192i_12bit', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0},
+    'shmolli_192i_12bit', shape=(288, 384, 7), normalization=ZeroMeanStd1(),
     tensor_from_file=_pad_crop_tensor,
 )
-shmolli_192i_fitparams = TensorMap('shmolli_192i_fitparams', shape=(288, 384, 7), normalization={'zero_mean_std1': 1.0})
-shmolli_192i_t1map = TensorMap('shmolli_192i_t1map', shape=(288, 384, 2), normalization={'zero_mean_std1': 1.0})
+shmolli_192i_fitparams = TensorMap('shmolli_192i_fitparams', shape=(288, 384, 7), normalization=ZeroMeanStd1())
+shmolli_192i_t1map = TensorMap('shmolli_192i_t1map', shape=(288, 384, 2), normalization=ZeroMeanStd1())
 
 sax_pixel_width = TensorMap(
     'mri_pixel_width_cine_segmented_sax_inlinevf', Interpretation.CONTINUOUS, annotation_units=2, channel_map={'mri_pixel_width_cine_segmented_sax_inlinevf': 0},
@@ -2516,10 +1989,10 @@ ejection_fractionp = TensorMap(
     parents=[end_systole_volume, end_diastole_volume],
 )
 
-cine_segmented_sax_b1 = TensorMap('cine_segmented_sax_b1', shape=(256, 256, 50), loss='mse')
-cine_segmented_sax_b2 = TensorMap('cine_segmented_sax_b2', shape=(256, 256, 50), loss='mse')
-cine_segmented_sax_b4 = TensorMap('cine_segmented_sax_b4', shape=(256, 256, 50), loss='mse')
-cine_segmented_sax_b6 = TensorMap('cine_segmented_sax_b6', shape=(256, 256, 50), loss='mse')
+cine_segmented_sax_b1 = TensorMap('cine_segmented_sax_b1', shape=(256, 256, 50), normalization=ZeroMeanStd1())
+cine_segmented_sax_b2 = TensorMap('cine_segmented_sax_b2', shape=(256, 256, 50), normalization=ZeroMeanStd1())
+cine_segmented_sax_b4 = TensorMap('cine_segmented_sax_b4', shape=(256, 256, 50), normalization=ZeroMeanStd1())
+cine_segmented_sax_b6 = TensorMap('cine_segmented_sax_b6', shape=(256, 256, 50), normalization=ZeroMeanStd1())
 
 cine_segmented_lax_2ch = TensorMap('cine_segmented_lax_2ch', shape=(256, 256, 50), normalization=ZeroMeanStd1())
 cine_segmented_lax_3ch = TensorMap('cine_segmented_lax_3ch', shape=(256, 256, 50), normalization=ZeroMeanStd1())
