@@ -120,12 +120,12 @@ gcloud --project your-gcp-project compute ssh ${USER}-gpu --zone us-central1-a
 
 Next, clone this repo on your instance (you should copy your github key over to the VM, and/or if you have Two-Factor authentication setup you need to generate an SSH key on your VM and add it to your github settings as described [here](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/#platform-linux)):
 ```
-git clone git@github.com:broadinstitute/ml.git
+git clone git@github.com:broadinstitute/ml4h.git
 ```
 
 Because we don't know everyone's username, you need to run one more script to make sure that you are added as a docker user and that you have permission to pull down our docker instances from GCP's gcr.io. Run this while you're logged into your VM:
 ```
-./ml/scripts/vm_launch/run_once.sh
+./ml4h/scripts/vm_launch/run_once.sh
 ```
 
 Note that you may see warnings like below, but these are expected:
@@ -143,7 +143,7 @@ You need to log out after that (`exit`) then ssh back in so everything takes eff
 Now let's run a Jupyter notebook.  On your VM run:
 
 ```
-${HOME}/ml/scripts/jupyter.sh -p 8889
+${HOME}/ml4h/scripts/jupyter.sh -p 8889
 ```
 Add a ```-c``` if you want a CPU version.
 
@@ -153,7 +153,7 @@ docker: Error response from daemon: driver failed programming external connectiv
 ```
 overwrite the default port (8888) like so
 ```
-${HOME}/ml/scripts/dl-jupyter.sh 8889
+${HOME}/ml4h/scripts/dl-jupyter.sh 8889
 ```
 The command also outputs two command lines in red.
 Copy the line that looks like this:
