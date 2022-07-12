@@ -90,7 +90,8 @@ def _not_implemented_tensor_from_file(_, __, ___=None):
 def tensor_map_from_data_description(
         data_description: DataDescription,
         interpretation: Interpretation,
-        shape: Tuple[int, ...],
+        shape,
+        name=None,
         **tensor_map_kwargs,
 ) -> TensorMap:
     """
@@ -101,6 +102,7 @@ def tensor_map_from_data_description(
     :param interpretation: How the model factory will interpret
                            the data from the data_description
     :param shape: The shape of the data from the data_description
+    :param name: The name of the TensorMap
     :param tensor_map_kwargs: keyword arguments passed to TensorMap.__init__
     :return: A TensorMap created from a DataDescription
 
@@ -126,13 +128,10 @@ def tensor_map_from_data_description(
     ```
     """
     tmap = TensorMap(
-        name=data_description.name,
+        name=name if name else data_description.name,
         interpretation=interpretation,
         shape=shape,
         tensor_from_file=_not_implemented_tensor_from_file,
         **tensor_map_kwargs,
     )
-    # hacky way to make sure the model factory will work with data description data loaders
-    tmap.input_name = lambda: data_description.name
-    tmap.output_name = lambda: data_description.name
     return tmap

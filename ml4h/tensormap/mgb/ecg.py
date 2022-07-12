@@ -1144,3 +1144,20 @@ partners_ecg_supranodal_6_weighted = TensorMap(
         },
     ),
 )
+
+patientage = TensorMap(
+    'patientage', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'patientage': 0},
+)
+
+af_in_read = TensorMap(
+    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical',
+    channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
+)
+
+is_female = TensorMap(
+    'is_female', Interpretation.CATEGORICAL, path_prefix='categorical', annotation_units=2,
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+)

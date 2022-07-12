@@ -2,11 +2,13 @@ import h5py
 import numpy as np
 import scipy
 import logging
+
+import biosppy
 from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
 # from ml4h.tensor_writer_ukbb import tensor_path
 from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
-from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5
+from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
 from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
@@ -123,11 +125,10 @@ def _warp_ecg(ecg):
     return warped_ecg
 
 
-
 def _make_ecg_rest(
         instance: int = 2, downsample_steps: int = 0,
         short_time_nperseg: int = 0, short_time_noverlap: int = 0,
-        skip_poor: bool = False,
+        skip_poor: bool = False, random_offset: int = 0,
 ):
     def ecg_rest_from_file(tm, hd5, dependents={}):
         ecg_interpretation = str(
@@ -143,11 +144,13 @@ def _make_ecg_rest(
                 data = tm.hd5_first_dataset_in_group(
                     hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
                 )
+                if random_offset > 0:
+                    offset = np.random.randint(random_offset)
+                    data = data[offset:]
                 if short_time_nperseg > 0 and short_time_noverlap > 0:
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
-                    #logging.info(f'SHape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
@@ -429,21 +432,19 @@ ecg_rest_raw_8s = TensorMap(
     'ecg_rest_raw_8s', Interpretation.CONTINUOUS, shape=(4096, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=10),
 )
-ecg_rest_raw_8s_random_norm = TensorMap(
-    'ecg_rest_raw_8s', Interpretation.CONTINUOUS, shape=(4096, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
-    channel_map=ECG_REST_LEADS, normalization=RandomStandardize(mean=0, std=10),
-)
 
 ecg_rest_raw_10 = TensorMap(
     'ecg_rest_raw_10', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=10),
 )
-ecg_rest_raw_10_random_norm = TensorMap(
-    'ecg_rest_raw_10', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
-    channel_map=ECG_REST_LEADS, normalization=RandomStandardize(mean=0, std=10), loss='logcosh',
-)
+
+
 ecg_rest = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_rest_8s = TensorMap(
+    'ecg_rest_8s', Interpretation.CONTINUOUS, shape=(4096, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_no_poor = TensorMap(
@@ -460,12 +461,16 @@ ecg_rest_mgb_mv = TensorMap(
     'ecg_5000_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_AMP_LEADS_UKB, normalization=Standardize(mean=0, std=150),
 )
-ecg_rest_mgb2 = TensorMap(
-    'ecg', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+mgb_ecg_rest_mv = TensorMap(
+    'mgb_ecg_5000_mv', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=Standardize(mean=0, std=150),
 )
 ecg_rest_mgb_2500 = TensorMap(
     'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(downsample_steps=2),
+    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
+)
+mgb_ecg_rest_2500 = TensorMap(
+    'mgb_ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(downsample_steps=2),
     channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
 )
 partners_ecg_2500 = TensorMap(
@@ -481,10 +486,32 @@ ecg_rest_mgb_strip_II = TensorMap(
     'ecg_strip_II', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
 )
-# ecg_rest_mgb_2500 = TensorMap(
-#     'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
-#     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
-# )
+
+rest_strip_I_random = TensorMap(
+    'ecg_strip_I', Interpretation.CONTINUOUS, shape=(4096, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=904),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+rest_strip_II_random = TensorMap(
+    'ecg_strip_II', Interpretation.CONTINUOUS, shape=(4096, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=904),
+    channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
+)
+rest_strip_I_random_1s = TensorMap(
+    'rest_strip_I_random_1s', Interpretation.CONTINUOUS, shape=(500, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4500),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+rest_strip_I_random_2s = TensorMap(
+    'rest_strip_I_random_2s', Interpretation.CONTINUOUS, shape=(1000, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4000),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
+rest_strip_II_random_2s = TensorMap(
+    'rest_strip_II_random_2s', Interpretation.CONTINUOUS, shape=(1000, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4000),
+    channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
+)
 ecg_rest_mgb_2500_test = TensorMap(
     'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
@@ -519,21 +546,30 @@ ecg_rest_stack = TensorMap(
 
 ecg_rest_median_raw = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=2000),
+    metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=2000),
 )
-
+ecg_rest_median_lead_I = TensorMap(
+    'ecg_rest_median_lead_I', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest',
+    shape=(600, 1), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae'], channel_map={'median_I': 0}, normalization=ZeroMeanStd1(),
+)
+ecg_rest_median_lead_II = TensorMap(
+    'ecg_rest_median_lead_II', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest',
+    shape=(600, 1), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    metrics=['mse', 'mae'], channel_map={'median_II': 0}, normalization=ZeroMeanStd1(),
+)
 ecg_rest_median_mv = TensorMap(
     'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000),
+    metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000),
 )
 ecg_rest_median_mv_warp = TensorMap(
     'median_warp', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000), augmentations=[_warp_ecg],
+    metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=1000), augmentations=[_warp_ecg],
 )
 
 ecg_rest_median_raw_10 = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
-    metrics=['mse', 'mae', 'logcosh'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
+    metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
 ecg_rest_median_raw_10_no_poor = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
@@ -550,9 +586,118 @@ ecg_rest_median = TensorMap(
 )
 
 ecg_rest_median_raw_10_prediction = TensorMap(
-    'ecg_rest_median_raw_10_prediction', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
-    tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear', normalization=ZeroMeanStd1(),
+    tensor_from_file=named_tensor_from_hd5('ecg_rest_median_raw_10_prediction'), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
 )
+
+
+def stretch_ecg(x, n=0):
+    """
+    stretches input ECG to n bpm
+    """
+    out = biosppy.signals.ecg.ecg(x.copy(), sampling_rate=500, show=False)
+    hr = out[-1].mean()
+    t = np.arange(len(x))
+    if n == 0:
+        tp = np.arange(len(x))
+    else:
+        tp = np.arange(len(x)) * n / hr
+    stretched = np.interp(tp, t, x)
+    out2 = biosppy.signals.ecg.ecg(stretched, show=False)
+    return stretched, out2[2]
+
+
+def make_biosspy_median(example, channel_map, median_size = 600, bpm = 0):
+    medians = np.zeros((median_size, len(channel_map)))
+    for lead in channel_map:
+        waves = []
+
+        stretched, peaks = stretch_ecg(example[:,channel_map[lead]], bpm)
+
+        for j, p0 in enumerate(peaks[:-2]):
+            p11 = peaks[j+1]
+            middle = (p0+p11)//2
+            waves.append(stretched[middle:middle+median_size])
+        waves = np.array(waves)
+        medians[:, channel_map[lead]] = np.median(waves, axis=0)
+
+    return medians
+
+
+def ecg_median_biosppy(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    for lead in tm.channel_map:
+        tensor[:, tm.channel_map[lead]] = hd5[f'{tm.path_prefix}{lead}']
+    tensor = np.nan_to_num(tensor)
+    return tensor
+
+
+ecg_biosppy_median = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map=ECG_REST_LEADS,
+)
+
+ecg_biosppy_median_60bpm = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map=ECG_REST_LEADS,
+)
+
+ecg_biosppy_median_60bpm_lead_I = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map={'strip_I': 0},
+)
+
+ecg_biosppy_median_mgb = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map=ECG_REST_AMP_LEADS,
+)
+
+ecg_biosppy_median_60bpm_mgb = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12), tensor_from_file=ecg_median_biosppy,
+    channel_map=ECG_REST_AMP_LEADS,
+)
+ecg_biosppy_median_60bpm_mgb_lead_I = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='median_60bpm_', shape=(600, 12),
+    tensor_from_file=ecg_median_biosppy,
+    channel_map={'I': 0},
+)
+
+
+def ecg_median_biosppy_on_the_fly(ecg_10s_shape=(5000, 12), bpm=0, instance=2):
+    def _ecg_median_tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+        ecg_10s = np.zeros(ecg_10s_shape, dtype=np.float32)
+        for k in hd5[tm.path_prefix]:
+            if k in tm.channel_map:
+                data = tm.hd5_first_dataset_in_group(
+                    hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
+                )
+                ecg_10s[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((ecg_10s_shape[0],), data)
+        return make_biosspy_median(ecg_10s, tm.channel_map, median_size=tm.shape[0], bpm=bpm)
+    return _ecg_median_tensor_from_file
+
+
+ecg_biosppy_median_otf = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy_on_the_fly(),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_biosppy_median_60bpm_otf = TensorMap(
+    'median', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), tensor_from_file=ecg_median_biosppy_on_the_fly(bpm=60),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
+
+def ecg_prediction_lead_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    ecg = np.array(hd5['ecg_rest_median_raw_10_prediction'], dtype=np.float32)
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    tensor[:, 0] = ecg[:, 0]
+    return tensor
+
+
+ecg_rest_median_raw_10_prediction_lead_I = TensorMap(
+    'ecg_rest_median_raw_10_lead_I', Interpretation.CONTINUOUS, shape=(600, 1), loss='logcosh', activation='linear',
+    tensor_from_file=ecg_prediction_lead_from_hd5, metrics=['mse', 'mae'], channel_map={'median_I': 0},
+)
+
 ecg_rest_median_raw_10_truth = TensorMap(
     'ecg_rest_median_raw_10_truth', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
@@ -1115,3 +1260,15 @@ ecg_bike_raw_full = TensorMap(
     'full', Interpretation.CONTINUOUS, shape=(216500, 3), path_prefix='ukb_ecg_bike',
     tensor_from_file=normalized_first_date,
 )
+
+
+def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    ppg = np.zeros(tm.shape,  dtype=np.float32)
+    ppg[:, 0] = hd5[tm.name]
+    return ppg
+
+ppg_0 = TensorMap('ppg_0', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_0': 0},
+                  normalization=Standardize(mean=4824.6, std=3235.8))
+
+ppg_2 = TensorMap('ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
+                  normalization=Standardize(mean=4824.6, std=3235.8))

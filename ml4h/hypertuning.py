@@ -51,7 +51,7 @@ def run(args):
             directory=args.output_folder,
             project_name=args.id,
             seed=args.random_seed,
-            beta=2.3,  # Explore exploit tradeoff, higher value mean more exploration
+            beta=1.6,  # Explore exploit tradeoff, higher value mean more exploration
         )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     stop_early = EarlyStopping(monitor='val_loss', patience=args.patience)
@@ -64,7 +64,7 @@ def run(args):
     tuner.search_space_summary()
     tuner.results_summary()
     for i, best_hyper in enumerate(tuner.get_best_hyperparameters(num_trials=8)):
-        logging.info(f"\n\n#{i+1} best hyperparameters:\n{best_hyper.values}")
+        logging.info(f"\n\n#{i+1} best hyper-parameters:\n{best_hyper.values}")
     logging.info(f"\nExecuted {args.mode} mode in {(end_time - start_time) / 60.0:.1f} minutes.")
 
 
@@ -72,23 +72,23 @@ def make_model_builder(args):
     model_count = 0
 
     def model_builder(hp):
-        # conv_width = hp.Int('conv_width', 3, 81, step=4)
-        # args.__dict__['conv_width'] = [conv_width]
+        conv_width = hp.Int('conv_width', 15, 91, step=21)
+        args.__dict__['conv_width'] = [conv_width]
         num_conv_layers = hp.Int('num_conv_layers', 0, 3)
         if num_conv_layers > 0:
             with hp.conditional_scope("num_conv_layers", [1,2,3]):
-                conv_layer_size = hp.Int('conv_layer_size', 8, 64, step=8)
+                conv_layer_size = hp.Int('conv_layer_size', 16, 64, step=16)
         else:
             conv_layer_size = 0
         args.__dict__['conv_layers'] = [conv_layer_size] * num_conv_layers
-        num_dense_blocks = hp.Int('num_dense_blocks', 1, 3)
-        dense_block_size = hp.Int('dense_block_size', 8, 48, step=8)
+        num_dense_blocks = hp.Int('num_dense_blocks', 1, 6)
+        dense_block_size = hp.Int('dense_block_size', 16, 64, step=16)
         args.__dict__['dense_blocks'] = [dense_block_size] * num_dense_blocks
-        args.__dict__['block_size'] = hp.Int('block_size', 1, 6)
-        num_dense_layers = hp.Int('num_dense_layers', 1, 4)
-        dense_layer_size = hp.Int('dense_layer_size', 16, 256, sampling='log')
+        args.__dict__['block_size'] = hp.Int('block_size', 1, 8)
+        num_dense_layers = hp.Int('num_dense_layers', 1, 3)
+        dense_layer_size = hp.Int('dense_layer_size', 32, 256, step=32)
         args.__dict__['dense_layers'] = [dense_layer_size] * num_dense_layers
-        args.__dict__['activation'] = hp.Choice('activation', ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu'])
+        args.__dict__['activation'] = hp.Choice('activation', ['gelu', 'lisht', 'leaky', 'swish', 'relu', 'selu', 'mish'])
         dense_normalize = hp.Choice('dense_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
         args.__dict__['dense_normalize'] = None if dense_normalize == 'None' else dense_normalize
         conv_normalize = hp.Choice('conv_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
@@ -148,7 +148,7 @@ class BayesianSearchEdit(BayesianOptimization):
         self._display.on_trial_end(self.oracle.get_trial(trial.trial_id))
         self.save()
 
-    def _build_and_fit_model(self, trial, fit_args, fit_kwargs):
+    def _build_and_fit_model(self, trial, *fit_args, **kwargs):
         model = self.hypermodel.build(trial.hyperparameters)
         model_size = self.maybe_compute_model_size(model)
         print("Considering model with size: {}".format(model_size))
@@ -161,8 +161,7 @@ class BayesianSearchEdit(BayesianOptimization):
             dummy_history_obj.history.setdefault('val_loss', []).append(MAX_LOSS)
             return dummy_history_obj
 
-        return model.fit(*fit_args, **fit_kwargs)
-
+        return model.fit(*fit_args, **kwargs)
 
     def maybe_compute_model_size(self, model):
         """Compute the size of a given model, if it has been built."""

@@ -2,7 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from ml4h.defines import EPS
-from tensorflow.python.keras.applications import imagenet_utils
+from tensorflow.keras.applications import imagenet_utils
 
 
 class Normalizer(ABC):
@@ -10,6 +10,11 @@ class Normalizer(ABC):
     def normalize(self, tensor: np.ndarray) -> np.ndarray:
         """Shape preserving transformation"""
         pass
+
+    def normalize_loading_option(self, tensor: np.ndarray, _) -> np.ndarray:
+        """Shape preserving transformation for use with DataDescription.
+         Defaults to the normalize function if not defined in the descendant"""
+        return self.normalize(tensor)
 
     def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
         """The inverse of normalize if possible. Otherwise identity."""

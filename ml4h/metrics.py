@@ -7,7 +7,8 @@ import tensorflow.keras.backend as K
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
 
-from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
+from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
@@ -165,6 +166,18 @@ def pearson(y_true, y_pred):
     # final result
     pearson_correlation = K.sum(y_true * y_pred, axis=-1)
     return pearson_correlation
+
+
+def abs_pearson(y_true, y_pred):
+    # normalizing stage - setting a 0 mean.
+    y_true -= K.mean(y_true, axis=-1)
+    y_pred -= K.mean(y_pred, axis=-1)
+    # normalizing stage - setting a 1 variance
+    y_true = K.l2_normalize(y_true, axis=-1)
+    y_pred = K.l2_normalize(y_pred, axis=-1)
+    # final result
+    pearson_correlation = K.sum(y_true * y_pred, axis=-1)
+    return tf.math.abs(pearson_correlation)
 
 
 def _make_riskset(follow_up_times):
@@ -409,6 +422,8 @@ def get_metric_dict(output_tensor_maps):
 
         if tm.loss == 'categorical_crossentropy':
             losses.append(categorical_crossentropy)
+        elif tm.loss == 'sparse_categorical_crossentropy':
+            losses.append(sparse_categorical_crossentropy)
         elif tm.loss == 'binary_crossentropy':
             losses.append(binary_crossentropy)
         elif tm.loss == 'mean_absolute_error' or tm.loss == 'mae':

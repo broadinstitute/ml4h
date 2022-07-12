@@ -273,6 +273,17 @@ mgb_afib_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
+mgb_af_wrt_instance2 = TensorMap(
+    'af_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='atrial_fibrillation_or_flutter',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
 mgb_cad_wrt_instance2 = TensorMap(
     'cad_event',
     Interpretation.SURVIVAL_CURVE,
@@ -284,7 +295,17 @@ mgb_cad_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
-
+mgb_dm_wrt_instance2 = TensorMap(
+    'dm_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_5_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        disease_name_override='diabetes_type_2',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
 mgb_mi_wrt_instance2 = TensorMap(
     'mi_event',
     Interpretation.SURVIVAL_CURVE,
@@ -296,44 +317,6 @@ mgb_mi_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
-
-mgb_afib_from_dd_wrt_instance2 = TensorMap(
-    'af_age_survival',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(50,),
-    days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-        disease_name_override='atrial_fibrillation_or_flutter',
-        start_date_is_attribute=True, incidence_only=True,
-    ),
-)
-mgb_afib_from_dd_wrt_instance2.input_name = lambda: mgb_afib_from_dd_wrt_instance2.name
-mgb_afib_from_dd_wrt_instance2.output_name = lambda: mgb_afib_from_dd_wrt_instance2.name
-mgb_afib_wrt_instance2_with_prevalent = TensorMap(
-    'survival_curve_af',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(50,),
-    days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-        disease_name_override='atrial_fibrillation_or_flutter',
-        start_date_is_attribute=True, incidence_only=False,
-    ),
-)
-
-mgb_af_event_wrt_instance2 = TensorMap(
-    'AF_event_survival',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(50,),
-    days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
-        disease_name_override='atrial_fibrillation_or_flutter',
-        start_date_is_attribute=True, incidence_only=True,
-    ),
-)
-
 
 mgb_afib_as_hf_wrt_instance2 = TensorMap(
     'survival_curve_af',
