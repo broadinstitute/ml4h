@@ -99,7 +99,41 @@ t1_mni_slices_80_144 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
-
+t1_mni_slices_0_32 = TensorMap(
+    'axial_0_32',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_32_64 = TensorMap(
+    'axial_32_64',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_64_96 = TensorMap(
+    'axial_64_96',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_96_128 = TensorMap(
+    'axial_96_128',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_128_160 = TensorMap(
+    'axial_128_160',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
