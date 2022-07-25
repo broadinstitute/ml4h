@@ -1,4 +1,4 @@
-## DropFuse: A Cross-Modal Autoencoder Framework Learns Holistic Representations of Cardiovascular State
+## A Cross-Modal Autoencoder Framework Learns Holistic Representations of Cardiovascular State
 This directory contains code and instructions to create the models and results from [this paper](https://www.biorxiv.org/content/10.1101/2022.05.26.493497v1).
 
 In the paper, using the heart as a model system, we develop a cross-modal autoencoder framework for integrating distinct data modalities and constructing a holistic representation of cardio-vascular state. 
