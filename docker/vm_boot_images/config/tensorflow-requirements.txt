@@ -14,7 +14,6 @@ notebook
 pytest
 pysam
 tensorflow==2.9.1
-#tensorflow==2.5.0
 tensorflow-addons==0.17.1
 tensorflow_probability==0.17.0
 tensorflow_hub
