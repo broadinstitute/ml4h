@@ -6,7 +6,7 @@ In particular, we use our framework to construct such cross-modal representation
 
 ![Overview Figure](overview.png)
 
-The model in the paper was trained on MRIs and ECGs available from the [UK Biobank](https://www.ukbiobank.ac.uk/)
+The model in the paper was trained on MRIs and ECGs available from the [UK Biobank](https://www.ukbiobank.ac.uk/).
 
 
 ### Software Versions:
