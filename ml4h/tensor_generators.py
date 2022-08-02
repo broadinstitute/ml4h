@@ -634,7 +634,7 @@ def get_train_valid_test_paths(
 
     train_set = _sample_csv_to_set(train_csv)
     valid_set = _sample_csv_to_set(valid_csv)
-    test_set = _sample_csv_to_set(test_csv)
+    test_set  = _sample_csv_to_set(test_csv)
 
     if train_set is not None and valid_set is not None and not train_set.isdisjoint(valid_set):
         raise ValueError('train and validation samples overlap')

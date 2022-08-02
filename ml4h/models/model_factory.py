@@ -149,8 +149,8 @@ def multimodal_multitask_model(
     for tm in tensor_maps_in:
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
             if isinstance(encode_block, Block):
-                encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))
-            elif encode_block in BLOCK_CLASSES:
+                encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs)) # second input is for the intermediate
+            elif encode_block in BLOCK_CLASSES: # string form
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
             elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)

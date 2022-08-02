@@ -72,7 +72,7 @@ def train_model_from_generators(
     logging.info('Model weights saved at: %s' % model_file)
     custom_dict = _get_custom_objects(output_tensor_maps)
     model = load_model(model_file, custom_objects=custom_dict, compile=False)
-    model.compile(optimizer='adam', loss='mse')
+    model.compile(optimizer='adam', loss='mse') # why?
     if plot:
         plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
     if return_history:
