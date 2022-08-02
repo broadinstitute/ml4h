@@ -122,7 +122,30 @@ def _warp_ecg(ecg):
         warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
     return warped_ecg
 
+def _make_ecg_rest_vitalaf(
+        downsample_steps: int = 0,
+        short_time_nperseg: int = 0, short_time_noverlap: int = 0,
+):
+    def ecg_rest_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for k in hd5[tm.path_prefix]:
+            if k in tm.channel_map:
+                data = tm.hd5_first_dataset_in_group(
+                    hd5, f'{k}',
+                )
+                if short_time_nperseg > 0 and short_time_noverlap > 0:
+                    f, t, short_time_ft = scipy.signal.stft(
+                        data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
+                    )
+                    # logging.info(f'SHape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
+                    tensor[..., tm.channel_map[k]] = short_time_ft
+                elif downsample_steps > 1:
+                    tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
+                else:
+                    tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
+        return tensor
 
+    return ecg_rest_from_file
 
 def _make_ecg_rest(
         instance: int = 2, downsample_steps: int = 0,
@@ -166,6 +189,21 @@ def _get_lead_cm(length):
         lead_weights.append((np.abs(wave_val+1)/(length/2)) + 1.0)
     return lead_cm, lead_weights
 
+def _make_rhythm_tensor_alivecore(skip_poor=True):
+    def rhythm_tensor_from_file(tm, hd5, dependents={}):
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        ecg_interpretation = str(
+            tm.hd5_first_dataset_in_group(
+            hd5, 'Result_cardiologist',
+            )[()],
+        )
+        for channel in tm.channel_map:
+            if channel.replace('_', ' ') in ecg_interpretation:
+                categorical_data[tm.channel_map[channel]] = 1.0
+                return categorical_data
+        categorical_data[tm.channel_map['Other']] = 1.0
+        return categorical_data
+    return rhythm_tensor_from_file
 
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
@@ -188,7 +226,6 @@ def _make_rhythm_tensor(skip_poor=True):
         categorical_data[tm.channel_map['Other_rhythm']] = 1.0
         return categorical_data
     return rhythm_tensor_from_file
-
 
 def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
@@ -473,14 +510,131 @@ partners_ecg_2500 = TensorMap(
     channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
 )
 
+ecg_alivecore = TensorMap(
+    'ecg_alivecore', Interpretation.CONTINUOUS, shape=(9000, 1), path_prefix='', tensor_from_file=_make_ecg_rest_vitalaf(),
+    channel_map={'data_raw_samples_leadI': 0}, normalization=ZeroMeanStd1(),
+)
+
 ecg_rest_mgb_strip_I = TensorMap(
     'ecg_strip_I', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
 )
+
 ecg_rest_mgb_strip_II = TensorMap(
     'ecg_strip_II', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
 )
+
+ecg_rest_mgb_strip_III = TensorMap(
+    'ecg_strip_III', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_III': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_V1 = TensorMap(
+    'ecg_strip_V1', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_V1': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_V2 = TensorMap(
+    'ecg_strip_V2', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_V2': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_V3 = TensorMap(
+    'ecg_strip_V3', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_V3': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_V4 = TensorMap(
+    'ecg_strip_V4', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_V4': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_V5 = TensorMap(
+    'ecg_strip_V5', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_V5': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_V6 = TensorMap(
+    'ecg_strip_V6', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_V6': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_aVF = TensorMap(
+    'ecg_strip_aVF', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_aVF': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_aVL = TensorMap(
+    'ecg_strip_aVL', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_aVL': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_strip_aVR = TensorMap(
+    'ecg_strip_aVR', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'strip_aVR': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_I = TensorMap(
+    'ecg_median_I', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_I': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_II = TensorMap(
+    'ecg_median_II', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_II': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_III = TensorMap(
+    'ecg_median_III', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_III': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_V1 = TensorMap(
+    'ecg_median_V1', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_V1': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_V2 = TensorMap(
+    'ecg_median_V2', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_V2': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_V3 = TensorMap(
+    'ecg_median_V3', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_V3': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_V4 = TensorMap(
+    'ecg_median_V4', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_V4': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_V5 = TensorMap(
+    'ecg_median_V5', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_V5': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_V6 = TensorMap(
+    'ecg_median_V6', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_V6': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_aVF = TensorMap(
+    'ecg_median_aVF', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_aVF': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_aVL = TensorMap(
+    'ecg_median_aVL', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_aVL': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rest_mgb_median_aVR = TensorMap(
+    'ecg_median_aVR', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
+    channel_map={'median_aVR': 0}, normalization=ZeroMeanStd1(),
+)
+
 # ecg_rest_mgb_2500 = TensorMap(
 #     'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
 #     tensor_from_file=_make_ecg_rest(downsample_steps=2), channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
@@ -600,6 +754,7 @@ ecg_rhythm = TensorMap(
         'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5,
     },
 )
+
 ecg_rhythm_poor = TensorMap(
     'ecg_rhythm', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor(False),
     loss=weighted_crossentropy(
@@ -609,6 +764,12 @@ ecg_rhythm_poor = TensorMap(
         'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2,
         'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5,
     },
+)
+
+ecg_rhythm_alivecore = TensorMap(
+    'ecg_rhythm_alivecore', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor_alivecore(),
+    loss=weighted_crossentropy([1.0, 20.0, 1.0, 1.0], 'ecg_rhythm_alivecore'),
+    channel_map={'Normal': 0, 'AF': 1, 'Not readable': 2, 'Other': 3},
 )
 
 ecg_rest_age = TensorMap(
@@ -682,8 +843,6 @@ lvh_fine = TensorMap(
     },
 )
 
-
-
 premature_atrial_complexes = TensorMap(
     'premature_atrial_complexes', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text,
     channel_map={
@@ -717,7 +876,6 @@ prolonged_qt = TensorMap(
     'prolonged_qt', Interpretation.CATEGORICAL, tensor_from_file=label_from_ecg_interpretation_text, channel_map={'no_prolonged_qt': 0, 'Prolonged QT': 1},
     loss=weighted_crossentropy([0.1, 10.0], 'prolonged_qt'),
 )
-
 
 ecg_rest_ramplitude_raw = TensorMap(
     'ramplitude', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(12,), tensor_from_file=_make_ukb_ecg_rest(1.0),
