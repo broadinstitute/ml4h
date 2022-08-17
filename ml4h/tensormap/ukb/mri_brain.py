@@ -1,4 +1,5 @@
 import h5py
+import nibabel
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 
@@ -142,6 +143,7 @@ t1_mni_slices_128_160 = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
+
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
     num2idx = {0: 0, 10: 1, 11: 2, 12: 3, 13: 4, 16: 5, 17: 6, 18: 7, 26: 8, 49: 9, 50: 10, 51: 11, 52: 12, 53: 13, 54: 14, 58: 15}
@@ -222,5 +224,30 @@ t1_slice_63_brainstem = TensorMap(
     shape=(216, 256, 1),
     path_prefix='ukb_brain_mri/T1/',
     tensor_from_file=_brain_label_masked({'Brain_Stem': 5}),
+    normalization=ZeroMeanStd1(),
+)
+
+
+def _mni_label_masked(labels, mni_label_mask='/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii'):
+    mni_labels = nibabel.load('/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')
+
+    def _masked_brain_tensor(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        begin_slice = int(tm.name.split('_')[-2])
+        end_slice = int(tm.name.split('_')[-1])
+        for i in range(begin_slice, end_slice):
+            slicer = get_tensor_at_first_date(hd5, tm.path_prefix, f'axial_{i}')
+            tensor[..., i - begin_slice] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
+        label_mask = np.isin(mni_labels[..., begin_slice:end_slice], list(labels.values()))
+        tensor *= label_mask
+        return tensor
+    return _masked_brain_tensor
+
+
+t1_mni_slice_80_hippocampus = TensorMap(
+    'mni_hippocampus_axial_48_80',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_label_masked({'Left_Hippocampus': 99, 'Right_Hippocampus': 48}),  # CerebrA Label Map
     normalization=ZeroMeanStd1(),
 )
