@@ -252,3 +252,11 @@ t1_mni_slice_80_hippocampus = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_Hippocampus': 99, 'Right_Hippocampus': 48}),  # CerebrA Label Map
     normalization=ZeroMeanStd1(),
 )
+t1_mni_slice_60_92_putamen = TensorMap(
+    'mni_putamen_axial_48_80',
+    shape=(182, 218, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_Putamen': 72, 'Right_Putamen': 21}),  # CerebrA Label Map
+    normalization=ZeroMeanStd1(),
+)
+
