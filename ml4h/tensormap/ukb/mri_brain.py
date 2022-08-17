@@ -230,7 +230,7 @@ t1_slice_63_brainstem = TensorMap(
 
 def _mni_label_masked(labels, mni_label_mask='/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii'):
     mni_nifti = nibabel.load('/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')
-    mni_labels = mni_nifti.get_fdata()[:182, :218, :182]  # crop to UKB MNI
+    mni_labels = mni_nifti.get_fdata()[:180, :216, :182]  # crop to UKB MNI
 
     def _masked_brain_tensor(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -247,14 +247,14 @@ def _mni_label_masked(labels, mni_label_mask='/home/sam/mni_icbm152_CerebrA_tal_
 
 t1_mni_slice_80_hippocampus = TensorMap(
     'mni_hippocampus_axial_48_80',
-    shape=(182, 218, 32),
+    shape=(180, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
     tensor_from_file=_mni_label_masked({'Left_Hippocampus': 99, 'Right_Hippocampus': 48}),  # CerebrA Label Map
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slice_60_92_putamen = TensorMap(
-    'mni_putamen_axial_48_80',
-    shape=(182, 218, 32),
+    'mni_putamen_axial_60_92',
+    shape=(180, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
     tensor_from_file=_mni_label_masked({'Left_Putamen': 72, 'Right_Putamen': 21}),  # CerebrA Label Map
     normalization=ZeroMeanStd1(),
