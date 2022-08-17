@@ -229,8 +229,9 @@ t1_slice_63_brainstem = TensorMap(
 
 
 def _mni_label_masked(labels, mni_label_mask='/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii'):
-    mni_labels = nibabel.load('/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')
-
+    mni_nifti = nibabel.load('/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')
+    mni_labels = mni_nifti.get_fdata()
+    
     def _masked_brain_tensor(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
         begin_slice = int(tm.name.split('_')[-2])
