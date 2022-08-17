@@ -248,6 +248,6 @@ t1_mni_slice_80_hippocampus = TensorMap(
     'mni_hippocampus_axial_48_80',
     shape=(216, 256, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_label_masked({'Left_Hippocampus': 99, 'Right_Hippocampus': 48}),  # CerebrA Label Map
+    tensor_from_file=_mni_label_masked({'Left_Hippocampus': 99, 'Right_Hippocampus': 48}),  # CerebrA Label Map
     normalization=ZeroMeanStd1(),
 )
