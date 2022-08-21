@@ -66,7 +66,7 @@ MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_opti
 DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
                     '20227', '20225', '20217', '20158']
 
-DXA_FIELD = 20158
+DXA_FIELD = '20158'
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -428,9 +428,12 @@ def _write_tensors_from_dicoms(
             views[series].append(d)
             stats[series] += 1
         elif series == 'dxa':
+            logging.info("Got DXA series")
             series_num = dicom.split('.')[-5]
             dxa_number = dicom.split('.')[-4]
             create_tensor_in_hd5(hd5, f'ukb_dxa/{series_num}_{dxa_number}', dxa_number, d.pixel_array, stats)
+        else:
+            logging.info(f"No special series info: {series}")
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
