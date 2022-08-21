@@ -427,7 +427,7 @@ def _write_tensors_from_dicoms(
         elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
             views[series].append(d)
             stats[series] += 1
-        elif series == 'dxa':
+        elif series == 'dxa_images':
             logging.info("Got DXA series")
             series_num = dicom.split('.')[-5]
             dxa_number = dicom.split('.')[-4]
