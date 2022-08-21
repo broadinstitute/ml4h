@@ -7,7 +7,7 @@ from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_da
 
 dxa_12 = TensorMap(
     'dxa_1_12',
-    shape=(760, 292, 1),
+    shape=(864, 320, 1),
     path_prefix='ukb_dxa',
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
