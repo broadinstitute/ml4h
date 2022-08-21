@@ -156,7 +156,7 @@ def write_tensors(
 
         end_time = timer()
         elapsed_time = end_time - start_time
-        logging.info("Populated {} in {} seconds.".format(tp, elapsed_time))
+        logging.info(f"Populated {tp} in {elapsed_time:0.2f} seconds.")
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
@@ -428,7 +428,7 @@ def _write_tensors_from_dicoms(
             views[series].append(d)
             stats[series] += 1
         elif series == 'dxa_images':
-            logging.info("Got DXA series")
+            #logging.info("Got DXA series")
             series_num = dicom.split('.')[-5]
             dxa_number = dicom.split('.')[-4]
             name = f'dxa_{series_num}_{dxa_number}'
