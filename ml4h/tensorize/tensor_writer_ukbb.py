@@ -63,7 +63,10 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
+DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
+                    '20227', '20225', '20217', '20158']
+
+DXA_FIELD = 20158
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -424,6 +427,10 @@ def _write_tensors_from_dicoms(
         elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
             views[series].append(d)
             stats[series] += 1
+        elif series == 'dxa':
+            series_num = dicom.split('.')[-5]
+            dxa_number = dicom.split('.')[-4]
+            create_tensor_in_hd5(hd5, f'ukb_dxa/{series_num}_{dxa_number}', dxa_number, d.pixel_array, stats)
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
@@ -444,6 +451,7 @@ def _write_tensors_from_dicoms(
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
+
         else:
             mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
