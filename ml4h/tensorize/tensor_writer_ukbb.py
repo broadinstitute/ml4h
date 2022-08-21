@@ -371,8 +371,8 @@ def _write_tensors_from_zipped_dicoms(
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
-        for zipped in mris:
-            logging.info("Got zipped dicoms for sample: {} with MRI field: {}".format(sample_id, mri_field))
+        for zipped in sorted(mris):
+            logging.info(f"Got zipped dicoms for sample: {sample_id} with MRI field: {mri_field}")
             dicom_folder = os.path.join(dicoms, sample_str, mri_field)
             if not os.path.exists(dicom_folder):
                 os.makedirs(dicom_folder)
@@ -431,7 +431,8 @@ def _write_tensors_from_dicoms(
             logging.info("Got DXA series")
             series_num = dicom.split('.')[-5]
             dxa_number = dicom.split('.')[-4]
-            create_tensor_in_hd5(hd5, f'ukb_dxa/{series_num}_{dxa_number}', dxa_number, d.pixel_array, stats)
+            name = f'dxa_{series_num}_{dxa_number}'
+            create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
         else:
             logging.info(f"No special series info: {series}")
         if series in MRI_LIVER_IDEAL_PROTOCOL:
