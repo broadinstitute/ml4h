@@ -12,3 +12,11 @@ dxa_12 = TensorMap(
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
+
+dxa_11 = TensorMap(
+    'dxa_1_11',
+    shape=(896, 352, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
