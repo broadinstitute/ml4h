@@ -10,7 +10,7 @@ from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tens
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
 from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
-from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
+from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x, label_smoothing_cross_entropy
 from ml4h.tensormap.ukb.demographics import age_in_years_tensor
 
 _HRR_SENTINEL = -1000
@@ -122,30 +122,6 @@ def _warp_ecg(ecg):
         warped_ecg[:, j] = np.interp(i, warped, ecg[:, j])
     return warped_ecg
 
-def _make_ecg_rest_vitalaf(
-        downsample_steps: int = 0,
-        short_time_nperseg: int = 0, short_time_noverlap: int = 0,
-):
-    def ecg_rest_from_file(tm, hd5, dependents={}):
-        tensor = np.zeros(tm.shape, dtype=np.float32)
-        for k in hd5[tm.path_prefix]:
-            if k in tm.channel_map:
-                data = tm.hd5_first_dataset_in_group(
-                    hd5, f'{k}',
-                )
-                if short_time_nperseg > 0 and short_time_noverlap > 0:
-                    f, t, short_time_ft = scipy.signal.stft(
-                        data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
-                    )
-                    # logging.info(f'SHape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
-                    tensor[..., tm.channel_map[k]] = short_time_ft
-                elif downsample_steps > 1:
-                    tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
-                else:
-                    tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
-        return tensor
-
-    return ecg_rest_from_file
 
 def _make_ecg_rest(
         instance: int = 2, downsample_steps: int = 0,
@@ -170,7 +146,6 @@ def _make_ecg_rest(
                     f, t, short_time_ft = scipy.signal.stft(
                         data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
                     )
-                    #logging.info(f'SHape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
                     tensor[..., tm.channel_map[k]] = short_time_ft
                 elif downsample_steps > 1:
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
@@ -189,21 +164,6 @@ def _get_lead_cm(length):
         lead_weights.append((np.abs(wave_val+1)/(length/2)) + 1.0)
     return lead_cm, lead_weights
 
-def _make_rhythm_tensor_alivecore(skip_poor=True):
-    def rhythm_tensor_from_file(tm, hd5, dependents={}):
-        categorical_data = np.zeros(tm.shape, dtype=np.float32)
-        ecg_interpretation = str(
-            tm.hd5_first_dataset_in_group(
-            hd5, 'Result_cardiologist',
-            )[()],
-        )
-        for channel in tm.channel_map:
-            if channel.replace('_', ' ') in ecg_interpretation:
-                categorical_data[tm.channel_map[channel]] = 1.0
-                return categorical_data
-        categorical_data[tm.channel_map['Other']] = 1.0
-        return categorical_data
-    return rhythm_tensor_from_file
 
 def _make_rhythm_tensor(skip_poor=True):
     def rhythm_tensor_from_file(tm, hd5, dependents={}):
@@ -227,6 +187,7 @@ def _make_rhythm_tensor(skip_poor=True):
         return categorical_data
     return rhythm_tensor_from_file
 
+
 def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
     categorical_data = np.zeros(tm.shape, dtype=np.float32)
     ecg_interpretation = str(
@@ -245,7 +206,6 @@ def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
         raise ValueError(
             f"ECG categorical interpretation could not find any of these keys: {tm.channel_map.keys()}",
         )
-
 
 # Extract RAmplitude and SAmplitude for LVH criteria
 def _make_ukb_ecg_rest(population_normalize: float = None):
@@ -266,7 +226,6 @@ def _make_ukb_ecg_rest(population_normalize: float = None):
             ValueError(f'Cannot normalize {tm.name}')
         return tensor
     return ukb_ecg_rest_from_file
-
 
 def _make_ukb_ecg_rest_lvh():
     def ukb_ecg_rest_lvh_from_file(tm, hd5, dependents={}):
@@ -358,6 +317,64 @@ def _ecg_rest_to_segment(population_normalize=None, hertz=500, random_offset_sec
         return tensor
     return ecg_rest_section_to_segment
 
+
+def _make_ecg_rest_vitalaf(
+        downsample_steps: int = 0,
+        short_time_nperseg: int = 0, short_time_noverlap: int = 0,
+):
+    def ecg_rest_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for k in hd5.keys(): # The data is flat so far
+            if k in tm.channel_map:
+                data = hd5[k]
+                if short_time_nperseg > 0 and short_time_noverlap > 0:
+                    f, t, short_time_ft = scipy.signal.stft(
+                        data, nperseg=short_time_nperseg, noverlap=short_time_noverlap,
+                    )
+                    # logging.info(f'Shape is {short_time_ft.shape} t shape: {tensor[..., tm.channel_map[k]].shape}')
+                    tensor[..., tm.channel_map[k]] = short_time_ft
+                elif downsample_steps > 1:
+                    tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
+                else:
+                    tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
+        return tensor
+    return ecg_rest_from_file
+
+
+def _make_rhythm_tensor_alivecore(skip_poor=True):
+    def rhythm_tensor_from_file(tm, hd5, dependents={}):
+        categorical_data = np.zeros(tm.shape, dtype=np.float32)
+        ecg_interpretation = str(
+            tm.hd5_first_dataset_in_group(
+            hd5, 'Result_cardiologist',
+            )[()],
+        )
+        for channel in tm.channel_map:
+            if channel.replace('_', ' ') in ecg_interpretation:
+                categorical_data[tm.channel_map[channel]] = 1.0
+                return categorical_data
+        categorical_data[tm.channel_map['Other']] = 1.
+        return categorical_data
+    return rhythm_tensor_from_file
+
+
+ecg_alivecore = TensorMap(
+    'ecg_alivecore', Interpretation.CONTINUOUS, shape=(9000, 1), path_prefix='data_raw_samples_leadI', tensor_from_file=_make_ecg_rest_vitalaf(),
+    channel_map={'data_raw_samples_leadI': 0}, normalization=ZeroMeanStd1(),
+)
+
+ecg_rhythm_alivecore = TensorMap(
+    'ecg_rhythm_alivecore', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor_alivecore(),
+    loss=weighted_crossentropy([1.0, 1.0, 1.0, 1.0], 'ecg_rhythm_alivecore'),
+    channel_map={'Normal': 0, 'AF': 1, 'Not readable': 2, 'Other': 3},
+)
+
+# label_smoothing_cross_entropy
+ecg_rhythm_alivecore_label_smooth = TensorMap(
+    'ecg_rhythm_alivecore', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor_alivecore(),
+    loss=label_smoothing_cross_entropy(0.2),
+    channel_map={'Normal': 0, 'AF': 1, 'Not readable': 2, 'Other': 3},
+)
 
 ecg_bike_hrr = TensorMap(
     'hrr', path_prefix='ecg_bike', loss='logcosh', metrics=['mae'], shape=(1,),
@@ -508,11 +525,6 @@ ecg_rest_mgb_2500 = TensorMap(
 partners_ecg_2500 = TensorMap(
     'partners_ecg_2500_newest', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
     channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
-)
-
-ecg_alivecore = TensorMap(
-    'ecg_alivecore', Interpretation.CONTINUOUS, shape=(9000, 1), path_prefix='', tensor_from_file=_make_ecg_rest_vitalaf(),
-    channel_map={'data_raw_samples_leadI': 0}, normalization=ZeroMeanStd1(),
 )
 
 ecg_rest_mgb_strip_I = TensorMap(
@@ -766,11 +778,6 @@ ecg_rhythm_poor = TensorMap(
     },
 )
 
-ecg_rhythm_alivecore = TensorMap(
-    'ecg_rhythm_alivecore', Interpretation.CATEGORICAL, tensor_from_file=_make_rhythm_tensor_alivecore(),
-    loss=weighted_crossentropy([1.0, 20.0, 1.0, 1.0], 'ecg_rhythm_alivecore'),
-    channel_map={'Normal': 0, 'AF': 1, 'Not readable': 2, 'Other': 3},
-)
 
 ecg_rest_age = TensorMap(
     'ecg_rest_age', Interpretation.CONTINUOUS, tensor_from_file=age_in_years_tensor('ecg_rest_date'), loss='logcosh',

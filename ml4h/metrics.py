@@ -46,6 +46,18 @@ def weighted_crossentropy(weights, name='anonymous'):
     return loss_fxn
 
 
+def label_smoothing_cross_entropy(label_smooth: float):
+    global global_label_smooth
+    global_label_smooth = label_smooth
+
+    def _label_smoothing_cross_entropy(y_true, y_pred):
+        loss = tf.keras.losses.CategoricalCrossentropy(
+            from_logits=True, label_smoothing=global_label_smooth
+        )(y_true, y_pred)
+        return tf.reduce_mean(loss)
+    return _label_smoothing_cross_entropy
+
+
 def sparse_cross_entropy(window_size: int):
     def _sparse_cross_entropy(y_true, y_pred):
         y_true = tf.reshape(y_true, shape=(-1, window_size))

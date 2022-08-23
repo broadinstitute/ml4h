@@ -40,6 +40,10 @@ def _get_learning_rate_schedule(learning_rate: float, learning_rate_schedule: st
             initial_learning_rate=learning_rate / 5, maximal_learning_rate=learning_rate,
             step_size=steps_per_epoch * 5,
         )
+    if learning_rate_schedule == 'CosineDecay':
+        return optimizers.schedules.CosineDecay(
+            initial_learning_rate=learning_rate / 5, decay_steps=steps_per_epoch * 5, alpha=0.95
+        )
     else:
         raise ValueError(f'Learning rate schedule "{learning_rate_schedule}" unknown.')
 
