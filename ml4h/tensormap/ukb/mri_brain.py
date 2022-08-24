@@ -259,4 +259,26 @@ t1_mni_slice_60_92_putamen = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_Putamen': 72, 'Right_Putamen': 21}),  # CerebrA Label Map
     normalization=ZeroMeanStd1(),
 )
+t1_mni_cerebellum_white_matter_30_60 = TensorMap(
+    't1_mni_cerebellum_white_matter_30_60',
+    shape=(176, 216, 30),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_gray_matter_10_73 = TensorMap(
+    't1_mni_cerebellum_gray_matter_10_73',
+    shape=(176, 216, 63),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_10_73 = TensorMap(
+    't1_mni_cerebellum_10_73',
+    shape=(176, 216, 63),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
+                                        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39}),
+    normalization=ZeroMeanStd1(),
+)
 
