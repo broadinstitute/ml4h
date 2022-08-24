@@ -15,8 +15,13 @@ dxa_2 = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
-
-
+dxa_6 = TensorMap(
+    'dxa_1_6',
+    shape=(864, 736, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
 
 dxa_8 = TensorMap(
     'dxa_1_8',
