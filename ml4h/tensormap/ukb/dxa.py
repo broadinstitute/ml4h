@@ -55,7 +55,7 @@ def register_to_sample(
 
     # Specify the threshold of the increment
     # in the correlation coefficient between two iterations
-    termination_eps = 1e-4
+    termination_eps = 1e-3
 
     # Define termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations, termination_eps)
@@ -67,7 +67,7 @@ def register_to_sample(
     def _registered_tensor(tm, hd5, dependents={}):
         tensor = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
-        background = np.bincount(tensor).argmax()
+        background = np.bincount(tensor.flatten()).argmax()
         tensor[tensor == background] = 0
         warp_matrix = np.eye(2, 3, dtype=np.float32)
         try:
