@@ -50,8 +50,6 @@ def register_to_sample(
         register_shape=(864, 736, 1),
         ):
     register_tensor = None
-    warp_matrix = np.eye(2, 3, dtype=np.float32)
-
     number_of_iterations = 5000;
 
     # Specify the threshold of the increment
@@ -69,6 +67,7 @@ def register_to_sample(
         tensor = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
 
+        warp_matrix = np.eye(2, 3, dtype=np.float32)
         (cc, warp_matrix) = cv2.findTransformECC(register_tensor, tensor, warp_matrix, warp_mode, criteria)
         logging.debug(f'Got transform matrix: {warp_matrix}')
         tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
