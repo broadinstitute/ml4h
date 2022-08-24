@@ -51,11 +51,11 @@ def register_to_sample(
         register_shape=(864, 736, 1),
         ):
     register_tensor = None
-    number_of_iterations = 5000;
+    number_of_iterations = 1000
 
     # Specify the threshold of the increment
     # in the correlation coefficient between two iterations
-    termination_eps = 1e-5;
+    termination_eps = 1e-3
 
     # Define termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations, termination_eps)
