@@ -58,7 +58,7 @@ def register_to_sample(
 
     # Define termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations, termination_eps)
-
+    warp_mode = cv2.MOTION_TRANSLATION
     with h5py.File(register_hd5, 'r') as r_hd5:
         r_tensor = get_tensor_at_first_date(r_hd5, register_path, register_name)
         register_tensor = pad_or_crop_array_to_shape(register_shape, r_tensor)
