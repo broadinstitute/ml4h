@@ -51,11 +51,11 @@ def register_to_sample(
         register_shape=(864, 736, 1),
         ):
     register_tensor = None
-    number_of_iterations = 5000;
+    number_of_iterations = 50000;
 
     # Specify the threshold of the increment
     # in the correlation coefficient between two iterations
-    termination_eps = 1e-10;
+    termination_eps = 1e-5;
 
     # Define termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations, termination_eps)
@@ -69,11 +69,15 @@ def register_to_sample(
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
 
         warp_matrix = np.eye(2, 3, dtype=np.float32)
-        (cc, warp_matrix) = cv2.findTransformECC(register_tensor.astype(np.float32), tensor.astype(np.float32),
-                                                 warp_matrix, warp_mode, criteria)
-        tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
-                                        flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
+        try:
+            (cc, warp_matrix) = cv2.findTransformECC(register_tensor.astype(np.float32), tensor.astype(np.float32),
+                                                     warp_matrix, warp_mode, criteria)
+            tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
+                                            flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
 
+
+        except cv2.error as e:
+            logging.debug(f'Got cv2 error {e}')
         return tensor
     return _registered_tensor
 
