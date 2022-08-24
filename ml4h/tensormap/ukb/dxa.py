@@ -67,8 +67,8 @@ def register_to_sample(
     def _registered_tensor(tm, hd5, dependents={}):
         tensor = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
-        background = np.bincount(tensor.flatten()).argmax()
-        tensor[tensor == background] = 0
+        background = np.bincount(tensor.flatten().astype(np.int64)).argmax()
+        tensor[tensor == float(background)] = 0
         warp_matrix = np.eye(2, 3, dtype=np.float32)
         try:
             (cc, warp_matrix) = cv2.findTransformECC(register_tensor.astype(np.float32), tensor.astype(np.float32),
