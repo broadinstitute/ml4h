@@ -68,7 +68,8 @@ def register_to_sample(
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
 
         warp_matrix = np.eye(2, 3, dtype=np.float32)
-        (cc, warp_matrix) = cv2.findTransformECC(register_tensor, tensor, warp_matrix, warp_mode, criteria)
+        (cc, warp_matrix) = cv2.findTransformECC(register_tensor.astype(np.float32), tensor.astype(np.float32),
+                                                 warp_matrix, warp_mode, criteria)
         logging.debug(f'Got transform matrix: {warp_matrix}')
         tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
                                         flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
