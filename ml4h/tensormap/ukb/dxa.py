@@ -51,7 +51,7 @@ def register_to_sample(
         register_shape=(864, 736, 1),
         ):
     register_tensor = None
-    number_of_iterations = 50000;
+    number_of_iterations = 5000;
 
     # Specify the threshold of the increment
     # in the correlation coefficient between two iterations
