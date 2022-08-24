@@ -68,7 +68,7 @@ def register_to_sample(
         tensor = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
 
-        bc = np.bincount(tensor.flatten())
+        bc = np.bincount(tensor.flatten().astype(np.int64))
         for val, count in zip(reversed(bc.argsort()), reversed(sorted(bc))):
             if count > 10000:
                 tensor[tensor == float(val)] = 0
