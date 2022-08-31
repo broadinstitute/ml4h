@@ -26,7 +26,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -67,6 +67,18 @@ jobs:
         gsutil cp image_annotations_demo.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_model_results_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
         gsutil cp review_one_sample_interactive.ipynb "gs://${WORKSPACE_BUCKET}/notebooks/"
+
+        # By default, use the SHA of the commit for the version.
+        VERSION="${{ github.sha }}"
+        # But for tags, strip the prefix from tag name to use just the tag value as the version.
+        [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo "${{ github.ref }}" | sed -e 's:refs/tags/::')
+
+        # Fill in the setup notebook template.
+        cat ml4h_setup.ipynb | sed -e s:ml4h.git:ml4h.git@${VERSION}: > ml4h_setup.ipynbWithVersion
+
+        # Publish the setup notebook.
+        gsutil cp ml4h_setup.ipynbWithVersion "gs://${WORKSPACE_BUCKET}/notebooks/ml4h_setup.ipynb"
+
 
         # Publish the dashboard markdown.
         python << EOF
