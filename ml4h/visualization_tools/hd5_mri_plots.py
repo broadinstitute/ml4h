@@ -144,7 +144,7 @@ def choose_mri_tmap(
         layout=transpose_chooser.layout,
     )
     plot_type_chooser = widgets.RadioButtons(
-        options={'interactive animation': PlotType.INTERACTIVE, 'panel grid': PlotType.PANEL},
+        options=[('interactive animation', PlotType.INTERACTIVE), ('panel grid', PlotType.PANEL)],
         description='Plot type',
         style={'description_width': 'initial'},
         layout=transpose_chooser.layout,
