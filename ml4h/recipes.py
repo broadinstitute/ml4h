@@ -530,7 +530,7 @@ def pca_on_hidden_inference(args):
 
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_multimodal_multitask_model(**args.__dict__)
+    model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
