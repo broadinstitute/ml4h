@@ -127,7 +127,7 @@ dxa_12_homography = TensorMap(
         register_name='dxa_1_12',
         register_shape=(928, 352, 1),
         number_of_iterations=5000,
-        termination_eps=1e-7,
+        termination_eps=1e-4,
         warp_mode=cv2.MOTION_HOMOGRAPHY,
     ),
     normalization=ZeroMeanStd1(),
