@@ -114,7 +114,7 @@ def block_make_multimodal_multitask_model(
         optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    full_model.summary()
+    full_model.summary(print_fn=logging.info)
     if kwargs.get('model_layers', False):
         full_model.load_weights(kwargs['model_layers'], by_name=True)
         logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
