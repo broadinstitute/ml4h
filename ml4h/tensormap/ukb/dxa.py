@@ -5,7 +5,7 @@ import numpy as np
 
 from ml4h.normalizer import ZeroMeanStd1
 from ml4h.TensorMap import TensorMap, Interpretation
-from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pad_or_crop_array_to_shape
+from ml4h.tensormap.general import get_tensor_at_first_date, get_tensor_at_last_date, normalized_first_date, pad_or_crop_array_to_shape
 
 dxa_2 = TensorMap(
     'dxa_1_2',
@@ -61,11 +61,11 @@ def register_to_sample(register_hd5, register_path, register_name, register_shap
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations, termination_eps)
     warp_mode = cv2.MOTION_TRANSLATION
     with h5py.File(register_hd5, 'r') as r_hd5:
-        r_tensor = get_tensor_at_first_date(r_hd5, register_path, register_name)
+        r_tensor = get_tensor_at_last_date(r_hd5, register_path, register_name)
         register_tensor = pad_or_crop_array_to_shape(register_shape, r_tensor)
 
     def _registered_tensor(tm, hd5, dependents={}):
-        tensor = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+        tensor = get_tensor_at_last_date(hd5, tm.path_prefix, tm.name)
         tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
 
         bc = np.bincount(tensor.flatten().astype(np.int64))

@@ -71,6 +71,25 @@ def get_tensor_at_first_date(
     tensor = handle_nan(tensor)
     return tensor
 
+def get_tensor_at_last_date(
+    hd5: h5py.File,
+    path_prefix: str,
+    name: str,
+    handle_nan=fail_nan,
+):
+    """
+    Gets the numpy array at the last date of path_prefix, dtype, name.
+    """
+    dates = all_dates(hd5, path_prefix, name)
+    if not dates:
+        raise ValueError(f'No {name} values values available.')
+    tensor = np.array(
+        hd5[f'{tensor_path(path_prefix=path_prefix, name=name)}{max(dates)}/'],
+        dtype=np.float32,
+    )
+    tensor = handle_nan(tensor)
+    return tensor
+
 
 def pad_or_crop_array_to_shape(new_shape: Tuple, original: np.ndarray):
     if new_shape == original.shape:
