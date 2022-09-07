@@ -79,11 +79,11 @@ def register_to_sample(register_hd5, register_path, register_name, register_shap
                                                      warp_matrix, warp_mode, criteria)
             if warp_mode == cv2.MOTION_HOMOGRAPHY:
                 # Use warpPerspective for Homography
-                tensor[..., 0] = cv2.warpPerspective(im2, warp_matrix, (sz[1], sz[0]),
+                tensor[..., 0] = cv2.warpPerspective(tensor, warp_matrix, (register_shape[1], register_shape[0]),
                                                      flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
             else:
                 # Use warpAffine for Translation, Euclidean and Affine
-                tensor[..., 0] = cv2.warpAffine(im2, warp_matrix, (sz[1], sz[0]),
+                tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
                                                 flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
         except cv2.error as e:
             logging.debug(f'Got cv2 error {e}')
