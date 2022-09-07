@@ -279,7 +279,7 @@ def _load_model_encoders_and_decoders(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    m.summary()
+    m.summary(print_fn=logging.info)
     logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
