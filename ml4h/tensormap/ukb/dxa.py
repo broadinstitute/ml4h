@@ -34,7 +34,7 @@ dxa_8 = TensorMap(
 
 dxa_12 = TensorMap(
     'dxa_1_12',
-    shape=(896, 320, 1),
+    shape=(928, 352, 1),
     path_prefix='ukb_dxa',
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
