@@ -49,12 +49,7 @@ dxa_11 = TensorMap(
 )
 
 
-def register_to_sample(
-        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1000107.hd5',
-        register_path='ukb_dxa',
-        register_name='dxa_1_6',
-        register_shape=(864, 736, 1),
-        ):
+def register_to_sample(register_hd5, register_path, register_name, register_shape):
     register_tensor = None
     number_of_iterations = 5000
 
@@ -87,7 +82,6 @@ def register_to_sample(
             tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
                                             flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
 
-
         except cv2.error as e:
             logging.debug(f'Got cv2 error {e}')
         return tensor
@@ -98,6 +92,25 @@ dxa_6_register = TensorMap(
     'dxa_1_6',
     shape=(864, 736, 1),
     path_prefix='ukb_dxa',
-    tensor_from_file=register_to_sample(),
+    tensor_from_file=register_to_sample(
+        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1000107.hd5',
+        register_path='ukb_dxa',
+        register_name='dxa_1_6',
+        register_shape=(864, 736, 1),
+    ),
     normalization=ZeroMeanStd1(),
 )
+
+dxa_12_register = TensorMap(
+    'dxa_1_12',
+    shape=(896, 320, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=register_to_sample(
+        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1000107.hd5',
+        register_path='ukb_dxa',
+        register_name='dxa_1_12',
+        register_shape=(896, 320, 1),
+    ),
+    normalization=ZeroMeanStd1(),
+)
+

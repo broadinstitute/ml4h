@@ -1,3 +1,4 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:b9e665989f3748457f982af7a27fdea7288c5f777b00645b31046c654517a2c6
-size 962
+# Deep Learning to Predict Cardiac Magnetic Resonance-Derived Left Ventricular Mass and Hypertrophy from 12-Lead Electrocardiograms
+Three pre-trained models are included here. The model `ecg_rest_raw_age_sex_bmi_lvm_asymmetric_loss.h5` takes as input a 12 Lead resting ECG, as well as age, sex and BMI and has two outputs: one which regresses the left ventricular mass, and a second which gives a probability of left ventricular hypertrophy. 
+This model was trained with the asymmetric loss described in the paper.  The model `ecg_rest_raw_lvm_asymmetric_loss.h5` takes only an ECG as input and regresses left ventricular mass, this model was also trained with the asymmetric loss.
+The third model, `ecg_rest_raw_lvm_symmetric_loss.h5` takes only an ECG as input and regresses left ventricular mass, this model was trained with the symmetric logcosh loss.  The raw voltage values from the ECG are normalized by dividing by 2000 prior to being input to the model.
