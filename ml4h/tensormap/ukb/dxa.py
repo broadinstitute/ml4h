@@ -119,13 +119,13 @@ dxa_12_translate = TensorMap(
 
 dxa_12_homography = TensorMap(
     'dxa_1_12',
-    shape=(896, 320, 1),
+    shape=(928, 352, 1),
     path_prefix='ukb_dxa',
     tensor_from_file=register_to_sample(
-        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1000107.hd5',
+        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/2146242.hd5',
         register_path='ukb_dxa',
         register_name='dxa_1_12',
-        register_shape=(896, 320, 1),
+        register_shape=(928, 352, 1),
         number_of_iterations=1000,
         termination_eps=2e-6,
         warp_mode=cv2.MOTION_HOMOGRAPHY,
