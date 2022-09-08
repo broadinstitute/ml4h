@@ -108,7 +108,7 @@ t1_mni_slices_80_144 = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_0_182 = TensorMap(
-    'axial_0_32',
+    'axial_0_182',
     shape=(176, 216, 182),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
     tensor_from_file=_brain_volume_from_file,
