@@ -6,7 +6,7 @@ import pandas as pd
 from facets_overview.generic_feature_statistics_generator import GenericFeatureStatisticsGenerator
 
 FACETS_DEPENDENCIES = {
-    'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html',
+    'facets_html': 'https://raw.githubusercontent.com/PAIR-code/facets/master/facets-dist/facets-jupyter.html',
     'webcomponents_js': 'https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js',
 }
 
