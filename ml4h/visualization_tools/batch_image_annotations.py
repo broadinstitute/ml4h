@@ -10,7 +10,7 @@ from IPython.display import display
 import numpy as np
 import pandas as pd
 import h5py
-from ipyannotations import PolygonAnnotator
+from ipyannotations.images import PolygonAnnotator
 from ipyannotations.images.annotator import Annotator
 import ipywidgets as widgets
 from ml4h.visualization_tools.hd5_mri_plots import MRI_TMAPS
