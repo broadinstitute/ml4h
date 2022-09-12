@@ -7,7 +7,7 @@ from ml4h.test_utils import build_hdf5s
 
 
 def pytest_configure(config):
-    pytest.N_TENSORS = 50
+    pytest.N_TENSORS = 100
     config.addinivalue_line("markers", "slow: mark tests as slow")
 
 
