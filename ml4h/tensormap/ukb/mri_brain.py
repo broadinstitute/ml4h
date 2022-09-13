@@ -311,3 +311,11 @@ t1_mni_amygdala_47_71 = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_amygdala': 19, 'Right_amygdala': 70}),
     normalization=ZeroMeanStd1(),
 )
+t1_mni_accumbens_65_76 = TensorMap(
+    't1_mni_accumbens_65_76',
+    shape=(176, 216, 11),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_accumbens': 19, 'Right_accumbens': 70}),
+    normalization=ZeroMeanStd1(),
+)
+
