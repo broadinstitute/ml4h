@@ -304,4 +304,10 @@ t1_mni_cerebellum_10_73 = TensorMap(
                                         'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39}),
     normalization=ZeroMeanStd1(),
 )
-
+t1_mni_amygdala_47_71 = TensorMap(
+    't1_mni_amygdala_47_71',
+    shape=(176, 216, 24),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_amygdala': 19, 'Right_amygdala': 70}),
+    normalization=ZeroMeanStd1(),
+)
