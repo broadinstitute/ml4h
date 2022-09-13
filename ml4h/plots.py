@@ -2752,7 +2752,7 @@ def plot_tsne(
     label_dict,
     figure_path,
     alpha,
-    perplexities = [7, 10],
+    perplexities = [12, 30],
 ):
     x_embed = np.array(x_embed)
     if len(x_embed.shape) > 2:

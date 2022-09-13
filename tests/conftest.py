@@ -28,7 +28,7 @@ def default_arguments(tmpdir_factory):
         '--pool_y', '1',
         '--pool_z', '1',
         '--training_steps', '2',
-        '--test_steps', '6',
+        '--test_steps', '8',
         '--validation_steps', '2',
         '--epochs', '2',
         '--num_workers', '0',
