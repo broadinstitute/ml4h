@@ -7,7 +7,7 @@ from ml4h.test_utils import build_hdf5s
 
 
 def pytest_configure(config):
-    pytest.N_TENSORS = 50
+    pytest.N_TENSORS = 100
     config.addinivalue_line("markers", "slow: mark tests as slow")
 
 
@@ -28,11 +28,11 @@ def default_arguments(tmpdir_factory):
         '--pool_y', '1',
         '--pool_z', '1',
         '--training_steps', '2',
-        '--test_steps', '3',
+        '--test_steps', '8',
         '--validation_steps', '2',
         '--epochs', '2',
         '--num_workers', '0',
-        '--batch_size', '2',
+        '--batch_size', '4',
     ]
     args = parse_args()
     return args
