@@ -6,7 +6,7 @@ INSTANCE_TYPE=${1:-n1-standard-4}
 shift 1
 DISK_SIZE=${1:-100GB}
 shift 1
-ACCEL=${1:-nvidia-tesla-k80}
+ACCEL=${1:-nvidia-tesla-t4}
 shift 1
 
 echo "Creating GPU instance ${NAME} from family dl-image of type ${INSTANCE_TYPE} with GPU ${ACCEL}..."
