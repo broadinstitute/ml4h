@@ -32,7 +32,7 @@ With [Homebrew](https://brew.sh/), you can use
     export BOOT_DISK_SIZE=10GB
     export BOOT_DISK_TYPE=pd-standard
     export MACHINE_TYPE=n1-standard-1
-    export BASE_IMAGE=ubuntu-1804-bionic-v20190429
+    export BASE_IMAGE=ubuntu-pro-2004-focal-v20220905
     export BASE_IMAGE_PROJECT=ubuntu-os-cloud
     export CPU_IMAGE=ml4h-image
     export GPU_IMAGE=dl-image
@@ -40,7 +40,7 @@ With [Homebrew](https://brew.sh/), you can use
     export CPU_TEST_VM=${USER}-test-cpu-image
     export GPU_VM=${USER}-create-gpu-image
     export GPU_TEST_VM=${USER}-test-gpu-image
-    export ACCELERATOR=nvidia-tesla-k80
+    export ACCELERATOR=nvidia-tesla-t4
     ```
 
 * If you want to create a **CPU-only (non-GPU)** VM image, set further environment variables as follows:
@@ -96,7 +96,7 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
 
 * Clone and go to the `ml` repo on your laptop:
     ```
-    git clone git@github.com:broadinstitute/ml.git && cd ml
+    git clone git@github.com:broadinstitute/ml4h.git && cd ml4h
     ```
 
 * Copy the scripts that will install the image content, to your VM
