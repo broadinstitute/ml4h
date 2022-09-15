@@ -115,20 +115,8 @@ images work; for example, `18.10` did not have `gcsfuse` as of 5/10/19.
     ```
   If you're creating a **GPU** image, first run:
     ```
-    ./dl-image-part-1.sh
-    ```
-  After the script finishes, it reboots the VM so you can expect to see a message like:
-    ```
-    Connection to [IP_ADDRESS] closed by remote host
-    ```
-  It will have logged you out so first, log back in, and then run the part-2 script:
-    ```
-    ./dl-image-part-2.sh
-    ```
-
-* Delete the scripts from your VM:
-    ```
-    rm *.sh
+    curl https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py
+    sudo python3 install_gpu_driver.py
     ```
 
 * Exit out of the VM and stop it before attempting to create an image off of its boot disk:
