@@ -129,6 +129,29 @@ class LinearDecoder(Block):
         return x
 
 
+class PartitionedLinearDecoder(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        if not self.can_apply():
+            return
+        self.dense = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=tensor_map.activation)
+        self.begin = tensor_map.days_window
+        self.end = tensor_map.annotation_units + tensor_map.days_window
+    def can_apply(self):
+        return self.tensor_map.axes() == 1
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+        if not self.can_apply():
+            return x
+
+        x = self.dense(x[self.begin:self.end])
+        intermediates[self.tensor_map].append(x)
+        return x
+
 class ModelAsBlock(Block):
     """Takes a serialized model and applies it, can be used to encode or decode Tensors"""
     def __init__(

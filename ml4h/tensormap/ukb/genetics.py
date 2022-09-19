@@ -47,6 +47,13 @@ bsa_mosteller = TensorMap('bsa_mosteller',  Interpretation.CONTINUOUS, normaliza
 bsa_dubois = TensorMap('bsa_dubois',  Interpretation.CONTINUOUS, normalization={'mean': 1.8671809970639703, 'std': 0.20913930961120797}, loss='logcosh', channel_map={'bsa_dubois': 0})
 
 
+genetic_pca_1_partition = TensorMap(
+    '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
+    normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+    days_window = 192, annotation_units = 64,
+    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0},
+)
+
 genetic_pca_1 = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0},

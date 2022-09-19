@@ -241,6 +241,7 @@ def generate_continuous_tensor_map_from_file(
     else:
         return TensorMap(
             f'{tensor_map_name}', channel_map={tensor_map_name: 0},
+            annotation_units=64, days_window=0,
             tensor_from_file=build_tensor_from_file(file_name, column_name, normalization),
         )
 
