@@ -53,6 +53,30 @@ genetic_pca_1_partition = TensorMap(
     days_window = 192, annotation_units = 64,
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
+genetic_pca_2_partition = TensorMap(
+    '22009_Genetic-principal-components_0_2', Interpretation.CONTINUOUS, path_prefix='continuous',
+    normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+    days_window = 192, annotation_units = 64,
+    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_2': 0},
+)
+genetic_pca_3_partition = TensorMap(
+    '22009_Genetic-principal-components_0_3', Interpretation.CONTINUOUS, path_prefix='continuous',
+    normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+    days_window = 192, annotation_units = 64,
+    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_3': 0},
+)
+genetic_pca_4_partition = TensorMap(
+    '22009_Genetic-principal-components_0_4', Interpretation.CONTINUOUS, path_prefix='continuous',
+    normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+    days_window = 192, annotation_units = 64,
+    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_4': 0},
+)
+genetic_pca_5_partition = TensorMap(
+    '22009_Genetic-principal-components_0_5', Interpretation.CONTINUOUS, path_prefix='continuous',
+    normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
+    days_window = 192, annotation_units = 64,
+    loss='logcosh', channel_map={'22009_Genetic-principal-components_0_5': 0},
+)
 
 genetic_pca_1 = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
