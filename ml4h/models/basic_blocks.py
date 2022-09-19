@@ -138,9 +138,11 @@ class PartitionedLinearDecoder(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-        self.dense = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=tensor_map.activation)
+        self.dense = Dense(units=tensor_map.shape[0], input_shape=(tensor_map.annotation_units,),
+                           name=tensor_map.output_name(), activation=tensor_map.activation)
         self.begin = tensor_map.days_window
         self.end = tensor_map.annotation_units + tensor_map.days_window
+
     def can_apply(self):
         return self.tensor_map.axes() == 1
 
