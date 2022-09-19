@@ -46,35 +46,35 @@ ttntv = TensorMap(
 bsa_mosteller = TensorMap('bsa_mosteller',  Interpretation.CONTINUOUS, normalization={'mean': 1.8894831981880114, 'std': 0.22169301057810176}, loss='logcosh', channel_map={'bsa_mosteller': 0})
 bsa_dubois = TensorMap('bsa_dubois',  Interpretation.CONTINUOUS, normalization={'mean': 1.8671809970639703, 'std': 0.20913930961120797}, loss='logcosh', channel_map={'bsa_dubois': 0})
 
-
+offset = 448
 genetic_pca_1_partition = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
     normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-    days_window = 192, annotation_units = 64,
+    days_window = offset, annotation_units = 64,
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_1': 0},
 )
 genetic_pca_2_partition = TensorMap(
     '22009_Genetic-principal-components_0_2', Interpretation.CONTINUOUS, path_prefix='continuous',
     normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-    days_window = 192, annotation_units = 64,
+    days_window = offset, annotation_units = 64,
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_2': 0},
 )
 genetic_pca_3_partition = TensorMap(
     '22009_Genetic-principal-components_0_3', Interpretation.CONTINUOUS, path_prefix='continuous',
     normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-    days_window = 192, annotation_units = 64,
+    days_window = offset, annotation_units = 64,
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_3': 0},
 )
 genetic_pca_4_partition = TensorMap(
     '22009_Genetic-principal-components_0_4', Interpretation.CONTINUOUS, path_prefix='continuous',
     normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-    days_window = 192, annotation_units = 64,
+    days_window = offset, annotation_units = 64,
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_4': 0},
 )
 genetic_pca_5_partition = TensorMap(
     '22009_Genetic-principal-components_0_5', Interpretation.CONTINUOUS, path_prefix='continuous',
     normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
-    days_window = 192, annotation_units = 64,
+    days_window = offset, annotation_units = 64,
     loss='logcosh', channel_map={'22009_Genetic-principal-components_0_5': 0},
 )
 
