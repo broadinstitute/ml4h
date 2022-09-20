@@ -243,7 +243,7 @@ genetic_pca_40 = TensorMap(
 )
 
 
-offset = 448
+offset = 192
 genetic_pca_1_partition = TensorMap(
     '22009_Genetic-principal-components_0_1', Interpretation.CONTINUOUS, path_prefix='continuous',
     normalization={'mean': -0.014422761536727896, 'std': 10.57799283718005},
