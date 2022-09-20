@@ -224,15 +224,16 @@ genetic_sex = TensorMap(
     path_prefix='categorical', annotation_units=2, loss='categorical_crossentropy',
     channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
 )
-partition_i = 192
+partition_i = 128
+a_units = 128
 genetic_sex_partition = TensorMap(
     'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
-    path_prefix='categorical', days_window=partition_i, annotation_units=64, loss='categorical_crossentropy',
+    path_prefix='categorical', days_window=partition_i, annotation_units=a_units, loss='categorical_crossentropy',
     channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
 )
 age_2_partition = TensorMap(
-    '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, days_window=partition_i, annotation_units=64,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, days_window=partition_i,
+    annotation_units=a_units, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.358, std=7.555),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
@@ -257,7 +258,7 @@ bmi_2 = TensorMap(
 bmi_2_partition = TensorMap(
     '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='logcosh',
     channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
-    normalization=Standardize(mean=27.3397, std=4.7721), days_window=partition_i, annotation_units=64,
+    normalization=Standardize(mean=27.3397, std=4.7721), days_window=partition_i, annotation_units=a_units,
 )
 bmi_21_0 = TensorMap(
     '21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
