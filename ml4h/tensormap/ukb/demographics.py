@@ -224,7 +224,7 @@ genetic_sex = TensorMap(
     path_prefix='categorical', annotation_units=2, loss='categorical_crossentropy',
     channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
 )
-partition_i = 448
+partition_i = 192
 genetic_sex_partition = TensorMap(
     'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
     path_prefix='categorical', days_window=partition_i, annotation_units=64, loss='categorical_crossentropy',
