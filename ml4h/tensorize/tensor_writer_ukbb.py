@@ -729,15 +729,15 @@ def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
     storage_type: StorageType = None, attributes: Dict[str, Any] = None, instance: str = None,
 ):
-
     hd5_path = tensor_path(path_prefix, name)
-    logging.info(f'hd5 filename: {hd5.filename} split len {len(hd5.filename.split(JOIN_CHAR))} ')
+
     if instance is not None:
         hd5_path = f'{hd5_path}instance_{instance}'
-    if hd5_path in hd5:
+    elif hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
+
     if stats is not None:
         stats[hd5_path] += 1
     if storage_type == StorageType.STRING:
