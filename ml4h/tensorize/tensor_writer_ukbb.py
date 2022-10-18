@@ -428,13 +428,11 @@ def _write_tensors_from_dicoms(
             views[series].append(d)
             stats[series] += 1
         elif series == 'dxa_images':
-            #logging.info("Got DXA series")
             series_num = dicom.split('.')[-5]
             dxa_number = dicom.split('.')[-4]
             name = f'dxa_{series_num}_{dxa_number}'
             create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
-        else:
-            logging.info(f"No special series info: {series}")
+
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
@@ -732,6 +730,7 @@ def create_tensor_in_hd5(
 ):
 
     hd5_path = tensor_path(path_prefix, name)
+    logging.info(f'hd5 filename: {hd5.filename} split len {len(hd5.filename.split(JOIN_CHAR))} ')
     if len(hd5.filename.split(JOIN_CHAR)) == 4: # UKB Bulk filename: sampleid_fieldid_instance_arrayidx
         ukb_instance = hd5.filename.split(JOIN_CHAR)[-2]
         hd5_path = f'{hd5_path}instance_{ukb_instance}'
