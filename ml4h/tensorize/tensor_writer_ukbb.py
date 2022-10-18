@@ -372,7 +372,8 @@ def _write_tensors_from_zipped_dicoms(
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
         for zipped in sorted(mris):
-            logging.info(f"Got zipped dicoms for sample: {sample_id} with MRI field: {mri_field}")
+            instance = zipped.split(JOIN_CHAR)[-2] # UKB Bulk filename: sampleid_fieldid_instance_arrayidx
+            logging.info(f"Got zipped dicoms for sample: {sample_id}  MRI field: {mri_field} from instance {instance}")
             dicom_folder = os.path.join(dicoms, sample_str, mri_field)
             if not os.path.exists(dicom_folder):
                 os.makedirs(dicom_folder)
@@ -380,7 +381,7 @@ def _write_tensors_from_zipped_dicoms(
                 zip_ref.extractall(dicom_folder)
                 _write_tensors_from_dicoms(
                     write_pngs, tensors, dicom_folder,
-                    hd5, sample_str, stats,
+                    hd5, instance, stats,
                 )
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
@@ -399,7 +400,7 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
 
 def _write_tensors_from_dicoms(
     write_pngs: bool, tensors: str,
-    dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int],
+    dicom_folder: str, hd5: h5py.File, instance: str, stats: Dict[str, int],
 ) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -410,7 +411,7 @@ def _write_tensors_from_dicoms(
         :param tensors: Folder where hd5 tensor files are being written
         :param dicom_folder: Folder with all dicoms associated with one sample.
         :param hd5: Tensor file in which to create datasets for each series and each segmented slice
-        :param sample_str: The current sample ID as a string
+        :param instance: The current instance index as a string
         :param stats: Counter to keep track of summary statistics
 
     """
@@ -464,7 +465,7 @@ def _write_tensors_from_dicoms(
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date, instance=instance)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
@@ -726,15 +727,14 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
 def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
-    storage_type: StorageType = None, attributes: Dict[str, Any] = None,
+    storage_type: StorageType = None, attributes: Dict[str, Any] = None, instance: str = None,
 ):
 
     hd5_path = tensor_path(path_prefix, name)
     logging.info(f'hd5 filename: {hd5.filename} split len {len(hd5.filename.split(JOIN_CHAR))} ')
-    if len(hd5.filename.split(JOIN_CHAR)) == 4: # UKB Bulk filename: sampleid_fieldid_instance_arrayidx
-        ukb_instance = hd5.filename.split(JOIN_CHAR)[-2]
-        hd5_path = f'{hd5_path}instance_{ukb_instance}'
-    elif hd5_path in hd5:
+    if instance is not None:
+        hd5_path = f'{hd5_path}instance_{instance}'
+    if hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
