@@ -730,8 +730,12 @@ def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
     storage_type: StorageType = None, attributes: Dict[str, Any] = None,
 ):
+
     hd5_path = tensor_path(path_prefix, name)
-    if hd5_path in hd5:
+    if len(hd5.filename.split(JOIN_CHAR)) == 4: # UKB Bulk filename: sampleid_fieldid_instance_arrayidx
+        ukb_instance = hd5.filename.split(JOIN_CHAR)[-2]
+        hd5_path = f'{hd5_path}instance_{ukb_instance}'
+    elif hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
