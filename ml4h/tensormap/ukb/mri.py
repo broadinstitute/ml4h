@@ -511,7 +511,7 @@ cine_ao_dist_3d = TensorMap(
     'cine_ao_dist_3d',
     Interpretation.CONTINUOUS,
     shape=(160, 192, 100),
-    path_prefix='ukb_cardiac_mri',
+    path_prefix='ukb_cardiac_mri/cine_segmented_ao_dist/2/',
     tensor_from_file=_pad_crop_tensor,
     normalization=ZeroMeanStd1(),
 )
