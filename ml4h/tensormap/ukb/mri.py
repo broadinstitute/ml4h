@@ -474,7 +474,14 @@ def _pad_crop_tensor(tm, hd5, dependents={}):
         ),
     )
 
-
+def _pad_crop_tensor(tm, hd5, dependents={}):
+    return pad_or_crop_array_to_shape(
+        tm.shape,
+        np.array(
+            tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()),
+            dtype=np.float32,
+        ),
+    )
 cine_lax_3ch_192 = TensorMap(
     'cine_segmented_lax_3ch',
     Interpretation.CONTINUOUS,
@@ -512,7 +519,7 @@ cine_ao_dist_3d = TensorMap(
     Interpretation.CONTINUOUS,
     shape=(160, 192, 100),
     path_prefix='ukb_cardiac_mri',
-    tensor_from_file=normalized_first_date,
+    tensor_from_file=_pad_crop_tensor,
     normalization=ZeroMeanStd1(),
 )
 cine_lax_4ch_192 = TensorMap(
