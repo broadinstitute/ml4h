@@ -508,11 +508,11 @@ cine_ao_dist_4d = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 cine_ao_dist_3d = TensorMap(
-    'cine_ao_dist_3d',
+    'cine_segmented_ao_dist',
     Interpretation.CONTINUOUS,
     shape=(160, 192, 100),
-    path_prefix='ukb_cardiac_mri/cine_segmented_ao_dist/2/',
-    tensor_from_file=_pad_crop_tensor,
+    path_prefix='ukb_cardiac_mri',
+    tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
 cine_lax_4ch_192 = TensorMap(
