@@ -1988,6 +1988,8 @@ def _liver_instance_3(tm, hd5, dependents={}):
 liver_ideal_instance3 = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
                                    tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1())
 
+liver_shmolli_instance3 = TensorMap('shmolli_192i_liver', shape=(288, 384, 7),
+                                   tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1())
 
 shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization=ZeroMeanStd1())
 shmolli_192i_liver = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), normalization=ZeroMeanStd1())
