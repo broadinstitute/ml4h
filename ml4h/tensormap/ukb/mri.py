@@ -1985,10 +1985,10 @@ def _liver_instance_3(tm, hd5, dependents={}):
     tensor = np.array(hd5[f'{tm.path_prefix}/{tm.name}/instance_3'], dtype=np.float32)
     return pad_or_crop_array_to_shape(tm.shape, tensor
                                       )
-liver_ideal_instance3 = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
+liver_ideal_instance3 = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36), path_prefix='ukb_liver_mri',
                                    tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1())
 
-liver_shmolli_instance3 = TensorMap('shmolli_192i_liver', shape=(288, 384, 7),
+liver_shmolli_instance3 = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), path_prefix='ukb_liver_mri',
                                    tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1())
 
 shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization=ZeroMeanStd1())
