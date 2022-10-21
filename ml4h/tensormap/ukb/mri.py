@@ -1969,7 +1969,8 @@ liver_fat_echo_predicted_sentinel = TensorMap(
     normalization={'mean': 3.91012, 'std': 4.64437}, activation='linear', path_prefix='continuous', sentinel=0.0,
 )
 
-gre_mullti_echo_10_te_liver = TensorMap('gre_mullti_echo_10_te_liver', shape=(160, 160, 10), tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
+gre_mullti_echo_10_te_liver = TensorMap('gre_mullti_echo_10_te_liver', shape=(160, 160, 10), path_prefix='ukb_liver_mri',
+                                        tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
 gre_mullti_echo_10_te_liver_12bit = TensorMap('gre_mullti_echo_10_te_liver_12bit', shape=(160, 160, 10),
                                               tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1())
 lms_ideal_optimised_low_flip_6dyn = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
