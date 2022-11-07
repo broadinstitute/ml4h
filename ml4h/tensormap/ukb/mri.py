@@ -1982,10 +1982,25 @@ lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap('lms_ideal_optimised_low_fl
 
 
 
+def _liver_instance_2(tm, hd5, dependents={}):
+    tensor = np.array(hd5[f'{tm.path_prefix}/{tm.name}/instance_2'], dtype=np.float32)
+    return pad_or_crop_array_to_shape(tm.shape, tensor)
+
+
+liver_ideal_instance2 = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
+                                      path_prefix='ukb_liver_mri',
+                                      tensor_from_file=_liver_instance_2, loss='logcosh', normalization=ZeroMeanStd1())
+
+liver_shmolli_instance2 = TensorMap('shmolli_192i_liver', shape=(288, 384, 7), path_prefix='ukb_liver_mri',
+                                        tensor_from_file=_liver_instance_2, loss='logcosh',
+                                        normalization=ZeroMeanStd1())
+
+
 def _liver_instance_3(tm, hd5, dependents={}):
     tensor = np.array(hd5[f'{tm.path_prefix}/{tm.name}/instance_3'], dtype=np.float32)
-    return pad_or_crop_array_to_shape(tm.shape, tensor
-                                      )
+    return pad_or_crop_array_to_shape(tm.shape, tensor)
+
+
 liver_ideal_instance3 = TensorMap('lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36), path_prefix='ukb_liver_mri',
                                    tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1())
 
