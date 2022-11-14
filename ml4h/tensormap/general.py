@@ -182,7 +182,7 @@ def build_categorical_tensor_from_file(
         delimiter = ',' if ext == 'csv' else '\t'
         df = pd.read_csv(file_name, delimiter=delimiter)
         table = dict(zip(df[df.columns[0]].tolist(), df[target_column].tolist()))
-
+        logging.info(f' Got categorical table dictionary: {table}')
     except FileNotFoundError as e:
         error = e
 
@@ -194,8 +194,8 @@ def build_categorical_tensor_from_file(
             val = table[os.path.basename(hd5.filename).replace('.hd5', '')]
             tensor[tm.channel_map[val]] = 1.0
             return tensor
-        except KeyError:
-            raise KeyError(f'Sample id not in file {file_name}.')
+        except KeyError as e:
+            raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
 
