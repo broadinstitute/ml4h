@@ -191,7 +191,7 @@ def build_categorical_tensor_from_file(
             raise error
         try:
             tensor = np.zeros(tm.shape, dtype=np.float32)
-            val = table[os.path.basename(hd5.filename).replace('.hd5', '')]
+            val = table[int(os.path.basename(hd5.filename).replace('.hd5', ''))]
             tensor[tm.channel_map[val]] = 1.0
             return tensor
         except KeyError as e:
