@@ -180,7 +180,7 @@ def build_categorical_tensor_from_file(
     try:
         ext = file_name.split('.')[1]
         delimiter = ',' if ext == 'csv' else '\t'
-        df = pd.read_csv(f, delimiter=delimiter)
+        df = pd.read_csv(file_name, delimiter=delimiter)
         table = dict(zip(df[df.columns[0]].tolist(), df[target_column].tolist()))
 
     except FileNotFoundError as e:
