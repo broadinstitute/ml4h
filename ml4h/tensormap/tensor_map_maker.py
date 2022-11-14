@@ -249,14 +249,14 @@ def generate_continuous_tensor_map_from_file(
 
 def generate_categorical_tensor_map_from_file(
     file_name: str,
-    column_name,
+    column_name: str,
     tensor_map_name: str,
 ) -> TensorMap:
     ext = file_name.split('.')[1]
     delimiter = ',' if ext == 'csv' else '\t'
     df = pd.read_csv(file_name, delimiter=delimiter)
     channel_map = {}
-    for i, k in enumerate(df[target_column].value_counts().keys()):
+    for i, k in enumerate(df[column_name].value_counts().keys()):
         channel_map[k] = i
     return TensorMap(
             f'{tensor_map_name}', Interpretation.CATEGORICAL, channel_map=channel_map,
