@@ -3,6 +3,7 @@ import csv
 import logging
 import h5py
 import numpy as np
+import pandas as pd
 from typing import List, Tuple, Dict
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.normalizer import Standardize
@@ -164,6 +165,37 @@ def build_tensor_from_file(
                 os.path.basename(hd5.filename).replace('.hd5', '')
             ].copy()
         except KeyError:
-            raise KeyError(f'User id not in file {file_name}.')
+            raise KeyError(f'Sample id not in file {file_name}.')
 
     return tensor_from_file
+
+def build_categorical_tensor_from_file(
+    file_name: str,
+    target_column: str,
+):
+    """
+    Build a tensor_from_file function from a column in a file as categorical classifier.
+    """
+    error = None
+    try:
+        ext = file_name.split('.')[1]
+        delimiter = ',' if ext == 'csv' else '\t'
+        df = pd.read_csv(f, delimiter=delimiter)
+        table = dict(zip(df[df.columns[0]].tolist(), df[target_column].tolist()))
+
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+        try:
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            val = table[os.path.basename(hd5.filename).replace('.hd5', '')]
+            tensor[tm.channel_map[val]] = 1.0
+            return tensor
+        except KeyError:
+            raise KeyError(f'Sample id not in file {file_name}.')
+
+    return tensor_from_file
+
