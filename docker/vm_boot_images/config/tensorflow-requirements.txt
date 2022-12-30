@@ -13,10 +13,9 @@ pillow
 notebook
 pytest
 pysam
-tensorflow==2.9.1
-#tensorflow==2.5.0
-tensorflow-addons==0.17.1
-tensorflow_probability==0.17.0
+tensorflow==2.5.0
+tensorflow-addons==0.13.0
+tensorflow_probability==0.13.0-rc0
 tensorflow_hub
 keras-tuner
 numcodecs
