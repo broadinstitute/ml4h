@@ -25,7 +25,7 @@ Please see https://github.com/broadinstitute/ml4h/ for more details on the full 
 ----------------------------
 ## Notebooks
 
-* **review_model_results_interactive**: Use this notebook to perform interactive quality control (QC) of a simulated ECG and MRI prediction model.
+* **review_model_results_interactive**: Use this notebook to perform interactive quality control (QC) of a simulated ECG and MRI prediction model. NOTE: the [facets](https://pair-code.github.io/facets/) visualization does not currently display correctly on app.terra.bio, but works fine in other Jupyter environments.
 * **review_one_sample_interactive**: Use this notebook to perform interactive quality control (QC) of per-patient multi-modal data for clinical machine learning models.
 * **image_annotations_demo**: Use this notebook to annotate MRI images to create new input data for machine learning.
 * **mnist_survival_analysis_demo**: In survival analysis, the aim is to predict when an event might occur, such as a heart attack, stroke, or the onset of heart feailure. This notebook uses the MNIST dataset to develop a toy model of survival analysis using ML4H.
