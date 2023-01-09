@@ -48,38 +48,6 @@ Make sure you have installed the [Google Cloud SDK (gcloud)](https://cloud.googl
 brew cask install google-cloud-sdk
 ```
 
-```gcloud config set project your-gcp-project```
-
-### Conda (Python package manager)
-* Download onto your laptop the Miniconda `bash` or `.pkg` installer for `Python 3.7` and `Mac OS X`
-from [here](https://conda.io/en/latest/miniconda.html), and run it. If you installed Python via a package manager
-such as `Homebrew`, you may want to uninstall that first, to avoid potential conflicts.
-* On your laptop, at the root directory of your `ml4h` GitHub clone, load the `ml4h` environment via
-    ```
-    conda env create -f env/ml4h_osx64.yml
-    ```
-    If you get an error, try updating your `Conda` via
-    ```
-    sudo conda update -n base -c defaults conda
-    ```
-    If you have get an error while installing gmpy, try installing gmp:
-    ```
-    brew install gmp
-    ```
-    The version used at the time of this writing was `4.6.1`.
-
-    If you plan to run jupyter locally, you should also (after you have `conda activate ml4h`, run `pip install ~/ml` (or wherever you have stored the repo)
-* Activate the environment:
-    ```
-    source activate ml4h
-    ```
-You may now run code on your `Terminal`, like so
-```
-python recipes.py --mode ...
-```
-**Note** that *recipe*s require having the right input files in place and running them without proper inputs will not
-yield meaningful results.   
-
 ### PyCharm (Python IDE if interested)
 * Install PyCharm either directly from [here](https://www.jetbrains.com/pycharm/download/#section=mac), or download
 the [Toolbox App](https://www.jetbrains.com/toolbox/app/) and have the app install PyCharm. The latter makes
