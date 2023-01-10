@@ -782,7 +782,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         if tm.is_categorical() and tm.axes() == 1:
             for m in predictions[tm]:
                 logging.info(f"{tm.name} channel map {tm.channel_map}\nsum truth = {np.sum(outputs[tm.output_name()], axis=0)}\nsum preds = {np.sum(predictions[tm][m], axis=0)}")
-            plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder)
+            plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder, dpi=args.dpi)
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
         elif tm.is_categorical() and tm.axes() == 4:
             for p in predictions[tm]:
@@ -791,8 +791,8 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 predictions[tm][p] = y.reshape(melt_shape)
 
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
-            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
-            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
+            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder, dpi=args.dpi)
+            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder, dpi=args.dpi)
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
@@ -804,15 +804,15 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 predictions[tm][p] = y.reshape(melt_shape)
 
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
-            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
-            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder)
+            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder, dpi=args.dpi)
+            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder, dpi=args.dpi)
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
         elif tm.is_continuous() and tm.axes() == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
-            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder) #, paths)
+            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, dpi=args.dpi)
             scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
@@ -823,25 +823,25 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
                 logging.info(f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
                 new_predictions[f'{m}_C_Index_{c_index[0]:0.3f}'] = predictions[tm][m]
-            plot_rocs(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder)
+            plot_rocs(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder, dpi=args.dpi)
             rocs.append((new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}))
-            plot_prediction_calibrations(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder)
+            plot_prediction_calibrations(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title, plot_folder, dpi=args.dpi)
         elif tm.is_survival_curve():
             for m in predictions[tm]:
                 plot_survival(
                     predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}',
-                    tm.days_window, prefix=plot_folder,
+                    tm.days_window, prefix=plot_folder, dpi=args.dpi,
                 )
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
-            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder)
+            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder, dpi=args.dpi)
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
 
     if len(rocs) > 1:
-        subplot_comparison_rocs(rocs, plot_folder)
+        subplot_comparison_rocs(rocs, plot_folder, dpi=args.dpi)
     if len(scatters) > 1:
-        subplot_comparison_scatters(scatters, plot_folder)
+        subplot_comparison_scatters(scatters, plot_folder, dpi=args.dpi)
 
 
 def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_labels, test_data=None, tensor_maps_in=None, batch_size=16, embeddings=None):
