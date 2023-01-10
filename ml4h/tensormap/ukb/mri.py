@@ -1262,26 +1262,32 @@ lax_2ch_laa = TensorMap(
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_', {'LA_appendage': 4}),
 )
 lax_2ch_la_plus = TensorMap(
-    'lax_2ch_la_plus', Interpretation.CONTINUOUS, shape=(64, 64, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    'lax_2ch_la_plus', Interpretation.CONTINUOUS, shape=(48, 48, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
-                                           {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2,
-                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,  'LA_free_wall': 5,
-                                            'LA_Cavity':11},
-                                           mask=True),
+                                           {'LA_appendage': 4,  'LA_free_wall': 5, 'LA_Cavity':11}),
+)
+lax_2ch_la_plus_mask = TensorMap(
+    'lax_2ch_la_plus_mask', Interpretation.CONTINUOUS, shape=(48, 48, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
+                                           {'LA_appendage': 4,  'LA_free_wall': 5, 'LA_Cavity':11}, mask=True),
+)
+lax_2ch_laa_only_max_frame = TensorMap(
+    'lax_2ch_laa_only_max_frame', Interpretation.CONTINUOUS, shape=(32, 32, 1), path_prefix='ukb_cardiac_mri',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
+                                           {'LA_Cavity':11}, max_frame=True),
 )
 lax_2ch_laa_max_frame = TensorMap(
-    'lax_2ch_laa_max_frame', Interpretation.CONTINUOUS, shape=(64, 64, 1), path_prefix='ukb_cardiac_mri',
+    'lax_2ch_laa_max_frame', Interpretation.CONTINUOUS, shape=(48, 48, 1), path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
                                            {'LA_appendage': 4,  'LA_free_wall': 5, 'LA_Cavity':11}, max_frame=True),
 )
 lax_2ch_laa_max_frame_mask = TensorMap(
-    'lax_2ch_laa_max_frame_mask', Interpretation.CONTINUOUS, shape=(64, 64, 1), path_prefix='ukb_cardiac_mri',
+    'lax_2ch_laa_max_frame_mask', Interpretation.CONTINUOUS, shape=(48, 48, 1), path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
-                                           {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2,
-                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,  'LA_free_wall': 5,
-                                            'LA_Cavity':11},
+                                           {'LA_appendage': 4,  'LA_free_wall': 5, 'LA_Cavity':11},
                                            mask=True, max_frame=True),
 )
 
