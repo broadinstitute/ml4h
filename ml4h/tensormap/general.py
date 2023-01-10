@@ -182,7 +182,7 @@ def build_categorical_tensor_from_file(
         delimiter = ',' if ext == 'csv' else '\t'
         df = pd.read_csv(file_name, delimiter=delimiter)
         table = dict(zip(df[df.columns[0]].tolist(), df[target_column].tolist()))
-        logging.info(f' Got categorical table dictionary: {table}')
+        logging.info(f'Categorical table from column {target_column} counts:\n{df[target_column].value_counts()}')
     except FileNotFoundError as e:
         error = e
 
