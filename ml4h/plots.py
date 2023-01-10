@@ -74,7 +74,7 @@ RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
 FALLOUT_LABEL = "Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)"
 PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
 
-SUBPLOT_SIZE = 4.5
+SUBPLOT_SIZE = 5
 
 COLOR_ARRAY = [
     "tan",
@@ -448,14 +448,14 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace("output_", "").split("_")
             k_title = " ".join(OrderedDict.fromkeys(k_split))
-            axes[row, col].set_title(k_title)
+            axes[row, col].set_title(k_title.capitalize())
             axes[row, col].set_xlabel("epoch")
             if "val_" + k in history.history:
                 axes[row, col].plot(history.history["val_" + k])
-                labels = ["train", "valid"]
+                labels = ["Train", "Validation"]
             else:
                 labels = [k]
-            axes[row, col].legend(labels, loc="upper left")
+            axes[row, col].legend(labels)
 
             row += 1
             if row == rows:
