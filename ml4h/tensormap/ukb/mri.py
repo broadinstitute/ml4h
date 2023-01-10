@@ -1259,7 +1259,8 @@ lax_2ch_la_plus = TensorMap(
     'lax_2ch_la_plus', Interpretation.CONTINUOUS, shape=(64, 64, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
                                            {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2,
-                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,}),
+                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,},
+                                           mask=True),
 )
 
 lax_4ch_heart_center_rotate = TensorMap(
