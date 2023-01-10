@@ -1221,13 +1221,19 @@ myocardium_mask_systole_guess = TensorMap(
 )
 
 
-def _heart_mask_instances(mri_key, segmentation_key, labels, mask=False):
+def _heart_mask_instances(mri_key, segmentation_key, labels, mask=False, max_frame=False):
     def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
         diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{1}')
+        mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')
         heart_mask = np.isin(diastole_categorical, list(labels.values()))
         i, j = np.where(heart_mask)
+        if max_frame:
+            max_i = np.argmax(np.sum(heart_mask, axis=(0, 1)))
+            indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), max_i, indexing='ij')
+            if mask:
+                mri[..., max_i] = heart_mask[:mri.shape[0], :mri.shape[1]] * mri[..., max_i]
+            return pad_or_crop_array_to_shape(tm.shape, mri[tuple(indices)])
         indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), np.arange(50), indexing='ij')
-        mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')
         if mask:
             for frame in range(1, 51):
                 frame_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{frame}')
@@ -1259,8 +1265,18 @@ lax_2ch_la_plus = TensorMap(
     'lax_2ch_la_plus', Interpretation.CONTINUOUS, shape=(64, 64, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
                                            {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2,
-                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,},
+                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,  'LA_free_wall': 5,
+                                            'LA_Cavity':11},
                                            mask=True),
+)
+lax_2ch_laa_max_frame = TensorMap(
+    'lax_2ch_la_plus', Interpretation.CONTINUOUS, shape=(64, 64, 1), path_prefix='ukb_cardiac_mri',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
+                                           {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2,
+                                            'left_pulmonary_artery': 3, 'LA_appendage': 4,  'LA_free_wall': 5,
+                                            'LA_Cavity':11},
+                                           mask=True, max_frame=True),
 )
 
 lax_4ch_heart_center_rotate = TensorMap(
