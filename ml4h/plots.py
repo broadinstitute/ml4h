@@ -74,7 +74,7 @@ RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
 FALLOUT_LABEL = "Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)"
 PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
 
-SUBPLOT_SIZE = 8
+SUBPLOT_SIZE = 4.5
 
 COLOR_ARRAY = [
     "tan",
@@ -185,11 +185,11 @@ def evaluate_predictions(
             y_predictions, y_truth, tm.channel_map, title, folder, dpi,
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
         )
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -205,16 +205,16 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
@@ -229,16 +229,16 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
@@ -256,22 +256,22 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder,
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
         performance_metrics.update(
             plot_survival(
-                y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder,
+                y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, dpi=dpi,
             ),
         )
         plot_survival_curves(
@@ -281,6 +281,7 @@ def evaluate_predictions(
             days_window=tm.days_window,
             prefix=folder,
             paths=test_paths,
+            dpi=dpi,
         )
         time_steps = tm.shape[-1] // 2
         days_per_step = 1 + tm.days_window // time_steps
@@ -299,6 +300,7 @@ def evaluate_predictions(
             {tm.name: 0},
             calibration_title,
             folder,
+            dpi,
         )
         plot_survivorship(
             events_at_end,
@@ -307,6 +309,7 @@ def evaluate_predictions(
             tm.name,
             folder,
             tm.days_window,
+            dpi,
         )
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
@@ -329,6 +332,7 @@ def evaluate_predictions(
                 protected,
                 new_title,
                 folder,
+                dpi,
             ),
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
@@ -338,6 +342,7 @@ def evaluate_predictions(
             {tm.name: 0},
             calibration_title,
             folder,
+            dpi,
         )
         plot_survivorship(
             y_truth[:, 0],
@@ -346,6 +351,7 @@ def evaluate_predictions(
             tm.name,
             folder,
             tm.days_window,
+            dpi,
         )
     elif tm.is_language():
         prediction_1hot = y_predictions.reshape((y_predictions.shape[0]*y_predictions.shape[1], y_predictions.shape[2]))
@@ -353,12 +359,12 @@ def evaluate_predictions(
         logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
             subplot_roc_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder,
+                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, title, folder,
+                prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi,
             ),
         )
     elif tm.axes() > 1 or tm.is_mesh():
@@ -383,6 +389,7 @@ def evaluate_predictions(
                     protected_repeated,
                     title,
                     prefix=folder,
+                    dpi=dpi,
                 ),
             )
     elif tm.is_continuous():
@@ -397,6 +404,7 @@ def evaluate_predictions(
                 protected,
                 title,
                 folder,
+                dpi,
             ),
         )
         scatters.append(
@@ -512,7 +520,7 @@ def plot_rocs(
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
-    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}\n")
+    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
     figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -2492,7 +2500,7 @@ def subplot_roc_per_class(
             f"ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}",
         )
 
-    axes[-1, -1].set_title(f"ROC {title} n={truth.shape[0]:.0f}\n")
+    axes[-1, -1].set_title(f"ROC {title} n={truth.shape[0]:.0f}")
     axes[-1, -1].legend(loc="lower right")
     figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -2528,7 +2536,7 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300):
     plt.xlabel(FALLOUT_LABEL)
     plt.legend(loc="lower right")
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
-    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}\n")
+    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
     figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
@@ -2644,7 +2652,7 @@ def subplot_comparison_rocs(
         ax.set_xlabel(FALLOUT_LABEL)
         ax.legend(loc="lower right")
         ax.plot([0, 1], [0, 1], "k:", lw=0.5)
-        ax.set_title(f"ROC n={np.sum(true_sums):.0f}\n")
+        ax.set_title(f"ROC n={np.sum(true_sums):.0f}")
 
     figure_path = os.path.join(prefix, "rocs_compared_together" + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
