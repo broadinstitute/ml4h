@@ -1275,7 +1275,7 @@ lax_2ch_laa_only_max_frame = TensorMap(
     'lax_2ch_laa_only_max_frame', Interpretation.CONTINUOUS, shape=(32, 32, 1), path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_',
-                                           {'LA_Cavity':11}, max_frame=True),
+                                           {'LA_appendage': 4,}, max_frame=True),
 )
 lax_2ch_laa_max_frame = TensorMap(
     'lax_2ch_laa_max_frame', Interpretation.CONTINUOUS, shape=(48, 48, 1), path_prefix='ukb_cardiac_mri',

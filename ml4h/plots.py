@@ -74,7 +74,7 @@ RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
 FALLOUT_LABEL = "Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)"
 PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
 
-SUBPLOT_SIZE = 5
+SUBPLOT_SIZE = 7
 
 COLOR_ARRAY = [
     "tan",
