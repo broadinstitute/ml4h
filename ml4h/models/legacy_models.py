@@ -104,7 +104,7 @@ def make_shallow_model(
     """
     if model_file is not None:
         m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
-        m.summary()
+        m.summary(print_fn=logging.info)
         logging.info("Loaded model file from: {}".format(model_file))
         return m
 
@@ -124,7 +124,7 @@ def make_shallow_model(
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     m = Model(inputs=input_tensors, outputs=outputs)
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
-    m.summary()
+    m.summary(print_fn=logging.info)
 
     if model_layers is not None:
         m.load_weights(model_layers, by_name=True)
@@ -152,7 +152,7 @@ def make_waveform_model_unet(
     """
     if model_file is not None:
         m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
-        m.summary()
+        m.summary(print_fn=logging.info)
         logging.info("Loaded model file from: {}".format(model_file))
         return m
 
@@ -177,7 +177,7 @@ def make_waveform_model_unet(
     conv_label = Conv1D(filters=tensor_maps_out[0].shape[CHANNEL_AXIS], kernel_size=1, activation="linear")(x)
     output_y = Activation(tensor_maps_out[0].activation, name=tensor_maps_out[0].output_name())(conv_label)
     m = Model(inputs=[input_tensor], outputs=[output_y])
-    m.summary()
+    m.summary(print_fn=logging.info)
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.compile(optimizer=opt, loss=tensor_maps_out[0].loss, metrics=tensor_maps_out[0].metrics)
 
@@ -226,7 +226,7 @@ def make_character_model_plus(
             output_layers.append(base_model.get_layer(tm.output_name()))
 
     m = Model(inputs=base_model.inputs + char_model.inputs, outputs=base_model.outputs + char_model.outputs)
-    m.summary()
+    m.summary(print_fn=logging.info)
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=my_metrics)
 
@@ -256,7 +256,7 @@ def make_character_model(
     """
     if model_file is not None:
         m = load_model(model_file, custom_objects=get_metric_dict(tensor_maps_out))
-        m.summary()
+        m.summary(print_fn=logging.info)
         logging.info(f'Loaded model file from: {model_file}')
         return m
 
@@ -283,7 +283,7 @@ def make_character_model(
             output_layers.append(Dense(ot.shape[-1], activation=ot.activation, name=ot.output_name())(lstm_out))
 
     m = Model(inputs=input_layers, outputs=output_layers)
-    m.summary()
+    m.summary(print_fn=logging.info)
     opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.0)
     m.compile(optimizer=opt, loss='categorical_crossentropy')
 
@@ -996,7 +996,7 @@ def make_multimodal_multitask_model(
             optimizer=opt, loss='mse', #[tm.loss for tm in tensor_maps_out],
             metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
         )
-        m.summary()
+        m.summary(print_fn=logging.info)
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
 
@@ -1144,7 +1144,7 @@ def make_multimodal_multitask_model(
         optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    m.summary()
+    m.summary(print_fn=logging.info)
     return m
 
 
@@ -1213,7 +1213,7 @@ def _load_model_encoders_and_decoders(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    m.summary()
+    m.summary(print_fn=logging.info)
     logging.info(f"Loaded encoders, decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
@@ -1330,7 +1330,7 @@ def make_paired_autoencoder_model(
     m = Model(inputs=list(inputs.values()), outputs=list(outputs.values()))
     my_metrics = {tm.output_name(): tm.metrics for tm in kwargs['tensor_maps_out']}
     m.compile(optimizer=opt, loss=losses, metrics=my_metrics)
-    m.summary()
+    m.summary(print_fn=logging.info)
 
     if real_serial_layers is not None:
         m.load_weights(real_serial_layers, by_name=True)

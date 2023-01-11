@@ -63,7 +63,12 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
+DICOM_MRI_FIELDS = [
+    '20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
+    '20227', '20225', '20217', '20158',
+]
+
+DXA_FIELD = '20158'
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -153,7 +158,7 @@ def write_tensors(
 
         end_time = timer()
         elapsed_time = end_time - start_time
-        logging.info("Populated {} in {} seconds.".format(tp, elapsed_time))
+        logging.info(f"Populated {tp} in {elapsed_time:0.2f} seconds.")
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
@@ -368,8 +373,9 @@ def _write_tensors_from_zipped_dicoms(
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
-        for zipped in mris:
-            logging.info("Got zipped dicoms for sample: {} with MRI field: {}".format(sample_id, mri_field))
+        for zipped in sorted(mris):
+            instance = zipped.split(JOIN_CHAR)[-2] # UKB Bulk filename: sampleid_fieldid_instance_arrayidx
+            logging.info(f"Got zipped dicoms for sample: {sample_id}  MRI field: {mri_field} from instance {instance}")
             dicom_folder = os.path.join(dicoms, sample_str, mri_field)
             if not os.path.exists(dicom_folder):
                 os.makedirs(dicom_folder)
@@ -377,7 +383,7 @@ def _write_tensors_from_zipped_dicoms(
                 zip_ref.extractall(dicom_folder)
                 _write_tensors_from_dicoms(
                     write_pngs, tensors, dicom_folder,
-                    hd5, sample_str, stats,
+                    hd5, instance, stats,
                 )
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
@@ -396,7 +402,7 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
 
 def _write_tensors_from_dicoms(
     write_pngs: bool, tensors: str,
-    dicom_folder: str, hd5: h5py.File, sample_str: str, stats: Dict[str, int],
+    dicom_folder: str, hd5: h5py.File, instance: str, stats: Dict[str, int],
 ) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -407,7 +413,7 @@ def _write_tensors_from_dicoms(
         :param tensors: Folder where hd5 tensor files are being written
         :param dicom_folder: Folder with all dicoms associated with one sample.
         :param hd5: Tensor file in which to create datasets for each series and each segmented slice
-        :param sample_str: The current sample ID as a string
+        :param instance: The current instance index as a string
         :param stats: Counter to keep track of summary statistics
 
     """
@@ -424,6 +430,12 @@ def _write_tensors_from_dicoms(
         elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
             views[series].append(d)
             stats[series] += 1
+        elif series == 'dxa_images':
+            series_num = dicom.split('.')[-5]
+            dxa_number = dicom.split('.')[-4]
+            name = f'dxa_{series_num}_{dxa_number}'
+            create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
+
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
@@ -444,6 +456,7 @@ def _write_tensors_from_dicoms(
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
+
         else:
             mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
@@ -454,7 +467,7 @@ def _write_tensors_from_dicoms(
                 if v in MRI_LIVER_IDEAL_PROTOCOL:
                     slice_index = _slice_index_from_ideal_protocol(slicer, min_ideal_series)
                 mri_data[..., slice_index] = slicer.pixel_array.astype(np.float32)
-            create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date)
+            create_tensor_in_hd5(hd5, mri_group, v, mri_data, stats, mri_date, instance=instance)
 
 
 def _tensorize_short_and_long_axis_segmented_cardiac_mri(
@@ -716,13 +729,17 @@ def _write_ecg_rest_tensors(ecgs, xml_field, hd5, sample_id, write_pngs, stats, 
 
 def create_tensor_in_hd5(
     hd5: h5py.File, path_prefix: str, name: str, value, stats: Counter = None, date: datetime.datetime = None,
-    storage_type: StorageType = None, attributes: Dict[str, Any] = None,
+    storage_type: StorageType = None, attributes: Dict[str, Any] = None, instance: str = None,
 ):
     hd5_path = tensor_path(path_prefix, name)
-    if hd5_path in hd5:
+
+    if instance is not None:
+        hd5_path = f'{hd5_path}instance_{instance}'
+    elif hd5_path in hd5:
         hd5_path = f'{hd5_path}instance_{len(hd5[hd5_path])}'
     else:
         hd5_path = f'{hd5_path}instance_0'
+
     if stats is not None:
         stats[hd5_path] += 1
     if storage_type == StorageType.STRING:
