@@ -273,6 +273,8 @@ def parse_args():
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
     parser.add_argument('--write_pngs', default=False, action='store_true', help='Write pngs of slices.')
     parser.add_argument('--dpi', default=300, type=int, help='Dots per inch of figures made in plots.py')
+    parser.add_argument('--plot_width', default=6, type=int, help='Width in inches of figures made in plots.py')
+    parser.add_argument('--plot_height', default=6, type=int, help='Height in inches of figures made in plots.py')
     parser.add_argument('--debug', default=False, action='store_true', help='Run in debug mode.')
     parser.add_argument('--eager', default=False, action='store_true', help='Run tensorflow functions in eager execution mode (helpful for debugging).')
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')

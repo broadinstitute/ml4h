@@ -156,6 +156,8 @@ def evaluate_predictions(
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = [],
     scatters: List[Tuple[np.ndarray, np.ndarray, str, List[str]]] = [],
     dpi: int = 300,
+    width: int = 7,
+    height: int = 7,
 ) -> Dict[str, float]:
     """Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
@@ -171,6 +173,8 @@ def evaluate_predictions(
     :param rocs: (output) List of Tuples which are inputs for ROC curve plotting to allow subplotting downstream
     :param scatters: (output) List of Tuples which are inputs for scatter plots to allow subplotting downstream
     :param dpi: Dots per inch
+    :param width: Figure width in inches
+    :param height: Figure height in inches
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
     performance_metrics = {}
@@ -182,14 +186,14 @@ def evaluate_predictions(
             f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}",
         )
         plot_precision_recall_per_class(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
         )
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -205,16 +209,16 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
@@ -229,16 +233,16 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
@@ -256,33 +260,28 @@ def evaluate_predictions(
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
             subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi,
+            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
         performance_metrics.update(
             plot_survival(
-                y_predictions, y_truth, title, days_window=tm.days_window, prefix=folder, dpi=dpi,
+                y_predictions, y_truth, title, days_window=tm.days_window,
+                prefix=folder, dpi=dpi, width=width, height=height,
             ),
         )
-        plot_survival_curves(
-            y_predictions,
-            y_truth,
-            title,
-            days_window=tm.days_window,
-            prefix=folder,
-            paths=test_paths,
-            dpi=dpi,
-        )
+        plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window,
+                             prefix=folder, paths=test_paths, dpi=dpi, width=width, height=height,
+                             )
         time_steps = tm.shape[-1] // 2
         days_per_step = 1 + tm.days_window // time_steps
         predictions_at_end = (
@@ -291,26 +290,14 @@ def evaluate_predictions(
         events_at_end = np.cumsum(y_truth[:, time_steps:], axis=-1)[:, -1]
         follow_up = np.cumsum(y_truth[:, :time_steps], axis=-1)[:, -1] * days_per_step
         logging.info(
-            f"Shapes event {events_at_end.shape}, preds shape {predictions_at_end.shape} new ax shape {events_at_end[:, np.newaxis].shape}",
+            f"Event {events_at_end.shape}, preds:{predictions_at_end.shape} end {events_at_end[:, np.newaxis].shape}",
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
-        plot_prediction_calibration(
-            predictions_at_end[:, np.newaxis],
-            events_at_end[:, np.newaxis],
-            {tm.name: 0},
-            calibration_title,
-            folder,
-            dpi,
-        )
-        plot_survivorship(
-            events_at_end,
-            follow_up,
-            predictions_at_end,
-            tm.name,
-            folder,
-            tm.days_window,
-            dpi,
-        )
+        plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0},
+                                    calibration_title, folder, dpi, width, height,
+                                    )
+        plot_survivorship(events_at_end, follow_up, predictions_at_end, tm.name,
+                          folder, tm.days_window, dpi, width, height)
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = [
@@ -325,15 +312,8 @@ def evaluate_predictions(
         )
         new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions,
-                y_truth[:, 0, np.newaxis],
-                {f"{new_title}_vs_ROC": 0},
-                protected,
-                new_title,
-                folder,
-                dpi,
-            ),
+            subplot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
+                                  new_title, folder, dpi, width, height)
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
         plot_prediction_calibration(
@@ -343,6 +323,8 @@ def evaluate_predictions(
             calibration_title,
             folder,
             dpi,
+            width,
+            height,
         )
         plot_survivorship(
             y_truth[:, 0],
@@ -352,6 +334,8 @@ def evaluate_predictions(
             folder,
             tm.days_window,
             dpi,
+            width,
+            height,
         )
     elif tm.is_language():
         prediction_1hot = y_predictions.reshape((y_predictions.shape[0]*y_predictions.shape[1], y_predictions.shape[2]))
@@ -359,12 +343,12 @@ def evaluate_predictions(
         logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
             subplot_roc_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi,
+                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi, width, height,
             ),
         )
         performance_metrics.update(
             plot_precision_recall_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi,
+                prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi, width, height,
             ),
         )
     elif tm.axes() > 1 or tm.is_mesh():
@@ -390,6 +374,8 @@ def evaluate_predictions(
                     title,
                     prefix=folder,
                     dpi=dpi,
+                    width=width,
+                    height=height,
                 ),
             )
     elif tm.is_continuous():
@@ -405,6 +391,8 @@ def evaluate_predictions(
                 title,
                 folder,
                 dpi,
+                width,
+                height,
             ),
         )
         scatters.append(
@@ -426,7 +414,7 @@ def make_one_hot(y, num_labels):
     return ohy
 
 
-def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300):
+def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=7, height=7):
     row = 0
     col = 0
     total_plots = int(
@@ -435,7 +423,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     f, axes = plt.subplots(
-        rows, cols, figsize=(int(cols * SUBPLOT_SIZE), int(rows * SUBPLOT_SIZE)), dpi=dpi,
+        rows, cols, figsize=(int(cols * width), int(rows * height)), dpi=dpi,
     )
 
     for k in sorted(history.history.keys()):
@@ -485,6 +473,8 @@ def plot_rocs(
     title: str,
     prefix: str = "./figures/",
     dpi: int = 300,
+    width: int = 7,
+    height: int = 7,
 ):
     """Plot Receiver Operating Characteristic (ROC) curves from a dictionary of predictions
 
@@ -500,7 +490,7 @@ def plot_rocs(
     """
     lw = 2
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
 
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
@@ -536,7 +526,9 @@ def plot_prediction_calibrations(
     title: str,
     prefix: str = "./figures/",
     n_bins: int = 10,
-    dpi: int = 300
+    dpi: int = 300,
+    width: int = 7,
+    height: int = 7,
 ):
     """Plot calibration performance and compute Brier Score.
 
@@ -550,7 +542,7 @@ def plot_prediction_calibrations(
     :param prefix: Optional path prefix where the plot will be saved
     :param n_bins: Number of bins to quantize predictions into
     """
-    _ = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    _ = plt.figure(figsize=(width, height), dpi=dpi)
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
 
@@ -610,6 +602,8 @@ def plot_prediction_calibration(
     prefix: str = "./figures/",
     n_bins: int = 10,
     dpi: int = 300,
+    width: int = 6,
+    height: int = 6,
 ):
     """Plot calibration performance and compute Brier Score.
 
@@ -620,7 +614,7 @@ def plot_prediction_calibration(
     :param prefix: Optional path prefix where the plot will be saved
     :param n_bins: Number of bins to quantize predictions into
     """
-    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE), dpi=dpi)
+    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(width, 2 * height), dpi=dpi)
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
@@ -700,10 +694,11 @@ def bootstrap_confidence_interval(
 
 
 def plot_scatter(
-    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, bootstrap=True, dpi=300,
+    prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
+    bootstrap=True, dpi=300, width=7, height=7,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(SUBPLOT_SIZE, 2 * SUBPLOT_SIZE), dpi=dpi)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
     ax1.plot(
         [np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)], linewidth=2,
     )
@@ -767,10 +762,10 @@ def plot_scatter(
 
 
 def plot_scatters(
-    predictions, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, dpi=300,
+    predictions, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, dpi=300, width=7, height=7,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
     plt.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
     for k in predictions:
         color = _hash_string_to_color(k)
@@ -828,17 +823,19 @@ def subplot_pearson_per_class(
     title: str,
     prefix: str = "./figures/",
     dpi: int = 300,
+    width: int = 6,
+    height: int = 6,
 ) -> Dict[str, float]:
     lw = 2
     alpha = 0.5
     labels_to_areas = {}
     total_plots = len(protected) + 1
     if total_plots == 1:
-        return plot_scatter(prediction, truth, title, prefix)
+        return plot_scatter(prediction, truth, title, prefix, dpi=dpi, width=width, height=height)
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
-        rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE), dpi=dpi,
+        rows, cols, figsize=(cols * width, rows * height), dpi=dpi,
     )
     _protected_subplots(
         prediction,
@@ -883,8 +880,10 @@ def subplot_scatters(
     top_k: int = 3,
     alpha: float = 0.5,
     dpi: int = 300,
+    width: int = 6,
+    height: int = 6,
 ):
-    fig, axes = _figure_and_subplot_axes_from_total(len(scatters), dpi=dpi)
+    fig, axes = _figure_and_subplot_axes_from_total(len(scatters), dpi=dpi, width=width, height=height)
     for scatter_data, ax in zip(scatters, axes.ravel()):
         prediction, truth, title, paths = scatter_data
         ax.plot([np.min(truth), np.max(truth)], [np.min(truth), np.max(truth)])
@@ -943,8 +942,10 @@ def subplot_comparison_scatters(
     top_k: int = 3,
     alpha: float = 0.5,
     dpi: int = 300,
+    width: int = 6,
+    height: int = 6,
 ):
-    fig, axes = _figure_and_subplot_axes_from_total(len(scatters), dpi=dpi)
+    fig, axes = _figure_and_subplot_axes_from_total(len(scatters), dpi=dpi, width=width, height=height)
     for scatter_data, ax in zip(scatters, axes.ravel()):
         predictions, truth, title, paths = scatter_data
         for k in predictions:
@@ -1001,8 +1002,8 @@ def subplot_comparison_scatters(
 
 
 def plot_survivorship(
-    events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray,
-    title: str, prefix: str = './figures/', days_window: int = 1825, dpi: int = 300,
+    events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray, title: str,
+    prefix: str = './figures/', days_window: int = 1825, dpi: int = 300, width: int = 6, height: int = 6,
 ):
     """Plot Kaplan-Meier survivorship curves and stratify by median model prediction.
     All input arrays have the same shape: (num_samples,)
@@ -1014,7 +1015,7 @@ def plot_survivorship(
     :param prefix: Path prefix where plot will be saved
     :param days_window: Maximum days of follow up
     """
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
     days_sorted_index = np.argsort(days_follow_up)
     days_sorted = days_follow_up[days_sorted_index]
     alive_per_step = len(events)
@@ -1072,7 +1073,7 @@ def plot_survivorship(
 
 def plot_survival(
     prediction: np.ndarray, truth: np.ndarray, title: str, days_window: int,
-    prefix: str = './figures/', dpi: int = 300,
+    prefix: str = './figures/', dpi: int = 300, width: int = 7, height: int = 7,
 ) -> Dict[str, float]:
     """Plot Kaplan-Meier survivorship and predicted proportion surviving, calculate and return C-Index
 
@@ -1087,7 +1088,7 @@ def plot_survival(
     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(prediction, truth)
 
     intervals = truth.shape[-1] // 2
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
 
     cumulative_sick = np.cumsum(np.sum(truth[:, intervals:], axis=0))
     cumulative_censored = (truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick
@@ -1125,9 +1126,11 @@ def plot_survival_curves(
     num_curves=30,
     paths=None,
     dpi=300,
+    width: int = 6,
+    height: int = 6,
 ):
     intervals = truth.shape[-1] // 2
-    plt.figure(figsize=(SUBPLOT_SIZE * 2, SUBPLOT_SIZE * 2), dpi=dpi)
+    plt.figure(figsize=(width * 2, height * 2), dpi=dpi)
     predicted_survivals = np.cumprod(prediction[:, :intervals], axis=1)
     sick = np.sum(truth[:, intervals:], axis=-1)
     censor_periods = np.argmin(truth[:, :intervals], axis=-1)
@@ -2468,6 +2471,8 @@ def subplot_roc_per_class(
     title: str,
     prefix: str = "./figures/",
     dpi: int = 300,
+    width: int = 6,
+    height: int = 6,
 ) -> Dict[str, float]:
     lw = 2
     labels_to_areas = {}
@@ -2478,7 +2483,7 @@ def subplot_roc_per_class(
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
-        rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE), dpi=dpi,
+        rows, cols, figsize=(cols * width, rows * height), dpi=dpi,
     )
     _protected_subplots(
         prediction, truth, protected, axes, metric=roc_auc_score, metric_name="ROC AUC",
@@ -2512,11 +2517,11 @@ def subplot_roc_per_class(
     return labels_to_areas
 
 
-def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300):
+def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6):
     lw = 2
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
 
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
     for key in labels:
@@ -2546,10 +2551,10 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300):
     return labels_to_areas
 
 
-def plot_rocs(predictions, truth, labels, title, prefix="./figures/", dpi=300):
+def plot_rocs(predictions, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6):
     lw = 2
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
         for key in labels:
@@ -2577,19 +2582,19 @@ def plot_rocs(predictions, truth, labels, title, prefix="./figures/", dpi=300):
     logging.info(f"Saved ROC curve at: {figure_path}")
 
 
-def _figure_and_subplot_axes_from_total(total_plots: int, dpi=300):
+def _figure_and_subplot_axes_from_total(total_plots: int, dpi: int = 300, width: int = 6, height: int = 6):
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
-    return plt.subplots(rows, cols, figsize=(cols * SUBPLOT_SIZE, rows * SUBPLOT_SIZE), dpi=dpi)
+    return plt.subplots(rows, cols, figsize=(cols * width, rows * height), dpi=dpi)
 
 
 def subplot_rocs(
     rocs: List[Tuple[np.ndarray, np.ndarray, Dict[str, int]]],
-    prefix: str = "./figures/", dpi: int = 300,
+    prefix: str = "./figures/", dpi: int = 300, width: int = 6, height: int = 6,
 ):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 2
-    fig, axes = _figure_and_subplot_axes_from_total(len(rocs), dpi=dpi)
+    fig, axes = _figure_and_subplot_axes_from_total(len(rocs), dpi=dpi, width=width, height=height)
     for roc_data, ax in zip(rocs, axes.ravel()):
         predicted, truth, labels = roc_data
         true_sums = np.sum(truth, axis=0)
@@ -2623,10 +2628,12 @@ def subplot_comparison_rocs(
     rocs: List[Tuple[Dict[str, np.ndarray], np.ndarray, Dict[str, int]]],
     prefix: str = "./figures/",
     dpi: int = 300,
+    width: int = 6,
+    height: int = 6,
 ):
     """Log and tabulate AUCs given as nested dictionaries in the format '{model: {label: auc}}'"""
     lw = 3
-    fig, axes = _figure_and_subplot_axes_from_total(len(rocs), dpi=dpi)
+    fig, axes = _figure_and_subplot_axes_from_total(len(rocs), dpi=dpi, width=width, height=height)
     for roc_data, ax in zip(rocs, axes.ravel()):
         predictions, truth, labels = roc_data
         true_sums = np.sum(truth, axis=0)
@@ -2661,13 +2668,13 @@ def subplot_comparison_rocs(
 
 
 def plot_precision_recall_per_class(
-    prediction, truth, labels, title, prefix="./figures/", dpi=300,
+    prediction, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6,
 ):
     # Compute Precision-Recall and plot curve
     lw = 2.0
     labels_to_areas = {}
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
 
     for k in labels:
         c = _hash_string_to_color(k)
@@ -2699,11 +2706,11 @@ def plot_precision_recall_per_class(
     return labels_to_areas
 
 
-def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/", dpi=300):
+def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/", dpi=300, width=7, height=7):
     # Compute Precision-Recall and plot curve for each model
     lw = 2.0
     true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE), dpi=dpi)
+    plt.figure(figsize=(width, height), dpi=dpi)
 
     for p in predictions:
         for k in labels:
@@ -2772,6 +2779,8 @@ def plot_tsne(
     figure_path,
     alpha,
     dpi: int = 300,
+    width: int = 7,
+    height: int = 7,
 ):
     x_embed = np.array(x_embed)
     if len(x_embed.shape) > 2:
@@ -2783,7 +2792,7 @@ def plot_tsne(
     (fig, subplots) = plt.subplots(
         rows,
         len(perplexities),
-        figsize=(len(perplexities) * SUBPLOT_SIZE * 2, rows * SUBPLOT_SIZE * 2),
+        figsize=(len(perplexities) * width, rows * height),
         dpi=dpi,
     )
 
@@ -3040,6 +3049,9 @@ def plot_reconstruction(
     folder: str,
     paths: List[str],
     num_samples: int = 4,
+    dpi: int = 300,
+    width: int = 7,
+    height: int = 7,
 ):
     logging.info(f"Plotting {num_samples} reconstructions of {tm}.")
     if None in tm.shape or paths is None or len(paths) == 0:  # can't handle dynamic shapes
@@ -3053,7 +3065,7 @@ def plot_reconstruction(
         if tm.axes() == 2:
             index2channel = {v: k for k, v in tm.channel_map.items()}
             fig, axes = plt.subplots(
-                max(2,tm.shape[1]), 3, figsize=(3 * SUBPLOT_SIZE, 6 * SUBPLOT_SIZE),
+                max(2,tm.shape[1]), 3, figsize=(width, height), dpi=dpi,
             )  # , sharey=True)
             for j in range(tm.shape[1]):
                 axes[j, 0].plot(y[:, j], c="k", label="original")
