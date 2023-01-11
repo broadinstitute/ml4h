@@ -2779,7 +2779,7 @@ def plot_tsne(
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [25, 75]
+    perplexities = [10, 25]
     (fig, subplots) = plt.subplots(
         rows,
         len(perplexities),
