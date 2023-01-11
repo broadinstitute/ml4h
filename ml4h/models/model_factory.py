@@ -19,8 +19,8 @@ from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
-from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
+from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 
@@ -42,6 +42,8 @@ BLOCK_CLASSES = {
     'language_decode': LanguageDecoderBlock,
     'dense_encode': DenseEncoder,
     'dense_decode': DenseDecoder,
+    'linear_decode': LinearDecoder,
+    'partitioned_linear_decode': PartitionedLinearDecoder,
     'identity': EncodeIdentityBlock,
     'transformer_encoder': TransformerEncoder,
     'transformer_decoder': TransformerDecoder,
@@ -113,7 +115,7 @@ def block_make_multimodal_multitask_model(
         optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    full_model.summary()
+    full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
         full_model.load_weights(kwargs['model_layers'], by_name=True)
         logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
@@ -278,7 +280,7 @@ def _load_model_encoders_and_decoders(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    m.summary()
+    m.summary(print_fn=logging.info, expand_nested=True)
     logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
@@ -288,8 +290,10 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention,
-             KerasLayer],
+            [
+                VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention,
+                KerasLayer,
+            ],
         )
     }
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}

@@ -110,7 +110,7 @@ def mdrk_silhouette_flattened_2d_side_by_side_1channel_leveldb(
 actual_train_tm = TensorMap(
     "mdrk_silhouette",
     tensor_from_file=mdrk_silhouette_flattened_2d_side_by_side_1channel_leveldb(
-        augment=True
+        augment=True,
     ),
     shape=(256, 237, 1),
     normalization=None,
@@ -119,7 +119,7 @@ actual_train_tm = TensorMap(
 actual_test_tm = TensorMap(
     "mdrk_silhouette",
     tensor_from_file=mdrk_silhouette_flattened_2d_side_by_side_1channel_leveldb(
-        augment=False
+        augment=False,
     ),
     shape=(256, 237, 1),
     normalization=None,
@@ -145,8 +145,10 @@ class leveldb_generator:
             ret[self.prefix + "_" + t.name + f"_{t.interpretation.name.lower()}"] = list()
         #
         for p in path:
-            data = leveldb_uncompress_given_shape(pickle.loads(self.db.get(str(p).encode())),
-                shape=self.data_shape,stored_dtype=self.stored_dtype)
+            data = leveldb_uncompress_given_shape(
+                pickle.loads(self.db.get(str(p).encode())),
+                shape=self.data_shape,stored_dtype=self.stored_dtype,
+            )
             #
             for t in tm_id:
                 tm = self.tm[t]
@@ -155,7 +157,7 @@ class leveldb_generator:
                     tensor = tm.normalization.normalize(tensor)
                 #
                 ret[self.prefix + "_" + tm.name + f"_{tm.interpretation.name.lower()}"].append(
-                    tensor
+                    tensor,
                 )
             #
         yield ret
@@ -308,7 +310,7 @@ if not os.path.exists(os.path.dirname(model_file)):
 n_epochs = 50
 
 decay = tf.keras.experimental.CosineDecay(
-    initial_learning_rate=1e-4, decay_steps=n_epochs, alpha=0.0
+    initial_learning_rate=1e-4, decay_steps=n_epochs, alpha=0.0,
 )
 
 loss_history = callbacks.LossHistory(decay)
@@ -343,7 +345,7 @@ history = model.fit(
 
 history_min = min([len(l) for k, l in model.history.history.items()])
 history_df = pd.DataFrame(
-    {k: l[:history_min] for k, l in model.history.history.items()}
+    {k: l[:history_min] for k, l in model.history.history.items()},
 )
 history_df.to_csv(f"{model_file}/history.tsv", sep="\t")
 
@@ -391,9 +393,15 @@ eval_batch.to_csv(f"{model_file}/evaluate_batch.tsv", sep="\t")
 
 # Compute predictions
 pred = model.predict(test_ds, verbose=1)
-pred = pd.concat([test_data[['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']], 
-    pd.DataFrame(np.hstack(pred),index=test_data.index,
-        columns=[a+'_pred' for a in ['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']])], axis=1)
+pred = pd.concat(
+    [
+        test_data[['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']],
+        pd.DataFrame(
+            np.hstack(pred),index=test_data.index,
+            columns=[a+'_pred' for a in ['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']],
+        ),
+    ], axis=1,
+)
 
 
 pred.to_csv(f"{model_file}/predictions.tsv", sep="\t")
@@ -418,11 +426,13 @@ pred_latent.to_parquet(f"{model_file}/predictions_latent_train.pq")
 from scipy.stats import spearmanr
 
 def get_correlations(a,b,field):
-    return pd.DataFrame({
-        "pearson_r": np.corrcoef(a, b)[0][1],
-        "pearson_r2": np.corrcoef(a,b)[0][1]**2,
-        "pearson_spearman": spearmanr(a,b)[0],
-    },index=[field])
+    return pd.DataFrame(
+        {
+            "pearson_r": np.corrcoef(a, b)[0][1],
+            "pearson_r2": np.corrcoef(a,b)[0][1]**2,
+            "pearson_spearman": spearmanr(a,b)[0],
+        },index=[field],
+    )
 
 def get_correlation_df(source):
     return pd.concat([
@@ -482,9 +492,15 @@ eval_batch.to_csv(f"{model_file}/evaluate_batch_holdout.tsv", sep="\t")
 
 # Compute predictions
 pred = model.predict(test_ds, verbose=1)
-pred = pd.concat([holdout_data[['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']], 
-    pd.DataFrame(np.hstack(pred),index=holdout_data.index,
-        columns=[a+'_pred' for a in ['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']])], axis=1)
+pred = pd.concat(
+    [
+        holdout_data[['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']],
+        pd.DataFrame(
+            np.hstack(pred),index=holdout_data.index,
+            columns=[a+'_pred' for a in ['vat_ensemble','asat_ensemble','gfat_ensemble','vat_asat_ensemble']],
+        ),
+    ], axis=1,
+)
 
 pred.to_csv(f"{model_file}/predictions_holdout.tsv", sep="\t")
 

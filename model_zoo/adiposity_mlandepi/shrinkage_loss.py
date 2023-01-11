@@ -96,7 +96,7 @@ class ShrinkageLoss(LossFunctionWrapper):
 
 @tf.function
 def shrinkage_loss(
-    y_true: TensorLike, y_pred: TensorLike, a: Number = 5.0, c: Number = 0.2
+    y_true: TensorLike, y_pred: TensorLike, a: Number = 5.0, c: Number = 0.2,
 ):
     y_pred = ops.convert_to_tensor(y_pred)
     y_true = math_ops.cast(y_true, y_pred.dtype)

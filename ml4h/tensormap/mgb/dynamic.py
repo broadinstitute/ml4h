@@ -29,7 +29,7 @@ WIDE_FILE = '/home/sam/ml/hf-wide-2020-09-15-with-lvh-and-lbbb.tsv'
 
 def make_mgb_dynamic_tensor_maps(desired_map_name: str) -> TensorMap:
     tensor_map_maker_fxns = [
-        make_waveform_maps, make_partners_diagnosis_maps, make_waveform_maps_for_ukb, make_waveform_maps_lead_I
+        make_waveform_maps, make_partners_diagnosis_maps, make_waveform_maps_for_ukb, make_waveform_maps_lead_I,
     ]
     for map_maker_function in tensor_map_maker_fxns:
         desired_map = map_maker_function(desired_map_name)

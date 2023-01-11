@@ -34,7 +34,7 @@ def plot_and_time_model(
         The slightly optimized keras model
     """
     if image_path:
-        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True), image_path, inspect_show_labels)
+        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True, show_layer_activations=True), image_path, inspect_show_labels)
     t0 = time.time()
     _ = model.fit(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
@@ -55,7 +55,7 @@ def plot_and_time_model(
 def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
     import pydot
     legend = {}
-    logging.info(f'Got label {dot.get_subgraph_list()} \nFull node n{dot.get_node_list()}\n\n')
+    #logging.info(f'Got label {dot.get_subgraph_list()} \nFull node n{dot.get_node_list()}\n\n')
     for sg in dot.get_subgraph_list():
         add_labels(sg.get_nodes())
     add_labels(dot.get_nodes())
@@ -63,14 +63,14 @@ def _plot_dot_model_in_color(dot, image_path, inspect_show_labels):
         legend_node = pydot.Node('legend' + label, label=label, shape="box", fillcolor=legend[label])
         dot.add_node(legend_node)
 
-    logging.info('Saving architecture diagram to:{}'.format(image_path))
+    logging.info(f'Saving architecture diagram to:{image_path}')
     dot.write_png(image_path)
 
 
 def add_labels(nodes):
     for n in nodes:
         if n.get_label():
-            logging.info(f'Got label {n.get_label()} \nFull node n{n}\n\n')
+            #logging.info(f'Got label {n.get_label()} \nFull node n{n}\n\n')
             if 'Conv1' in n.get_label():
               #  legend['Conv1'] = "cyan"
                 n.set_fillcolor("cyan")
@@ -111,7 +111,6 @@ def add_labels(nodes):
               #  legend['Activation'] = "yellow"
                 n.set_fillcolor("yellow")
         n.set_style("filled")
-
 
 
 def saliency_map(input_tensor: np.ndarray, model: Model, output_layer_name: str, output_index: int) -> np.ndarray:

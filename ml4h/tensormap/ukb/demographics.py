@@ -220,28 +220,50 @@ fathers_age = TensorMap(
 )
 
 genetic_sex = TensorMap(
-    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
-    channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1}, loss='categorical_crossentropy',
+    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    path_prefix='categorical', annotation_units=2, loss='categorical_crossentropy',
+    channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
+)
+partition_i = 128
+a_units = 128
+genetic_sex_partition = TensorMap(
+    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    path_prefix='categorical', days_window=partition_i, annotation_units=a_units, loss='categorical_crossentropy',
+    channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
+)
+age_2_partition = TensorMap(
+    '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, days_window=partition_i,
+    annotation_units=a_units, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    normalization=Standardize(mean=63.358, std=7.555),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 sex = TensorMap(
-    'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
-    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+    'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
 )
 bmi = TensorMap(
-    '23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
-    validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh',
+    '23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    channel_map={'23104_Body-mass-index-BMI_0_0': 0}, validator=make_range_validator(0, 100),
+    normalization={'mean': 27.432, 'std': 4.785},
 )
 bmi_ukb = TensorMap(
     'bmi', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
     validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh',
 )
 bmi_2 = TensorMap(
-    '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'21001_Body-mass-index-BMI_2_0': 0}, annotation_units=1,
-    validator=make_range_validator(0, 300), normalization=Standardize(mean=27.3397, std=4.7721), loss='logcosh',
+    '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='logcosh',
+    channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
+    normalization=Standardize(mean=27.3397, std=4.7721),
 )
-bmi_21 = TensorMap(
-    '21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'21001_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
-    validator=make_range_validator(0, 300), normalization=Standardize(mean=27.3397, std=4.7721), loss='logcosh',
+bmi_2_partition = TensorMap(
+    '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='logcosh',
+    channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
+    normalization=Standardize(mean=27.3397, std=4.7721), days_window=partition_i, annotation_units=a_units,
+)
+bmi_21_0 = TensorMap(
+    '21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    channel_map={'21001_Body-mass-index-BMI_0_0': 0}, validator=make_range_validator(0, 300),
+    normalization=Standardize(mean=27.3397, std=4.7721),
 )
 birth_year = TensorMap(
     '22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
@@ -292,21 +314,28 @@ age_2_patientage = TensorMap(
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 
-af_dummy = TensorMap('af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
-                             channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1})
-sex_dummy = TensorMap('sex_from_wide', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
-                      path_prefix='categorical', annotation_units=2,
-                      channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+af_dummy = TensorMap(
+    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
+)
+sex_dummy = TensorMap(
+    'sex_from_wide', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    path_prefix='categorical', annotation_units=2,
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
 # sex = TensorMap(
 #     'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
 #     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 # )
-af_dummy2 = TensorMap('af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
-                             channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1})
-sex_dummy2 = TensorMap('is_female', Interpretation.CATEGORICAL,
-                       path_prefix='categorical', annotation_units=2,
-                      channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',)
+af_dummy2 = TensorMap(
+    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
+)
+sex_dummy2 = TensorMap(
+    'is_female', Interpretation.CATEGORICAL,
+     path_prefix='categorical', annotation_units=2,
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+)
 
 brain_volume = TensorMap(
     '25010_Volume-of-brain-greywhite-matter_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': 1165940.0, 'std': 111511.0},

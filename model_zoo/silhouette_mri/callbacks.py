@@ -57,4 +57,3 @@ class BatchMetricsLogger(tf.keras.callbacks.Callback):
     #
     def on_test_batch_end(self, batch, logs=None):
         self.storage.append(logs)
-
