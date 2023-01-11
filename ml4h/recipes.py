@@ -196,8 +196,10 @@ def train_multimodal_multitask(args):
             if dtm.axes() > 1:
                 plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
             else:
-                evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
-                                     test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+                evaluate_predictions(
+                    dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
+                    test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                )
     return performance_metrics
 
 
@@ -589,8 +591,12 @@ def _predict_and_evaluate(
         if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
-        performance_metrics.update(evaluate_predictions(tm, y, y_truth, protected_data, tm.name, plot_path, test_paths,
-                                                        rocs=rocs, scatters=scatters, dpi=dpi, width=width, height=height))
+        performance_metrics.update(
+            evaluate_predictions(
+                tm, y, y_truth, protected_data, tm.name, plot_path, test_paths,
+                rocs=rocs, scatters=scatters, dpi=dpi, width=width, height=height,
+            ),
+        )
         if tm.is_language():
             sample_from_language_model(tensor_maps_in[0], tm, model, test_data, max_samples=16)
 
@@ -602,8 +608,10 @@ def _predict_and_evaluate(
     test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
     test_labels_1d.update(protected_data)
     if embed_visualization == "tsne":
-        _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data,
-                      tensor_maps_in=tensor_maps_in, batch_size=batch_size, dpi=dpi, width=width, height=height)
+        _tsne_wrapper(
+            model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data,
+            tensor_maps_in=tensor_maps_in, batch_size=batch_size, dpi=dpi, width=width, height=height,
+        )
 
     return performance_metrics
 
@@ -651,8 +659,10 @@ def _predict_scalars_and_evaluate_from_generator(
         if tm.output_name() in scalar_predictions:
             y_predict = np.array(scalar_predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
-            metrics = evaluate_predictions(tm, y_predict, y_truth, protected_data, tm.name, plot_path, test_paths,
-                                           rocs=rocs, scatters=scatters, dpi=dpi, width=width, height=height)
+            metrics = evaluate_predictions(
+                tm, y_predict, y_truth, protected_data, tm.name, plot_path, test_paths,
+                rocs=rocs, scatters=scatters, dpi=dpi, width=width, height=height,
+            )
             performance_metrics.update(metrics)
 
     if len(rocs) > 1:
@@ -661,8 +671,10 @@ def _predict_scalars_and_evaluate_from_generator(
         subplot_scatters(scatters, plot_path)
     if len(embeddings) > 0:
         test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
-        _tsne_wrapper(model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d,
-                      embeddings=embeddings, dpi=dpi, width=width, height=height)
+        _tsne_wrapper(
+            model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d,
+            embeddings=embeddings, dpi=dpi, width=width, height=height,
+        )
 
     return performance_metrics
 
@@ -792,8 +804,10 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         if tm.is_categorical() and tm.axes() == 1:
             for m in predictions[tm]:
                 logging.info(f"{tm.name} channel map {tm.channel_map}\nsum truth = {np.sum(outputs[tm.output_name()], axis=0)}\nsum preds = {np.sum(predictions[tm][m], axis=0)}")
-            plot_rocs(predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder,
-                      dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+            plot_rocs(
+                predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
         elif tm.is_categorical() and tm.axes() == 4:
             for p in predictions[tm]:
@@ -802,10 +816,14 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 predictions[tm][p] = y.reshape(melt_shape)
 
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
-            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                      dpi=args.dpi, width=args.plot_width, height=args.plot_height)
-            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                                   dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+            plot_rocs(
+                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
+            plot_precision_recalls(
+                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
@@ -817,18 +835,24 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 predictions[tm][p] = y.reshape(melt_shape)
 
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
-            plot_rocs(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                      dpi=args.dpi, width=args.plot_width, height=args.plot_height)
-            plot_precision_recalls(predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                                   dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+            plot_rocs(
+                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
+            plot_precision_recalls(
+                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
             precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
         elif tm.is_continuous() and tm.axes() == 1:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
-            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder,
-                          dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+            plot_scatters(
+                scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
@@ -839,22 +863,28 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
                 concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
                 logging.info(f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
                 new_predictions[f'{m}_C_Index_{c_index[0]:0.3f}'] = predictions[tm][m]
-            plot_rocs(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title,
-                      plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+            plot_rocs(
+                new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title,
+                plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             rocs.append((new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}))
-            plot_prediction_calibrations(new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0},
-                                         plot_title, plot_folder, dpi=args.dpi,
-                                         width=args.plot_width, height=args.plot_height)
+            plot_prediction_calibrations(
+                new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0},
+                plot_title, plot_folder, dpi=args.dpi,
+                width=args.plot_width, height=args.plot_height,
+            )
         elif tm.is_survival_curve():
             for m in predictions[tm]:
                 plot_survival(
                     predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}', tm.days_window,
-                    prefix=plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height
+                    prefix=plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
                 )
         else:
             scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
-            plot_scatters(scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder,
-                          dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+            plot_scatters(
+                scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
             log_pearson_coefficients(coefs, tm.name)
 
@@ -864,8 +894,10 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         subplot_comparison_scatters(scatters, plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height)
 
 
-def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_labels, test_data=None,
-                  tensor_maps_in=None, batch_size=16, embeddings=None, dpi=300, width=7, height=7):
+def _tsne_wrapper(
+    model, hidden_layer_name, alpha, plot_path, test_paths, test_labels, test_data=None,
+    tensor_maps_in=None, batch_size=16, embeddings=None, dpi=300, width=7, height=7,
+):
     """Plot 2D t-SNE of a model's hidden layer colored by many different co-variates.
 
     Callers must provide either model's embeddings or test_data on which embeddings will be inferred
@@ -892,8 +924,10 @@ def _tsne_wrapper(model, hidden_layer_name, alpha, plot_path, test_paths, test_l
     gene_labels = []
     label_dict, categorical_labels, continuous_labels = test_labels_to_label_map(test_labels, len(test_paths))
     if len(categorical_labels) > 0 or len(continuous_labels) > 0 or len(gene_labels) > 0:
-        plot_tsne(embeddings, categorical_labels, continuous_labels, gene_labels,
-                  label_dict, plot_path, alpha, dpi, width, height)
+        plot_tsne(
+            embeddings, categorical_labels, continuous_labels, gene_labels,
+            label_dict, plot_path, alpha, dpi, width, height,
+        )
 
 
 if __name__ == '__main__':

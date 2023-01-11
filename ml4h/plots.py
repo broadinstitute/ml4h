@@ -279,9 +279,10 @@ def evaluate_predictions(
                 prefix=folder, dpi=dpi, width=width, height=height,
             ),
         )
-        plot_survival_curves(y_predictions, y_truth, title, days_window=tm.days_window,
-                             prefix=folder, paths=test_paths, dpi=dpi, width=width, height=height,
-                             )
+        plot_survival_curves(
+            y_predictions, y_truth, title, days_window=tm.days_window,
+            prefix=folder, paths=test_paths, dpi=dpi, width=width, height=height,
+        )
         time_steps = tm.shape[-1] // 2
         days_per_step = 1 + tm.days_window // time_steps
         predictions_at_end = (
@@ -293,11 +294,14 @@ def evaluate_predictions(
             f"Event {events_at_end.shape}, preds:{predictions_at_end.shape} end {events_at_end[:, np.newaxis].shape}",
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
-        plot_prediction_calibration(predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0},
-                                    calibration_title, folder, dpi, width, height,
-                                    )
-        plot_survivorship(events_at_end, follow_up, predictions_at_end, tm.name,
-                          folder, tm.days_window, dpi, width, height)
+        plot_prediction_calibration(
+            predictions_at_end[:, np.newaxis], events_at_end[:, np.newaxis], {tm.name: 0},
+            calibration_title, folder, dpi, width, height,
+        )
+        plot_survivorship(
+            events_at_end, follow_up, predictions_at_end, tm.name,
+            folder, tm.days_window, dpi, width, height,
+        )
     elif tm.is_time_to_event():
         c_index = concordance_index_censored(y_truth[:, 0] == 1.0, y_truth[:, 1], y_predictions[:, 0])
         concordance_return_values = [
@@ -312,8 +316,10 @@ def evaluate_predictions(
         )
         new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
         performance_metrics.update(
-            subplot_roc_per_class(y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
-                                  new_title, folder, dpi, width, height)
+            subplot_roc_per_class(
+                y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
+                new_title, folder, dpi, width, height,
+            ),
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
         plot_prediction_calibration(
@@ -461,8 +467,10 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if 'loss' in history.history:
         logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:   {history.history["loss"][-1]:0.4f}')
     if 'val_loss' in history.history:
-        logging.info(f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}, '
-                     f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}')
+        logging.info(
+            f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}, '
+            f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}',
+        )
     logging.info(f"Saved learning curves at:{figure_path}")
 
 
@@ -1101,8 +1109,8 @@ def plot_survival(
     plt.plot(range(0, days_window, 1 + days_window // intervals), survivorship, marker='o', label='Survivorship')
     plt.xlabel('Follow up time (days)')
     plt.ylabel('Proportion Surviving')
-    full_title = f"""{title} C-Index: {c_index:.4f} 
-        Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%, 
+    full_title = f"""{title} C-Index: {c_index:.4f}
+        Enrolled: {truth.shape[0]}, Censored: {cumulative_censored[-1]:.0f}, {100 * (cumulative_censored[-1] / truth.shape[0]):2.1f}%,
         Events: {cumulative_sick[-1]:.0f}, {100 * (cumulative_sick[-1] / truth.shape[0]):2.1f}%\nMax follow up: {days_window} days, {days_window // 365} years."""
     plt.title(full_title)
     plt.legend(loc="upper right")

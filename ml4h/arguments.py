@@ -101,8 +101,10 @@ def parse_args():
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
     )
-    parser.add_argument('--categorical_file_columns', nargs='*', default=[],
-                        help='Column headers in file from which categorical TensorMap(s) will be made.')
+    parser.add_argument(
+        '--categorical_file_columns', nargs='*', default=[],
+        help='Column headers in file from which categorical TensorMap(s) will be made.',
+    )
 
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,

@@ -198,4 +198,3 @@ def build_categorical_tensor_from_file(
             raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
-

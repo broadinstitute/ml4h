@@ -49,8 +49,10 @@ dxa_11 = TensorMap(
 )
 
 
-def register_to_sample(register_hd5, register_path, register_name, register_shape,
-                       number_of_iterations = 5000, termination_eps = 1e-4, warp_mode = cv2.MOTION_TRANSLATION):
+def register_to_sample(
+    register_hd5, register_path, register_name, register_shape,
+    number_of_iterations = 5000, termination_eps = 1e-4, warp_mode = cv2.MOTION_TRANSLATION,
+):
     register_tensor = None
     # Define termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations, termination_eps)
@@ -75,16 +77,22 @@ def register_to_sample(register_hd5, register_path, register_name, register_shap
             warp_matrix = np.eye(2, 3, dtype=np.float32)
 
         try:
-            (cc, warp_matrix) = cv2.findTransformECC(register_tensor.astype(np.float32), tensor.astype(np.float32),
-                                                     warp_matrix, warp_mode, criteria)
+            (cc, warp_matrix) = cv2.findTransformECC(
+                register_tensor.astype(np.float32), tensor.astype(np.float32),
+                warp_matrix, warp_mode, criteria,
+            )
             if warp_mode == cv2.MOTION_HOMOGRAPHY:
                 # Use warpPerspective for Homography
-                tensor[..., 0] = cv2.warpPerspective(tensor, warp_matrix, (register_shape[1], register_shape[0]),
-                                                     flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
+                tensor[..., 0] = cv2.warpPerspective(
+                    tensor, warp_matrix, (register_shape[1], register_shape[0]),
+                    flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,
+                )
             else:
                 # Use warpAffine for Translation, Euclidean and Affine
-                tensor[..., 0] = cv2.warpAffine(tensor, warp_matrix, (register_shape[1], register_shape[0]),
-                                                flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
+                tensor[..., 0] = cv2.warpAffine(
+                    tensor, warp_matrix, (register_shape[1], register_shape[0]),
+                    flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,
+                );
         except cv2.error as e:
             logging.debug(f'Got cv2 error {e}')
         return tensor
@@ -132,4 +140,3 @@ dxa_12_homography = TensorMap(
     ),
     normalization=ZeroMeanStd1(),
 )
-

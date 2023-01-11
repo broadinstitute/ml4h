@@ -190,9 +190,11 @@ def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     return tensor
 
 
-brain_channel_map = {'Background': 0, 'Left_Thalamus_Proper': 1, 'Left_Caudate': 2, 'Left_Putamen': 3, 'Left_Pallidum': 4, 'Brain_Stem': 5, 'Left_Hippocampus': 6,
-                     'Left_Amygdala': 7, 'Left_Accumbens_area': 8, 'Right_Thalamus_Proper': 9, 'Right_Caudate': 10, 'Right_Putamen': 11, 'Right_Pallidum': 12,
-                     'Right_Hippocampus': 13, 'Right_Amygdala': 14, 'Right_Accumbens_area': 15}
+brain_channel_map = {
+    'Background': 0, 'Left_Thalamus_Proper': 1, 'Left_Caudate': 2, 'Left_Putamen': 3, 'Left_Pallidum': 4, 'Brain_Stem': 5, 'Left_Hippocampus': 6,
+    'Left_Amygdala': 7, 'Left_Accumbens_area': 8, 'Right_Thalamus_Proper': 9, 'Right_Caudate': 10, 'Right_Putamen': 11, 'Right_Pallidum': 12,
+    'Right_Hippocampus': 13, 'Right_Amygdala': 14, 'Right_Accumbens_area': 15,
+}
 
 t1_seg_slice_80 = TensorMap(
     'axial_80',
@@ -307,8 +309,10 @@ t1_mni_cerebellum_30_60 = TensorMap(
     't1_mni_cerebellum_30_60',
     shape=(176, 216, 30),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
-                                        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39}),
+    tensor_from_file=_mni_label_masked({
+        'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
+        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39,
+    }),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_cerebellum_gray_matter_10_73 = TensorMap(
@@ -329,8 +333,10 @@ t1_mni_cerebellum_10_73 = TensorMap(
     't1_mni_cerebellum_10_73',
     shape=(176, 216, 63),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
-                                        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39}),
+    tensor_from_file=_mni_label_masked({
+        'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
+        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39,
+    }),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_amygdala_47_71 = TensorMap(

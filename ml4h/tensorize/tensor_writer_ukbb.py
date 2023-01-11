@@ -63,8 +63,10 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
-                    '20227', '20225', '20217', '20158']
+DICOM_MRI_FIELDS = [
+    '20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
+    '20227', '20225', '20217', '20158',
+]
 
 DXA_FIELD = '20158'
 

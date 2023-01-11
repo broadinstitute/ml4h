@@ -35,8 +35,10 @@ def run():
     latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
 
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, stat_model,
-                      adjust_cols=ADJUST, train_ratio_ols=0.1)
+    latent_space_gwas(
+        input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, stat_model,
+        adjust_cols=ADJUST, train_ratio_ols=0.1,
+    )
 
 
 def unit_vector(vector):
