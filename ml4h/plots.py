@@ -447,8 +447,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 ]
             axes[row, col].plot(history.history[k])
             k_split = str(k).replace("output_", "").split("_")
-            k_title = " ".join(OrderedDict.fromkeys(k_split.capitalize()))
-            axes[row, col].set_title(k_title)
+            k_title = " ".join(OrderedDict.fromkeys(k_split))
+            axes[row, col].set_title(k_title.capitalize())
             axes[row, col].set_xlabel("Epoch")
             if "val_" + k in history.history:
                 axes[row, col].plot(history.history["val_" + k])
