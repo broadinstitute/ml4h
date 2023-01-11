@@ -5,7 +5,7 @@ repos:
     - id: nbstripout
       files: ".ipynb"
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: master
+  rev: main
   hooks:
     - id: trailing-whitespace
       files: ".py"
@@ -19,7 +19,7 @@ repos:
     - id: remove-tabs
       files: ".py"
 - repo: https://github.com/asottile/add-trailing-comma
-  rev: master
+  rev: main
   hooks:
     - id: add-trailing-comma
       exclude: "ml4h/tensormap/ukb/by_script.py"
