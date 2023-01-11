@@ -568,9 +568,17 @@ ecg_rest_median_mv_warp = TensorMap(
 )
 
 ecg_rest_median_raw_10 = TensorMap(
-    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear', tensor_from_file=_make_ecg_rest(),
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh',
+    activation='linear', tensor_from_file=_make_ecg_rest(),
     metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
+
+ecg_rest_median_576 = TensorMap(
+    'ecg_rest_median_576', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(576, 12), loss='logcosh',
+    activation='linear', tensor_from_file=_make_ecg_rest(), channel_map=ECG_REST_MEDIAN_LEADS,
+    normalization=Standardize(mean=0, std=10),
+)
+
 ecg_rest_median_raw_10_no_poor = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
@@ -1267,8 +1275,12 @@ def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.nda
     ppg[:, 0] = hd5[tm.name]
     return ppg
 
-ppg_0 = TensorMap('ppg_0', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_0': 0},
-                  normalization=Standardize(mean=4824.6, std=3235.8))
+ppg_0 = TensorMap(
+    'ppg_0', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_0': 0},
+    normalization=Standardize(mean=4824.6, std=3235.8),
+)
 
-ppg_2 = TensorMap('ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
-                  normalization=Standardize(mean=4824.6, std=3235.8))
+ppg_2 = TensorMap(
+    'ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
+    normalization=Standardize(mean=4824.6, std=3235.8),
+)

@@ -3,6 +3,7 @@ import csv
 import logging
 import h5py
 import numpy as np
+import pandas as pd
 from typing import List, Tuple, Dict
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.normalizer import Standardize
@@ -66,6 +67,25 @@ def get_tensor_at_first_date(
         raise ValueError(f'No {name} values values available.')
     tensor = np.array(
         hd5[f'{tensor_path(path_prefix=path_prefix, name=name)}{min(dates)}/'],
+        dtype=np.float32,
+    )
+    tensor = handle_nan(tensor)
+    return tensor
+
+def get_tensor_at_last_date(
+    hd5: h5py.File,
+    path_prefix: str,
+    name: str,
+    handle_nan=fail_nan,
+):
+    """
+    Gets the numpy array at the last date of path_prefix, dtype, name.
+    """
+    dates = all_dates(hd5, path_prefix, name)
+    if not dates:
+        raise ValueError(f'No {name} values values available.')
+    tensor = np.array(
+        hd5[f'{tensor_path(path_prefix=path_prefix, name=name)}{max(dates)}/'],
         dtype=np.float32,
     )
     tensor = handle_nan(tensor)
@@ -145,6 +165,36 @@ def build_tensor_from_file(
                 os.path.basename(hd5.filename).replace('.hd5', '')
             ].copy()
         except KeyError:
-            raise KeyError(f'User id not in file {file_name}.')
+            raise KeyError(f'Sample id not in file {file_name}.')
+
+    return tensor_from_file
+
+def build_categorical_tensor_from_file(
+    file_name: str,
+    target_column: str,
+):
+    """
+    Build a tensor_from_file function from a column in a file as categorical classifier.
+    """
+    error = None
+    try:
+        ext = file_name.split('.')[1]
+        delimiter = ',' if ext == 'csv' else '\t'
+        df = pd.read_csv(file_name, delimiter=delimiter)
+        table = dict(zip(df[df.columns[0]].tolist(), df[target_column].tolist()))
+        logging.info(f'Categorical table from column {target_column} counts:\n{df[target_column].value_counts()}')
+    except FileNotFoundError as e:
+        error = e
+
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        if error:
+            raise error
+        try:
+            tensor = np.zeros(tm.shape, dtype=np.float32)
+            val = table[int(os.path.basename(hd5.filename).replace('.hd5', ''))]
+            tensor[tm.channel_map[val]] = 1.0
+            return tensor
+        except KeyError as e:
+            raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
