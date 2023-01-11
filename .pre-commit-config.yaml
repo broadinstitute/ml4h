@@ -4,22 +4,22 @@ repos:
   hooks:
     - id: nbstripout
       files: ".ipynb"
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: main
-  hooks:
-    - id: trailing-whitespace
-      files: ".py"
-    - id: end-of-file-fixer
-      files: ".py"
-    - id: debug-statements
-      files: ".py"
-- repo: https://github.com/Lucas-C/pre-commit-hooks
-  rev: master
-  hooks:
-    - id: remove-tabs
-      files: ".py"
-- repo: https://github.com/asottile/add-trailing-comma
-  rev: main
-  hooks:
-    - id: add-trailing-comma
-      exclude: "ml4h/tensormap/ukb/by_script.py"
+#- repo: https://github.com/pre-commit/pre-commit-hooks
+#  rev: main
+#  hooks:
+#    - id: trailing-whitespace
+#      files: ".py"
+#    - id: end-of-file-fixer
+#      files: ".py"
+#    - id: debug-statements
+#      files: ".py"
+#- repo: https://github.com/Lucas-C/pre-commit-hooks
+#  rev: master
+#  hooks:
+#    - id: remove-tabs
+#      files: ".py"
+#- repo: https://github.com/asottile/add-trailing-comma
+#  rev: main
+#  hooks:
+#    - id: add-trailing-comma
+#      exclude: "ml4h/tensormap/ukb/by_script.py"
