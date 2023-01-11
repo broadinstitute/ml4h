@@ -72,7 +72,7 @@ def _mri_hd5_to_structured_grids(hd5, name, save_path=None, order='F'):
         n_orientation = np.cross(
             orientations[3:, d_idx], orientations[
                 :3,
-                d_idx
+                d_idx,
             ],
         )
         # 4x4 transform matrix to align to the patient reference system

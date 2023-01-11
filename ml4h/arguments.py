@@ -26,12 +26,13 @@ from collections import defaultdict
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
-from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
-from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
-from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps, make_test_tensor_maps, \
-    generate_random_pixel_as_text_tensor_maps
+from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file
+from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
+from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
+from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
 
 BOTTLENECK_STR_TO_ENUM = {
     'flatten_restructure': BottleneckType.FlattenRestructure,
@@ -88,13 +89,23 @@ def parse_args():
     )
 
     # Data selection parameters
-    parser.add_argument('--continuous_file_column', default=None, help='Column header in file from which a continuous TensorMap will be made.')
+
     parser.add_argument('--continuous_file_columns', nargs='*', default=[], help='Column headers in file from which continuous TensorMap(s) will be made.')
     parser.add_argument('--continuous_file_normalize', default=False, action='store_true', help='Whether to normalize a continuous TensorMap made from a file.')
     parser.add_argument(
         '--continuous_file_discretization_bounds', default=[], nargs='*', type=float,
         help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
     )
+    parser.add_argument(
+        '--categorical_file', default=None, help='Path to a file containing categorical values from which a output TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first output_tensors'
+        'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--categorical_file_columns', nargs='*', default=[],
+        help='Column headers in file from which categorical TensorMap(s) will be made.',
+    )
+
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -263,6 +274,9 @@ def parse_args():
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
     parser.add_argument('--write_pngs', default=False, action='store_true', help='Write pngs of slices.')
+    parser.add_argument('--dpi', default=300, type=int, help='Dots per inch of figures made in plots.py')
+    parser.add_argument('--plot_width', default=6, type=int, help='Width in inches of figures made in plots.py')
+    parser.add_argument('--plot_height', default=6, type=int, help='Height in inches of figures made in plots.py')
     parser.add_argument('--debug', default=False, action='store_true', help='Run in debug mode.')
     parser.add_argument('--eager', default=False, action='store_true', help='Run tensorflow functions in eager execution mode (helpful for debugging).')
     parser.add_argument('--inspect_model', default=False, action='store_true', help='Plot model architecture, measure inference and training speeds.')
@@ -486,7 +500,16 @@ def _process_args(args):
                     args.continuous_file_discretization_bounds,
                 ),
             )
-
+    if args.categorical_file is not None:
+        # Categorical TensorMap(s) generated from file is given the name specified by the first output_tensors argument
+        for column in args.categorical_file_columns:
+            args.tensor_maps_out.append(
+                generate_categorical_tensor_map_from_file(
+                    args.categorical_file,
+                    column,
+                    args.output_tensors.pop(0),
+                ),
+            )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]

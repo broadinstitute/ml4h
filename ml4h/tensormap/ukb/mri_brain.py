@@ -1,4 +1,5 @@
 import h5py
+import nibabel
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 
@@ -45,6 +46,13 @@ t1_slice_100 = TensorMap(
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
+t1_slice_100_224 = TensorMap(
+    'axial_100',
+    shape=(224, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
 t1_slice_120 = TensorMap(
     'axial_120',
     shape=(216, 256, 1),
@@ -78,6 +86,15 @@ t1_slices_68_100 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
+
+t1_slices_68_100 = TensorMap(
+    'axial_68_100',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+
 t1_mni_slices_16_48 = TensorMap(
     'axial_16_48',
     shape=(176, 216, 32),
@@ -99,7 +116,63 @@ t1_mni_slices_80_144 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
+t1_mni_slices_0_182 = TensorMap(
+    'axial_0_182',
+    shape=(176, 216, 182),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_0_32 = TensorMap(
+    'axial_0_32',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 
+t1_mni_slices_32_64 = TensorMap(
+    'axial_32_64',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_64_96 = TensorMap(
+    'axial_64_96',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_96_128 = TensorMap(
+    'axial_96_128',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_128_160 = TensorMap(
+    'axial_128_160',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_30_60 = TensorMap(
+    'axial_30_60',
+    shape=(176, 216, 30),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slices_10_73 = TensorMap(
+    'axial_10_73',
+    shape=(176, 216, 63),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
@@ -117,9 +190,11 @@ def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     return tensor
 
 
-brain_channel_map = {'Background': 0, 'Left_Thalamus_Proper': 1, 'Left_Caudate': 2, 'Left_Putamen': 3, 'Left_Pallidum': 4, 'Brain_Stem': 5, 'Left_Hippocampus': 6,
-                     'Left_Amygdala': 7, 'Left_Accumbens_area': 8, 'Right_Thalamus_Proper': 9, 'Right_Caudate': 10, 'Right_Putamen': 11, 'Right_Pallidum': 12,
-                     'Right_Hippocampus': 13, 'Right_Amygdala': 14, 'Right_Accumbens_area': 15}
+brain_channel_map = {
+    'Background': 0, 'Left_Thalamus_Proper': 1, 'Left_Caudate': 2, 'Left_Putamen': 3, 'Left_Pallidum': 4, 'Brain_Stem': 5, 'Left_Hippocampus': 6,
+    'Left_Amygdala': 7, 'Left_Accumbens_area': 8, 'Right_Thalamus_Proper': 9, 'Right_Caudate': 10, 'Right_Putamen': 11, 'Right_Pallidum': 12,
+    'Right_Hippocampus': 13, 'Right_Amygdala': 14, 'Right_Accumbens_area': 15,
+}
 
 t1_seg_slice_80 = TensorMap(
     'axial_80',
@@ -181,5 +256,100 @@ t1_slice_63_brainstem = TensorMap(
     shape=(216, 256, 1),
     path_prefix='ukb_brain_mri/T1/',
     tensor_from_file=_brain_label_masked({'Brain_Stem': 5}),
+    normalization=ZeroMeanStd1(),
+)
+
+
+def _mni_label_masked(labels, mni_label_mask='/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii'):
+    mni_nifti = nibabel.load('/home/sam/mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')
+    mni_labels = mni_nifti.get_fdata()[:176, :216, :182]  # crop to UKB MNI
+
+    def _masked_brain_tensor(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        begin_slice = int(tm.name.split('_')[-2])
+        end_slice = int(tm.name.split('_')[-1])
+        for i in range(begin_slice, end_slice):
+            slicer = get_tensor_at_first_date(hd5, tm.path_prefix, f'axial_{i}')
+            tensor[..., i - begin_slice] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
+        label_mask = np.isin(mni_labels[..., begin_slice:end_slice], list(labels.values()))
+        tensor *= label_mask
+        return tensor
+    return _masked_brain_tensor
+
+
+t1_mni_slice_80_hippocampus = TensorMap(
+    'mni_hippocampus_axial_48_80',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_Hippocampus': 99, 'Right_Hippocampus': 48}),  # CerebrA Label Map
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_slice_60_92_putamen = TensorMap(
+    'mni_putamen_axial_60_92',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_Putamen': 72, 'Right_Putamen': 21}),  # CerebrA Label Map
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_white_matter_30_60 = TensorMap(
+    't1_mni_cerebellum_white_matter_30_60',
+    shape=(176, 216, 30),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_gray_matter_30_60 = TensorMap(
+    't1_mni_cerebellum_gray_matter_30_60',
+    shape=(176, 216, 30),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_30_60 = TensorMap(
+    't1_mni_cerebellum_30_60',
+    shape=(176, 216, 30),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({
+        'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
+        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39,
+    }),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_gray_matter_10_73 = TensorMap(
+    't1_mni_cerebellum_gray_matter_10_73',
+    shape=(176, 216, 63),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_gray_matter_10_73 = TensorMap(
+    't1_mni_cerebellum_gray_matter_10_73',
+    shape=(176, 216, 63),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_cerebellum_10_73 = TensorMap(
+    't1_mni_cerebellum_10_73',
+    shape=(176, 216, 63),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({
+        'Left_cerebellum_gray_matter': 97, 'Right_cerebellum_gray_matter': 46,
+        'Left_cerebellum_white_matter': 90, 'Right_cerebellum_white_matter': 39,
+    }),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_amygdala_47_71 = TensorMap(
+    't1_mni_amygdala_47_71',
+    shape=(176, 216, 24),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_amygdala': 19, 'Right_amygdala': 70}),
+    normalization=ZeroMeanStd1(),
+)
+t1_mni_accumbens_65_76 = TensorMap(
+    't1_mni_accumbens_65_76',
+    shape=(176, 216, 11),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_mni_label_masked({'Left_accumbens': 19, 'Right_accumbens': 70}),
     normalization=ZeroMeanStd1(),
 )

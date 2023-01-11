@@ -18,6 +18,7 @@ ADJUST = [
     #'bmi',
 ]
 TRAIN_RATIO_OLS=0.2
+P_EPSILON = 1e-256
 
 def run():
     input_bcf = os.environ['INPUT_BCF']
@@ -34,8 +35,10 @@ def run():
     latent_cols = [f'{latent_prefix}{i}' for i in range(int(latent_total))]
     latent_df = pd.read_csv(latent_csv)
 
-    latent_space_gwas(input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, stat_model,
-                      adjust_cols=ADJUST, train_ratio_ols=0.1)
+    latent_space_gwas(
+        input_bcf, chrom, start, stop, latent_df, latent_cols, output_csv, stat_model,
+        adjust_cols=ADJUST, train_ratio_ols=0.1,
+    )
 
 
 def unit_vector(vector):
@@ -245,7 +248,7 @@ def latent_space_gwas(
 
             gv_dict['t_stat'].append(t_stat)
             gv_dict['p_value'].append(p_value)
-            gv_dict['log10p'].append(-np.log10(p_value))
+            gv_dict['log10p'].append(-np.log10(p_value + P_EPSILON))
             gv_dict['coef'].append(coef)
             gv_dict['se'].append(se)
             gv_dict['rsid'].append(rec.id)
