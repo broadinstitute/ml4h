@@ -1,5 +1,5 @@
 pydot
-nibabel==5.0.0
+nibabel==4.0.2
 pydicom==1.2.2
 hyperopt==0.1.2
 seaborn==0.11.2
