@@ -118,7 +118,7 @@ def choose_mri_tmap(
     default_vmin_value, default_vmax_value = compute_color_range(hd5, default_tmap_value)
 
     tmap_chooser = widgets.Dropdown(
-        options=sample_tmaps,
+        options=list(sample_tmaps.items()),
         value=default_tmap_value,
         description='Choose the MRI tensor TMAP name to visualize:',
         style={'description_width': 'initial'},
@@ -144,7 +144,7 @@ def choose_mri_tmap(
         layout=transpose_chooser.layout,
     )
     plot_type_chooser = widgets.RadioButtons(
-        options={'interactive animation': PlotType.INTERACTIVE, 'panel grid': PlotType.PANEL},
+        options=[('interactive animation', PlotType.INTERACTIVE), ('panel grid', PlotType.PANEL)],
         description='Plot type',
         style={'description_width': 'initial'},
         layout=transpose_chooser.layout,

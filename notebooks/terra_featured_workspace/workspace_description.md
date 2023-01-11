@@ -19,19 +19,13 @@ Please see https://github.com/broadinstitute/ml4h/ for more details on the full 
 ## Get Started
 
 1. Clone this workspace.
-1. From the preview view of one of the notebooks
-    1. Copy the Terra custom Docker image name
-    1. Click on `Cloud Environment`
-    1. In section `Create custom environment` click on `Customize`
-    1. In section `Application configuration` scroll to the final option and choose `Custom environment`
-    2. In section `Container image` paste in the Terra custom Docker image name.
-    3. Click on the `Next` button
+1. Run notebook `ml4h_setup.ipynb` to install the ml4h Python package and data visualization Jupyter extensions on your cloud environment.
 1. Run the notebooks in "Playground Mode" to explore model inputs and outputs!
 
 ----------------------------
 ## Notebooks
 
-* **review_model_results_interactive**: Use this notebook to perform interactive quality control (QC) of a simulated ECG and MRI prediction model.
+* **review_model_results_interactive**: Use this notebook to perform interactive quality control (QC) of a simulated ECG and MRI prediction model. NOTE: the [facets](https://pair-code.github.io/facets/) visualization does not currently display correctly on app.terra.bio, but works fine in other Jupyter environments.
 * **review_one_sample_interactive**: Use this notebook to perform interactive quality control (QC) of per-patient multi-modal data for clinical machine learning models.
 * **image_annotations_demo**: Use this notebook to annotate MRI images to create new input data for machine learning.
 * **mnist_survival_analysis_demo**: In survival analysis, the aim is to predict when an event might occur, such as a heart attack, stroke, or the onset of heart feailure. This notebook uses the MNIST dataset to develop a toy model of survival analysis using ML4H.
@@ -42,7 +36,7 @@ When you create your cloud environment, you can specify that it be [GPU-enabled]
 
 | Option | Value |
 | --- | --- |
-| Environment | ghcr.io/broadinstitute/ml4h/ml4h_terra:THE_TAG_VALUE_YOU_SEE_IN_THE_NOTEBOOKS |
+| Environment | Default 'application environment' (GATK, Python, R) |
 | CPU Minimum | 4|
 | Disk size Minimum | 50 GB |
 | Memory Minimum | 15 GB |

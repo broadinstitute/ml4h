@@ -2781,6 +2781,7 @@ def plot_tsne(
     dpi: int = 300,
     width: int = 7,
     height: int = 7,
+    perplexities = [12, 30],
 ):
     x_embed = np.array(x_embed)
     if len(x_embed.shape) > 2:
@@ -2788,7 +2789,7 @@ def plot_tsne(
 
     n_components = 2
     rows = max(2, len(label_dict))
-    perplexities = [10, 25]
+
     (fig, subplots) = plt.subplots(
         rows,
         len(perplexities),

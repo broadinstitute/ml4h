@@ -347,4 +347,3 @@ t1_mni_accumbens_65_76 = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_accumbens': 19, 'Right_accumbens': 70}),
     normalization=ZeroMeanStd1(),
 )
-
