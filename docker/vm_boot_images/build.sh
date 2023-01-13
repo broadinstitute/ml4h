@@ -117,6 +117,8 @@ docker build ${CONTEXT} \
     --build-arg BASE_IMAGE=${BASE_IMAGE} \
     --tag "${REPO}:${TAG}" \
     --tag "${REPO}:${LATEST_TAG}" \
+    --tag "${GITHUB_REPO}:${TAG}" \
+    --tag "${GITHUB_REPO}:${LATEST_TAG}" \
     --network host \
 
 if [[ ${PUSH_TO_LATEST} == "true" ]]; then
