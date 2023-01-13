@@ -12,6 +12,7 @@ set -e
 ################### VARIABLES ############################################
 
 REPO="gcr.io/broad-ml4cvd/deeplearning"
+GITHUB_REPO="ghcr.io/broadinstitute/ml4h"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
@@ -119,9 +120,12 @@ docker build ${CONTEXT} \
     --network host \
 
 if [[ ${PUSH_TO_LATEST} == "true" ]]; then
-    echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
+    echo -e "${BLUE}Pushing the image '${REPO}' to Github GHCR and Google Container Registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
     docker push ${REPO}:${TAG}
     docker push ${REPO}:${LATEST_TAG}
+
+    docker push ${GITHUB_REPO}:${TAG}
+    docker push ${GITHUB_REPO}:${LATEST_TAG}
 fi
 
 if [[ ${PUSH_TO_GCR} == "true" ]]; then
