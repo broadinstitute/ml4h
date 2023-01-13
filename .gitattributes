@@ -3,3 +3,6 @@ notebooks/**.ipynb filter=nbstripout
 *.ipynb diff=ipynb
 *.h5 filter=lfs diff=lfs merge=lfs -text
 *.data* filter=lfs diff=lfs merge=lfs -text
+*.linux filter=lfs diff=lfs merge=lfs -text
+*.osx filter=lfs diff=lfs merge=lfs -text
+*.genes filter=lfs diff=lfs merge=lfs -text
