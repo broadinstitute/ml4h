@@ -5,8 +5,8 @@ one `hd5` file per sample id.
 
 * Clone the repo and cd into it:
 ```
-    git clone git@github.com:broadinstitute/ml.git
-    cd ml
+    git clone git@github.com:broadinstitute/ml4h.git
+    cd ml4h
 ```
 
 * Create and activate the right Python environment:
