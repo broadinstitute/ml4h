@@ -8,23 +8,6 @@
 * ModelFactory: connect TensorMaps with a trainable architectures
 * Evaluate: generate plots that enable domain-driven inspection of models and results
 
-## Citation
-If you use ML4H for research, you can use this citation format:
-```
-@misc{ml4h,
-	title = {ml4h},
-	copyright = {BSD 3-Clause License, 2021},
-	url = {https://github.com/broadinstitute/ml4h},
-	author = {{Data Sciences Platform at Broad Institute of MIT and Harvard}},
-	abstract = {ML4H is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
-	urldate = {2021-03-31},
-	publisher = {Broad Institute},
-	month = mar,
-	year = {2021},
-	note = {original-date: 2019-04-10}
-}
-```
-
 # Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
 * [Setting up a remote VM](#setting-up-a-remote-vm)
@@ -129,6 +112,23 @@ Now open a browser on your laptop and go to the URL `http://localhost:8888`
 ## Contributing code
 
 Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
+
+## Citation
+If you use ML4H for research, you can use this citation format:
+```
+@misc{ml4h,
+	title = {ml4h},
+	copyright = {BSD 3-Clause License, 2021},
+	url = {https://github.com/broadinstitute/ml4h},
+	author = {{Data Sciences Platform at Broad Institute of MIT and Harvard}},
+	abstract = {ML4H is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
+	urldate = {2021-03-31},
+	publisher = {Broad Institute},
+	month = mar,
+	year = {2021},
+	note = {original-date: 2019-04-10}
+}
+```
 
 ## Command line interface
 The ml4h package is designed to be accessable through the command line using "recipes".
