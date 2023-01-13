@@ -13,3 +13,5 @@ model_zoo/cardiac_mri_derived_left_ventricular_mass/per_class_roc_sax_all_diasto
 model_zoo/cardiac_mri_derived_left_ventricular_mass/precision_recall_sax_all_diastole_segmented.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/cardiac_mri_derived_left_ventricular_mass/architecture_graph_sax_diastole_segment_no_flat.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/cardiac_mri_derived_left_ventricular_mass/calibrations_sax_all_diastole_segmented.png filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.data* filter=lfs diff=lfs merge=lfs -text
