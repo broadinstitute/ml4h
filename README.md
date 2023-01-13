@@ -41,7 +41,6 @@ Clone the repo to your home directory:
 ```
 cd ~
 git clone git@github.com:broadinstitute/ml4h.git
-cd ml4h
 ```
 
 Run the CPU docker (the first time you do this the docker will need to download which takes awhile).:
