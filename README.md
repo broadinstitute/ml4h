@@ -1,7 +1,7 @@
-# ml4h
-`ml4h` is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more. The diverse data modalities of biomedicine offer different perspectives on the underlying challenge of understanding human health. For this reason, `ml4h` is built on a foundation of multimodal multitask modeling, hoping to leverage all available data to help power research and inform clinical care. Our tools help apply clinical research standards to ML models by carefully considering bias and longitudinal outcomes. Our project grew out of efforts at the Broad Institute to make it easy to work with the UK Biobank on the Google Cloud Platform and has since expanded to include proprietary data from academic medical centers. To put cutting-edge AI and ML to use making the world healthier, we're fostering interdisciplinary collaborations across industry and academia.  We'd love to work with you too!    
+# ML4H
+`ML4H` is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more. The diverse data modalities of biomedicine offer different perspectives on the underlying challenge of understanding human health. For this reason, `ML4H` is built on a foundation of multimodal multitask modeling, hoping to leverage all available data to help power research and inform clinical care. Our tools help apply clinical research standards to ML models by carefully considering bias and longitudinal outcomes. Our project grew out of efforts at the Broad Institute to make it easy to work with the UK Biobank on the Google Cloud Platform and has since expanded to include proprietary data from academic medical centers. To put cutting-edge AI and ML to use making the world healthier, we're fostering interdisciplinary collaborations across industry and academia.  We'd love to work with you too!    
 
-`ml4h` is best described with Five Verbs: Ingest, Tensorize, TensorMap, Model, Evaluate
+`ML4H` is best described with Five Verbs: Ingest, Tensorize, TensorMap, Model, Evaluate
 * Ingest: collect files onto one system
 * Tensorize: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
 * TensorMap: tag data (typically from an HD5) with an interpretation and a method for generation
@@ -9,14 +9,14 @@
 * Evaluate: generate plots that enable domain-driven inspection of models and results
 
 ## Citation
-If you use ml4h for research, you can use this citation format:
+If you use ML4H for research, you can use this citation format:
 ```
 @misc{ml4h,
 	title = {ml4h},
 	copyright = {BSD 3-Clause License, 2021},
 	url = {https://github.com/broadinstitute/ml4h},
 	author = {{Data Sciences Platform at Broad Institute of MIT and Harvard}},
-	abstract = {ml4h is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
+	abstract = {ML4H is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
 	urldate = {2021-03-31},
 	publisher = {Broad Institute},
 	month = mar,
@@ -37,38 +37,31 @@ Advanced Topics:
 
 ## Setting up your local environment
 
-Clone the repo
+Clone the repo to your home directory:
 ```
-git clone git@github.com:broadinstitute/ml.git
+cd ~
+git clone git@github.com:broadinstitute/ml4h.git
+cd ml4h
 ```
+
+Run the CPU docker (the first time you do this the docker will need to download which takes awhile).:
+```
+docker run -v ${HOME}:/home/ -it ghcr.io/broadinstitute/ml4h:tf2.9-latest-cpu
+```
+
+Then once inside the docker try to run the tests:
+```
+python -m pytest /home/ml4h/tests/test_recipes.py
+```
+If the tests pass (ignoring warnings) you're off to the races!
+Next connect to some tensorized data, or checkout the introductory [Jupyter notebooks](notebooks/).
+
 
 ## Setting up your cloud environment (optional; currently only GCP is supported) 
 Make sure you have installed the [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/downloads-interactive). With [Homebrew](https://brew.sh/), you can use
 ```
 brew cask install google-cloud-sdk
 ```
-
-### PyCharm (Python IDE if interested)
-* Install PyCharm either directly from [here](https://www.jetbrains.com/pycharm/download/#section=mac), or download
-the [Toolbox App](https://www.jetbrains.com/toolbox/app/) and have the app install PyCharm. The latter makes
-PyCharm upgrades easier. It also allows you to manage your JetBrains IDEs from a single place if you have multiple
-(e.g. IntelliJ for Java/Scala).
-* Launch PyCharm.
-* (Optional) Import the custom [settings](https://drive.google.com/open?id=1YvNVgVEH-rzsCJtrJ0mCi1nyAxG8Xync) as
-described [here](https://www.jetbrains.com/help/pycharm/exporting-and-importing-settings.html).
-* Open the project on PyCharm from the `File` menu by pointing to where you have your GitHub repo.
-* Next, configure your Python interpreter to use the Conda environment you set up previously:
-    * Open `Preferences` from `PyCharm -> Preferences...`.
-    * On the upcoming `Preferences` window's left-hand side, expand `Project: ml4h` if it isn't already.
-    * Highlight `Project Interpreter`.
-    * On the right-hand side of the window, where it says `Project Interpreter`, find and select your `python`
-    binary installed by `Conda`. It should be a path like `~/conda/miniconda3/envs/ml4h/bin/python` where `conda`
-    is the directory you may have selected when installing `Conda`.
-    * For a test run:
-        * Open `recipes.py` (shortcut `Shift+Cmd+N` if you imported the custom settings).
-        * Right-click on `if __name__=='__main__'` and select `Run recipes`.
-        * You can specify input arguments by expanding the `Parameters` text box on the window
-         that can be opened using the menu `Run -> Edit Configurations...`.    
 
 ## Setting up a remote VM
 To create a VM without a GPU run:
