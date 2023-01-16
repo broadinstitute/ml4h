@@ -43,7 +43,7 @@ def parse_args():
         help='Name of the Google Cloud Platform project',
     )
     parser.add_argument(
-        '--gcp_region', default='us-east1',
+        '--gcp_region', default='us-central1',
         help='Google Cloud Platform region',
     )
     # parser.add_argument('--gcs_bucket', default='ml4h',

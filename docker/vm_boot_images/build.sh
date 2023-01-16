@@ -55,7 +55,7 @@ usage()
                             Default: Build image to run on GPU-enabled machines and tag image also as '${LATEST_TAG_GPU}'.
 
         -p                  Push to Google Container Register
-        -P                  Push to latest tag
+        -P                  Push to latest tag and to the Github GHCR repository
 
         -h                  Print this help text
 
