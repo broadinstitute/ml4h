@@ -23,7 +23,7 @@ Advanced Topics:
 Clone the repo to your home directory:
 ```
 cd ~ \
-git clone git clone https://github.com/broadinstitute/ml4h.git \
+git clone git clone https://github.com/broadinstitute/ml4h.git
 ```
 
 Run the CPU docker (the first time you do this the docker will need to download which takes awhile).:
