@@ -205,7 +205,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         channel_map += "}"
         f.write(f"ukb_{row.FieldID}_{row.instance} = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ")
-        f.write(f"normalization={{'mean': {float(row.mean):0.4f}, 'std': {float(row.std):0.4f}}}, {channel_map})\n")
+        f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, {channel_map})\n")
 
 
 def _get_pkl_path_for_field(field_id: int, pyukbb_data_path: str):
