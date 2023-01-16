@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     packaging_args = [
         f'--requirements_file={args.repo_root}/ml4h/tensorize/dataflow/requirements_ml4h_dataflow.txt',
-        f'--setup_file={args.repo_root}/dataflow_setup.py',
+        f'--setup_file={args.repo_root}/ml4h/tensorize/dataflow/dataflow_setup.py',
     ]
 
     pipeline_opts = PipelineOptions(flags=packaging_args)
