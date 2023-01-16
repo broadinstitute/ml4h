@@ -1,6 +1,0 @@
-Metadata-Version: 2.1
-Name: ml4h
-Version: 0.0.2
-Summary: Machine Learning for Health python package
-Home-page: https://github.com/broadinstitute/ml4h
-Requires-Python: >=3.6

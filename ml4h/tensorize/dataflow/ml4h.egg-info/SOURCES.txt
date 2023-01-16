@@ -1,5 +1,0 @@
-setup.py
-ml4h.egg-info/PKG-INFO
-ml4h.egg-info/SOURCES.txt
-ml4h.egg-info/dependency_links.txt
-ml4h.egg-info/top_level.txt
