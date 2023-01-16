@@ -2,9 +2,6 @@ import pathlib
 from setuptools import setup, find_packages
 
 here = pathlib.Path(__file__).parent.resolve()
-# Get the requirements from the requirements file
-#requirements = (here / 'docker/vm_boot_images/config/tensorflow-requirements.txt').read_text(encoding='utf-8')
-#requirements = (here / 'env/requirements_ml4h_dataflow.txt').read_text(encoding='utf-8')
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
     name='ml4h',
@@ -14,6 +11,5 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/broadinstitute/ml4h',
     python_requires='>=3.6',
-    #install_requires=requirements,
     packages=find_packages(),
 )

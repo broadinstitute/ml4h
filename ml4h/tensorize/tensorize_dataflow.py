@@ -6,7 +6,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, GoogleCloudOptions, StandardOptions
 
 from ml4h.defines import GCS_BUCKET
-from ml4h.tensorize.database import tensorize
+from ml4h.tensorize.dataflow import bigquery_ukb_queries
 
 
 def parse_args():
@@ -67,8 +67,8 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(args.logging_level)
 
     packaging_args = [
-        '--requirements_file={}'.format(f"{args.repo_root}/env/requirements_ml4h_dataflow.txt"),
-        '--setup_file={}'.format(f"{args.repo_root}/setup.py"),
+        f'--requirements_file={args.repo_root}/ml4h/tensorize/dataflow/requirements_ml4h_dataflow.txt',
+        f'--setup_file={args.repo_root}/ml4h/tensorize/dataflow/dataflow_setup.py',
     ]
 
     pipeline_opts = PipelineOptions(flags=packaging_args)
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     pipeline = beam.Pipeline(options=pipeline_opts)
 
-    tensorize.tensorize_sql_fields(
+    bigquery_ukb_queries.tensorize_sql_fields(
         pipeline,
         args.gcs_output_path,
         args.bigquery_dataset,
