@@ -835,7 +835,8 @@ def _tensors_to_df(args):
             fpath = os.path.join(base, name)
             _df = pd.read_csv(fpath, dtype=str_cols)
             logging.debug(f'Loaded {fpath} into memory')
-            df = df.append(_df, ignore_index=True)
+            #df = df.append(_df, ignore_index=True)
+            df = pd.concat([df, _df], ignore_index=True)
             logging.debug(f'Appended {fpath} to overall dataframe')
             temp_files.append(fpath)
 
@@ -900,6 +901,9 @@ def explore(args):
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
+    df[df.generator=='train'][['fpath']].to_csv(os.path.join(args.output_folder, args.id, f"train.{out_ext}"), index=False, sep=out_sep)
+    df[df.generator=='test'][['fpath']].to_csv(os.path.join(args.output_folder, args.id, f"test.{out_ext}"), index=False, sep=out_sep)
+    df[df.generator=='valid'][['fpath']].to_csv(os.path.join(args.output_folder, args.id, f"valid.{out_ext}"), index=False, sep=out_sep)
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
