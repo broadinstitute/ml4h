@@ -11,7 +11,7 @@ one `hd5` file per sample id.
 
 * Create and activate the right Python environment:
 ```
-    conda env create -f env/ml4h_dataflow.yml
+    conda env create -f ml4h/tensorize/dataflow/ml4h_dataflow.yml
     conda activate ml4h_dataflow
 ```
 
@@ -28,7 +28,7 @@ one `hd5` file per sample id.
 
 * Run with the help option to see the list of command line arguments.
 ```
-    python tensorize/tensorize_main.py -h
+    python ml4h/tensorize/tensorize_dataflow.py -h
 ```
 
 * **Note** that Google requires the `id` consist of only the
@@ -38,13 +38,13 @@ characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or 
 command line argument `--beam_runner` is set to `DataflowRunner`. Set it to `DirectRunner` for local execution.
 For example:
 ```
-    python ml4h/tensorize/tensorize_main.py \
-    --id my-pipeline-run \
-    --tensor_type continuous \
-    --bigquery_dataset ukbb_dev \
+python ml4h/tensorize/tensorize_dataflow.py  \
+    --id categorical-v2023-01-16  \
+    --tensor_type categorical \
+    --bigquery_dataset ukbb_dev  \
     --beam_runner DataflowRunner \
-    --repo_root /Users/kyuksel/github/ml \
-    --gcs_output_path my-pipeline-run/tensors_ukbb_dev_continous
+    --repo_root /Users/sam/Dropbox/Code/ml4h \
+    --gcs_output_path tensors/continuous_v2023_01_17
 ```
 
 * The pipeline can be run multiple times to tensorize different types of fields. This will populate the per-sample tensors
