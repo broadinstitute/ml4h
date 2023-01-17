@@ -35,6 +35,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
             collate_fn=self._collate_fn, drop_last=drop_last,
         )
         self.iter_loader = iter(self.data_loader)
+        self.true_epochs = 0
 
 
     def _collate_fn(self, batches):
@@ -67,7 +68,8 @@ class TensorMapDataLoader(TensorGeneratorABC):
             return next(self.iter_loader)
         except StopIteration:
             self.iter_loader = iter(self.data_loader)
-            logging.info("Completed one epoch.")
+            self.true_epochs += 1
+            logging.info(f"Completed {self.true_epochs} true epochs.")
             return next(self.iter_loader)
 
     def __call__(self):
@@ -96,7 +98,7 @@ class TensorMapDataLoaderFromDataset(TensorGeneratorABC):
             collate_fn=self._collate_fn, drop_last=drop_last,
         )
         self.iter_loader = iter(self.data_loader)
-        self.true_iterations = 0
+        self.true_epochs = 0
 
     def _collate_fn(self, batches):
         return numpy_collate_fn(batches)
@@ -110,8 +112,8 @@ class TensorMapDataLoaderFromDataset(TensorGeneratorABC):
             return next(self.iter_loader)
         except StopIteration:
             self.iter_loader = iter(self.data_loader)
-            self.true_iterations += 1
-            print(f"Completed {self.true_iterations} true epochs.")
+            self.true_epochs += 1
+            logging.info(f"Completed {self.true_epochs} true epochs.")
             return next(self.iter_loader)
 
     def __call__(self):
