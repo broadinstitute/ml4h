@@ -25,10 +25,16 @@ one `hd5` file per sample id.
     pip install .
 ```
 
-
 * Run with the help option to see the list of command line arguments.
 ```
     python ml4h/tensorize/tensorize_dataflow.py -h
+```
+
+* Comment out the requirements in setup.py. Because some dataflow requirements conflict with ml4h base requirements you must comment out the lines (currently lines 6 and 16) in setup.py in the repo root:
+```
+requirements = (here / 'docker/vm_boot_images/config/tensorflow-requirements.txt').read_text(encoding='utf-8')
+...
+install_requires=requirements,
 ```
 
 * **Note** that Google requires the `id` consist of only the
