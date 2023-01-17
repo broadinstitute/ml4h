@@ -58,7 +58,7 @@ class ConvNeXtBaseEncoder(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-        self.base_model = keras.applications.ConvNeXtBase(
+        self.base_model = keras.applications.EfficientNetB0(
             input_shape=self.tensor_map.shape,
             weights="imagenet",  # Load weights pre-trained on ImageNet.
             #pooling = "avg",
