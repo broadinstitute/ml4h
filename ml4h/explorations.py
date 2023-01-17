@@ -778,7 +778,7 @@ class ExploreParallelWrapper():
                         dict_of_tensor_dicts[0][f'error_type_{tm.name}'] = type(e).__name__
 
                 for i in dict_of_tensor_dicts:
-                    dict_of_tensor_dicts[i]['fpath'] = os.path.basename(path).split('.')[0]
+                    dict_of_tensor_dicts[i]['sample_id'] = os.path.basename(path).split('.')[0]
                     dict_of_tensor_dicts[i]['generator'] = gen_name
 
                 # write tdicts to disk
@@ -819,7 +819,7 @@ def _tensors_to_df(args):
     ExploreParallelWrapper(tmaps, paths, args.num_workers, args.output_folder, args.id).run()
 
     # get columns that should have dtype 'string' instead of dtype 'O'
-    str_cols = ['fpath', 'generator']
+    str_cols = ['sample_id', 'generator']
     for tm in tmaps:
         if tm.interpretation == Interpretation.LANGUAGE:
             str_cols.extend([f'{tm.name} {cm}' for cm in tm.channel_map] if tm.channel_map else [tm.name])
@@ -895,15 +895,15 @@ def explore(args):
         df = df[cols]
 
     if tsv_style_is_genetics:
-        fid = df['fpath'].str.split('/').str[-1].str.split('.').str[0]
+        fid = df['sample_id'].str.split('/').str[-1].str.split('.').str[0]
         df.insert(0, 'FID', fid)
         df.insert(1, 'IID', fid)
     # Save dataframe to CSV
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_union.{out_ext}")
     df.to_csv(fpath, index=False, sep=out_sep)
-    df[df.generator=='train'][['fpath']].to_csv(os.path.join(args.output_folder, args.id, f"train.{out_ext}"), index=False, sep=out_sep)
-    df[df.generator=='test'][['fpath']].to_csv(os.path.join(args.output_folder, args.id, f"test.{out_ext}"), index=False, sep=out_sep)
-    df[df.generator=='valid'][['fpath']].to_csv(os.path.join(args.output_folder, args.id, f"valid.{out_ext}"), index=False, sep=out_sep)
+    df[df.generator=='train'][['sample_id']].to_csv(os.path.join(args.output_folder, args.id, f"train.{out_ext}"), index=False, sep=out_sep)
+    df[df.generator=='test'][['sample_id']].to_csv(os.path.join(args.output_folder, args.id, f"test.{out_ext}"), index=False, sep=out_sep)
+    df[df.generator=='valid'][['sample_id']].to_csv(os.path.join(args.output_folder, args.id, f"valid.{out_ext}"), index=False, sep=out_sep)
     fpath = os.path.join(args.output_folder, args.id, f"tensors_all_intersect.{out_ext}")
     df.dropna().to_csv(fpath, index=False, sep=out_sep)
     logging.info(f"Saved dataframe of tensors (union and intersect) to {fpath}")
@@ -1370,10 +1370,10 @@ def cross_reference(args):
 
 def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     df = pd.read_csv(explore_csv)
-    df['fpath'] = pd.to_numeric(df['fpath'], errors='coerce')
+    df['sample_id'] = pd.to_numeric(df['sample_id'], errors='coerce')
     df2 = pd.read_csv(infer_hidden_tsv, sep='\t', engine='python')
     df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
-    latent_df = pd.merge(df, df2, left_on='fpath', right_on='sample_id', how='inner')
+    latent_df = pd.merge(df, df2, on='sample_id', how='inner')
     return latent_df
 
 
