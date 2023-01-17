@@ -207,3 +207,29 @@ class LanguageDecoderBlock(Block):
         if not self.can_apply():
             return x
         return self.dense(x)
+
+
+class LanguageClassifierBlock(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            dropout_rate = 0.25,
+            units=64,
+            activation='swish',
+    ):
+        self.tensor_map = tensor_map
+        self.dropout_rate = dropout_rate
+        self.units = units
+        self.activation = activation
+        self.drop = tf.keras.layers.Dropout(dropout_rate)
+        self.dense = Dense(units, activation=activation)
+        self.final_layer = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=None)
+
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+        x = self.dense(self.drop(x))
+        if otm.is_continuous():
+            x = tf.keras.layers.Dense(self.units, activation=self.activation)(x)
+            x = tf.keras.layers.Dropout(self.dropout_rate)(x)
+        x = self.final_layer(x)
+        return x

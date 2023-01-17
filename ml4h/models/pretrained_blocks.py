@@ -103,3 +103,58 @@ class MoviNetEncoder(Block):
         #x = keras.layers.GlobalAveragePooling2D()(x)
         intermediates[self.tensor_map].append(x)
         return x
+
+# Add BERT
+class BertEncoder(Block):
+    def __init__(
+            self,
+            *,
+            tensor_map: TensorMap,
+            base_model = "https://tfhub.dev/google/experts/bert/wiki_books/sst2/2",
+            preprocess_model="https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3",
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        self.base_model = base_model
+        self.preprocess_model = preprocess_model
+
+    def can_apply(self):
+        return self.tensor_map.is_language()
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+        text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
+        preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
+        encoder_inputs = preprocessing_layer(text_input)
+        encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=True, name='BERT_encoder')
+        outputs = encoder(encoder_inputs)
+        intermediates[self.tensor_map].append(outputs['pooled_output'])
+        return outputs['pooled_output']
+
+#
+#
+# def build_classifier_model(tfhub_handle_preprocess, tfhub_handle_encoder, tensor_maps_out):
+#     text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
+#     preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
+#     encoder_inputs = preprocessing_layer(text_input)
+#     encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=True, name='BERT_encoder')
+#     outputs = encoder(encoder_inputs)
+#     net = outputs['pooled_output']
+#     net = tf.keras.layers.Dropout(dropout_rate)(net)
+#     #net = tf.keras.layers.Dense(256, activation='swish')(net)
+#     #net = tf.keras.layers.Dropout(dropout_rate)(net)
+#     outputs = []
+#     metrics = []
+#     losses = []
+#     for otm in tensor_maps_out:
+#         if otm.is_categorical():
+#             outputs.append(tf.keras.layers.Dense(len(otm.channel_map), activation=None, name=otm.name)(net))
+#             #losses.append(tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
+#             #metrics.append(tf.metrics.SparseCategoricalAccuracy(name=f'{otm.name}_SparseCategoricalAccuracy_met'))
+#         elif otm.is_continuous():
+#             l1 = tf.keras.layers.Dense(64, activation='swish')(net)
+#             l1 = tf.keras.layers.Dropout(dropout_rate)(l1)
+#             outputs.append(tf.keras.layers.Dense(1, activation=None, name=otm.name)(l1))
+#             #losses.append(tf.keras.losses.MeanSquaredError())
+#             #metrics.append(tf.metrics.MeanAbsoluteError(name=f'{otm.name}_mae'))
+#     return tf.keras.Model(text_input, outputs), losses, metrics
+#
