@@ -15,14 +15,14 @@ from tensorflow_hub import KerasLayer
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
-from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
+from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, ConvNeXtBaseEncoder
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
-from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
+from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder
 
 
 BLOCK_CLASSES = {
@@ -48,6 +48,7 @@ BLOCK_CLASSES = {
     'transformer_encoder': TransformerEncoder,
     'transformer_decoder': TransformerDecoder,
     'resnet_encoder': ResNetEncoder,
+    'convnext_encoder': ConvNeXtBaseEncoder,
     'movinet_encoder': MoviNetEncoder,
 }
 
