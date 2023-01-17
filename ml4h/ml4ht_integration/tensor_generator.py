@@ -32,7 +32,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         )
         self.data_loader = DataLoader(
             self.dset, batch_size=batch_size, num_workers=num_workers,
-            collate_fn=self._collate_fn, drop_last=drop_last,
+            collate_fn=self._collate_fn, drop_last=drop_last, persistent_workers=True,
         )
         self.iter_loader = iter(self.data_loader)
 
@@ -93,7 +93,7 @@ class TensorMapDataLoaderFromDataset(TensorGeneratorABC):
         self.output_maps = output_maps
         self.data_loader = DataLoader(
             dataset, batch_size=batch_size, num_workers=num_workers,
-            collate_fn=self._collate_fn, drop_last=drop_last,
+            collate_fn=self._collate_fn, drop_last=drop_last, persistent_workers=True,
         )
         self.iter_loader = iter(self.data_loader)
         self.true_iterations = 0
