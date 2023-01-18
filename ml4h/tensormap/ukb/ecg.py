@@ -1039,8 +1039,8 @@ r_axis = TensorMap(
     normalization={'mean': 25.7, 'std': 36.6},
 )
 rr_interval = TensorMap(
-    'RRInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'RRInterval': 0}, loss='logcosh', validator=make_range_validator(400, 2000),
-    normalization={'mean': 1040.61, 'std': 175.5},
+    'RRInterval', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'RRInterval': 0}, loss='logcosh',
+    validator=make_range_validator(400, 2000), normalization={'mean': 1040.61, 'std': 175.5}, metrics=[],
 )
 ventricular_rate = TensorMap(
     'VentricularRate', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', channel_map={'VentricularRate': 0}, validator=make_range_validator(30, 150),
