@@ -321,7 +321,7 @@ def sample_from_language_model(
     model, test_data, max_samples=16, heat=0.7,
 ):
     burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
-    index_2_token = {v: k for k, v in language_output.channel_map.items()}
+    index_2_token = {v: str(k) for k, v in language_output.channel_map.items()}
     for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch
         burn_in[0] = test_data[language_input.input_name()][i]
         sentence = ''.join([index_2_token[index] for index in burn_in[0]])
