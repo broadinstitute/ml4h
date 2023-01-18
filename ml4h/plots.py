@@ -2658,7 +2658,7 @@ def plot_precision_recall_per_class(
     plt.figure(figsize=(width, height), dpi=dpi)
 
     for k in labels:
-        c = _hash_string_to_color(k)
+        c = _hash_string_to_color(str(k))
         precision, recall, _ = precision_recall_curve(
             truth[:, labels[k]], prediction[:, labels[k]],
         )
