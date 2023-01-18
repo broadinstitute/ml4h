@@ -46,6 +46,7 @@ class Interpretation(Enum):
     SURVIVAL_CURVE = auto()
     DISCRETIZED = auto()
     MESH = auto()
+    TEXT = auto()
 
     def __str__(self):
         """class Interpretation.FLOAT_ARRAY becomes float_array"""
@@ -273,6 +274,9 @@ class TensorMap(object):
 
     def is_discretized(self):
         return self.interpretation == Interpretation.DISCRETIZED
+
+    def is_text(self):
+        return self.interpretation == Interpretation.TEXT
 
     def axes(self):
         return len(self.shape)
