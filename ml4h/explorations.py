@@ -329,7 +329,9 @@ def sample_from_language_model(
         for j in range(max_samples):
             burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
             for k, c in enumerate(sentence[j:]):
-                burn_in[0, k] = language_output.channel_map[c]
+                if c in language_output.channel_map:
+                    burn_in[0, k] = language_output.channel_map[c]
+
             cur_test = {language_input.input_name(): burn_in}
             prediction = model.predict(cur_test)
             next_token = index_2_token[_sample_with_heat(prediction[0, -1, :], heat)]
