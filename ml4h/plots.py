@@ -509,7 +509,7 @@ def plot_rocs(
         for key in labels:
             if "no_" in str(key) and len(labels) == 2:
                 continue
-            color = _hash_string_to_color(p + key)
+            color = _hash_string_to_color(p + str(key))
             label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
             plt.plot(
                 fpr[labels[key]], tpr[labels[key]], color=color, lw=line_width, label=label_text,
@@ -2539,7 +2539,7 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     for key in labels:
         if "no_" in str(key) and len(labels) == 2:
             continue
-        color = _hash_string_to_color(key)
+        color = _hash_string_to_color(str(key))
         labels_to_areas[key] = roc_auc[labels[key]]
         label_text = f"{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
         plt.plot(
