@@ -110,22 +110,24 @@ class BertEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
+            pretrain_trainable: bool,
             base_model = "https://tfhub.dev/google/experts/bert/wiki_books/sst2/2",
             preprocess_model="https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3",
             **kwargs,
     ):
         self.tensor_map = tensor_map
-        self.base_model = base_model
-        self.preprocess_model = preprocess_model
+        if not self.can_apply():
+            return
+        self.preprocess_model = hub.KerasLayer(preprocess_model, name='preprocessing')
+        self.encoder = hub.KerasLayer(base_model, trainable=pretrain_trainable, name='BERT_encoder')
 
     def can_apply(self):
         return self.tensor_map.is_language()
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
-        text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
-        preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
+
         encoder_inputs = preprocessing_layer(text_input)
-        encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=True, name='BERT_encoder')
+
         outputs = encoder(encoder_inputs)
         intermediates[self.tensor_map].append(outputs['pooled_output'])
         return outputs['pooled_output']

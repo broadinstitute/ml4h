@@ -324,7 +324,7 @@ def sample_from_language_model(
     index_2_token = {v: str(k) for k, v in language_output.channel_map.items()}
     for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch
         burn_in[0] = test_data[language_input.input_name()][i]
-        sentence = ''.join([index_2_token[index] for index in burn_in[0]])
+        sentence = ''.join([index_2_token[index] for index in burn_in[0] if index in index_2_token])
         logging.info(f' Batch    sentence start:{sentence}                   ------ {i}')
         for j in range(max_samples):
             burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
