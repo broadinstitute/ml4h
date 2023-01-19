@@ -713,7 +713,7 @@ def bootstrap_confidence_interval(
 
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
-    bootstrap=True, dpi=300, width=7, height=7,
+    bootstrap=True, dpi=300, width=4, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
@@ -732,7 +732,7 @@ def plot_scatter(
 
     if bootstrap:
         pearson, ci = bootstrap_confidence_interval(prediction, truth)
-        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}, 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
+        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}\n 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
     else:
         label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     logging.info(f"{label}")
@@ -764,7 +764,7 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(title + "\n")
+    ax1.set_title(title)
     ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
@@ -774,13 +774,13 @@ def plot_scatter(
     figure_path = os.path.join(prefix, "scatter_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info("Try to save scatter plot at: {}".format(figure_path))
+    logging.info(f"Try to save scatter plot at: {figure_path}")
     plt.savefig(figure_path)
     return {title + "_pearson": pearson}
 
 
 def plot_scatters(
-    predictions, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, dpi=300, width=7, height=7,
+    predictions, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, dpi=300, width=4, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(width, height), dpi=dpi)
@@ -823,14 +823,14 @@ def plot_scatters(
                 )
     plt.xlabel("Predictions")
     plt.ylabel("Actual")
-    plt.title(title + "\n")
-    plt.legend(loc="upper left")
+    plt.title(title)
+    plt.legend()
 
     figure_path = os.path.join(prefix, "scatters_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    logging.info("Saved scatter plot at: {}".format(figure_path))
+    logging.info(f"Saved scatter plot at: {figure_path}")
 
 
 def subplot_pearson_per_class(
