@@ -420,7 +420,7 @@ def make_one_hot(y, num_labels):
     return ohy
 
 
-def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=7, height=7):
+def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=3, height=3):
     row = 0
     col = 0
     total_plots = int(
