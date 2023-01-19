@@ -325,21 +325,19 @@ def sample_from_language_model(
     for i in range(min(max_samples, test_data[language_input.input_name()].shape[0])):  # iterate over the batch
         burn_in[0] = test_data[language_input.input_name()][i]
         sentence = ''.join([index_2_token[index] for index in burn_in[0] if index in index_2_token])
-        logging.info(f' Batch    sentence start:{sentence}                   ------ {i}')
+        logging.info(f'Input:{sentence}              ------ {i}')
         for j in range(max_samples):
             burn_in = np.zeros((1,) + language_input.shape, dtype=np.float32)
             for k, c in enumerate(sentence[j:]):
                 if c in language_output.channel_map:
                     burn_in[0, k] = language_output.channel_map[c]
-
             cur_test = {language_input.input_name(): burn_in}
             prediction = model.predict(cur_test)
-            logging.info(f'Prediction is {prediction}')
             if isinstance(prediction, list):  # handle multitask
                 prediction = prediction[0]
             next_token = index_2_token[_sample_with_heat(prediction[0, -1, :], heat)]
             sentence += next_token
-        logging.info(f'Model completed sentence:{sentence}')
+        logging.info(f'Model:{sentence}')
 
 
 def sample_from_char_embed_model(tensor_maps_in: List[TensorMap], char_model: Model, test_batch: Dict[str, np.ndarray], test_paths: List[str]) -> None:
