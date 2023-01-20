@@ -24,7 +24,7 @@ import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
-from ml4h.models.legacy_models import make_multimodal_multitask_model
+from ml4h.models.legacy_models import legacy_multimodal_multitask_model
 from ml4h.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
@@ -390,7 +390,7 @@ def infer_with_pixels(args):
     inference_tsv = os.path.join(args.output_folder, args.id, 'pixel_inference_' + args.id + '.tsv')
     tensor_paths = [args.tensors + tp for tp in sorted(os.listdir(args.tensors)) if os.path.splitext(tp)[-1].lower() == TENSOR_EXT]
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
-    model = make_multimodal_multitask_model(**args.__dict__)
+    model = legacy_multimodal_multitask_model(**args.__dict__)
     generate_test = TensorGenerator(
         1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=args.num_workers,
         cache_size=args.cache_size, keep_paths=True, mixup_alpha=args.mixup_alpha,

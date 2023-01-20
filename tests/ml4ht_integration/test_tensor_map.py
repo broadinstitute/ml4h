@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from ml4h.test_utils import TMAPS_UP_TO_4D, build_hdf5s
 from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter, tensor_map_from_data_description
-from ml4h.models.legacy_models import make_multimodal_multitask_model, BottleneckType
+from ml4h.models.legacy_models import legacy_multimodal_multitask_model, BottleneckType
 from ml4h.TensorMap import Interpretation
 from ml4ht.data.data_loader import numpy_collate_fn, SampleGetterIterableDataset
 from ml4ht.data.data_description import DataDescription
@@ -29,7 +29,7 @@ def test_tensor_map_from_data_description():
         loss='logcosh',
         metrics=['mae', 'mse'],
     )
-    model = make_multimodal_multitask_model(
+    model = legacy_multimodal_multitask_model(
         [tmap_in], [tmap_out],
     )
     data_set = SampleGetterIterableDataset(
@@ -108,13 +108,16 @@ def model():
     return make_multimodal_multitask_model(
         tensor_maps_in=TMAPS_UP_TO_4D,
         tensor_maps_out=TMAPS_UP_TO_4D,
+        encoder_blocks=['conv_encode'],
+        decoder_blocks=['conv_decode'],
+        merge_blocks=[],
+        learning_rate=1e-4,
+        optimizer='sgd',
         conv_x=[3], conv_y=[3], conv_z=[1],
         pool_x=1, pool_y=1, pool_z=1,
         dense_blocks=[4], dense_layers=[4],
-        block_size=1,
-        activation='relu', learning_rate=1e-5,
-        bottleneck_type=BottleneckType.FlattenRestructure,
-        optimizer='sgd', conv_layers=[8], conv_type='conv',
+        block_size=3,
+        activation='relu',  conv_layers=[8], conv_type='conv',
     )
 
 

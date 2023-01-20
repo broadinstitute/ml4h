@@ -61,7 +61,7 @@ def identity(x, _):
     return x
 
 
-def block_make_multimodal_multitask_model(
+def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
         encoder_blocks: List[str],
