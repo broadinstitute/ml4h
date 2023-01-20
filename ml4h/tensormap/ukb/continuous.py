@@ -1,3 +1,4 @@
+from ml4h.TensorMap import TensorMap
 field_id_102_pulse_rate_automated_reading_0_0 = TensorMap('102_Pulse-rate-automated-reading_0_0', loss='logcosh', path_prefix='continuous', channel_map={'102_Pulse-rate-automated-reading_0_0': 0})
 field_id_102_pulse_rate_automated_reading_0_1 = TensorMap('102_Pulse-rate-automated-reading_0_1', loss='logcosh', path_prefix='continuous', channel_map={'102_Pulse-rate-automated-reading_0_1': 0})
 field_id_1050_time_spend_outdoors_in_summer_0_0 = TensorMap('1050_Time-spend-outdoors-in-summer_0_0', loss='logcosh', path_prefix='continuous', channel_map={'1050_Time-spend-outdoors-in-summer_0_0': 0})
