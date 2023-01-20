@@ -21,9 +21,9 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model, pca_on_tsv
-from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, cross_reference
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, explore, latent_space_dataframe
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe
+from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
+from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_survival
@@ -50,8 +50,6 @@ def run(args):
             write_tensors_mgb(args.xml_folder, args.tensors, args.num_workers)
         elif 'explore' == args.mode:
             explore(args)
-        elif 'cross_reference' == args.mode:
-            cross_reference(args)
         elif 'train' == args.mode:
             train_multimodal_multitask(args)
         elif 'train_legacy' == args.mode:
