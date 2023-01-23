@@ -288,7 +288,7 @@ class TensorMap(object):
         if self.path_prefix is None:
             return f'/{self.name}/'
         else:
-            return f'/{self.path_prefix}/{self.name}/'
+            return f'/{self.path_prefix}/{self.name}'
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
         if key_prefix not in hd5:
@@ -296,7 +296,7 @@ class TensorMap(object):
         data = hd5[key_prefix]
         if isinstance(data, h5py.Dataset):
             return data
-        deeper_key_prefix = f'{key_prefix}{min(hd5[key_prefix])}/'
+        deeper_key_prefix = f'{key_prefix}/{min(hd5[key_prefix])}/'
         return self.hd5_first_dataset_in_group(hd5, deeper_key_prefix)
 
     def normalize(self, np_tensor):
