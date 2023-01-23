@@ -288,7 +288,7 @@ class TensorMap(object):
         if self.path_prefix is None:
             return f'/{self.name}/'
         else:
-            return f'/{self.path_prefix}/{self.name}'
+            return f'/{self.path_prefix}/{self.name}/'
 
     def hd5_first_dataset_in_group(self, hd5, key_prefix):
         if key_prefix not in hd5:
@@ -296,7 +296,7 @@ class TensorMap(object):
         data = hd5[key_prefix]
         if isinstance(data, h5py.Dataset):
             return data
-        deeper_key_prefix = f'{key_prefix}/{min(hd5[key_prefix])}/'
+        deeper_key_prefix = f'{key_prefix}{min(hd5[key_prefix])}/'
         return self.hd5_first_dataset_in_group(hd5, deeper_key_prefix)
 
     def normalize(self, np_tensor):
@@ -454,7 +454,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if tm.hd5_key_guess() in hd5:
             data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
-                index = int(data[0])
+                index = min(int(data[0]), categorical_data.shape[0]-1)
                 categorical_data[index] = 1.0
             else:
                 categorical_data = np.array(data)
