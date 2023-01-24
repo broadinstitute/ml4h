@@ -125,7 +125,7 @@ class BertEncoder(Block):
         return self.tensor_map.is_language()
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
-        encoder_inputs = self.preprocessing_layer(x)
+        encoder_inputs = self.preprocess_model(x)
         outputs = self.encoder(encoder_inputs)
         intermediates[self.tensor_map].append(outputs['pooled_output'])
         return outputs['pooled_output']
