@@ -2,6 +2,7 @@ from typing import Callable, List, Tuple
 
 import h5py
 import numpy as np
+import pandas as pd
 
 from ml4ht.data.data_description import DataDescription
 from ml4ht.data.defines import SampleID, LoadingOption, Tensor, Batch
