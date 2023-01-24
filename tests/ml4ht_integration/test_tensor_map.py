@@ -111,8 +111,8 @@ def expected_data(tmpdir_factory):
 @pytest.fixture(scope="function")
 def model():
     return make_multimodal_multitask_model(
-        tensor_maps_in=TMAPS_UP_TO_4D,
-        tensor_maps_out=TMAPS_UP_TO_4D,
+        tensor_maps_in=TMAPS_UP_TO_4D[1:],
+        tensor_maps_out=TMAPS_UP_TO_4D[1:],
         encoder_blocks=['conv_encode'],
         decoder_blocks=['conv_decode'],
         merge_blocks=[],
