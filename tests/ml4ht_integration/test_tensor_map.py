@@ -115,7 +115,7 @@ def model():
         tensor_maps_out=TMAPS_2D_TO_4D,
         encoder_blocks=['conv_encode'],
         decoder_blocks=['conv_decode'],
-        merge_blocks=[],
+        merge_blocks=['concat'],
         learning_rate=1e-4,
         optimizer='sgd',
         conv_x=[3], conv_y=[3], conv_z=[1],
