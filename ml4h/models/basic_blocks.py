@@ -210,7 +210,7 @@ class LanguageDecoderBlock(Block):
         return self.dense(x)
 
 
-class LanguageClassifierBlock(Block):
+class LanguagePredictionBlock(Block):
     def __init__(
             self,
             tensor_map: TensorMap,

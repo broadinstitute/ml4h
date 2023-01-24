@@ -5,18 +5,15 @@ import pytest
 import numpy as np
 from torch.utils.data import DataLoader
 
-from ml4h.test_utils import TMAPS_2D_TO_4D, TMAPS_UP_TO_4D, build_hdf5s
-from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter, tensor_map_from_data_description
-from ml4h.models.model_factory import make_multimodal_multitask_model
-from ml4h.TensorMap import Interpretation
-from ml4ht.data.data_loader import numpy_collate_fn, SampleGetterIterableDataset
 from ml4ht.data.data_description import DataDescription
-from ml4ht.data.util.date_selector import (
-    DateRangeOptionPicker,
-    first_dt,
-    DATE_OPTION_KEY,
-)
 from ml4ht.data.sample_getter import DataDescriptionSampleGetter
+from ml4ht.data.data_loader import numpy_collate_fn, SampleGetterIterableDataset
+from ml4ht.data.util.date_selector import DateRangeOptionPicker, first_dt, DATE_OPTION_KEY
+from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter, tensor_map_from_data_description
+
+from ml4h.TensorMap import Interpretation
+from ml4h.test_utils import TMAPS_UP_TO_4D, build_hdf5s
+from ml4h.models.model_factory import make_multimodal_multitask_model
 
 
 # Tests

@@ -1,10 +1,13 @@
 from typing import Callable, List, Tuple
 
 import h5py
+import numpy as np
 
-from ml4h.TensorMap import TensorMap, Interpretation
 from ml4ht.data.data_description import DataDescription
 from ml4ht.data.defines import SampleID, LoadingOption, Tensor, Batch
+from ml4ht.data.util.data_frame_data_description import DataFrameDataDescription
+
+from ml4h.TensorMap import TensorMap, Interpretation
 
 
 class TensorMapSampleGetter:
@@ -135,3 +138,21 @@ def tensor_map_from_data_description(
         **tensor_map_kwargs,
     )
     return tmap
+
+
+def _one_hot(x):
+    return np.array([1, 0], dtype=np.float32) if x == 0 else np.array([0, 1], dtype=np.float32)
+
+
+def dataframe_data_description_from_tensor_map(
+        tensor_map: TensorMap,
+        dataframe: pd.DataFrame,
+        is_input: bool = False,
+) -> DataDescription:
+    return DataFrameDataDescription(
+        dataframe,
+        col=tensor_map.name,
+        name=tensor_map.input_name() if is_input else tensor_map.output_name(),
+        value_to_tensor = _one_hot if tensor_map.is_categorical() else None,
+
+    )

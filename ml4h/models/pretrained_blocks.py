@@ -104,7 +104,7 @@ class MoviNetEncoder(Block):
         intermediates[self.tensor_map].append(x)
         return x
 
-# Add BERT
+
 class BertEncoder(Block):
     def __init__(
             self,
