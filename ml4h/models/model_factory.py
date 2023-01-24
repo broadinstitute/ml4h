@@ -235,7 +235,7 @@ def make_multimodal_multitask_model_block(
 
     for tm, encoder_block in encoder_block_functions.items():
         if tm.is_text():
-            inputs[tm] = Input(shape=(), dtype=tf.string, name='text')
+            inputs[tm] = Input(shape=(), dtype=tf.string, name=tm.name)
         else:
             inputs[tm] = Input(shape=tm.shape, name=tm.input_name())
 

@@ -122,7 +122,7 @@ class BertEncoder(Block):
         self.encoder = hub.KerasLayer(base_model, trainable=pretrain_trainable, name='BERT_encoder')
 
     def can_apply(self):
-        return self.tensor_map.is_language()
+        return self.tensor_map.is_text()
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         encoder_inputs = self.preprocess_model(x)
