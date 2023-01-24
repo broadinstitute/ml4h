@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 from torch.utils.data import DataLoader
 
-from ml4h.test_utils import TMAPS_UP_TO_4D, build_hdf5s
+from ml4h.test_utils import TMAPS_2D_TO_4D, TMAPS_UP_TO_4D, build_hdf5s
 from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter, tensor_map_from_data_description
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.TensorMap import Interpretation
@@ -74,8 +74,8 @@ class TestTensorMapSampleGetter:
     def test_train_model(self, expected_data, model):
         paths = [k[0] for k in expected_data]
         sample_getter = TensorMapSampleGetter(
-            TMAPS_UP_TO_4D[1:],
-            TMAPS_UP_TO_4D[1:],
+            TMAPS_2D_TO_4D,
+            TMAPS_2D_TO_4D,
         )
         dataset = SampleGetterIterableDataset(
             sample_getter=sample_getter,
@@ -93,7 +93,7 @@ class TestTensorMapSampleGetter:
             cycle(data_loader), validation_data=cycle(val_loader),
             steps_per_epoch=10, validation_steps=2, epochs=3,
         ).history
-        for tmap in TMAPS_UP_TO_4D[1:]:
+        for tmap in TMAPS_2D_TO_4D:
             for metric in tmap.metrics:
                 metric_name = metric if type(metric) == str else metric.__name__
                 name = f'{tmap.output_name()}_{metric_name}'
@@ -111,8 +111,8 @@ def expected_data(tmpdir_factory):
 @pytest.fixture(scope="function")
 def model():
     return make_multimodal_multitask_model(
-        tensor_maps_in=TMAPS_UP_TO_4D[1:],
-        tensor_maps_out=TMAPS_UP_TO_4D[1:],
+        tensor_maps_in=TMAPS_2D_TO_4D,
+        tensor_maps_out=TMAPS_2D_TO_4D,
         encoder_blocks=['conv_encode'],
         decoder_blocks=['conv_decode'],
         merge_blocks=[],
