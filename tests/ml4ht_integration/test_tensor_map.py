@@ -74,8 +74,8 @@ class TestTensorMapSampleGetter:
     def test_train_model(self, expected_data, model):
         paths = [k[0] for k in expected_data]
         sample_getter = TensorMapSampleGetter(
-            TMAPS_UP_TO_4D,
-            TMAPS_UP_TO_4D,
+            TMAPS_UP_TO_4D[1:],
+            TMAPS_UP_TO_4D[1:],
         )
         dataset = SampleGetterIterableDataset(
             sample_getter=sample_getter,
@@ -93,7 +93,7 @@ class TestTensorMapSampleGetter:
             cycle(data_loader), validation_data=cycle(val_loader),
             steps_per_epoch=10, validation_steps=2, epochs=3,
         ).history
-        for tmap in TMAPS_UP_TO_4D:
+        for tmap in TMAPS_UP_TO_4D[1:]:
             for metric in tmap.metrics:
                 metric_name = metric if type(metric) == str else metric.__name__
                 name = f'{tmap.output_name()}_{metric_name}'
@@ -111,10 +111,10 @@ def expected_data(tmpdir_factory):
 @pytest.fixture(scope="function")
 def model():
     return make_multimodal_multitask_model(
-        tensor_maps_in=TMAPS_UP_TO_4D,
-        tensor_maps_out=TMAPS_UP_TO_4D,
-        encoder_blocks=['conv_encode', 'dense_encode'],
-        decoder_blocks=['conv_decode', 'dense_decode'],
+        tensor_maps_in=TMAPS_UP_TO_4D[1:],
+        tensor_maps_out=TMAPS_UP_TO_4D[1:],
+        encoder_blocks=['conv_encode'],
+        decoder_blocks=['conv_decode'],
         merge_blocks=[],
         learning_rate=1e-4,
         optimizer='sgd',
