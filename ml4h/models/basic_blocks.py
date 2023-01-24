@@ -176,6 +176,7 @@ class LSTMEncoderBlock(Block):
     def __init__(
             self,
             tensor_map,
+            **kwargs,
     ):
         self.tensor_map = tensor_map
         if not self.can_apply():
@@ -195,6 +196,7 @@ class LanguageDecoderBlock(Block):
     def __init__(
             self,
             tensor_map: TensorMap,
+            **kwargs,
     ):
         self.tensor_map = tensor_map
         if not self.can_apply():
@@ -217,6 +219,7 @@ class LanguagePredictionBlock(Block):
             dropout_rate = 0.25,
             units=64,
             activation='swish',
+            **kwargs,
     ):
         self.tensor_map = tensor_map
         self.dropout_rate = dropout_rate
