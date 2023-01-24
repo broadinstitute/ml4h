@@ -36,4 +36,4 @@ torch
 opencv-python
 blosc
 boto3
-ml4ht==0.0.6
+ml4ht==0.0.6dev1

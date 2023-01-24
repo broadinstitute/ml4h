@@ -13,6 +13,6 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/broadinstitute/ml4h',
     python_requires='>=3.6',
-    install_requires=["ml4ht"],
+    install_requires=["ml4ht", "tensorflow"],
     packages=find_packages(),
 )
