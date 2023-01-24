@@ -40,11 +40,11 @@ class DenseEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
-            dense_layers: List[int],
-            activation: str,
-            dense_normalize: str,
-            dense_regularize: str,
-            dense_regularize_rate: float,
+            dense_layers: List[int] = [32],
+            activation: str = 'swish',
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
             **kwargs,
     ):
         self.tensor_map = tensor_map
@@ -74,7 +74,7 @@ class DenseDecoder(Block):
     def __init__(
             self,
             tensor_map: TensorMap,
-            activation: str,
+            activation: str = 'swish',
             parents: List[TensorMap] = None,
             **kwargs,
     ):
