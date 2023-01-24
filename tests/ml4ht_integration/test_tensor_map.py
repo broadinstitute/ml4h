@@ -29,7 +29,7 @@ def test_tensor_map_from_data_description():
         loss='logcosh',
         metrics=['mae', 'mse'],
     )
-    model = make_multimodal_multitask_model(
+    model, _, _, _ = make_multimodal_multitask_model(
         [tmap_in], [tmap_out],
         encoder_blocks=['conv_encode'],
         decoder_blocks=['conv_decode'],
@@ -123,7 +123,7 @@ def model():
         dense_blocks=[4], dense_layers=[4],
         block_size=3,
         activation='relu',  conv_layers=[8], conv_type='conv',
-    )
+    )[0] # Only return the full model, not encoder decoders and merger
 
 
 RAW_DATA = {
