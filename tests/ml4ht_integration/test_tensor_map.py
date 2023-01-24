@@ -29,8 +29,13 @@ def test_tensor_map_from_data_description():
         loss='logcosh',
         metrics=['mae', 'mse'],
     )
-    model = legacy_multimodal_multitask_model(
+    model = make_multimodal_multitask_model(
         [tmap_in], [tmap_out],
+        encoder_blocks=['conv_encode'],
+        decoder_blocks=['conv_decode'],
+        merge_blocks=[],
+        learning_rate=1e-4,
+        optimizer='sgd',
     )
     data_set = SampleGetterIterableDataset(
         sample_ids=list(RAW_DATA),
