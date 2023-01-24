@@ -74,8 +74,8 @@ class TestTensorMapSampleGetter:
     def test_train_model(self, expected_data, model):
         paths = [k[0] for k in expected_data]
         sample_getter = TensorMapSampleGetter(
-            TMAPS_UP_TO_4D[1:],
-            TMAPS_UP_TO_4D[1:],
+            TMAPS_UP_TO_4D,
+            TMAPS_UP_TO_4D,
         )
         dataset = SampleGetterIterableDataset(
             sample_getter=sample_getter,
@@ -113,8 +113,8 @@ def model():
     return make_multimodal_multitask_model(
         tensor_maps_in=TMAPS_UP_TO_4D[1:],
         tensor_maps_out=TMAPS_UP_TO_4D[1:],
-        encoder_blocks=['conv_encode'],
-        decoder_blocks=['conv_decode'],
+        encoder_blocks=['conv_encode', 'dense_encode'],
+        decoder_blocks=['conv_decode', 'dense_decode'],
         merge_blocks=[],
         learning_rate=1e-4,
         optimizer='sgd',
