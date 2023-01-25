@@ -12,7 +12,7 @@ from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_err
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
-    'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh',
+    'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh', 'sparse_categorical_crossentropy',
 ]
 
 
@@ -417,7 +417,7 @@ def get_metric_dict(output_tensor_maps):
         for m in tm.metrics:
             if isinstance(m, str):
                 metrics[m] = m
-            else:
+            elif hasattr(m, '__name__'):
                 metrics[m.__name__] = m
 
         if tm.loss == 'categorical_crossentropy':
@@ -436,8 +436,10 @@ def get_metric_dict(output_tensor_maps):
             losses.append(logcosh)
         elif tm.loss == 'mape':
             losses.append(mean_absolute_percentage_error)
-        else:
+        elif hasattr(tm.loss,  '__name__'):
             metrics[tm.loss.__name__] = tm.loss
+            losses.append(tm.loss)
+        else:
             losses.append(tm.loss)
 
     def loss(y_true, y_pred):

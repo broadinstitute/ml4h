@@ -38,11 +38,11 @@ class FlatConcatDenseBlock(Block):
     """
     def __init__(
             self,
-            activation: str,
-            dense_layers: List[int],
-            dense_normalize: str,
-            dense_regularize: str,
-            dense_regularize_rate: float,
+            activation: str = 'swish',
+            dense_layers: List[int] = [32],
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
             **kwargs,
     ):
         self.fully_connected = DenseBlock(
@@ -67,11 +67,11 @@ class GlobalAveragePoolBlock(Block):
     """
     def __init__(
             self,
-            activation: str,
-            dense_layers: List[int],
-            dense_normalize: str,
-            dense_regularize: str,
-            dense_regularize_rate: float,
+            activation: str = 'swish',
+            dense_layers: List[int] = [32],
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
             **kwargs,
     ):
         self.fully_connected = DenseBlock(

@@ -420,7 +420,7 @@ def make_one_hot(y, num_labels):
     return ohy
 
 
-def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=7, height=7):
+def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=3, height=3):
     row = 0
     col = 0
     total_plots = int(
@@ -483,10 +483,11 @@ def plot_rocs(
     dpi: int = 300,
     width: int = 7,
     height: int = 7,
+    line_width = 2,
 ):
     """Plot Receiver Operating Characteristic (ROC) curves from a dictionary of predictions
 
-    Typically this function is used to compare several models predictions across multiple labels.
+    Typically, this function is used to compare several models predictions across multiple labels.
     As a hack to avoid repetitive ROC curves for binary classification label string containing 'no_' are skipped.
 
     :param predictions: The keys are strings identifying the model the values are numpy arrays
@@ -495,20 +496,23 @@ def plot_rocs(
     :param labels: Dictionary mapping strings describing each class to their corresponding index in the arrays
     :param title: The name of this plot
     :param prefix: Optional path prefix where the plot will be saved
+    :param dpi: Dots per inch of the figure
+    :param width: Width in inches of the figure
+    :param height: Height in inches of the figure
+    :param line_width: Line width in pixels
     """
-    lw = 2
+
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
-
     for p in predictions:
         fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
         for key in labels:
-            if "no_" in key and len(labels) == 2:
+            if "no_" in str(key) and len(labels) == 2:
                 continue
-            color = _hash_string_to_color(p + key)
+            color = _hash_string_to_color(p + str(key))
             label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
             plt.plot(
-                fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+                fpr[labels[key]], tpr[labels[key]], color=color, lw=line_width, label=label_text,
             )
             logging.info(f"ROC Label {label_text}")
 
@@ -549,6 +553,9 @@ def plot_prediction_calibrations(
     :param title: The name of this plot
     :param prefix: Optional path prefix where the plot will be saved
     :param n_bins: Number of bins to quantize predictions into
+    :param dpi: Dots per inch of the figure
+    :param width: Width in inches of the figure
+    :param height: Height in inches of the figure
     """
     _ = plt.figure(figsize=(width, height), dpi=dpi)
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
@@ -621,8 +628,11 @@ def plot_prediction_calibration(
     :param title: The name of this plot
     :param prefix: Optional path prefix where the plot will be saved
     :param n_bins: Number of bins to quantize predictions into
+    :param dpi: Dots per inch of the figure
+    :param width: Width in inches of the figure
+    :param height: Height in inches of the figure
     """
-    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(width, 2 * height), dpi=dpi)
+    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(width, height), dpi=dpi)
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
@@ -703,7 +713,7 @@ def bootstrap_confidence_interval(
 
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
-    bootstrap=True, dpi=300, width=7, height=7,
+    bootstrap=True, dpi=300, width=4, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
@@ -722,7 +732,7 @@ def plot_scatter(
 
     if bootstrap:
         pearson, ci = bootstrap_confidence_interval(prediction, truth)
-        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}, 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
+        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}\n 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
     else:
         label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     logging.info(f"{label}")
@@ -754,7 +764,7 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(title + "\n")
+    ax1.set_title(title)
     ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
@@ -764,13 +774,13 @@ def plot_scatter(
     figure_path = os.path.join(prefix, "scatter_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
-    logging.info("Try to save scatter plot at: {}".format(figure_path))
+    logging.info(f"Try to save scatter plot at: {figure_path}")
     plt.savefig(figure_path)
     return {title + "_pearson": pearson}
 
 
 def plot_scatters(
-    predictions, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, dpi=300, width=7, height=7,
+    predictions, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5, dpi=300, width=4, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     plt.figure(figsize=(width, height), dpi=dpi)
@@ -813,14 +823,14 @@ def plot_scatters(
                 )
     plt.xlabel("Predictions")
     plt.ylabel("Actual")
-    plt.title(title + "\n")
-    plt.legend(loc="upper left")
+    plt.title(title)
+    plt.legend()
 
     figure_path = os.path.join(prefix, "scatters_" + title + IMAGE_EXT)
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    logging.info("Saved scatter plot at: {}".format(figure_path))
+    logging.info(f"Saved scatter plot at: {figure_path}")
 
 
 def subplot_pearson_per_class(
@@ -2533,9 +2543,9 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
 
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
     for key in labels:
-        if "no_" in key and len(labels) == 2:
+        if "no_" in str(key) and len(labels) == 2:
             continue
-        color = _hash_string_to_color(key)
+        color = _hash_string_to_color(str(key))
         labels_to_areas[key] = roc_auc[labels[key]]
         label_text = f"{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
         plt.plot(
@@ -2557,37 +2567,6 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")
     return labels_to_areas
-
-
-def plot_rocs(predictions, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6):
-    lw = 2
-    true_sums = np.sum(truth, axis=0)
-    plt.figure(figsize=(width, height), dpi=dpi)
-    for p in predictions:
-        fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(predictions[p], truth, labels)
-        for key in labels:
-            if "no_" in key and len(labels) == 2:
-                continue
-            color = _hash_string_to_color(p + key)
-            label_text = f"{p}_{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
-            plt.plot(
-                fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
-            )
-            logging.info(f"ROC Label {label_text}")
-
-    plt.xlim([0.0, 1.0])
-    plt.ylim([-0.02, 1.03])
-    plt.ylabel(RECALL_LABEL)
-    plt.xlabel(FALLOUT_LABEL)
-    plt.legend(loc="lower right")
-    plt.plot([0, 1], [0, 1], "k:", lw=0.5)
-    plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
-
-    figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
-    logging.info(f"Saved ROC curve at: {figure_path}")
 
 
 def _figure_and_subplot_axes_from_total(total_plots: int, dpi: int = 300, width: int = 6, height: int = 6):
@@ -2685,7 +2664,7 @@ def plot_precision_recall_per_class(
     plt.figure(figsize=(width, height), dpi=dpi)
 
     for k in labels:
-        c = _hash_string_to_color(k)
+        c = _hash_string_to_color(str(k))
         precision, recall, _ = precision_recall_curve(
             truth[:, labels[k]], prediction[:, labels[k]],
         )
@@ -2703,7 +2682,7 @@ def plot_precision_recall_per_class(
     plt.ylim([-0.02, 1.03])
     plt.xlabel(RECALL_LABEL)
     plt.ylabel(PRECISION_LABEL)
-    plt.legend(loc="lower left")
+    plt.legend()
     plt.title(f"{title} n={np.sum(true_sums):.0f}")
 
     figure_path = os.path.join(prefix, "precision_recall_" + title + IMAGE_EXT)

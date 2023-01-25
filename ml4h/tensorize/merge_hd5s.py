@@ -63,7 +63,7 @@ def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, s
                     destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
                 stats[group_path + k] += 1
             except (OSError, KeyError, RuntimeError, ValueError) as e:
-                logging.warning(f"Error trying to write:{k} at group path:{group_path} error:{e}\n{traceback.format_exc()}\n")
+                logging.debug(f"Error trying to write:{k} at group path:{group_path} error:{e}\n{traceback.format_exc()}\n")
         else:
             logging.debug(f"copying group {group_path + k}")
             _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR, stats=stats)

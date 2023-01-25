@@ -15,8 +15,10 @@ pytest
 pysam
 tensorflow==2.9.1
 tensorflow-addons==0.17.1
-tensorflow_probability==0.17.0
 tensorflow_hub
+tensorflow_probability==0.17.0
+tensorflow-text==2.9
+tf-models-official==2.9
 keras-tuner
 numcodecs
 beautifulsoup4
@@ -36,4 +38,4 @@ torch
 opencv-python
 blosc
 boto3
-ml4ht
+ml4ht==0.0.9

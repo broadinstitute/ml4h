@@ -2,7 +2,7 @@ from typing import Dict, List
 
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, LSTM, Concatenate
+from tensorflow.keras.layers import Dense, LSTM, Concatenate, Flatten
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
@@ -40,11 +40,11 @@ class DenseEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
-            dense_layers: List[int],
-            activation: str,
-            dense_normalize: str,
-            dense_regularize: str,
-            dense_regularize_rate: float,
+            dense_layers: List[int] = [32],
+            activation: str = 'swish',
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
             **kwargs,
     ):
         self.tensor_map = tensor_map
@@ -74,7 +74,7 @@ class DenseDecoder(Block):
     def __init__(
             self,
             tensor_map: TensorMap,
-            activation: str,
+            activation: str = 'swish',
             parents: List[TensorMap] = None,
             **kwargs,
     ):
@@ -96,7 +96,8 @@ class DenseDecoder(Block):
             x = Concatenate()([x] + [intermediates[parent][-1] for parent in self.parents])
             x = Dense(units=self.units)(x)
             x = self.dense(self.activation(x))
-        x = self.dense(x)
+        else:
+            x = self.dense(x)
         intermediates[self.tensor_map].append(x)
         return x
 
@@ -175,6 +176,7 @@ class LSTMEncoderBlock(Block):
     def __init__(
             self,
             tensor_map,
+            **kwargs,
     ):
         self.tensor_map = tensor_map
         if not self.can_apply():
@@ -184,7 +186,7 @@ class LSTMEncoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.is_language()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         return self.lstm(x)
@@ -194,6 +196,7 @@ class LanguageDecoderBlock(Block):
     def __init__(
             self,
             tensor_map: TensorMap,
+            **kwargs,
     ):
         self.tensor_map = tensor_map
         if not self.can_apply():
@@ -203,7 +206,34 @@ class LanguageDecoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.is_language()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         return self.dense(x)
+
+
+class LanguagePredictionBlock(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            dropout_rate = 0.25,
+            units=64,
+            activation='swish',
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        self.dropout_rate = dropout_rate
+        self.units = units
+        self.activation = activation
+        self.drop = tf.keras.layers.Dropout(dropout_rate)
+        self.dense = Dense(units, activation=activation)
+        self.final_layer = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=tensor_map.activation)
+
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        x = self.dense(self.drop(x))
+        if self.tensor_map.is_continuous():
+            x = tf.keras.layers.Dense(self.units, activation=self.activation)(x)
+            x = tf.keras.layers.Dropout(self.dropout_rate)(x)
+        x = self.final_layer(x)
+        return x

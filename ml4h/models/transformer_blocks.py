@@ -76,10 +76,13 @@ class TransformerDecoder(Block):
         )
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        encoder_input = None
         for tm in intermediates:
             if self.tensor_map == tm:
                 encoder_input = intermediates[self.tensor_map][0]
                 encoder_outputs = intermediates[self.tensor_map][-1]
+        if encoder_input is None:
+            return x
         look_ahead = self.look_ahead_mask(encoder_input)  # Decoder does not need to use same domain as encoder/ can have different inputs
         pad = self.decoder_padding_mask(encoder_input)
         decoder_outputs = self.decoder_layers(inputs=[encoder_input, encoder_outputs, look_ahead, pad])
