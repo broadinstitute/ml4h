@@ -186,7 +186,7 @@ class LSTMEncoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.is_language()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         return self.lstm(x)
@@ -206,7 +206,7 @@ class LanguageDecoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.is_language()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         return self.dense(x)
@@ -230,7 +230,7 @@ class LanguagePredictionBlock(Block):
         self.final_layer = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=tensor_map.activation)
 
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         x = self.dense(self.drop(x))
         if self.tensor_map.is_continuous():
             x = tf.keras.layers.Dense(self.units, activation=self.activation)(x)

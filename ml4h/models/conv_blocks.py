@@ -79,7 +79,7 @@ class ConvEncoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         #x = self.preprocess_block(x)  # TODO: upgrade to tensorflow 2.3+
@@ -147,7 +147,7 @@ class ConvDecoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         if x.shape != self.start_shape:
@@ -203,7 +203,7 @@ class ResidualBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         previous = x
@@ -238,7 +238,7 @@ class PoolBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.pool(x)

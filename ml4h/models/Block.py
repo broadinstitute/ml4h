@@ -11,7 +11,7 @@ Block = Callable[[Tensor, Dict[TensorMap, List[Tensor]]], Tensor]
 
 class Block(ABC):
     @abstractmethod
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         pass
 
     def can_apply(self):

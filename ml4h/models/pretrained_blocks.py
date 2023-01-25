@@ -38,7 +38,7 @@ class ResNetEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 3 and self.tensor_map.shape[-1] == 3
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.base_model(x, training=False)
@@ -69,7 +69,7 @@ class ConvNeXtBaseEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 3 and self.tensor_map.shape[-1] == 3
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.base_model(x, training=False)
@@ -96,7 +96,7 @@ class MoviNetEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 4
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.base_model({'image': x}, training=True)
@@ -111,8 +111,8 @@ class BertEncoder(Block):
             *,
             tensor_map: TensorMap,
             pretrain_trainable: bool,
-            base_model = "https://tfhub.dev/google/experts/bert/wiki_books/sst2/2",
-            preprocess_model="https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3",
+            base_model = "https://tfhub.dev/jeongukjae/roberta_en_cased_L-24_H-1024_A-16/1",
+            preprocess_model="https://tfhub.dev/jeongukjae/roberta_en_cased_preprocess/1",
             **kwargs,
     ):
         self.tensor_map = tensor_map
@@ -124,7 +124,7 @@ class BertEncoder(Block):
     def can_apply(self):
         return self.tensor_map.is_text()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         encoder_inputs = self.preprocess_model(x)
         outputs = self.encoder(encoder_inputs)
         intermediates[self.tensor_map].append(outputs['pooled_output'])
