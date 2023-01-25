@@ -38,4 +38,4 @@ torch
 opencv-python
 blosc
 boto3
-ml4ht==0.0.7dev2
+ml4ht==0.0.7dev3
