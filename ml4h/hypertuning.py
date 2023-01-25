@@ -13,7 +13,7 @@ from kerastuner.tuners import RandomSearch, BayesianOptimization, Hyperband
 
 from ml4h.arguments import parse_args
 from ml4h.models.layer_wrappers import NORMALIZATION_CLASSES
-from ml4h.models.model_factory import block_make_multimodal_multitask_model
+from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.tensor_generators import test_train_valid_tensor_generators
 
 tuner_type = 'bayes'
@@ -94,7 +94,7 @@ def make_model_builder(args):
         conv_normalize = hp.Choice('conv_normalize', ['layer_norm', 'instance_norm', 'poincare_norm', 'None'])
         args.__dict__['conv_normalize'] = None if conv_normalize == 'None' else conv_normalize
         args.__dict__['pool_type'] = 'max' if hp.Boolean('pool_type_is_max') else 'average'
-        model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
+        model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
         nonlocal model_count
         logging.info(
             f'Hyper-tuner is {100.0*(model_count / (args.max_models*args.min_samples)):0.1f}% complete. '
@@ -108,7 +108,7 @@ def make_model_builder(args):
 def make_model_builder_activation(args):
     def model_builder(hp):
         args.__dict__['activation'] = hp.Choice('activation', ['leaky', 'swish', 'gelu', 'lisht', 'mish', 'relu', 'selu'])
-        model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
+        model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
         return model
     return model_builder
 
@@ -119,7 +119,7 @@ def make_model_builder_normalization(args):
         args.__dict__['dense_normalize'] = None if dense_normalize == 'None' else dense_normalize
         conv_normalize = hp.Choice('conv_normalize', list(NORMALIZATION_CLASSES.keys()) + ['None'])
         args.__dict__['conv_normalize'] = None if conv_normalize == 'None' else conv_normalize
-        model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
+        model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
         return model
     return model_builder
 

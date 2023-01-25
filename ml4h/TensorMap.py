@@ -46,6 +46,7 @@ class Interpretation(Enum):
     SURVIVAL_CURVE = auto()
     DISCRETIZED = auto()
     MESH = auto()
+    TEXT = auto()
 
     def __str__(self):
         """class Interpretation.FLOAT_ARRAY becomes float_array"""
@@ -170,8 +171,17 @@ class TensorMap(object):
         self.time_series_lookup = time_series_lookup
         self.discretization_bounds = discretization_bounds
 
+        # Infer shape from channel map or interpretation
+        if self.shape is None:
+            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
+            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
+            if self.time_series_limit is not None:
+                self.shape = (None,) + self.shape
+
         # Infer loss from interpretation
-        if self.loss is None and self.is_categorical():
+        if self.loss is None and self.is_categorical() and self.shape[0] == 1:
+            self.loss = 'sparse_categorical_crossentropy'
+        elif self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
@@ -194,12 +204,7 @@ class TensorMap(object):
         elif self.activation is None and (self.is_survival_curve() or self.is_time_to_event()):
             self.activation = 'sigmoid'
 
-        # Infer shape from channel map or interpretation
-        if self.shape is None:
-            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
-            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
-            if self.time_series_limit is not None:
-                self.shape = (None,) + self.shape
+
 
         if self.channel_map is None and self.is_time_to_event():
             self.channel_map = DEFAULT_TIME_TO_EVENT_CHANNELS
@@ -273,6 +278,9 @@ class TensorMap(object):
 
     def is_discretized(self):
         return self.interpretation == Interpretation.DISCRETIZED
+
+    def is_text(self):
+        return self.interpretation == Interpretation.TEXT
 
     def axes(self):
         return len(self.shape)
@@ -450,7 +458,7 @@ def _default_tensor_from_file(tm, hd5, dependents={}):
         if tm.hd5_key_guess() in hd5:
             data = tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess())
             if tm.storage_type == StorageType.CATEGORICAL_INDEX or tm.storage_type == StorageType.CATEGORICAL_FLAG:
-                index = int(data[0])
+                index = min(int(data[0]), categorical_data.shape[0]-1)
                 categorical_data[index] = 1.0
             else:
                 categorical_data = np.array(data)

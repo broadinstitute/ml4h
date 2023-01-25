@@ -38,9 +38,9 @@ def write_tensor_maps(args) -> None:
     db_client = BigQueryDatabaseClient(credentials_file=args.bigquery_credentials_file)
     with open(tensor_maps_file, 'w') as f:
         f.write(_get_tensor_map_file_imports())
-        _write_disease_tensor_maps(args.phenos_folder, f)
-        _write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
-        _write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
+        #_write_disease_tensor_maps(args.phenos_folder, f)
+        #_write_disease_tensor_maps_incident_prevalent(args.phenos_folder, f)
+        #_write_phecode_tensor_maps(f, args.phecode_definitions, db_client)
         _write_continuous_tensor_maps(f, db_client)
 
         f.write('\n')
@@ -205,7 +205,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         channel_map += "}"
         f.write(f"ukb_{row.FieldID}_{row.instance} = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ")
-        f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, annotation_units={row.max_array+1}, {channel_map})\n")
+        f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, {channel_map})\n")
 
 
 def _get_pkl_path_for_field(field_id: int, pyukbb_data_path: str):
@@ -286,7 +286,8 @@ def generate_random_text_tensor_maps(text_file: str, window_size: int) -> Tuple[
 
 
 def generate_random_pixel_as_text_tensor_maps(
-    tensors: str, path_prefix: str,
+    tensors: str,
+    path_prefix: str,
     window_shape: Tuple[int],
 ) -> Tuple[TensorMap, TensorMap]:
     name = path_prefix.split('/')[-1]

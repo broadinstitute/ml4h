@@ -19,27 +19,27 @@ class ConvEncoderBlock(Block):
             self,
             *,
             tensor_map: TensorMap,
-            dense_blocks: List[int],
-            dense_layers: List[int],
-            dense_normalize: str,
-            dense_regularize: str,
-            dense_regularize_rate: float,
-            conv_layers: List[int],
-            conv_type: str,
-            conv_width: List[int],
-            conv_x: List[int],
-            conv_y: List[int],
-            conv_z: List[int],
-            block_size: int,
-            activation: str,
-            conv_normalize: str,
-            conv_regularize: str,
-            conv_regularize_rate: float,
-            conv_dilate: bool,
-            pool_type: str,
-            pool_x: int,
-            pool_y: int,
-            pool_z: int,
+            dense_blocks: List[int] = [32, 32, 32],
+            dense_layers: List[int] = [32],
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
+            conv_layers: List[int] = [32],
+            conv_type: str = 'conv',
+            conv_width: List[int] = [71],
+            conv_x: List[int] = [3],
+            conv_y: List[int] = [3],
+            conv_z: List[int] = [3],
+            block_size: int = 3,
+            activation: str = 'swish',
+            conv_normalize: str = None,
+            conv_regularize: str = None,
+            conv_regularize_rate: float = 0.0,
+            conv_dilate: bool = False,
+            pool_type: str = 'max',
+            pool_x: int = 2,
+            pool_y: int = 2,
+            pool_z: int = 1,
             **kwargs,
     ):
         self.tensor_map = tensor_map
@@ -79,7 +79,7 @@ class ConvEncoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         #x = self.preprocess_block(x)  # TODO: upgrade to tensorflow 2.3+
@@ -101,20 +101,20 @@ class ConvDecoderBlock(Block):
             self,
             *,
             tensor_map: TensorMap,
-            dense_blocks: List[int],
-            conv_type: str,
-            conv_width: List[int],
-            conv_x: List[int],
-            conv_y: List[int],
-            conv_z: List[int],
-            block_size: int,
-            activation: str,
-            conv_normalize: str,
-            conv_regularize: str,
-            conv_regularize_rate: float,
-            pool_x: int,
-            pool_y: int,
-            pool_z: int,
+            dense_blocks: List[int] = [32, 32, 32],
+            conv_type: str = 'conv',
+            conv_width: List[int] = [71],
+            conv_x: List[int] = [3],
+            conv_y: List[int] = [3],
+            conv_z: List[int] = [3],
+            block_size: int = 3,
+            activation: str = 'swish',
+            conv_normalize: str = None,
+            conv_regularize: str = None,
+            conv_regularize_rate: float = 0.0,
+            pool_x: int = 2,
+            pool_y: int = 2,
+            pool_z: int = 1,
             u_connect_parents: List[TensorMap] = None,
             **kwargs,
     ):
@@ -147,7 +147,7 @@ class ConvDecoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         if x.shape != self.start_shape:
@@ -203,7 +203,7 @@ class ResidualBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         previous = x
@@ -238,7 +238,7 @@ class PoolBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.pool(x)
@@ -323,23 +323,23 @@ class ConvUp(Block):
             self,
             *,
             tensor_map: TensorMap,
-            conv_layers: List[int],
-            conv_type: str,
-            conv_width: List[int],
-            conv_x: List[int],
-            conv_y: List[int],
-            conv_z: List[int],
-            pool_x: int,
-            pool_y: int,
-            pool_z: int,
-            activation: str,
-            conv_dilate: bool,
-            conv_normalize: str,
-            conv_regularize: str,
-            conv_regularize_rate: float,
-            conv_without_bias: bool,
-            conv_bias_initializer: str,
-            conv_kernel_initializer: str,
+            conv_layers: List[int] = [32],
+            conv_type: str = 'conv',
+            conv_width: List[int] = [71],
+            conv_x: List[int] = [3],
+            conv_y: List[int] = [3],
+            conv_z: List[int] = [3],
+            pool_x: int = 2,
+            pool_y: int = 2,
+            pool_z: int = 1,
+            activation: str = 'swish',
+            conv_dilate: bool = False,
+            conv_normalize: str = None,
+            conv_regularize: str = None,
+            conv_regularize_rate: float = 0.2,
+            conv_without_bias: bool = False,
+            conv_bias_initializer: str = 'zeros',
+            conv_kernel_initializer: str = 'glorot_uniform',
             **kwargs,
     ):
         self.tensor_map = tensor_map

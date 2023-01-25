@@ -38,7 +38,7 @@ class ResNetEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 3 and self.tensor_map.shape[-1] == 3
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.base_model(x, training=False)
@@ -65,10 +65,36 @@ class MoviNetEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 4
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         x = self.base_model({'image': x}, training=True)
         #x = keras.layers.GlobalAveragePooling2D()(x)
         intermediates[self.tensor_map].append(x)
         return x
+
+
+class BertEncoder(Block):
+    def __init__(
+            self,
+            *,
+            tensor_map: TensorMap,
+            pretrain_trainable: bool,
+            base_model = "https://tfhub.dev/jeongukjae/roberta_en_cased_L-24_H-1024_A-16/1",
+            preprocess_model="https://tfhub.dev/jeongukjae/roberta_en_cased_preprocess/1",
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        if not self.can_apply():
+            return
+        self.preprocess_model = hub.KerasLayer(preprocess_model, name='preprocessing')
+        self.encoder = hub.KerasLayer(base_model, trainable=pretrain_trainable, name='BERT_encoder')
+
+    def can_apply(self):
+        return self.tensor_map.is_text()
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        encoder_inputs = self.preprocess_model(x)
+        outputs = self.encoder(encoder_inputs)
+        intermediates[self.tensor_map].append(outputs['pooled_output'])
+        return outputs['pooled_output']

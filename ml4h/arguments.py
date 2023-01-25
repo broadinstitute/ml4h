@@ -69,8 +69,6 @@ def parse_args():
     parser.add_argument('--bigquery_dataset', default='broad-ml4cvd.ukbb7089_r10data', help='BigQuery dataset containing tables we want to query.')
     parser.add_argument('--xml_folder', default='/mnt/disks/ecg-rest-xml/', help='Path to folder of XMLs of ECG data.')
     parser.add_argument('--zip_folder', default='/mnt/disks/sax-mri-zip/', help='Path to folder of zipped dicom images.')
-    parser.add_argument('--phenos_folder', default='gs://ml4cvd/phenotypes/', help='Path to folder of phenotype defining CSVs.')
-    parser.add_argument('--phecode_definitions', default='/mnt/ml4cvd/projects/jamesp/data/phecode_definitions1.2.csv', help='CSV of phecode definitions')
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--sample_csv', default=None, help='Path to CSV with Sample IDs to restrict tensor paths')
     parser.add_argument('--tsv_style', default='standard', choices=['standard', 'genetics'], help='Format choice for the TSV file produced in output by infer and explore modes.')
@@ -452,7 +450,7 @@ def generate_tensormap_id(tm):
     return hashlib.sha256(str(tm).encode("utf-8")).hexdigest()
 
 
-def generate_model_id(tensor_maps_in, tensor_maps_out):
+def generate_model_id(model_name: str, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap]):
     str_i = '_'.join([str(tmi) for tmi in tensor_maps_in])
     str_o = '_'.join([str(tmo) for tmo in tensor_maps_out])
     model_str = f'{str_i}&{str_o}'
@@ -526,7 +524,7 @@ def _process_args(args):
     logging.info(f"Command Line was: {command_line}")
     logging.info(f'Input SHA256s: {[(tm.name, generate_tensormap_id(tm)) for tm in args.tensor_maps_in]}')
     logging.info(f'Output SHA256s: {[(tm.name, generate_tensormap_id(tm)) for tm in args.tensor_maps_out]}')
-    logging.info(f'Model SHA256: {generate_model_id(args.tensor_maps_in, args.tensor_maps_out)}')
+    logging.info(f'Model SHA256: {generate_model_id(args.id, args.tensor_maps_in, args.tensor_maps_out)}')
     logging.info(f"Arguments are {args}\n")
 
     if args.eager:
