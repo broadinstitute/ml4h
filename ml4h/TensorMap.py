@@ -171,8 +171,17 @@ class TensorMap(object):
         self.time_series_lookup = time_series_lookup
         self.discretization_bounds = discretization_bounds
 
+        # Infer shape from channel map or interpretation
+        if self.shape is None:
+            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
+            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
+            if self.time_series_limit is not None:
+                self.shape = (None,) + self.shape
+
         # Infer loss from interpretation
-        if self.loss is None and self.is_categorical():
+        if self.loss is None and self.is_categorical() and self.shape[0] == 1:
+            self.loss = 'sparse_categorical_crossentropy'
+        elif self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
@@ -195,12 +204,7 @@ class TensorMap(object):
         elif self.activation is None and (self.is_survival_curve() or self.is_time_to_event()):
             self.activation = 'sigmoid'
 
-        # Infer shape from channel map or interpretation
-        if self.shape is None:
-            self.shape = (2,) if self.is_time_to_event() else (len(channel_map),)
-            # Setting time_series_limit indicates dynamic shaping which is always accompanied by 1st dim of None
-            if self.time_series_limit is not None:
-                self.shape = (None,) + self.shape
+
 
         if self.channel_map is None and self.is_time_to_event():
             self.channel_map = DEFAULT_TIME_TO_EVENT_CHANNELS

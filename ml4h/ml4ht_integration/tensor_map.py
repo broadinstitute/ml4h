@@ -77,6 +77,7 @@ class TensorMapSampleGetter:
                 )
             out_batch = {}
             for tm in self.tensor_maps_out:
+                # TODO: Check for dependents here
                 out_batch[tm.output_name()] = tm.postprocess_tensor(
                     tm.tensor_from_file(tm, hd5, dependents),
                     augment=self.augment, hd5=hd5,

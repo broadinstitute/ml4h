@@ -12,7 +12,7 @@ from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_err
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
-    'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh',
+    'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh', 'sparse_categorical_crossentropy',
 ]
 
 
