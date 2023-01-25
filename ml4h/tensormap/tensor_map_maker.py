@@ -310,4 +310,4 @@ def generate_random_pixel_as_text_tensor_maps(
         channel_map=token_dictionary,
         cacheable=False,
     )
-    return input_map , output_map
+    return input_map, output_map
