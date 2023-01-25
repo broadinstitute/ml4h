@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from torch.utils.data import DataLoader
-from ml4ht.data.data_loader import SampleGetterIterableDataset, numpy_collate_fn
+from ml4ht.data.data_loader import SampleGetterIterableDataset, numpy_collate_fn, shuffle_get_epoch
 
 from ml4h.TensorMap import TensorMap
 from ml4h.defines import TensorGeneratorABC
@@ -28,7 +28,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         )
         self.dset = SampleGetterIterableDataset(
             paths, self.sample_getter,
-            get_epoch=SampleGetterIterableDataset.shuffle_get_epoch,
+            get_epoch=shuffle_get_epoch,
         )
         self.data_loader = DataLoader(
             self.dset, batch_size=batch_size, num_workers=num_workers,
