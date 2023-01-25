@@ -232,8 +232,8 @@ class LanguagePredictionBlock(Block):
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         x = self.dense(self.drop(x))
-        if self.tensor_map.is_continuous():
-            x = tf.keras.layers.Dense(self.units, activation=self.activation)(x)
-            x = tf.keras.layers.Dropout(self.dropout_rate)(x)
+        #if self.tensor_map.is_continuous():
+        x = tf.keras.layers.Dense(self.units, activation=self.activation)(x)
+        x = tf.keras.layers.Dropout(self.dropout_rate)(x)
         x = self.final_layer(x)
         return x
