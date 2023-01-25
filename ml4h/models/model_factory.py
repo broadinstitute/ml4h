@@ -17,7 +17,7 @@ from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
-from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, ConvNeXtBaseEncoder, BertEncoder
+from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
@@ -49,7 +49,6 @@ BLOCK_CLASSES = {
     'transformer_encoder': TransformerEncoder,
     'transformer_decoder': TransformerDecoder,
     'resnet_encoder': ResNetEncoder,
-    'convnext_encoder': ConvNeXtBaseEncoder,
     'movinet_encoder': MoviNetEncoder,
     'bert_encoder': BertEncoder,
 
