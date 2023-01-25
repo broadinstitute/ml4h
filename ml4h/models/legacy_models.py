@@ -907,7 +907,7 @@ def _repeat_dimension(filters: List[int], num_filters_needed: int) -> List[int]:
     return filters
 
 
-def make_multimodal_multitask_model(
+def legacy_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
         activation: str = 'relu',
@@ -1246,7 +1246,7 @@ def make_paired_autoencoder_model(
             encode_left = encoders[left]
         else:
             kwargs['tensor_maps_in'] = [left]
-            left_model = make_multimodal_multitask_model(**kwargs)
+            left_model = legacy_multimodal_multitask_model(**kwargs)
             encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
         h_left = encode_left(inputs[left])
 
@@ -1254,7 +1254,7 @@ def make_paired_autoencoder_model(
             encode_right = encoders[right]
         else:
             kwargs['tensor_maps_in'] = [right]
-            right_model = make_multimodal_multitask_model(**kwargs)
+            right_model = legacy_multimodal_multitask_model(**kwargs)
             encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
         h_right = encode_right(inputs[right])
 

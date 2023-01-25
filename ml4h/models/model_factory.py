@@ -15,14 +15,14 @@ from tensorflow_hub import KerasLayer
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
-from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
+from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
-from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
+from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock
 
 
 BLOCK_CLASSES = {
@@ -40,6 +40,7 @@ BLOCK_CLASSES = {
     'gap': GlobalAveragePoolBlock,
     'lstm_encode': LSTMEncoderBlock,
     'language_decode': LanguageDecoderBlock,
+    'language_predict': LanguagePredictionBlock,
     'dense_encode': DenseEncoder,
     'dense_decode': DenseDecoder,
     'linear_decode': LinearDecoder,
@@ -49,6 +50,8 @@ BLOCK_CLASSES = {
     'transformer_decoder': TransformerDecoder,
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
+    'bert_encoder': BertEncoder,
+
 }
 
 
@@ -60,7 +63,7 @@ def identity(x, _):
     return x
 
 
-def block_make_multimodal_multitask_model(
+def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
         encoder_blocks: List[str],
@@ -230,7 +233,11 @@ def make_multimodal_multitask_model_block(
     intermediates: Dict[TensorMap, List[Layer]] = defaultdict(list)
 
     for tm, encoder_block in encoder_block_functions.items():
-        inputs[tm] = Input(shape=tm.shape, name=tm.input_name())
+        if tm.is_text():
+            inputs[tm] = Input(shape=(), dtype=tf.string, name=tm.name)
+        else:
+            inputs[tm] = Input(shape=tm.shape, name=tm.input_name())
+
         encoding = encoder_block(inputs[tm], intermediates)
         encoders[tm] = Model(inputs[tm], encoding, name=f'encode_{tm.name}')
         encodings.append(encoders[tm](inputs[tm]))
@@ -242,7 +249,9 @@ def make_multimodal_multitask_model_block(
         latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
     else:
         latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
+        logging.info(f'multimodal_activation.shapes: {multimodal_activation.shape}')
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
+
     decoders: Dict[TensorMap, Model] = {}
     decoder_outputs = []
     for tm, decoder_block in decoder_block_functions.items():  # TODO this needs to be a topological sorted according to parents hierarchy
