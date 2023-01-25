@@ -2,7 +2,7 @@ import pathlib
 from setuptools import setup, find_packages
 
 here = pathlib.Path(__file__).parent.resolve()
-# Get the requirements from the requirements file
+# Get the requirements from the requirements file.
 requirements =  (here / 'docker/vm_boot_images/config/tensorflow-requirements.txt').read_text(encoding='utf-8')
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
