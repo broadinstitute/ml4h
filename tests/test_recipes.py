@@ -68,11 +68,11 @@ class TestRecipes:
         )
         explore_result = pd.read_csv(csv_path)
         logging.info(f'Tested explore {[c for c in explore_expected]}')
-        logging.info(f'Tested explore_result {[c for c in explore_result["fpath"]]}')
+        logging.info(f'Tested explore_result {[c for c in explore_result["sample_id"]]}')
         for row in explore_result.iterrows():
             row = row[1]
             for tm in tmaps:
-                row_expected = explore_expected[(row['fpath'], tm.name)]
+                row_expected = explore_expected[(row['sample_id'], tm.name)]
                 if _should_error_detect(tm):
                     actual = getattr(row, tm.name)
                     assert not np.isnan(actual)
