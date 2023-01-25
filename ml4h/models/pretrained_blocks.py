@@ -129,32 +129,3 @@ class BertEncoder(Block):
         outputs = self.encoder(encoder_inputs)
         intermediates[self.tensor_map].append(outputs['pooled_output'])
         return outputs['pooled_output']
-
-#
-#
-# def build_classifier_model(tfhub_handle_preprocess, tfhub_handle_encoder, tensor_maps_out):
-#     text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
-#     preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
-#     encoder_inputs = preprocessing_layer(text_input)
-#     encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=True, name='BERT_encoder')
-#     outputs = encoder(encoder_inputs)
-#     net = outputs['pooled_output']
-#     net = tf.keras.layers.Dropout(dropout_rate)(net)
-#     #net = tf.keras.layers.Dense(256, activation='swish')(net)
-#     #net = tf.keras.layers.Dropout(dropout_rate)(net)
-#     outputs = []
-#     metrics = []
-#     losses = []
-#     for otm in tensor_maps_out:
-#         if otm.is_categorical():
-#             outputs.append(tf.keras.layers.Dense(len(otm.channel_map), activation=None, name=otm.name)(net))
-#             #losses.append(tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
-#             #metrics.append(tf.metrics.SparseCategoricalAccuracy(name=f'{otm.name}_SparseCategoricalAccuracy_met'))
-#         elif otm.is_continuous():
-#             l1 = tf.keras.layers.Dense(64, activation='swish')(net)
-#             l1 = tf.keras.layers.Dropout(dropout_rate)(l1)
-#             outputs.append(tf.keras.layers.Dense(1, activation=None, name=otm.name)(l1))
-#             #losses.append(tf.keras.losses.MeanSquaredError())
-#             #metrics.append(tf.metrics.MeanAbsoluteError(name=f'{otm.name}_mae'))
-#     return tf.keras.Model(text_input, outputs), losses, metrics
-#
