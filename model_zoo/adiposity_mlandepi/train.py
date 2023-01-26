@@ -34,7 +34,7 @@ import tensorflow as tf
 import numpy as np
 import h5py
 import blosc
-from ShrinkageLoss import shrinkage_loss
+from shrinkage_loss import ShrinkageLoss
 from tensorflow.keras.callbacks import (
     ModelCheckpoint,
     TensorBoard,
@@ -56,7 +56,7 @@ def translate_image(image, shape, steps):
 
 def uncompress_data(compressed_data: h5py.Dataset, stored_dtype = np.uint16) -> np.ndarray:
     return np.frombuffer(
-        blosc.decompress(compressed_data[()]), dtype=stored_dtype
+        blosc.decompress(compressed_data[()]), dtype=stored_dtype,
     ).reshape(compressed_data.attrs["shape"]).astype(np.float32)
 
 
@@ -116,7 +116,7 @@ def mdrk_projection_both_views_pretrained(
             camount = np.random.randint(1, 10)
         #
         clahe = cv2.createCLAHE(
-            clipLimit=cclip, tileGridSize=(camount, camount)
+            clipLimit=cclip, tileGridSize=(camount, camount),
         )
         prefixes = ["w", "f"]
         tensor = np.zeros((368, 174 + 224, 3), dtype=np.float32)
@@ -138,7 +138,7 @@ def mdrk_projection_both_views_pretrained(
             if normalize_histogram:
                 tensor_coronal = (
                     clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
-                        np.float32
+                        np.float32,
                     )
                     / 255.0
                 )
@@ -166,7 +166,7 @@ def mdrk_projection_both_views_pretrained(
             if normalize_histogram:
                 tensor_sagittal = (
                     clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
-                        np.float32
+                        np.float32,
                     )
                     / 255.0
                 )
@@ -174,7 +174,7 @@ def mdrk_projection_both_views_pretrained(
             tensor_sagittal = cv2.resize(tensor_sagittal, (174, 368))
             if do_augment:
                 tensor_sagittal = translate_image(
-                    tensor_sagittal, (174, 368), rand_move
+                    tensor_sagittal, (174, 368), rand_move,
                 )
                 tensor_sagittal = rotate_image(tensor_sagittal, rand_angle)
             tensor[..., 224:, i] = tensor_sagittal
@@ -198,7 +198,7 @@ METRICS = [
     tf.keras.metrics.RootMeanSquaredError(name="root_mean_squared_error", dtype=None),
     tf.keras.metrics.MeanAbsoluteError(name="mean_absolute_error", dtype=None),
     tf.keras.metrics.MeanSquaredLogarithmicError(
-        name="mean_squared_logarithmic_error", dtype=None
+        name="mean_squared_logarithmic_error", dtype=None,
     ),
     tf.keras.metrics.LogCoshError(name="logcosh", dtype=None),
 ]
@@ -227,7 +227,7 @@ x = tf.keras.layers.Activation("relu")(x)
 
 # Output regression layer
 output = tf.keras.layers.Dense(
-    1, name="output_mdrk_adiposity_scalar_output_fake_continuous"
+    1, name="output_mdrk_adiposity_scalar_output_fake_continuous",
 )(x)
 
 model = tf.keras.models.Model(inputs=input, outputs=output)
@@ -244,7 +244,7 @@ model_file = ...
 
 n_epochs = 100
 decay = tf.keras.experimental.CosineDecay(
-    initial_learning_rate=1e-4, decay_steps=n_epochs, alpha=0.0
+    initial_learning_rate=1e-4, decay_steps=n_epochs, alpha=0.0,
 )
 
 lrate = tf.keras.callbacks.LearningRateScheduler(decay, verbose=1)
