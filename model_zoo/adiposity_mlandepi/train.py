@@ -34,7 +34,7 @@ import tensorflow as tf
 import numpy as np
 import h5py
 import blosc
-import ShrinkageLoss from shrinkage_loss
+from ShrinkageLoss import shrinkage_loss
 from tensorflow.keras.callbacks import (
     ModelCheckpoint,
     TensorBoard,
