@@ -806,7 +806,18 @@ sax_all_diastole_3d_3slice = TensorMap(
     'sax_all_diastole', shape=(224, 224, 3), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
     path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
 )
-
+sax_all_diastole_3d_3slice = TensorMap(
+    'sax_all_diastole', shape=(224, 224, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
+)
+sax_all_diastole_3d_3slice_b3 = TensorMap(
+    'sax_all_diastole', shape=(224, 224, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2', b_series_offset=3),
+)
+sax_all_diastole_3d_3slice_b6 = TensorMap(
+    'sax_all_diastole', shape=(224, 224, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2', b_series_offset=6),
+)
 
 def sax_random_slice_tensor_maker(b_series_prefix, b_segmented_prefix, lv_tsv=None):
     error = None
