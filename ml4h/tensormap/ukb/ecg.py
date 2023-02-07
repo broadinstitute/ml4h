@@ -201,7 +201,7 @@ def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
         )[()],
     )
     for channel in tm.channel_map:
-        if channel in ecg_interpretation:
+        if channel.lower() in ecg_interpretation.lower():
             categorical_data[tm.channel_map[channel]] = 1.0
             return categorical_data
     if 'no_' + tm.name in tm.channel_map:
@@ -957,13 +957,13 @@ ecg_semi_coarse_with_poor = TensorMap(
     channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
 )
 
-ecg_normal = TensorMap(
-    'ecg_normal', Interpretation.CATEGORICAL, loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
+normal = TensorMap(
+    'normal', Interpretation.CATEGORICAL, loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
     tensor_from_file=label_from_ecg_interpretation_text,
-    channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3},
+    channel_map={'Normal ECG': 0, 'Abnormal ECG': 1, 'Borderline ECG': 2, 'Otherwise normal ECG': 3},
 )
-ecg_infarct = TensorMap(
-    'ecg_infarct', Interpretation.CATEGORICAL, channel_map={'no_infarct': 0, 'infarct': 1},
+infarct = TensorMap(
+    'infarct', Interpretation.CATEGORICAL, channel_map={'no_infarct': 0, 'infarct': 1},
     tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'),
 )
@@ -972,8 +972,8 @@ ecg_poor_data = TensorMap(
     tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_poor_data'),
 )
-ecg_block = TensorMap(
-    'ecg_block', Interpretation.CATEGORICAL, channel_map={'no_block': 0, 'block': 1},
+block = TensorMap(
+    'block', Interpretation.CATEGORICAL, channel_map={'no_block': 0, 'block': 1},
     tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'),
 )
