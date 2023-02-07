@@ -2,8 +2,7 @@ from ml4h.TensorMap import TensorMap, Interpretation
 
 continuous_164_completeness_80 = TensorMap(
     'continuous_164_completeness_80',
-    Interpretation.CONTINUOUS, shape=(164,), loss='logcosh',
-    path_prefix='continuous',
+    Interpretation.CONTINUOUS, shape=(164,), loss='logcosh', path_prefix='continuous', metrics=[],
     channel_map={
         '34_Year-of-birth_0_0': 0, '21003_Age-when-attended-assessment-centre_0_0': 1,
         '904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 2,
@@ -89,7 +88,7 @@ continuous_164_completeness_80 = TensorMap(
 
 continuous_1519_completeness_7 = TensorMap(
     'continuous_1519_completeness_7', Interpretation.CONTINUOUS,
-    shape=(1519,), loss='logcosh', path_prefix='continuous',
+    shape=(1519,), loss='logcosh', path_prefix='continuous', metrics=[],
     channel_map={
         '34_Year-of-birth_0_0': 0, '21003_Age-when-attended-assessment-centre_0_0': 1,
         '904_Number-of-daysweek-of-vigorous-physical-activity-10-minutes_0_0': 2,

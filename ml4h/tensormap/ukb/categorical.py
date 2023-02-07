@@ -2,7 +2,8 @@ from ml4h.defines import StorageType
 from ml4h.TensorMap import TensorMap, Interpretation
 
 categorical_21_completeness_80 = TensorMap(
-    'categorical_21_completeness_80', Interpretation.CATEGORICAL, shape=(21,), loss='mse', path_prefix='categorical',
+    'categorical_21_completeness_80', Interpretation.CATEGORICAL, shape=(21,),
+    loss='mse', path_prefix='categorical', metrics=[],
     channel_map={
         'death': 0, 'Pacemaker_No_0_0': 1, 'Adopted-as-a-child_No_0_0': 2, 'Part-of-a-multiple-birth_No_0_0': 3,
         'Diabetes-diagnosed-by-doctor_No_0_0': 4, 'Alcohol-drinker-status_Current_0_0': 5,
@@ -18,7 +19,8 @@ categorical_21_completeness_80 = TensorMap(
 )
 
 categorical_612_completeness_7 = TensorMap(
-    'categorical_21_completeness_80', Interpretation.CATEGORICAL, shape=(612,), loss='mse', path_prefix='categorical',
+    'categorical_21_completeness_80', Interpretation.CATEGORICAL, shape=(612,),
+    loss='mse', path_prefix='categorical', metrics=[],
     channel_map={
         'death': 0, 'Pacemaker_No_0_0': 1, 'Adopted-as-a-child_No_0_0': 2, 'Part-of-a-multiple-birth_No_0_0': 3,
         'Diabetes-diagnosed-by-doctor_No_0_0': 4, 'Alcohol-drinker-status_Current_0_0': 5,
