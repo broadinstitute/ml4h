@@ -959,18 +959,22 @@ ecg_semi_coarse_with_poor = TensorMap(
 
 ecg_normal = TensorMap(
     'ecg_normal', Interpretation.CATEGORICAL, loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
+    tensor_from_file=label_from_ecg_interpretation_text,
     channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3},
 )
 ecg_infarct = TensorMap(
     'ecg_infarct', Interpretation.CATEGORICAL, channel_map={'no_infarct': 0, 'infarct': 1},
+    tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'),
 )
 ecg_poor_data = TensorMap(
     'ecg_poor_data', Interpretation.CATEGORICAL, channel_map={'no_poor_data_quality': 0, 'poor_data_quality': 1},
+    tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_poor_data'),
 )
 ecg_block = TensorMap(
     'ecg_block', Interpretation.CATEGORICAL, channel_map={'no_block': 0, 'block': 1},
+    tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'),
 )
 
