@@ -1,4 +1,4 @@
-from ml4h.TensorMap import TensorMap
+from ml4h.TensorMap import TensorMap, Interpretation
 
 continuous_164_completeness_80 = TensorMap(
     'continuous_164_completeness_80',
