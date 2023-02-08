@@ -1250,10 +1250,9 @@ myocardium_mask_systole_guess = TensorMap(
 
 def _heart_mask_instances(mri_key, segmentation_key, labels, mask=False, max_frame=False, is_sax=False, sax_b=3):
     def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
-
         if is_sax:
             b_instance = (50 * sax_b) + 1
-            diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{b_instance}')
+            diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}')
             b_frames = []
             for b in range(b_instance, b_instance+tm.shape[-2]):
                 b_frames.append(np.array(hd5[f'{tm.path_prefix}/{mri_key}{b}'], dtype=np.float32))
@@ -1293,10 +1292,107 @@ lax_2ch_heart_center = TensorMap(
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_', LAX_2CH_HEART_LABELS),
 )
 sax_b0_heart_center = TensorMap(
-    'sax_b0_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    'sax_b0_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances(
-        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2/instance_',
-        SAX_HEART_LABELS, is_sax = True,
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=0,
+    ),
+)
+sax_b1_heart_center = TensorMap(
+    'sax_b1_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=1,
+    ),
+)
+sax_b2_heart_center = TensorMap(
+    'sax_b2_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=2,
+    ),
+)
+sax_b3_heart_center = TensorMap(
+    'sax_b3_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=3,
+    ),
+)
+sax_b4_heart_center = TensorMap(
+    'sax_b4_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=4,
+    ),
+)
+sax_b5_heart_center = TensorMap(
+    'sax_b5_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=5,
+    ),
+)
+sax_b6_heart_center = TensorMap(
+    'sax_b6_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=6,
+    ),
+)
+sax_b7_heart_center = TensorMap(
+    'sax_b7_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=7,
+    ),
+)
+sax_b8_heart_center = TensorMap(
+    'sax_b8_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=8,
+    ),
+)
+sax_b9_heart_center = TensorMap(
+    'sax_b9_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=9,
+    ),
+)
+sax_b10_heart_center = TensorMap(
+    'sax_b10_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=10,
+    ),
+)
+sax_b11_heart_center = TensorMap(
+    'sax_b11_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=11,
+    ),
+)
+sax_b12_heart_center = TensorMap(
+    'sax_b12_heart_center', Interpretation.CONTINUOUS, shape=(64, 64, 50),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances(
+        'cine_segmented_sax_inlinevf/2/instance_',  'cine_segmented_sax_inlinevf_segmented/2',
+        {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=12,
     ),
 )
 

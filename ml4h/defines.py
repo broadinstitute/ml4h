@@ -58,7 +58,6 @@ MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {
     'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11, 'body': 12,
 }
 LAX_2CH_HEART_LABELS = {
-    'aortic_arch': 1, 'left_pulmonary_artery_wall': 2, 'left_pulmonary_artery': 3,
     'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
     'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11,
 }
