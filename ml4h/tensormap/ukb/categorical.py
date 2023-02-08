@@ -19,7 +19,7 @@ categorical_21_completeness_80 = TensorMap(
 )
 
 categorical_612_completeness_7 = TensorMap(
-    'categorical_21_completeness_80', Interpretation.CATEGORICAL, shape=(612,),
+    'categorical_612_completeness_7', Interpretation.CATEGORICAL, shape=(612,),
     loss='mse', path_prefix='categorical', metrics=[],
     channel_map={
         'death': 0, 'Pacemaker_No_0_0': 1, 'Adopted-as-a-child_No_0_0': 2, 'Part-of-a-multiple-birth_No_0_0': 3,
