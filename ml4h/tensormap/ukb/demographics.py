@@ -504,6 +504,12 @@ diastolic_blood_pressure_2 = TensorMap(
     normalization={'mean': 82.20657551284782, 'std': 10.496040770224475},
 )
 
+hypertension = TensorMap(
+    'hypertension_diagnosis', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_hypertension_diagnosis': 0, 'hypertension_diagnosis': 1},
+)
 
 categorical_phenotypes_25 = TensorMap(
     'categorical-phenotypes-25', Interpretation.CATEGORICAL, path_prefix='categorical',
