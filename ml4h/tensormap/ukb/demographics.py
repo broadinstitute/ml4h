@@ -515,7 +515,11 @@ hypertension_med = TensorMap(
     storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'no_start_fu_hypertension_med':0, 'start_fu_hypertension_med': 1},
 )
-
+peak_vo2 = TensorMap(
+    'peak_vo2', Interpretation.CONTINUOUS,
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='continuous',
+    channel_map={'peak_vo2':0},
+)
 
 categorical_phenotypes_25 = TensorMap(
     'categorical-phenotypes-25', Interpretation.CATEGORICAL, path_prefix='categorical',
