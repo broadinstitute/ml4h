@@ -133,3 +133,6 @@ If you use ML4H for research, you can use this citation format:
 ## Command line interface
 The ml4h package is designed to be accessable through the command line using "recipes".
 To get started, please see [RECIPE_EXAMPLES](./RECIPE_EXAMPLES.md).
+
+
+[![DOI](https://zenodo.org/badge/180627543.svg)](https://zenodo.org/badge/latestdoi/180627543)
