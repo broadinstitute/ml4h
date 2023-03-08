@@ -329,6 +329,39 @@ mgb_hf_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
+mgb_hf_wrt_instance2 = TensorMap(
+    'hf_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
+mgb_hf_nlp_wrt_instance2 = TensorMap(
+    'hf_nlp_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
+mgb_hf_primary_wrt_instance2 = TensorMap(
+    'hf_primary_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
 mgb_afib_as_hf_wrt_instance2 = TensorMap(
     'survival_curve_af',
     Interpretation.SURVIVAL_CURVE,
