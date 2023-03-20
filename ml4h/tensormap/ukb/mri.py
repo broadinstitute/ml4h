@@ -722,7 +722,7 @@ cine_segmented_lvot_208_192_16_3 = TensorMap(
 )
 flow_segmented = TensorMap(
     'flow_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 30, len(MRI_AO_SEGMENTED_CHANNEL_MAP)),
-    tensor_from_file=_segmented_dicom_slices('flow_250_tp_aov_bh_epat_annotated_'), chacine_ao_dist_3dnnel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_dicom_slices('flow_250_tp_aov_bh_epat_annotated_'), channel_map=MRI_AO_SEGMENTED_CHANNEL_MAP,
 )
 
 liver_shmolli_segmented = TensorMap(
