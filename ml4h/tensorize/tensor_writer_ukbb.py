@@ -900,12 +900,15 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             write_to_hd5(name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
 
         # HR stats
-        max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
-        resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
-        max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
-        write_to_hd5(name='max_hr', value=[max_hr])
-        write_to_hd5(name='resting_hr', value=[resting_hr])
-        write_to_hd5(name='max_pred_hr', value=[max_pred_hr])
+        try:
+            max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
+            write_to_hd5(name='max_hr', value=[max_hr])
+            resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
+            write_to_hd5(name='resting_hr', value=[resting_hr])
+            max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
+            write_to_hd5(name='max_pred_hr', value=[max_pred_hr])
+        except AttributeError as e:
+            stats['AttributeError on HR Stats'] += 1
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
