@@ -786,11 +786,9 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         root = et.parse(ecg).getroot()
         date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
-        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, path_prefix='ukb_ecg_bike', stats=stats, date=date)
-        logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
-
         instance = ecg.split(JOIN_CHAR)[-2]
-        write_to_hd5(storage_type=StorageType.STRING, name='instance', value=instance)
+        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, path_prefix='ukb_ecg_bike', instance=instance, stats=stats, date=date)
+        logging.info(f'Got ECG for sample:{sample_id} XML field:{xml_field}')
 
         protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName').text
         write_to_hd5(storage_type=StorageType.STRING, name='protocol', value=protocol)
