@@ -879,10 +879,13 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
                 if field_val is False:
                     continue
                 trends[lead_field][i, lead_to_int[lead_num]] = field_val
-            trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
-            trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
-            trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
-            trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
+            try:
+                trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
+                trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
+                trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
+                trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
+            except AttributeError as e:
+                stats['AttributeError on Trend Data'] += 1
 
         for field, trend_list in trends.items():
             write_to_hd5(name=f'trend_{str.lower(field)}', value=trend_list)
