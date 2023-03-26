@@ -1032,6 +1032,9 @@ def plot_survivorship(
     :param title: Title for the plot
     :param prefix: Path prefix where plot will be saved
     :param days_window: Maximum days of follow up
+    :param dpi: Dots per inch of the figure
+    :param width: Width in inches of the figure
+    :param height: Height in inches of the figure
     """
     plt.figure(figsize=(width, height), dpi=dpi)
     days_sorted_index = np.argsort(days_follow_up)
@@ -1100,6 +1103,9 @@ def plot_survival(
     :param title: Title for the plot
     :param days_window: Maximum days of follow up
     :param prefix: Path prefix where plot will be saved
+    :param dpi: Dots per inch of the figure
+    :param width: Width in inches of the figure
+    :param height: Height in inches of the figure
 
     :return: Dictionary mapping metric names to their floating point values
     """
@@ -1109,7 +1115,7 @@ def plot_survival(
     plt.figure(figsize=(width, height), dpi=dpi)
 
     cumulative_sick = np.cumsum(np.sum(truth[:, intervals:], axis=0))
-    cumulative_censored = (truth.shape[0]-np.sum(truth[:, :intervals], axis=0))-cumulative_sick
+    cumulative_censored = (truth.shape[0]-np.sum(truth[:, :intervals], axis=0)) - cumulative_sick
     alive_per_step = np.sum(truth[:, :intervals], axis=0)
     sick_per_step = np.sum(truth[:, intervals:], axis=0)
     survivorship = np.cumprod(1 - (sick_per_step / alive_per_step))
