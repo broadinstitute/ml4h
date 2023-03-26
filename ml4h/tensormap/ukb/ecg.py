@@ -6,7 +6,7 @@ import logging
 import biosppy
 from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
-# from ml4h.tensor_writer_ukbb import tensor_path
+
 from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
 from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
@@ -1244,7 +1244,7 @@ ecg_bike_median = TensorMap(
     tensor_from_file=normalized_first_date,
 )
 ecg_bike_strip = TensorMap(
-    'median', Interpretation.CONTINUOUS, shape=(5000, 3), path_prefix='ukb_ecg_bike',
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 3), path_prefix='ukb_ecg_bike',
     tensor_from_file=normalized_first_date,
 )
 
