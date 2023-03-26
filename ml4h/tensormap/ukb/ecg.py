@@ -7,13 +7,14 @@ import biosppy
 from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
 
-from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
-from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
-from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
-from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
-from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
-from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
 from ml4h.tensormap.ukb.demographics import age_in_years_tensor
+from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
+from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
+from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
+from ml4h.defines import ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB, ECG_BIKE_LEADS
+from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
+from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
 
 _HRR_SENTINEL = -1000
 
@@ -1241,7 +1242,7 @@ ecg_bike_raw_full = TensorMap(
 )
 ecg_bike_median = TensorMap(
     'median', Interpretation.CONTINUOUS, shape=(5500, 3), path_prefix='ukb_ecg_bike',
-    tensor_from_file=normalized_first_date,
+    tensor_from_file=normalized_first_date, normalization=ZeroMeanStd1(), channel_map=ECG_BIKE_LEADS,
 )
 ecg_bike_strip = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 3), path_prefix='ukb_ecg_bike',
