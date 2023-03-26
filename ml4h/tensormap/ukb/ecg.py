@@ -1195,39 +1195,6 @@ ecg_bike_max_pred_hr_no0 = TensorMap(
     'bike_max_pred_hr', Interpretation.CONTINUOUS, channel_map={'bike_max_pred_hr': 0},
     loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 167.5, 'std': 5.78},
 )
-
-ecg_bike_max_hr = TensorMap(
-    'max_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mape'],
-    normalization={'mean': 110.03, 'std': 20.04}, shape=(1,),
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_resting_hr = TensorMap(
-    'resting_hr', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', shape=(1,),
-    metrics=['mape'], normalization={'mean': 71.2, 'std': 12.57},
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_age = TensorMap(
-    'age', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
-    normalization={'mean': 60, 'std': 7.65},
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_max_pred_hr = TensorMap(
-    'max_pred_hr', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
-    normalization={'mean': 167.5, 'std': 5.81},
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_trend_hr = TensorMap(
-    'trend_heartrate', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_trend_load = TensorMap(
-    'trend_load', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_trend_grade = TensorMap(
-    'trend_grade', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
-    tensor_from_file=normalized_first_date,
-)
 ecg_bike_raw_trend_hr = TensorMap(
     'trend_heartrate', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
     tensor_from_file=normalized_first_date,
@@ -1272,7 +1239,14 @@ ecg_bike_raw_full = TensorMap(
     'full', Interpretation.CONTINUOUS, shape=(216500, 3), path_prefix='ukb_ecg_bike',
     tensor_from_file=normalized_first_date,
 )
-
+ecg_bike_median = TensorMap(
+    'median', Interpretation.CONTINUOUS, shape=(5500, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
+ecg_bike_strip = TensorMap(
+    'median', Interpretation.CONTINUOUS, shape=(5000, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
 
 def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ppg = np.zeros(tm.shape,  dtype=np.float32)
