@@ -1200,6 +1200,14 @@ heart_mask_lax_4ch_diastole = TensorMap(
     ),
     normalization=ZeroMeanStd1(),
 )
+heart_mask_lax_4ch_diastole_registered = TensorMap(
+    'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    tensor_from_file=normalized_first_date, normalization=ZeroMeanStd1(),
+)
+heart_mask_lax_4ch_diastole_flow = TensorMap(
+    'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 2),
+    tensor_from_file=normalized_first_date, normalization=ZeroMeanStd1(),
+)
 myocardium_mask_lax_4ch_random_time = TensorMap(
     'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_heart_mask_instance(
