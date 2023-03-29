@@ -1200,13 +1200,18 @@ heart_mask_lax_4ch_diastole = TensorMap(
     ),
     normalization=ZeroMeanStd1(),
 )
+
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
+
+
 heart_mask_lax_4ch_diastole_registered = TensorMap(
     'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 1),
-    tensor_from_file=normalized_first_date, normalization=ZeroMeanStd1(),
+    tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
 )
 heart_mask_lax_4ch_diastole_flow = TensorMap(
     'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 2),
-    tensor_from_file=normalized_first_date, normalization=ZeroMeanStd1(),
+    tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
 )
 myocardium_mask_lax_4ch_random_time = TensorMap(
     'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
