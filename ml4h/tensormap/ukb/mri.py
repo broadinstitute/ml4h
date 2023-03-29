@@ -1210,7 +1210,7 @@ heart_mask_lax_4ch_diastole_registered = TensorMap(
     tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
 )
 heart_mask_lax_4ch_diastole_flow = TensorMap(
-    'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 2),
+    'heart_mask_lax_4ch_diastole_flow', Interpretation.CONTINUOUS, shape=(160, 224, 2),
     tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
 )
 myocardium_mask_lax_4ch_random_time = TensorMap(
