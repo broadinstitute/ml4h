@@ -506,13 +506,13 @@ diastolic_blood_pressure_2 = TensorMap(
 
 hypertension = TensorMap(
     'hypertension_diagnosis', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension_diagnosis': 0, 'hypertension_diagnosis': 1},
 )
 hypertension_med = TensorMap(
     'start_fu_hypertension_med', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
-    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     channel_map={'no_start_fu_hypertension_med':0, 'start_fu_hypertension_med': 1},
 )
 peak_vo2 = TensorMap(
