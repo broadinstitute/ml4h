@@ -1201,10 +1201,6 @@ heart_mask_lax_4ch_diastole = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
-def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
-
-
 heart_mask_lax_4ch_diastole_registered = TensorMap(
     'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
@@ -1423,6 +1419,17 @@ sax_b12_heart_center = TensorMap(
     ),
 )
 
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
+
+heart_mask_lax_4ch_diastole_registered = TensorMap(
+    'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
+)
+lax_4ch_heart_center_48_registered = TensorMap(
+    'lax_4ch_heart_center_registered', Interpretation.CONTINUOUS, shape=(96, 96, 48), path_prefix='ukb_cardiac_mri',
+    normalization=ZeroMeanStd1(), from_file=image_from_hd5,
+)
 lax_2ch_laa = TensorMap(
     'lax_2ch_laa', Interpretation.CONTINUOUS, shape=(16, 16, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_', {'LA_appendage': 4}),
