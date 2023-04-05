@@ -109,6 +109,10 @@ def _mask_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
     return tensor
 
 
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
+
+
 def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
     slice_subset_tensor_from_file = _slice_subset_tensor(
         tensor_key,
@@ -1418,9 +1422,6 @@ sax_b12_heart_center = TensorMap(
         {'myocardium': 1, 'pool': 2}, is_sax = True, sax_b=12,
     ),
 )
-
-def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
 
 heart_mask_lax_4ch_diastole_registered = TensorMap(
     'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 1),
