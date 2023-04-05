@@ -1423,13 +1423,9 @@ sax_b12_heart_center = TensorMap(
     ),
 )
 
-heart_mask_lax_4ch_diastole_registered = TensorMap(
-    'heart_mask_lax_4ch_diastole_registered', Interpretation.CONTINUOUS, shape=(160, 224, 1),
-    tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1(),
-)
 lax_4ch_heart_center_48_registered = TensorMap(
     'lax_4ch_heart_center_registered', Interpretation.CONTINUOUS, shape=(96, 96, 48), path_prefix='ukb_cardiac_mri',
-    normalization=ZeroMeanStd1(), from_file=image_from_hd5,
+    normalization=ZeroMeanStd1(), tensor_from_file=image_from_hd5,
 )
 lax_2ch_laa = TensorMap(
     'lax_2ch_laa', Interpretation.CONTINUOUS, shape=(16, 16, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
