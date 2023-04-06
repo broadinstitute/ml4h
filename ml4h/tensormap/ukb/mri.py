@@ -1424,7 +1424,7 @@ sax_b12_heart_center = TensorMap(
 )
 
 lax_4ch_heart_center_48_registered = TensorMap(
-    'lax_4ch_heart_center_registered', Interpretation.CONTINUOUS, shape=(96, 96, 48, 1), path_prefix='ukb_cardiac_mri',
+    'lax_4ch_heart_center_registered', Interpretation.CONTINUOUS, shape=(96, 96, 48), path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(), tensor_from_file=image_from_hd5,
 )
 lax_4ch_heart_center_48_flow = TensorMap(
