@@ -46,3 +46,5 @@ python /path/to/ml4h/ml4h/recipes.py \
 With this latent space and phecode diagnoses for the same cohort, the jupyter notebook 
 [latent_space_phewas](./latent_space_phewas.ipynb)
 allows you to conduct the PheWAS analysis.
+
+[](./ukb_phewas.png)
