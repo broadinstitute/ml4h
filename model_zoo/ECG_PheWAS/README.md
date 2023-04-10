@@ -47,4 +47,4 @@ With this latent space and phecode diagnoses for the same cohort, the jupyter no
 [latent_space_phewas](./latent_space_phewas.ipynb)
 allows you to conduct the PheWAS analysis.
 
-[](./ukb_phewas.png)
+![UKB PheWAS Plot](./ukb_phewas.png)
