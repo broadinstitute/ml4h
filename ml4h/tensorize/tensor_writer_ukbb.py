@@ -786,11 +786,9 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
     for ecg in ecgs:
         root = et.parse(ecg).getroot()
         date = datetime.datetime.strptime(_date_str_from_ecg(root), '%Y-%m-%d')
-        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, path_prefix='ukb_ecg_bike', stats=stats, date=date)
-        logging.info('Got ECG for sample:{} XML field:{}'.format(sample_id, xml_field))
-
         instance = ecg.split(JOIN_CHAR)[-2]
-        write_to_hd5(storage_type=StorageType.STRING, name='instance', value=instance)
+        write_to_hd5 = partial(create_tensor_in_hd5, hd5=hd5, path_prefix='ukb_ecg_bike', instance=instance, stats=stats, date=date)
+        logging.info(f'Got ECG for sample:{sample_id} XML field:{xml_field}')
 
         protocol = root.findall('./Protocol/Phase')[0].find('ProtocolName').text
         write_to_hd5(storage_type=StorageType.STRING, name='protocol', value=protocol)
@@ -881,10 +879,13 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
                 if field_val is False:
                     continue
                 trends[lead_field][i, lead_to_int[lead_num]] = field_val
-            trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
-            trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
-            trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
-            trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
+            try:
+                trends['time'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("EntryTime/Minute").text) + int(trend_entry.find("EntryTime/Second").text)
+                trends['PhaseTime'][i] = SECONDS_PER_MINUTE * int(trend_entry.find("PhaseTime/Minute").text) + int(trend_entry.find("PhaseTime/Second").text)
+                trends['PhaseName'][i] = phase_to_int[trend_entry.find('PhaseName').text]
+                trends['Artifact'][i] = float(trend_entry.find('Artifact').text.strip('%')) / 100  # Artifact is reported as a percentage
+            except AttributeError as e:
+                stats['AttributeError on Trend Data'] += 1
 
         for field, trend_list in trends.items():
             write_to_hd5(name=f'trend_{str.lower(field)}', value=trend_list)
@@ -900,12 +901,15 @@ def _write_ecg_bike_tensors(ecgs, xml_field, hd5, sample_id, stats):
             write_to_hd5(name=f'{str.lower(phase_name)}_duration', value=[phase_duration])
 
         # HR stats
-        max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
-        resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
-        max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
-        write_to_hd5(name='max_hr', value=[max_hr])
-        write_to_hd5(name='resting_hr', value=[resting_hr])
-        write_to_hd5(name='max_pred_hr', value=[max_pred_hr])
+        try:
+            max_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxHeartRate')
+            write_to_hd5(name='max_hr', value=[max_hr])
+            resting_hr = _xml_path_to_float(root, './ExerciseMeasurements/RestingStats/RestHR')
+            write_to_hd5(name='resting_hr', value=[resting_hr])
+            max_pred_hr = _xml_path_to_float(root, './ExerciseMeasurements/MaxPredictedHR')
+            write_to_hd5(name='max_pred_hr', value=[max_pred_hr])
+        except AttributeError as e:
+            stats['AttributeError on HR Stats'] += 1
 
 
 def _write_tensors_from_niftis(folder: str, hd5: h5py.File, field_id: str, stats: Counter):
