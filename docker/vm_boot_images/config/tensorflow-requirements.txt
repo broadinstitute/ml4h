@@ -34,8 +34,8 @@ plotnine
 vega
 ipycanvas>=0.7.0
 ipyannotations>=0.2.1
-torch
+torch==1.12.1
 opencv-python
 blosc
 boto3
-ml4ht==0.0.9
+ml4ht==0.0.10

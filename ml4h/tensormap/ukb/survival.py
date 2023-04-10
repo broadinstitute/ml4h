@@ -7,6 +7,7 @@ from ml4h.metrics import weighted_crossentropy
 from ml4h.tensormap.ukb.demographics import prevalent_tensor
 
 DAYS_IN_5_YEARS = 365 * 5
+DAYS_IN_10_YEARS = 365 * 10
 
 
 def _survival_tensor(
@@ -317,7 +318,62 @@ mgb_mi_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
+mgb_hf_wrt_instance2 = TensorMap(
+    'hf_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
+mgb_hf_wrt_instance2 = TensorMap(
+    'hf_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
+mgb_hf_nlp_wrt_instance2 = TensorMap(
+    'hf_nlp_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
+mgb_hf_primary_wrt_instance2 = TensorMap(
+    'hf_primary_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='heart_failure',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
 
+mgb_hf_death_wrt_instance2 = TensorMap(
+    'hf_death_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        disease_name_override='death',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
 mgb_afib_as_hf_wrt_instance2 = TensorMap(
     'survival_curve_af',
     Interpretation.SURVIVAL_CURVE,

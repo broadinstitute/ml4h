@@ -1045,7 +1045,13 @@ def explore(args):
 
 def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     df = pd.read_csv(explore_csv)
-    df['sample_id'] = pd.to_numeric(df['sample_id'], errors='coerce')
+    if 'sample_id' in df.columns:
+        id_col = 'sample_id'
+    elif 'fpath' in df.columns:
+        id_col = 'fpath'
+    else:
+        raise ValueError(f'Could not find a sample ID column in explore CSV:{explore_csv}')
+    df['sample_id'] = pd.to_numeric(df[id_col], errors='coerce')
     df2 = pd.read_csv(infer_hidden_tsv, sep='\t', engine='python')
     df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
     latent_df = pd.merge(df, df2, on='sample_id', how='inner')

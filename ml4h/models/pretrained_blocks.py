@@ -80,8 +80,8 @@ class BertEncoder(Block):
             *,
             tensor_map: TensorMap,
             pretrain_trainable: bool,
-            base_model = "https://tfhub.dev/jeongukjae/roberta_en_cased_L-24_H-1024_A-16/1",
-            preprocess_model="https://tfhub.dev/jeongukjae/roberta_en_cased_preprocess/1",
+            base_model="https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/3",
+            preprocess_model="https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3",
             **kwargs,
     ):
         self.tensor_map = tensor_map

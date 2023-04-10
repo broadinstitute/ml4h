@@ -58,7 +58,6 @@ MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {
     'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11, 'body': 12,
 }
 LAX_2CH_HEART_LABELS = {
-    'aortic_arch': 1, 'left_pulmonary_artery_wall': 2, 'left_pulmonary_artery': 3,
     'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
     'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11,
 }
@@ -88,10 +87,9 @@ MRI_SAX_SEGMENTED_CHANNEL_MAP = {
     'RV_cavity': 5, 'thoracic_cavity': 6, 'liver': 7, 'stomach': 8, 'spleen': 9, 'kidney': 11, 'body': 10,
     'left_atrium': 12, 'right_atrium': 13, 'aorta': 14, 'pulmonary_artery': 15,
 }
-MRI_SAX_SEGMENTED_CHANNEL_MAP = {
-    'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
-    'RV_cavity': 5, 'thoracic_cavity': 6, 'liver': 7, 'stomach': 8, 'spleen': 9, 'kidney': 11, 'body': 10,
-    'left_atrium': 12, 'right_atrium': 13, 'aorta': 14, 'pulmonary_artery': 15,
+SAX_HEART_LABELS = {
+    'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
+    'RV_cavity': 5, 'left_atrium': 12, 'right_atrium': 13,
 }
 MRI_AO_SEGMENTED_CHANNEL_MAP = {
     'ao_background': 0, 'ao_superior_vena_cava': 1, 'ao_pulmonary_artery': 2, 'ao_ascending_aortic_wall': 3, 'ao_ascending_aorta': 4,

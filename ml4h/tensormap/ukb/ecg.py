@@ -6,14 +6,15 @@ import logging
 import biosppy
 from typing import List, Tuple, Dict
 from tensorflow.keras.utils import to_categorical
-# from ml4h.tensor_writer_ukbb import tensor_path
-from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
-from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
-from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
-from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP, ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB
-from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
-from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
+
 from ml4h.tensormap.ukb.demographics import age_in_years_tensor
+from ml4h.normalizer import ZeroMeanStd1, Standardize, RandomStandardize
+from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
+from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
+from ml4h.defines import ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB, ECG_BIKE_LEADS
+from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
+from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
 
 _HRR_SENTINEL = -1000
 
@@ -201,7 +202,7 @@ def label_from_ecg_interpretation_text(tm, hd5, dependents={}):
         )[()],
     )
     for channel in tm.channel_map:
-        if channel in ecg_interpretation:
+        if channel.lower() in ecg_interpretation.lower():
             categorical_data[tm.channel_map[channel]] = 1.0
             return categorical_data
     if 'no_' + tm.name in tm.channel_map:
@@ -957,20 +958,24 @@ ecg_semi_coarse_with_poor = TensorMap(
     channel_map={'Normal_sinus_rhythm': 0, 'Sinus_bradycardia': 1, 'Marked_sinus_bradycardia': 2, 'Other_sinus_rhythm': 3, 'Atrial_fibrillation': 4, 'Other_rhythm': 5},
 )
 
-ecg_normal = TensorMap(
-    'ecg_normal', Interpretation.CATEGORICAL, loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
-    channel_map={'Normal_ECG': 0, 'Abnormal_ECG': 1, 'Borderline_ECG': 2, 'Otherwise_normal_ECG': 3},
+normal = TensorMap(
+    'normal', Interpretation.CATEGORICAL, loss=weighted_crossentropy([2.0, 3.0, 3.0, 3.0], 'ecg_normal'),
+    tensor_from_file=label_from_ecg_interpretation_text,
+    channel_map={'Normal ECG': 0, 'Abnormal ECG': 1, 'Borderline ECG': 2, 'Otherwise normal ECG': 3},
 )
-ecg_infarct = TensorMap(
-    'ecg_infarct', Interpretation.CATEGORICAL, channel_map={'no_infarct': 0, 'infarct': 1},
+infarct = TensorMap(
+    'infarct', Interpretation.CATEGORICAL, channel_map={'no_infarct': 0, 'infarct': 1},
+    tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_infarct'),
 )
 ecg_poor_data = TensorMap(
     'ecg_poor_data', Interpretation.CATEGORICAL, channel_map={'no_poor_data_quality': 0, 'poor_data_quality': 1},
+    tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_poor_data'),
 )
-ecg_block = TensorMap(
-    'ecg_block', Interpretation.CATEGORICAL, channel_map={'no_block': 0, 'block': 1},
+block = TensorMap(
+    'block', Interpretation.CATEGORICAL, channel_map={'no_block': 0, 'block': 1},
+    tensor_from_file=label_from_ecg_interpretation_text,
     loss=weighted_crossentropy([1.0, 8.0], 'ecg_block'),
 )
 
@@ -1191,39 +1196,6 @@ ecg_bike_max_pred_hr_no0 = TensorMap(
     'bike_max_pred_hr', Interpretation.CONTINUOUS, channel_map={'bike_max_pred_hr': 0},
     loss=ignore_zeros_logcosh, metrics=['logcosh'], normalization={'mean': 167.5, 'std': 5.78},
 )
-
-ecg_bike_max_hr = TensorMap(
-    'max_hr', path_prefix='ecg_bike', loss='logcosh', metrics=['mape'],
-    normalization={'mean': 110.03, 'std': 20.04}, shape=(1,),
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_resting_hr = TensorMap(
-    'resting_hr', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', shape=(1,),
-    metrics=['mape'], normalization={'mean': 71.2, 'std': 12.57},
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_age = TensorMap(
-    'age', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
-    normalization={'mean': 60, 'std': 7.65},
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_max_pred_hr = TensorMap(
-    'max_pred_hr', Interpretation.CONTINUOUS, path_prefix='ecg_bike', loss='logcosh', metrics=['mape'], shape=(1,),
-    normalization={'mean': 167.5, 'std': 5.81},
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_trend_hr = TensorMap(
-    'trend_heartrate', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_trend_load = TensorMap(
-    'trend_load', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
-    tensor_from_file=normalized_first_date,
-)
-ecg_bike_trend_grade = TensorMap(
-    'trend_grade', Interpretation.CONTINUOUS, shape=(106, 1), path_prefix='ecg_bike',
-    tensor_from_file=normalized_first_date,
-)
 ecg_bike_raw_trend_hr = TensorMap(
     'trend_heartrate', Interpretation.CONTINUOUS, shape=(87,), path_prefix='ukb_ecg_bike',
     tensor_from_file=normalized_first_date,
@@ -1268,7 +1240,14 @@ ecg_bike_raw_full = TensorMap(
     'full', Interpretation.CONTINUOUS, shape=(216500, 3), path_prefix='ukb_ecg_bike',
     tensor_from_file=normalized_first_date,
 )
-
+ecg_bike_median = TensorMap(
+    'median', Interpretation.CONTINUOUS, shape=(5500, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date, normalization=ZeroMeanStd1(), channel_map=ECG_BIKE_LEADS,
+)
+ecg_bike_strip = TensorMap(
+    'strip', Interpretation.CONTINUOUS, shape=(5000, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=normalized_first_date,
+)
 
 def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ppg = np.zeros(tm.shape,  dtype=np.float32)
