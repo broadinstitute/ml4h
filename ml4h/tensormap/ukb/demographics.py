@@ -524,7 +524,7 @@ hypertension = TensorMap(
 )
 
 hypertension_icd_bp = TensorMap(
-    'output_hypertension_icd_bp_categorical', Interpretation.CATEGORICAL,
+    'hypertension_icd_bp', Interpretation.CATEGORICAL,
     storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension': 0, 'hypertension': 1},
