@@ -241,6 +241,18 @@ sex = TensorMap(
     'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
 )
+
+sex_mgb = TensorMap(
+    'sex', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
+)
+
+age_in_days = TensorMap(
+    'age_in_days', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh',
+    normalization=Standardize(mean=0, std=(1/365.0)),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+)
 bmi = TensorMap(
     '23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
     channel_map={'23104_Body-mass-index-BMI_0_0': 0}, validator=make_range_validator(0, 100),
