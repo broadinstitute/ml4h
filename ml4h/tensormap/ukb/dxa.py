@@ -154,3 +154,11 @@ dxa_12_homography = TensorMap(
     ),
     normalization=ZeroMeanStd1(),
 )
+
+
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
+
+
+dxa_1_12_registered = TensorMap('dxa_1_12_registered', shape=(928, 352, 1), tensor_from_file=image_from_hd5)
+dxa_1_12_flow = TensorMap('dxa_1_12_flow', shape=(928, 352, 2), tensor_from_file=image_from_hd5)
