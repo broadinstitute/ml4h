@@ -1,11 +1,13 @@
+from typing import Dict
+
 import cv2
 import h5py
 import logging
 import numpy as np
 
+from ml4h.TensorMap import TensorMap
 from ml4h.normalizer import ZeroMeanStd1
-from ml4h.TensorMap import TensorMap, Interpretation
-from ml4h.tensormap.general import get_tensor_at_first_date, get_tensor_at_last_date, normalized_first_date, pad_or_crop_array_to_shape
+from ml4h.tensormap.general import get_tensor_at_last_date, pad_or_crop_array_to_shape
 
 
 def dxa_background_erase(tm, hd5, dependents={}):
