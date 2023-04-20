@@ -247,6 +247,11 @@ sex_mgb = TensorMap(
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
 )
 
+is_male_mgb = TensorMap(
+    'is_male', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+)
+
 age_in_days = TensorMap(
     'age_in_days', Interpretation.CONTINUOUS,
     path_prefix='continuous', loss='logcosh',
