@@ -63,14 +63,14 @@ dxa_2 = TensorMap(
 )
 dxa_5 = TensorMap(
     'dxa_1_5',
-    shape=(716, 768, 1),
+    shape=(768, 768, 1),
     path_prefix='ukb_dxa',
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
 )
 dxa_6 = TensorMap(
     'dxa_1_6',
-    shape=(864, 736, 1),
+    shape=(864, 768, 1),
     path_prefix='ukb_dxa',
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
