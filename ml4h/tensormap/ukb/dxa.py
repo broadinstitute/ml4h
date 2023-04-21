@@ -45,13 +45,12 @@ def erase_border_components(image, erase_value=252):
 
 def dxa_background_erase(tm, hd5, dependents={}):
     tensor = get_tensor_at_last_date(hd5, tm.path_prefix, tm.name)
-    tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
-
     bc = np.bincount(tensor.flatten().astype(np.int64))
     for val, count in zip(reversed(bc.argsort()), reversed(sorted(bc))):
         if val == 252 and count > 20000:
             tensor = erase_border_components(tensor, erase_value=252)
             break
+    tensor = pad_or_crop_array_to_shape(tm.shape, tensor)
     return tensor
 
 
