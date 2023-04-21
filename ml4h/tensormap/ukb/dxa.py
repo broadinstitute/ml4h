@@ -4,10 +4,43 @@ import cv2
 import h5py
 import logging
 import numpy as np
+from scipy import ndimage
 
 from ml4h.TensorMap import TensorMap
 from ml4h.normalizer import ZeroMeanStd1
 from ml4h.tensormap.general import get_tensor_at_last_date, pad_or_crop_array_to_shape
+
+
+def find_border_components(labeled_image):
+    border_components = set()
+
+    # Check top and bottom rows
+    border_components.update(np.unique(labeled_image[0, :]))
+    border_components.update(np.unique(labeled_image[-1, :]))
+
+    # Check left and right columns
+    border_components.update(np.unique(labeled_image[:, 0]))
+    border_components.update(np.unique(labeled_image[:, -1]))
+
+    # Remove background (label 0)
+    border_components.discard(0)
+
+    return border_components
+
+
+def erase_border_components(image, erase_value=252):
+    binary_image = (image == erase_value).astype(int)
+
+    # Find connected components and label them
+    labeled_image, num_features = ndimage.label(binary_image)
+
+    # Find connected components adjacent to the image border
+    border_components = find_border_components(labeled_image)
+
+    for label in border_components:
+        image[labeled_image == label] = 0
+
+    return image
 
 
 def dxa_background_erase(tm, hd5, dependents={}):
@@ -16,9 +49,8 @@ def dxa_background_erase(tm, hd5, dependents={}):
 
     bc = np.bincount(tensor.flatten().astype(np.int64))
     for val, count in zip(reversed(bc.argsort()), reversed(sorted(bc))):
-        if count > 10000:
-            tensor[tensor == float(val)] = 0
-        else:
+        if val == 252 and count > 20000:
+            tensor = erase_border_components(tensor, erase_value=252)
             break
     return tensor
 
@@ -30,7 +62,13 @@ dxa_2 = TensorMap(
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
 )
-
+dxa_5 = TensorMap(
+    'dxa_1_5',
+    shape=(716, 768, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=dxa_background_erase,
+    normalization=ZeroMeanStd1(),
+)
 dxa_6 = TensorMap(
     'dxa_1_6',
     shape=(864, 736, 1),
@@ -38,7 +76,13 @@ dxa_6 = TensorMap(
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
 )
-
+dxa_7 = TensorMap(
+    'dxa_1_7',
+    shape=(1792, 896, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=dxa_background_erase,
+    normalization=ZeroMeanStd1(),
+)
 dxa_8 = TensorMap(
     'dxa_1_8',
     shape=(640, 768, 1),
@@ -46,8 +90,6 @@ dxa_8 = TensorMap(
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
 )
-
-
 dxa_12 = TensorMap(
     'dxa_1_12',
     shape=(928, 352, 1),
@@ -55,7 +97,6 @@ dxa_12 = TensorMap(
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
 )
-
 dxa_11 = TensorMap(
     'dxa_1_11',
     shape=(896, 352, 1),
