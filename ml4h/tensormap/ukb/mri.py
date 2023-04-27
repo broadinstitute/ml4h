@@ -1176,9 +1176,11 @@ def _heart_mask_instance(mri_key, segmentation_key, labels, instance_num: int = 
             cycle_index = instance_num
         categorical_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{cycle_index}')
         heart_mask = np.isin(categorical_slice, list(labels.values()))
+        i, j = np.where(heart_mask)
+        indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), indexing='ij')
         mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')[..., cycle_index]
-        mri = pad_or_crop_array_to_shape(tm.shape, mri)
-        heart_mask = pad_or_crop_array_to_shape(tm.shape, heart_mask)
+        mri = pad_or_crop_array_to_shape(tm.shape, mri[tuple(indices)])
+        heart_mask = pad_or_crop_array_to_shape(tm.shape, heart_mask[tuple(indices)])
         mri_masked = mri * heart_mask
         return mri_masked
     return _heart_mask_tensor_from_file
@@ -1186,6 +1188,16 @@ def _heart_mask_instance(mri_key, segmentation_key, labels, instance_num: int = 
 
 heart_mask_lax_4ch_random_time = TensorMap(
     'heart_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(160, 224, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance(
+        'cine_segmented_lax_4ch/2/',
+        'cine_segmented_lax_4ch_annotated_',
+        LAX_4CH_HEART_LABELS,
+        random_instance=True,
+    ),
+    normalization=ZeroMeanStd1(), cacheable=False,
+)
+heart_mask_lax_4ch_random_time_96x96 = TensorMap(
+    'heart_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(96, 96, 1), path_prefix='ukb_cardiac_mri',
     tensor_from_file=_heart_mask_instance(
         'cine_segmented_lax_4ch/2/',
         'cine_segmented_lax_4ch_annotated_',
