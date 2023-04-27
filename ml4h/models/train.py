@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 from ml4h.plots import plot_metric_history
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
-from ml4h.models.model_factory import _get_custom_objects
+from ml4h.models.model_factory import get_custom_objects
 
 
 def train_model_from_generators(
@@ -70,7 +70,7 @@ def train_model_from_generators(
     )
 
     logging.info('Model weights saved at: %s' % model_file)
-    custom_dict = _get_custom_objects(output_tensor_maps)
+    custom_dict = get_custom_objects(output_tensor_maps)
     model = load_model(model_file, custom_objects=custom_dict, compile=False)
     model.compile(optimizer='adam', loss='mse')
     if plot:
