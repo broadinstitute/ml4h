@@ -478,14 +478,7 @@ def _pad_crop_tensor(tm, hd5, dependents={}):
         ),
     )
 
-def _pad_crop_tensor(tm, hd5, dependents={}):
-    return pad_or_crop_array_to_shape(
-        tm.shape,
-        np.array(
-            tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()),
-            dtype=np.float32,
-        ),
-    )
+
 cine_lax_3ch_192 = TensorMap(
     'cine_segmented_lax_3ch',
     Interpretation.CONTINUOUS,
@@ -526,6 +519,28 @@ cine_ao_dist_3d = TensorMap(
     tensor_from_file=_pad_crop_tensor,
     normalization=ZeroMeanStd1(),
 )
+
+
+def random_slice_tensor(tm, hd5, dependents={}):
+    tensor = pad_or_crop_array_to_shape(
+        (tm.shape[0], tm.shape[1], 100), np.array(
+            tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()), dtype=np.float32,
+        ),
+    )
+    slice_index = np.random.randint(tensor.shape[-1])
+    return tensor[..., slice_index:slice_index+1]
+
+
+aorta_random_slice = TensorMap(
+    'cine_segmented_ao_dist',
+    Interpretation.CONTINUOUS,
+    shape=(192, 256, 1),
+    path_prefix='ukb_cardiac_mri',
+    tensor_from_file=random_slice_tensor,
+    normalization=ZeroMeanStd1(),
+)
+
+
 cine_lax_4ch_192 = TensorMap(
     'cine_segmented_lax_4ch',
     Interpretation.CONTINUOUS,
@@ -834,6 +849,7 @@ sax_b9_b11_diastole = TensorMap(
     'sax_b9_b11_diastole', shape=(224, 224, 3), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
     tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2', b_series_start=9),
 )
+
 
 def sax_random_slice_tensor_maker(b_series_prefix, b_segmented_prefix, lv_tsv=None):
     error = None
@@ -2229,7 +2245,6 @@ lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap(
     'lms_ideal_optimised_low_flip_6dyn_4slice', shape=(232, 256, 4),
     tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1(),
 )
-
 
 
 def _liver_instance_2(tm, hd5, dependents={}):
