@@ -39,4 +39,4 @@ opencv-python
 blosc
 boto3
 ml4ht==0.0.10
-umap-learn
+umap-learn[plot]
