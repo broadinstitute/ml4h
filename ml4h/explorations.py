@@ -8,6 +8,7 @@ import copy
 import logging
 import operator
 import datetime
+from scipy import stats
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
@@ -20,8 +21,10 @@ import multiprocessing as mp
 from sklearn.decomposition import PCA
 from tensorflow.keras.models import Model
 
+
 import matplotlib
 matplotlib.use('Agg')  # Need this to write images from the GSA servers.  Order matters:
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
 from ml4h.models.legacy_models import legacy_multimodal_multitask_model
@@ -33,8 +36,173 @@ from ml4h.plots import evaluate_predictions, subplot_rocs, subplot_scatters, plo
 from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge, Lasso
+
 
 CSV_EXT = '.tsv'
+
+
+
+#AK latent bias functions added________________________________________________
+
+
+### Function to divide data into groups with a balanced ratio, and transform the data into a new latent space..
+
+
+def stratify_and_project_latent_space(stratify_column, stratify_thresh, stratify_std, 
+                                      latent_cols, latent_df, 
+                                      normalize=False, train_ratio=1.0):
+    if train_ratio == 1.0:
+        train = latent_df
+        test = latent_df
+    else:
+        train = latent_df.sample(frac=train_ratio)
+        test = latent_df.drop(train.index)        
+    hit = train.loc[train[stratify_column] >= stratify_thresh+(1*stratify_std)]
+    miss = train.loc[train[stratify_column] < stratify_thresh-(1*stratify_std)]
+    hit_np = hit[latent_cols].to_numpy()
+    miss_np = miss[latent_cols].to_numpy()
+    miss_mean_vector = np.mean(miss_np, axis=0)
+    hit_mean_vector = np.mean(hit_np, axis=0)
+    angle = angle_between(miss_mean_vector, hit_mean_vector)
+        
+    hit_test = test.loc[test[stratify_column] >= stratify_thresh+(1*stratify_std)]
+    miss_test = test.loc[test[stratify_column] < stratify_thresh-(1*stratify_std)]
+    
+    if normalize:
+        phenotype_vector = unit_vector(hit_mean_vector-miss_mean_vector)
+        hit_dots = [np.dot(phenotype_vector, unit_vector(v)) for v in hit_test[latent_cols].to_numpy()]
+        miss_dots = [np.dot(phenotype_vector, unit_vector(v)) for v in miss_test[latent_cols].to_numpy()]
+    else:
+        phenotype_vector = hit_mean_vector-miss_mean_vector
+        hit_dots = [np.dot(phenotype_vector, v) for v in hit_test[latent_cols].to_numpy()]
+        miss_dots = [np.dot(phenotype_vector, v) for v in miss_test[latent_cols].to_numpy()]
+    t2, p2 = stats.ttest_ind(hit_dots, miss_dots, equal_var = False)
+    
+    return {f'{stratify_column}': (t2, p2, len(hit)) }
+
+#Function to create a plot displaying T-statistics v/s Negative Log P-Value for each covariate.
+def plot_nested_dictionary(all_scores):
+    n = 4
+    eps = 1e-300
+    for model in all_scores:
+        n = max(n, len(all_scores[model]))
+    cols = max(2, int(math.ceil(math.sqrt(n))))
+    rows = max(2, int(math.ceil(n / cols)))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 3), sharex=True, dpi=300)
+    renest = defaultdict(dict)
+    errors = defaultdict(dict)
+    lens = {}
+    max_tstat = 0
+    max_pval = 0
+    for model in all_scores:
+        for metric in all_scores[model]:
+            renest[metric][model] = all_scores[model][metric][0]
+            errors[metric][model] = all_scores[model][metric][1]
+            lens[metric] = all_scores[model][metric][2]
+            max_tstat = max(abs(all_scores[model][metric][0]), max_tstat)
+            max_pval = max(-np.log10(all_scores[model][metric][1]+eps), max_pval)
+    for metric, ax in zip(renest, axes.ravel()):
+
+        models = [k for k,v in sorted(renest[metric].items(), key=lambda x: x[0].lower())]
+        tstats = [abs(v) for k,v in sorted(renest[metric].items(), key=lambda x: x[0].lower())]
+        pvalues = [-np.log10(v) if v > 1e-4800 else 500 for k,v in sorted(errors[metric].items(), key=lambda x: x[0].lower())]
+        y_pos = np.arange(len(models))
+        x = np.linspace(0, 1, int(max_pval))
+        plt.imshow(x[:, np.newaxis], cmap=cm.jet)
+        cb = plt.colorbar(ax=ax, ticks=[0, 1.0])
+        cb.set_label('Negative Log P-Value')
+        cb.ax.set_yticklabels(['0', f'{max_pval:0.0f}'])
+        ax.barh(y_pos, tstats, color=[cm.jet(p/max_pval) for p in pvalues], align='center')
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(models)
+        ax.invert_yaxis()  # labels read top-to-bottom
+        ax.set_xlabel('T–Statistic')
+        ax.xaxis.set_tick_params(which='both', labelbottom=True)
+        ax.set_title(f'{metric}\n n={lens[metric]}')
+
+    plt.tight_layout()
+
+
+#Function to calculate angle between two vectors
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+            angle_between((1, 0, 0), (0, 1, 0))
+            90
+            angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            angle_between((1, 0, 0), (-1, 0, 0))
+            180
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * 180 / 3.141592
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+#Function to read raw data from a CSV file and generate a representation of the data in a latent space.
+def latent_space_dataframe(infer_hidden_tsv, explore_csv):
+    df = pd.read_csv(explore_csv)
+    df['sample_id'] = pd.to_numeric(df['fpath'], errors='coerce')
+    df2 = pd.read_csv(infer_hidden_tsv, sep='\t', engine='python')
+    df2['sample_id'] = pd.to_numeric(df2['sample_id'], errors='coerce')
+    latent_df = pd.merge(df, df2, on='sample_id', how='inner')
+    return latent_df
+
+
+#confounder is a variable that influences both the dependent variable and independent variable
+def confounder_vector(labels, space):
+    clf = make_pipeline(StandardScaler(with_mean=True), Ridge(solver='lsqr'))
+    clf.fit(space, labels)
+    train_score = clf.score(space, labels)
+    return clf[-1].coef_/clf[0].scale_, train_score
+
+
+def confounder_matrix(adjust_cols, df, space):
+    vectors = []
+    scores = {}
+    for col in adjust_cols:
+        cv, r2 = confounder_vector(df[col], space)
+        scores[col] = r2
+        vectors.append(cv)
+    return np.array(vectors), scores
+
+# Function to remove confounder variables
+def iterative_subspace_removal(adjust_cols, latent_df, latent_cols, r2_thresh=0.01, fit_pca=False):
+    new_cols = latent_cols
+    new_adjust_cols = adjust_cols
+    space = latent_df[latent_cols].to_numpy()
+
+    if fit_pca:
+        pca = PCA()
+        pca.fit(space)
+        space = pca.transform(space)
+
+    iteration = 0
+    while len(new_adjust_cols) > 0 and space.shape[-1] > len(new_adjust_cols):
+        cfm, scores = confounder_matrix(new_adjust_cols, latent_df, space)
+        u, s, vt = np.linalg.svd(cfm, full_matrices=True)
+        nspace = np.matmul(space, vt[:, len(new_adjust_cols):])
+        new_cols=[f'new_latent_{iteration}_{i}' for i in range(nspace.shape[-1])]
+        df2 = pd.DataFrame(nspace, columns=new_cols, index=latent_df.index)
+        latent_df = pd.concat([latent_df, df2], axis=1)
+
+        iteration += 1
+        space = nspace
+
+        new_adjust_cols = [col for col, score in scores.items() if score > r2_thresh]
+        keep_cols = new_cols + [c for c in latent_df.columns if 'latent' not in c]
+        latent_df = latent_df[keep_cols]
+        r_scores= {k:round(v,4) for k,v in scores.items()}
+        print(f'Scores were {r_scores}, remaining columns are {new_adjust_cols}')
+        print(f'After iteration {iteration} Space shape is: {space.shape}')
+    return new_cols, latent_df
+
 
 
 def predictions_to_pngs(
