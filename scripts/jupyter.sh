@@ -28,7 +28,7 @@ usage()
     Example: ./${SCRIPT_NAME} -n -p 8889  -i gcr.io/broad-ml4cvd/deeplearning:latest-cpu
 
         -c                  Use CPU docker image and use the regular 'docker' launcher.
-                            By default, 'nvidia-docker' wrapper is used to launch Docker assuming the machine is GPU-enabled.
+                            By default, '--gpus all' flag is used to launch Docker assuming the machine is GPU-enabled.
 
         -h                  Print this help text.
 
@@ -93,7 +93,6 @@ echo $(tput setaf 1)$(tput setab 7)"ssh -nNT -L ${PORT}:localhost:${PORT} ${WANI
 mkdir -p /home/${USER}/jupyter/
 chmod o+w /home/${USER}/jupyter/
 
-mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
 
 ${DOCKER_COMMAND} run -it \
 ${GPU_DEVICE} \
@@ -105,8 +104,3 @@ ${GPU_DEVICE} \
 ${DOCKER_IMAGE} /bin/bash -c "pip3 install --upgrade pip
 pip3 install /home/${USER}/ml4h;
 jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
-
-
-# Automatically back up any local notebooks and artifacts non-recursively (no subfolders)
-echo 'Backing up local files to' /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
-cp /home/${USER}/jupyter/* /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
