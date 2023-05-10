@@ -181,6 +181,56 @@ dxa_12_translate = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
+
+dxa_2_homography = TensorMap(
+    'dxa_1_2',
+    shape=(768, 768, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=register_to_sample(
+        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1105369.hd5',
+        register_path='ukb_dxa',
+        register_name='dxa_1_2',
+        register_shape=(768, 768, 1),
+        number_of_iterations=5000,
+        termination_eps=2e-4,
+        warp_mode=cv2.MOTION_HOMOGRAPHY,
+    ),
+    normalization=ZeroMeanStd1(),
+)
+
+
+dxa_5_homography = TensorMap(
+    'dxa_1_5',
+    shape=(768, 768, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=register_to_sample(
+        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1105369.hd5',
+        register_path='ukb_dxa',
+        register_name='dxa_1_5',
+        register_shape=(768, 768, 1),
+        number_of_iterations=5000,
+        termination_eps=2e-4,
+        warp_mode=cv2.MOTION_HOMOGRAPHY,
+    ),
+    normalization=ZeroMeanStd1(),
+)
+
+dxa_8_homography = TensorMap(
+    'dxa_1_8',
+    shape=(640, 768, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=register_to_sample(
+        register_hd5='/mnt/disks/dxa-tensors-50k/2022-08-21/1105369.hd5',
+        register_path='ukb_dxa',
+        register_name='dxa_1_8',
+        register_shape=(640, 768, 1),
+        number_of_iterations=5000,
+        termination_eps=2e-4,
+        warp_mode=cv2.MOTION_HOMOGRAPHY,
+    ),
+    normalization=ZeroMeanStd1(),
+)
+
 dxa_12_homography = TensorMap(
     'dxa_1_12',
     shape=(928, 352, 1),
