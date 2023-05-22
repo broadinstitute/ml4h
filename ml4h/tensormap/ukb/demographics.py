@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 from typing import List, Tuple
 
-from ml4h.normalizer import Standardize
+from ml4h.normalizer import Standardize, ZeroMeanStd1
 from ml4h.tensormap.general import tensor_path
 from ml4h.TensorMap import TensorMap, Interpretation, str2date, make_range_validator
 from ml4h.defines import StorageType
@@ -255,7 +255,8 @@ is_male_mgb = TensorMap(
 age_in_days = TensorMap(
     'age_in_days', Interpretation.CONTINUOUS,
     path_prefix='continuous', loss='logcosh',
-    normalization=Standardize(mean=0, std=(1/365.0)),
+    #normalization=Standardize(mean=65, std=(1/365.0)),
+    normalization=ZeroMeanStd1(),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 bmi = TensorMap(
