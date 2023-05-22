@@ -542,6 +542,13 @@ diabetes = TensorMap(
     channel_map={'no_diabetes_type_2': 0, 'diabetes_type_2': 1},
 )
 
+hypercholesterolemia = TensorMap(
+    'hypercholesterolemia', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_hypercholesterolemia': 0, 'hypercholesterolemia': 1},
+)
+
 hypertension_med = TensorMap(
     'start_fu_hypertension_med', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
     storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
