@@ -523,28 +523,28 @@ diastolic_blood_pressure_2 = TensorMap(
 
 hypertension = TensorMap(
     'hypertension_diagnosis', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension': 0, 'hypertension': 1},
 )
 
 htn_icd_bp = TensorMap(
     'htn_icd_bp', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension': 0, 'hypertension': 1},
 )
 
 diabetes = TensorMap(
     'dm', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_diabetes_type_2': 0, 'diabetes_type_2': 1},
 )
 
 hypercholesterolemia = TensorMap(
     'hypercholesterolemia', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypercholesterolemia': 0, 'hypercholesterolemia': 1},
 )
