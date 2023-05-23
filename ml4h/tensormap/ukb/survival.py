@@ -269,7 +269,7 @@ mgb_afib_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='atrial_fibrillation_or_flutter',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -280,7 +280,7 @@ mgb_af_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='atrial_fibrillation_or_flutter',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -291,7 +291,7 @@ mgb_cad_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='coronary_artery_disease',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -302,7 +302,7 @@ mgb_dm_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='diabetes_type_2',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -313,7 +313,7 @@ mgb_mi_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='myocardial_infarction',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -324,7 +324,7 @@ mgb_hf_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_10_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='heart_failure',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -335,7 +335,7 @@ mgb_hf_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_10_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='heart_failure',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -346,7 +346,7 @@ mgb_hf_nlp_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_10_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='heart_failure',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -357,7 +357,7 @@ mgb_hf_primary_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_10_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='heart_failure',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -369,7 +369,7 @@ mgb_hf_death_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_10_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='death',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -381,7 +381,7 @@ mgb_death_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_10_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_10_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='death',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -392,7 +392,7 @@ mgb_afib_as_hf_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='heart_failure',
         start_date_is_attribute=True, incidence_only=True,
     ),
@@ -404,7 +404,7 @@ mgb_afib_as_stroke_wrt_instance2 = TensorMap(
     shape=(50,),
     days_window=DAYS_IN_5_YEARS,
     tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_2', DAYS_IN_5_YEARS,
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
         disease_name_override='stroke',
         start_date_is_attribute=True, incidence_only=True,
     ),
