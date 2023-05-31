@@ -44,16 +44,24 @@ from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNe
 CSV_EXT = '.tsv'
 
 
+def stratify_and_project_latent_space(stratify_column: str,stratify_thresh: float,stratify_std: float,latent_cols: List[str],
+                                    latent_df: pd.DataFrame,
+                                    normalize: bool = False,
+                                    train_ratio: int = 1.0):
+    """
+    Stratify data and project it to new latent space.
+    Args:
+        stratify_column (str): Name of the column used for stratification.
+        stratify_thresh (float): Threshold value for stratification.
+        stratify_std (float): Standard deviation value for stratification.
+        latent_cols (List[str]): List of column names for the latent space.
+        latent_df (pd.DataFrame): DataFrame containing the latent space data.
+        normalize (bool): Flag indicating whether to normalize the data. Default is False.
+        train_ratio (int): Ratio of training data to be used. Default is 1.0.
 
-#AK latent bias functions added________________________________________________
-
-
-### Function to divide data into groups with a balanced ratio, and transform the data into a new latent space..
-
-
-def stratify_and_project_latent_space(stratify_column, stratify_thresh, stratify_std, 
-                                      latent_cols, latent_df, 
-                                      normalize=False, train_ratio=1.0):
+    Returns:
+        Dict[str, Tuple[float,float,float]]
+    """  
     if train_ratio == 1.0:
         train = latent_df
         test = latent_df
@@ -83,8 +91,16 @@ def stratify_and_project_latent_space(stratify_column, stratify_thresh, stratify
     
     return {f'{stratify_column}': (t2, p2, len(hit)) }
 
-#Function to create a plot displaying T-statistics v/s Negative Log P-Value for each covariate.
-def plot_nested_dictionary(all_scores):
+
+
+def plot_nested_dictionary(all_scores: DefaultDict[str, DefaultDict[str, Tuple[float,float,float]]]) -> None:
+    """
+    Function to create a plot displaying T-statistics v/s Negative Log P-Value for each covariate.
+    Args:
+        all_scores (DefaultDict[str, DefaultDict[str, Tuple[float, float, float]]]): Nested dictionary containing the scores.
+    Returns:
+        None
+     """  
     n = 4
     eps = 1e-300
     for model in all_scores:
@@ -126,8 +142,8 @@ def plot_nested_dictionary(all_scores):
     plt.tight_layout()
 
 
-#Function to calculate angle between two vectors
-def angle_between(v1, v2):
+
+def angle_between(v1: np.ndarray, v2 : np.ndarray):
     """ Returns the angle in radians between vectors 'v1' and 'v2'::
             angle_between((1, 0, 0), (0, 1, 0))
             90
@@ -141,12 +157,23 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * 180 / 3.141592
 
 
-def unit_vector(vector):
+def unit_vector(vector : np.ndarray):
     """ Returns the unit vector of the vector.  """
     return vector / np.linalg.norm(vector)
 
-#Function to read raw data from a CSV file and generate a representation of the data in a latent space.
-def latent_space_dataframe(infer_hidden_tsv, explore_csv):
+
+def latent_space_dataframe(infer_hidden_tsv: str, explore_csv: str):
+    """
+    Read raw data from a CSV file and generate a representation of the data in a latent space.
+
+    Args:
+        infer_hidden_tsv (str): Path to the TSV file containing the inferred hidden representations.
+        explore_csv (str): Path to the CSV file containing the data to be explored.
+
+    Returns:
+        pandas.DataFrame: Dataframe representing the data in the latent space.
+
+    """
     df = pd.read_csv(explore_csv)
     df['sample_id'] = pd.to_numeric(df['fpath'], errors='coerce')
     df2 = pd.read_csv(infer_hidden_tsv, sep='\t', engine='python')
@@ -155,15 +182,37 @@ def latent_space_dataframe(infer_hidden_tsv, explore_csv):
     return latent_df
 
 
-#confounder is a variable that influences both the dependent variable and independent variable
-def confounder_vector(labels, space):
+def confounder_vector(labels: pd.Series, space: np.ndarray):
+    """
+    Compute the confounder vector based on labels and latent space.
+
+    Args:
+        labels (numpy.ndarray or list): The labels representing the dependent variable.
+        space (numpy.ndarray or list): The latent space representing the independent variable.
+
+    Returns:
+        cv and r2
+
+    """
     clf = make_pipeline(StandardScaler(with_mean=True), Ridge(solver='lsqr'))
     clf.fit(space, labels)
     train_score = clf.score(space, labels)
     return clf[-1].coef_/clf[0].scale_, train_score
 
 
-def confounder_matrix(adjust_cols, df, space):
+def confounder_matrix(adjust_cols: List[str], df: pd.DataFrame, space: np.ndarray):
+    """
+    Compute the confounder matrix based on specified columns, a dataframe, and a latent space.
+
+    Args:
+        adjust_cols (list): List of column names to adjust for as confounders.
+        df (pandas.DataFrame): The dataframe containing the data.
+        space (numpy.ndarray): The latent space representing the independent variable.
+
+    Returns:
+        computed confounder matrix and scores.
+
+    """
     vectors = []
     scores = {}
     for col in adjust_cols:
@@ -172,8 +221,26 @@ def confounder_matrix(adjust_cols, df, space):
         vectors.append(cv)
     return np.array(vectors), scores
 
-# Function to remove confounder variables
-def iterative_subspace_removal(adjust_cols, latent_df, latent_cols, r2_thresh=0.01, fit_pca=False):
+def iterative_subspace_removal(adjust_cols: List[str], latent_df: pd.DataFrame, latent_cols: List[str],
+                               r2_thresh: float = 0.01, fit_pca: bool = False):
+    """
+    Perform iterative subspace removal based on specified columns, a latent dataframe, 
+    and other parameters to remove confounder variables.
+
+    Args:
+        adjust_cols (List[str]): List of column names to adjust for as confounders.
+        latent_df (pd.DataFrame): The dataframe containing the latent data.
+        latent_cols (List[str]): List of column names representing the latent variables.
+        r2_thresh (float, optional): The threshold for the coefficient of determination (R-squared).
+            Default is 0.01.
+        fit_pca (bool, optional): Whether to fit Principal Component Analysis (PCA) on the latent data.
+            Default is False.
+
+    Returns:
+        pd.DataFrame: The latent dataframe after performing iterative subspace removal.
+        List: List of new columns
+
+    """
     new_cols = latent_cols
     new_adjust_cols = adjust_cols
     space = latent_df[latent_cols].to_numpy()
