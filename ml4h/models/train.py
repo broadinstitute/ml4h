@@ -84,8 +84,8 @@ def _get_callbacks(
     patience: int, model_file: str, save_last_model: bool,
 ) -> List[Callback]:
     callbacks = [
-        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
     ]
+    #ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
     return callbacks

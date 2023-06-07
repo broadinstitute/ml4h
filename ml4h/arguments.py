@@ -216,15 +216,15 @@ def parse_args():
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
     parser.add_argument(
-         '--transformer_size', default=256, type=int,
+         '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
     )
     parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
 
     # Training and Hyper-Parameter Optimization Parameters
-    parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
-    parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
+    parser.add_argument('--epochs', default=10, type=int, help='Number of training epochs.')
+    parser.add_argument('--batch_size', default=8, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
     parser.add_argument('--train_csv', help='Path to CSV with Sample IDs to reserve for training.')
     parser.add_argument('--valid_csv', help='Path to CSV with Sample IDs to reserve for validation. Takes precedence over valid_ratio.')
     parser.add_argument('--test_csv', help='Path to CSV with Sample IDs to reserve for testing. Takes precedence over test_ratio.')
@@ -235,12 +235,12 @@ def parse_args():
              'If not specified, default 0.2 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
     )
     parser.add_argument(
-        '--test_ratio', default=0.1, type=float,
+        '--test_ratio', default=0.2, type=float,
         help='Rate of training tensors to save for testing must be in [0.0, 1.0]. '
              'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
              'If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
     )
-    parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
+    parser.add_argument('--test_steps', default=12, type=int, help='Number of batches to use for testing.')
     parser.add_argument('--training_steps', default=72, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')

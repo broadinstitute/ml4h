@@ -19,7 +19,10 @@ from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
-from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
+from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding 
+from ml4h.models.transformer_blocks_embedding import TransformerEncoder_embedding,MultiHeadAttention
+from ml4h.models.perceiver_blocks import PerceiverEncoder
+
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock
@@ -47,6 +50,8 @@ BLOCK_CLASSES = {
     'partitioned_linear_decode': PartitionedLinearDecoder,
     'identity': EncodeIdentityBlock,
     'transformer_encoder': TransformerEncoder,
+    'perceiver_encoder': PerceiverEncoder,
+    'transformer_encoder_embedding': TransformerEncoder_embedding,
     'transformer_decoder': TransformerDecoder,
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
@@ -156,11 +161,13 @@ def multimodal_multitask_model(
     """
     encoder_block_functions = {tm: identity for tm in tensor_maps_in}  # Dict[TensorMap, Block]
     for tm in tensor_maps_in:
+        print("***tm",tm,len(tensor_maps_in))
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
             if isinstance(encode_block, Block):
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))
             elif encode_block in BLOCK_CLASSES:
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
+            
             elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
                 serialized_encoder = add_prefix(serialized_encoder, f'encode_block_{tm.name}', custom_dict)
@@ -237,11 +244,11 @@ def make_multimodal_multitask_model_block(
             inputs[tm] = Input(shape=(), dtype=tf.string, name=tm.name)
         else:
             inputs[tm] = Input(shape=tm.shape, name=tm.input_name())
-
         encoding = encoder_block(inputs[tm], intermediates)
         encoders[tm] = Model(inputs[tm], encoding, name=f'encode_{tm.name}')
         encodings.append(encoders[tm](inputs[tm]))
         encodings_as_inputs.append(Input(shape=encodings[-1].shape, name=f'encoding_{tm.name}'))
+  
 
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
