@@ -575,7 +575,7 @@ peak_vo2 = TensorMap(
 )
 cad = TensorMap(
     'cad', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
-    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     channel_map={'no_coronary_artery_disease':0, 'coronary_artery_disease': 1},
 )
 
