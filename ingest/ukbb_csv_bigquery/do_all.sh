@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -o errexit
-set -o pipefail
+#set -o pipefail
 set -o nounset
 
 #to run
@@ -9,10 +9,10 @@ set -o nounset
 
 
 #SET THESE ARGUMENTS -- not passing these in -- just gets too messy.
-BUCKET_ROOT="" #gs://ml4cvd/projects/pbatra"
-DATASET="" #pb_test_2" if dataset exists already, will error out.
-PHENO_FOLDER="" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/pheno_test_files" #folder that contains multiple pheno.csv files
-HESIN_FOLDER="" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/hesin_files" #folder that contains all hesin files
+BUCKET_ROOT="gs://ml4h-core/ukbb/2023-06-23" #gs://ml4cvd/projects/pbatra"
+DATASET="ukbb7089_2023_06_23" #pb_test_2" if dataset exists already, will error out.
+PHENO_FOLDER="/home/anamika/ukbio_csv/pheno_dir" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/pheno_test_files" #folder that contains multiple pheno.csv files
+HESIN_FOLDER="/home/anamika/ukbio_csv/hesin_dir" #/Users/pbatra/ukbb_etl/downloads/ukbb_raw_data/hesin_files" #folder that contains all hesin files
 DEATH_CENSOR="" #2018-01-31" #lookup at https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=Data_providers_and_dates
 PHENO_CENSOR="" #2017-03-31" #lookup at https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=Data_providers_and_dates
 
@@ -27,10 +27,15 @@ pheno_files=$( ls ${PHENO_FOLDER})
 echo "loading pheno csvs: 
 ${pheno_files}"
 
+
 hesin_files="hesin.tsv.gz
-hesin_diag10.tsv.gz
-hesin_diag9.tsv.gz
+hesin_diag.tsv.gz
 hesin_oper.tsv.gz"
+
+#hesin_files="hesin.tsv.gz
+#hesin_diag10.tsv.gz
+#hesin_diag9.tsv.gz
+#hesin_oper.tsv.gz"
 
 #check to make sure we have all the hesin files we expect
 for file in ${hesin_files}
