@@ -20,8 +20,8 @@ from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASS
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding 
-from ml4h.models.transformer_blocks_embedding import TransformerEncoder_embedding,MultiHeadAttention
-from ml4h.models.perceiver_blocks import PerceiverEncoder
+from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
+from ml4h.models.perceiver_blocks import PerceiverEncoder,latent_layer
 
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
@@ -51,7 +51,7 @@ BLOCK_CLASSES = {
     'identity': EncodeIdentityBlock,
     'transformer_encoder': TransformerEncoder,
     'perceiver_encoder': PerceiverEncoder,
-    'transformer_encoder_embedding': TransformerEncoder_embedding,
+    'transformer_encoder_embedding': TransformerEncoderEmbedding,
     'transformer_decoder': TransformerDecoder,
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
@@ -308,7 +308,7 @@ def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
                 VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention,
-                KerasLayer,
+                KerasLayer,latent_layer,
             ],
         )
     }

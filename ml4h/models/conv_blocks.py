@@ -93,8 +93,6 @@ class ConvEncoderBlock(Block):
             x = Flatten()(x)
             x = self.fully_connected(x, intermediates)
             intermediates[self.tensor_map].append(x)
-        print("&&&&&&&here x",x)
-        print("&&&&&&here intermediates",intermediates)
         return x
 
 

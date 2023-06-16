@@ -39,6 +39,8 @@ class PerceiverEncoder(Block):
 
 
 
+
+
     # def can_apply(self):
     #     return self.tensor_map.is_language()
     def can_apply(self):
@@ -193,38 +195,67 @@ class PositionalEncoding(tf.keras.layers.Layer):
     def call(self, inputs):
         return inputs + self.pos_encoding[:, :tf.shape(inputs)[1], :]
 
-def encoder_layer(units, d_model, num_heads, dropout, latent_dim=8, name="perceiver_layer",input_name="inputs"):
+
+class latent_layer(tf.keras.layers.Layer):
+    def __init__(self, latent_dim, d_model, num_heads,dropout,**kwargs):
+        super(latent_layer, self).__init__()
+
+
+        self.latent_dim=latent_dim
+        self.d_model=d_model
+        self.dropout=dropout
+        self.num_heads=num_heads
+
+        self.latents = self.add_weight(shape=(1, latent_dim, d_model),
+                                 initializer='random_normal',
+                                 trainable=True)
+
+        self.att=MultiHeadAttention(
+            d_model, num_heads, name="cross_attention",
+        )
+
+        self.ln=tf.keras.layers.LayerNormalization(
+            epsilon=1e-6,
+        )
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            "latent_dim": self.latent_dim,
+            "d_model": self.d_model,
+            "dropout": self.dropout,
+            "num_heads": self.num_heads,
+        })
+
+        return config
+
+    def call(self,inputs):
+
+        # Cross-attention with inputs
+        latents=tf.tile(self.latents,[tf.shape(inputs)[0],1,1])
+        cross_attention = self.att({
+            'query': latents,
+            'key': inputs,
+            'value': inputs,
+            'mask': None,
+        })
+
+        cross_attention =tf.keras.layers.Dropout(rate=self.dropout)(cross_attention)
+
+
+
+        return self.latents + cross_attention
+
+def perceiver_encoder_layer(units, d_model, num_heads, dropout, latent_dim=8, name="perceiver_layer",input_name="inputs"):
     inputs = tf.keras.Input(shape=(None, d_model), name=input_name)
-    latents = tf.Variable(initial_value=tf.random_normal_initializer()((latent_dim, d_model)), trainable=True, name='latents')
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
 
-    # # Latent array participates in self-attention
-    # attention = MultiHeadAttention(
-    #     d_model, num_heads, name="self_attention",
-    # )({
-    #     'query': latents,
-    #     'key': latents,
-    #     'value': latents,
-    #     # No mask
-    # })
-    # attention = tf.keras.layers.Dropout(rate=dropout)(attention)
-    # latents = tf.keras.layers.LayerNormalization(
-    #     epsilon=1e-6,
-    # )(latents + attention)
+  
+    latents=latent_layer(latent_dim,d_model,num_heads,dropout)(inputs)
 
-    # Cross-attention with inputs
-    cross_attention = MultiHeadAttention(
-        d_model, num_heads, name="cross_attention",
-    )({
-        'query': latents,
-        'key': inputs,
-        'value': inputs,
-        'mask': padding_mask,
-    })
-    cross_attention = tf.keras.layers.Dropout(rate=dropout)(cross_attention)
-    latents = tf.keras.layers.LayerNormalization(
+    latents=tf.keras.layers.LayerNormalization(
         epsilon=1e-6,
-    )(latents + cross_attention)
+    )(latents)
 
     return tf.keras.Model(
         inputs=[inputs, padding_mask], outputs=latents, name=name,
@@ -243,19 +274,18 @@ def encoder(
 ):
     inputs = tf.keras.Input(shape=(None,3), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-    #padding_mask = None
    
     embeddings = tf.keras.layers.Dense(units=d_model, activation='relu')(inputs)
     embeddings = PositionalEncoding(window_size, d_model)(embeddings)
 
     outputs = tf.keras.layers.Dropout(rate=dropout)(embeddings)
     for i in range(num_layers):
-        outputs = encoder_layer(
+        outputs = perceiver_encoder_layer(
             units=units,
             d_model=d_model,
             num_heads=num_heads,
             dropout=dropout,
-            name="encoder_layer_{}".format(i),
+            name="perceiver_encoder_layer_{}".format(i),
             input_name=input_name,
         )([outputs, padding_mask])
 

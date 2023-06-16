@@ -47,8 +47,6 @@ class TransformerEncoder(Block):
         y = self.encoder_layers(inputs=[x, padded])
   
         intermediates[self.tensor_map.dependent_map].extend([x, y])
-        print("&&&&&&&here y",y)
-        print("&&&&&&here intermediates",intermediates)
         return y
 
 

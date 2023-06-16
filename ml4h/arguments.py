@@ -229,13 +229,13 @@ def parse_args():
     parser.add_argument('--valid_csv', help='Path to CSV with Sample IDs to reserve for validation. Takes precedence over valid_ratio.')
     parser.add_argument('--test_csv', help='Path to CSV with Sample IDs to reserve for testing. Takes precedence over test_ratio.')
     parser.add_argument(
-        '--valid_ratio', default=0.2, type=float,
+        '--valid_ratio', default=0.1, type=float,
         help='Rate of training tensors to save for validation must be in [0.0, 1.0]. '
              'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
              'If not specified, default 0.2 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
     )
     parser.add_argument(
-        '--test_ratio', default=0.2, type=float,
+        '--test_ratio', default=0.1, type=float,
         help='Rate of training tensors to save for testing must be in [0.0, 1.0]. '
              'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
              'If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',

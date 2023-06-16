@@ -9,7 +9,7 @@ tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
-class TransformerEncoder_embedding(Block):
+class TransformerEncoderEmbedding(Block):
     #this version directly intakes in tokens in the shape of (batch_size, N_tokens,embedim)
     def __init__(
         self, *, tensor_map: TensorMap, dense_layers: List[int],
@@ -18,7 +18,7 @@ class TransformerEncoder_embedding(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-        print("&&&&TensorMap",TensorMap)
+     
         self.dropout = tf.keras.layers.Dropout(rate=dense_regularize_rate)
         self.padding_mask_layer = tf.keras.layers.Lambda(
             create_padding_mask, output_shape=(256, None),
@@ -37,9 +37,6 @@ class TransformerEncoder_embedding(Block):
         )
 
 
-
-    # def can_apply(self):
-    #     return self.tensor_map.is_language()
     def can_apply(self):
         return True
 
@@ -47,7 +44,7 @@ class TransformerEncoder_embedding(Block):
         if not self.can_apply():
             return x
 
-        #x=x[:,:1000,:]#make it shorter for debuging, remember to put it back
+     
         padded = self.padding_mask_layer(x)
         y = self.encoder_layers(inputs=[x, padded])
         
@@ -194,6 +191,7 @@ def encoder_layer(units, d_model, num_heads, dropout, name="encoder_layer", inpu
     inputs = tf.keras.Input(shape=(None, d_model), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
 
+
     attention = MultiHeadAttention(
         d_model, num_heads, name="attention",
     )({
@@ -202,6 +200,7 @@ def encoder_layer(units, d_model, num_heads, dropout, name="encoder_layer", inpu
             'value': inputs,
             'mask': padding_mask,
     })
+
     attention = tf.keras.layers.Dropout(rate=dropout)(attention)
     attention = tf.keras.layers.LayerNormalization(
         epsilon=1e-6,
@@ -232,7 +231,6 @@ def encoder(
 ):
     inputs = tf.keras.Input(shape=(None,3), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-    #padding_mask = None
    
     embeddings = tf.keras.layers.Dense(units=d_model, activation='relu')(inputs)
     embeddings = PositionalEncoding(window_size, d_model)(embeddings)
