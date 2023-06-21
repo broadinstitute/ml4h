@@ -28,7 +28,7 @@ def train_model_from_generators(
     run_id: str,
     inspect_model: bool,
     inspect_show_labels: bool,
-    output_tensor_maps: list[TensorMap] = [],
+    output_tensor_maps: List[TensorMap] = [],
     return_history: bool = False,
     plot: bool = True,
     save_last_model: bool = False,
