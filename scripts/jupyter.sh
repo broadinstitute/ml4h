@@ -8,6 +8,7 @@
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu"
+DOCKER_IMAGE_GPU="ghcr.io/broadinstitute/ml4h:tf2.9-latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 DOCKER_COMMAND="docker"
@@ -54,7 +55,7 @@ while getopts ":ip:ch" opt ; do
             ;;
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
-        GPU_DEVICE=""
+          GPU_DEVICE=""
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
