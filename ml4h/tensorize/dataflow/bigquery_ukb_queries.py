@@ -173,3 +173,5 @@ def _get_phecode_query(dataset):
     return f"""
         SELECT sample_id, disease, has_disease, censor_date FROM `{dataset}.phecodes_nonzero` WHERE has_disease=1;
     """
+
+#vrd
