@@ -172,7 +172,7 @@ Attempting to run Docker with
     -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
-    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
+    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR} google-cloud-storage;
         eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
@@ -186,5 +186,5 @@ ${GPU_DEVICE} \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip3 install --upgrade pip
-pip install ${WORKDIR};
+pip install ${WORKDIR} google-cloud-storage;
 eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
