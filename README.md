@@ -110,7 +110,7 @@ If you get a public key error run: `gcloud compute config-ssh`
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
 
-### set up VScode to connect to the GCP VM (which makes your coding much easier)
+### Set up VScode to connect to the GCP VM (which makes your coding much easier)
 
 
 step 1: install VSdoe
