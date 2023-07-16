@@ -18,10 +18,29 @@ specialized encoders:
 Multi-instance attention heads were then trained to integrate up to 40 view encodings to predict
 a single measurement of each type per echo study.
 
+## Requirements
+In addition to the `ml4h` repository, DROID also requires `ml4ht_data_source` plus other dependencies. First, clone the
+ml4h repositories:
+```commandline
+git clone https://github.com/broadinstitute/ml4h.git
+git clone https://github.com/broadinstitute/ml4ht_data_source.git
+```
+
+For convenience, we provide a docker image containing additional dependencies:
+```commandline
+docker run -it --gpus all --rm -v {PARENT_DIRECTORY_OF_REPOS} -v {OPTIONAL_DATA_DIRECTORY} \
+us-central1-docker.pkg.dev/broad-ml4cvd/droid/droid:0.1 /bin/bash
+```
+
+Within the docker container, install `ml4ht`:
+```commandline
+pip install --user ml4ht_data_source
+```
+
 ## Usage
 ### Preprocessing
-The following scripts are designed to handle echo movies that have been processed and stored in Lightning Memory-
-Mapped Database (lmdb) files. We create one lmdb per echo study in which the keys are the filenames of the dicoms and
+The following scripts are designed to handle echo movies that have been processed and stored in Lightning 
+Memory-Mapped Database (lmdb) files. We create one lmdb per echo study in which the keys are the filenames of the dicoms and
 the values are echo movies that have been anonymized, cropped, and converted to avis. See `echo_to_lmdb.py` for an
 example.
 
