@@ -109,6 +109,24 @@ If you get a public key error run: `gcloud compute config-ssh`
 
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
+
+### Set up VScode to connect to the GCP VM (which makes your coding much easier)
+
+
+step 1: install VSdoe
+
+step 2:config the ssh key
+gcloud compute config-ssh --project "broad-ml4cvd"
+
+Step 3: install remote-SSH extension in VS Code
+
+Step 4: connect to the VM by pressing F1 and type "Remote-SSH: Connect to Host..." and select the VM you want to connect to (eg dianbo-dl.us-central1-abroad-ml4cvd)
+
+Step 5: open the folder you want to work on in the VM, type in your Broad password, and you are good to go!
+
+
+
+
 ## Contributing code
 
 Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
