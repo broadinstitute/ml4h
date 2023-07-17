@@ -7,8 +7,8 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu-v1"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu-v1"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
@@ -21,7 +21,7 @@ SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
 # Get group names
 GROUP_NAMES=$(groups ${USER} | sed -e 's/.*:\ //')
-
+echo $GROUP_NAMES
 # Get group names as array to iterate through
 GROUP_NAMES_ARR=( $GROUP_NAMES )
 
@@ -172,7 +172,7 @@ Attempting to run Docker with
     -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
-    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR} google-cloud-storage;
+    ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
         eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
 
@@ -186,5 +186,5 @@ ${GPU_DEVICE} \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip3 install --upgrade pip
-pip install ${WORKDIR} google-cloud-storage;
+pip install ${WORKDIR};
 eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
