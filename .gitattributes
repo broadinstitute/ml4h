@@ -7,3 +7,4 @@ notebooks/**.ipynb filter=nbstripout
 *.osx filter=lfs diff=lfs merge=lfs -text
 *.genes filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG_PheWAS/*.h5 filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID/encoders/**/* filter=lfs diff=lfs merge=lfs -text
