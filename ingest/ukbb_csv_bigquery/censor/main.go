@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	"os"
-
 	"cloud.google.com/go/bigquery"
 )
 
