@@ -2668,3 +2668,11 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
     normalization=None,
     tensor_from_file=None,
 )
+
+
+t1map_b2 = TensorMap(
+    "shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map",
+    shape=(384, 384),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_pad_crop_tensor,
+)
