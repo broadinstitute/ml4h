@@ -2671,15 +2671,27 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
 
 
 t1map_b2 = TensorMap(
-    "shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map",
-    shape=(384, 384),
+    'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
+    shape=(384, 384, 2),
     path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_pad_crop_tensor,
 )
 
 
+def _segmented_t1map(tm, hd5, dependents={}):
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+    categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+    tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+    return tensor
 
-# t1map_b2_segmentation = TensorMap(
-#
-# )
+
+t1map_b2_segmentation = TensorMap(
+    'b2s_t1map_kassir_annotated_2',
+    interpretation=Interpretation.CATEGORICAL,
+    shape=(384, 384, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
+    channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
+    path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_segmented_t1map,
+)
