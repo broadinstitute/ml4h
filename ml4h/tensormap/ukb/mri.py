@@ -2680,6 +2680,6 @@ t1map_b2 = TensorMap(
 
 
 
-t1map_b2_segmentation = TensorMap(
-
-)
+# t1map_b2_segmentation = TensorMap(
+#
+# )
