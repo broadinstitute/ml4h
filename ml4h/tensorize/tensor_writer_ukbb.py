@@ -55,6 +55,12 @@ MRI_CARDIAC_SERIES = [
     'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
     'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist',
     'cine_segmented_lvot', 'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag',
+    'shmolli_192i_b1_sax_b1s_sax_b1s_sax_b1s_t1map', 'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
+    'shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map',
+    'shmolli_192i_b3_sax_b3s_sax_b3s_sax_b3s_t1map', 'shmolli_192i_b4_sax_b4s_sax_b4s_sax_b4s_t1map',
+    'shmolli_192i_b5_sax_b5s_sax_b5s_sax_b5s_t1map', 'shmolli_192i_b6_sax_b6s_sax_b6s_sax_b6s_t1map',
+    'shmolli_192i_b7_sax_b7s_sax_b7s_sax_b7s_t1map',
+
 ]
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
@@ -64,7 +70,7 @@ MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimi
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
 DICOM_MRI_FIELDS = [
-    '20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
+    '20209', '20208', '20210', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
     '20227', '20225', '20217', '20158',
 ]
 
@@ -434,7 +440,7 @@ def _write_tensors_from_dicoms(
             series_num = dicom.split('.')[-5]
             dxa_number = dicom.split('.')[-4]
             name = f'dxa_{series_num}_{dxa_number}'
-            create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats, instance=instance)
+            create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
 
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
