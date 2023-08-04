@@ -191,7 +191,7 @@ def write_tensors_from_dicom_pngs(
         try:
             png = imageio.imread(os.path.join(png_path, dicom_file + png_postfix))
             full_tensor = np.zeros((x, y), dtype=np.float32)
-            full_tensor[:png.shape[0], :png.shape[1]] = png
+            full_tensor[:png.shape[0], :png.shape[1]] = png[..., 0]
             tensor_file = os.path.join(tensors, str(sample_id) + TENSOR_EXT)
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
