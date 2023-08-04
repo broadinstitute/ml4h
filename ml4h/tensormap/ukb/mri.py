@@ -2673,6 +2673,13 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
 t1map_b2 = TensorMap(
     "shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map",
     shape=(384, 384),
+    path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_pad_crop_tensor,
+)
+
+
+
+t1map_b2_segmentation = TensorMap(
+
 )
