@@ -632,7 +632,7 @@ def plot_prediction_calibration(
     :param width: Width in inches of the figure
     :param height: Height in inches of the figure
     """
-    fig, (ax1, ax3, ax2) = plt.subplots(1, 3, figsize=(width, height*3), dpi=dpi)
+    fig, (ax1, ax3, ax2) = plt.subplots(1, 3, figsize=(width*100, height*300), dpi=dpi)
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
