@@ -189,7 +189,7 @@ def evaluate_predictions(
             y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            y_predictions, y_truth, tm.channel_map, title, folder, 10,  dpi, width, height,
         )
         performance_metrics.update(
             subplot_roc_per_class(
@@ -218,7 +218,7 @@ def evaluate_predictions(
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            y_predictions, y_truth, tm.channel_map, title, folder, 10, dpi, width, height,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 3:
@@ -242,7 +242,7 @@ def evaluate_predictions(
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            y_predictions, y_truth, tm.channel_map, title, folder, 10, dpi, width, height,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_categorical() and tm.axes() == 4:
@@ -269,7 +269,7 @@ def evaluate_predictions(
             ),
         )
         plot_prediction_calibration(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            y_predictions, y_truth, tm.channel_map, title, folder, 10, dpi, width, height,
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
     elif tm.is_survival_curve():
@@ -632,7 +632,7 @@ def plot_prediction_calibration(
     :param width: Width in inches of the figure
     :param height: Height in inches of the figure
     """
-    fig, (ax1, ax3, ax2) = plt.subplots(1, 3, figsize=(width*100, height*300), dpi=dpi)
+    fig, (ax1, ax3, ax2) = plt.subplots(1, 3, figsize=(width, height*3), dpi=dpi)
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
