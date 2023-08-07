@@ -557,9 +557,9 @@ def plot_prediction_calibrations(
     :param width: Width in inches of the figure
     :param height: Height in inches of the figure
     """
-    _ = plt.figure(figsize=(width, height), dpi=dpi)
-    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-    ax2 = plt.subplot2grid((3, 1), (2, 0))
+    _, (ax1, ax2) = plt.subplots(3, figsize=(width, height * 2), dpi=dpi)
+    #ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    #ax2 = plt.subplot2grid((3, 1), (2, 0))
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
@@ -632,7 +632,7 @@ def plot_prediction_calibration(
     :param width: Width in inches of the figure
     :param height: Height in inches of the figure
     """
-    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(width, height), dpi=dpi)
+    _, (ax1, ax3, ax2) = plt.subplots(3, figsize=(width, height*3), dpi=dpi)
 
     true_sums = np.sum(truth, axis=0)
     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated Brier score: 0.0")
