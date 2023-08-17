@@ -33,7 +33,7 @@ from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, R
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
-from ml4h.models.model_factory import _get_custom_objects
+from ml4h.models.model_factory import get_custom_objects
 from ml4h.plots import plot_metric_history
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
@@ -984,7 +984,7 @@ def legacy_multimodal_multitask_model(
     """
     tensor_maps_out = parent_sort(tensor_maps_out)
     u_connect: DefaultDict[TensorMap, Set[TensorMap]] = u_connect or defaultdict(set)
-    custom_dict = _get_custom_objects(tensor_maps_out)
+    custom_dict = get_custom_objects(tensor_maps_out)
     opt = get_optimizer(
         optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule,
         optimizer_kwargs=kwargs.get('optimizer_kwargs'),
@@ -1225,7 +1225,7 @@ def make_paired_autoencoder_model(
         multimodal_merge: str = 'average',
         **kwargs
 ) -> Model:
-    custom_dict = _get_custom_objects(kwargs['tensor_maps_out'])
+    custom_dict = get_custom_objects(kwargs['tensor_maps_out'])
     opt = get_optimizer(
         kwargs['optimizer'], kwargs['learning_rate'], steps_per_epoch=kwargs['training_steps'],
         learning_rate_schedule=kwargs['learning_rate_schedule'], optimizer_kwargs=kwargs.get('optimizer_kwargs'),
@@ -1491,7 +1491,7 @@ def get_model_inputs_outputs(
     models_inputs_outputs = dict()
 
     for model_file in model_files:
-        custom = _get_custom_objects(tensor_maps_out)
+        custom = get_custom_objects(tensor_maps_out)
         logging.info(f'custom keys: {list(custom.keys())}')
         m = load_model(model_file, custom_objects=custom, compile=False)
         model_inputs_outputs = defaultdict(list)
