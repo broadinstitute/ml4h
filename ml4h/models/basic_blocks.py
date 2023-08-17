@@ -1,5 +1,7 @@
 from typing import Dict, List
 
+import numpy as np
+
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, LSTM, Concatenate, Flatten
@@ -237,3 +239,23 @@ class LanguagePredictionBlock(Block):
             x = tf.keras.layers.Dropout(self.dropout_rate)(x)
         x = self.final_layer(x)
         return x
+
+
+def random_gaussian_noise(x, scalar=0.1):
+    return x + np.random.randn(*x.shape[1:].as_list()) * scalar
+
+
+class RandomGauss(tf.keras.layers.Layer):
+    def __init__(self, scalar=0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.scalar = scalar
+
+    def call(self, x):
+        return random_gaussian_noise(x, self.scalar)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "scalar": self.scalar,
+        })
+        return config

@@ -7,7 +7,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-LABEL maintainer="James Pirruccello <jamesp@broadinstitute.org>"
+LABEL maintainer="Sam Freesun Friedman <sam@broadinstitute.org>"
 
 # Setup time zone (or else docker build hangs)
 ENV TZ=America/New_York

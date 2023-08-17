@@ -8,10 +8,11 @@ from tensorflow.keras.callbacks import History
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 
+from ml4h.TensorMap import TensorMap
 from ml4h.plots import plot_metric_history
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
-from ml4h.models.model_factory import _get_custom_objects
+from ml4h.models.model_factory import get_custom_objects
 
 
 def train_model_from_generators(
@@ -27,7 +28,7 @@ def train_model_from_generators(
     run_id: str,
     inspect_model: bool,
     inspect_show_labels: bool,
-    output_tensor_maps = [],
+    output_tensor_maps: List[TensorMap] = [],
     return_history: bool = False,
     plot: bool = True,
     save_last_model: bool = False,
@@ -49,11 +50,13 @@ def train_model_from_generators(
     :param run_id: User-chosen string identifying this run
     :param inspect_model: If True, measure training and inference runtime of the model and generate architecture plot.
     :param inspect_show_labels: If True, show labels on the architecture plot.
+    :param output_tensor_maps: List of output TensorMap
     :param return_history: If true return history from training and don't plot the training history
     :param plot: If true, plots the metrics for train and validation set at the end of each epoch
     :param save_last_model: If true saves the model weights from last epoch otherwise saves model with best validation loss
 
     :return: The optimized model.
+
     """
     model_file = os.path.join(output_folder, run_id, run_id + MODEL_EXT)
     if not os.path.exists(os.path.dirname(model_file)):
@@ -70,7 +73,7 @@ def train_model_from_generators(
     )
 
     logging.info('Model weights saved at: %s' % model_file)
-    custom_dict = _get_custom_objects(output_tensor_maps)
+    custom_dict = get_custom_objects(output_tensor_maps)
     model = load_model(model_file, custom_objects=custom_dict, compile=False)
     model.compile(optimizer='adam', loss='mse')
     if plot:
