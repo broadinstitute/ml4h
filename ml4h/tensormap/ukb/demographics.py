@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 from typing import List, Tuple
 
-from ml4h.normalizer import Standardize
+from ml4h.normalizer import Standardize, ZeroMeanStd1
 from ml4h.tensormap.general import tensor_path
 from ml4h.TensorMap import TensorMap, Interpretation, str2date, make_range_validator
 from ml4h.defines import StorageType
@@ -240,6 +240,24 @@ age_2_partition = TensorMap(
 sex = TensorMap(
     'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
+)
+
+sex_mgb = TensorMap(
+    'sex', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
+)
+
+is_male_mgb = TensorMap(
+    'is_male', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+)
+
+age_in_days = TensorMap(
+    'age_in_days', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='logcosh',
+    #normalization=Standardize(mean=65, std=(1/365.0)),
+    normalization=ZeroMeanStd1(),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 bmi = TensorMap(
     '23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
@@ -505,11 +523,46 @@ diastolic_blood_pressure_2 = TensorMap(
 )
 
 hypertension = TensorMap(
+    'hypertension', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_hypertension': 0, 'hypertension': 1},
+)
+
+hypertension_diagnosis = TensorMap(
     'hypertension_diagnosis', Interpretation.CATEGORICAL,
     storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension': 0, 'hypertension': 1},
 )
+
+hypertension_icd_bp = TensorMap(
+    'hypertension_icd_bp', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_hypertension': 0, 'hypertension': 1},
+)
+htn_icd_bp = TensorMap(
+    'htn_icd_bp', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_hypertension': 0, 'hypertension': 1},
+)
+
+diabetes = TensorMap(
+    'dm', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_diabetes_type_2': 0, 'diabetes_type_2': 1},
+)
+
+hypercholesterolemia = TensorMap(
+    'hypercholesterolemia', Interpretation.CATEGORICAL,
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    loss='categorical_crossentropy',
+    channel_map={'no_hypercholesterolemia': 0, 'hypercholesterolemia': 1},
+)
+
 hypertension_med = TensorMap(
     'start_fu_hypertension_med', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
     storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
@@ -522,7 +575,7 @@ peak_vo2 = TensorMap(
 )
 cad = TensorMap(
     'cad', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
-    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
     channel_map={'no_coronary_artery_disease':0, 'coronary_artery_disease': 1},
 )
 

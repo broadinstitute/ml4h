@@ -3,7 +3,7 @@
 # server-conf-scripts are for configuration of a *fresh* VM and should not be
 # treated as startup scripts. (They are not idempotent.)
 
-GCP_BUCKET="ml4cvd"
+GCP_BUCKET="ml4h-core"
 
 # We assume we are running as a regular user, not root.
 
@@ -27,12 +27,6 @@ echo "${GCP_BUCKET} /mnt/${GCP_BUCKET} gcsfuse rw,allow_other,implicit_dirs,defa
 echo "fc-9a7c5487-04c9-4182-b3ec-13de7f6b409b /mnt/imputed_v2 gcsfuse ro,allow_other,implicit_dirs,default_permissions,file_mode=777,dir_mode=777" | sudo tee -a /etc/fstab
 echo "fc-7d5088b4-7673-45b5-95c2-17ae00a04183 /mnt/imputed_v3 gcsfuse ro,allow_other,implicit_dirs,default_permissions,file_mode=777,dir_mode=777" | sudo tee -a /etc/fstab
 
-# Other packages that jpp uses
-sudo /usr/bin/env Rscript -<<EOF
-list.of.packages <- c('ggplot2','poweRlaw', 'Hmisc', 'speedglm', 'data.table', 'CMplot')
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-EOF
 
 # Enable docker (assumes Ubuntu, of any supported version)
 # See https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository
@@ -67,19 +61,6 @@ docker-credential-gcr configure-docker
 
 sudo apt-get install -y python-setuptools
 
-# Enable dsub
-
-# Note: for now, need to use my repo because it supports min-cpu-platform
-#git clone https://github.com/DataBiosphere/dsub
-git clone https://github.com/carbocation/dsub
-cd dsub
-
-# Note: for now, need to use my add-min-cpu-platform because it supports min-cpu-platform
-git checkout add-min-cpu-platform
-
-sudo python setup.py install
-source bash_tab_complete
-cd ..
 
 #
 # Do last

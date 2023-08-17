@@ -99,7 +99,6 @@ while getopts ":i:d:m:ctjuhT" opt ; do
             mkdir -p /home/${USER}/jupyter/
             chmod o+w /home/${USER}/jupyter/
             mkdir -p /home/${USER}/jupyter/root/
-            mkdir -p /mnt/ml4cvd/projects/${USER}/projects/jupyter/auto/
             ;;
         u) # this creates a user, adds groups, adds user to groups, then calls the Python script
             CALL_DOCKER_AS_USER="
