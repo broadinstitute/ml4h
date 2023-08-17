@@ -78,9 +78,9 @@ LAX_4CH_MYOCARDIUM_LABELS = {
     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7,
 }
 MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP = {
-    'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
-    'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
-    'left_atrium': 13, 'right_atrium': 14, 'aorta': 15, 'pulmonary_artery': 16,
+    'background': 0, 'body': 1, 'thoracic_cavity': 2, 'liver': 3, 'stomach': 4, 'spleen': 5, 'kidney': 6,
+    'interventricular_septum': 7, 'LV_free_wall': 8, 'anterolateral_pap': 9,  'posteromedial_pap': 10, 'LV_cavity': 11,
+    'RV_free_wall': 12, 'RV_cavity': 13,
 }
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
