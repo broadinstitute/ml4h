@@ -12,6 +12,8 @@ import pandas as pd
 from ml4ht.data.data_description import DataDescription
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
 from ml4ht.data.defines import LoadingOption, Tensor
+
+from ml4h.TensorMap import TensorMap
 from ml4h.defines import PARTNERS_DATETIME_FORMAT, ECG_REST_AMP_LEADS
 
 
@@ -362,3 +364,30 @@ class DataFrameDataDescription(DataDescription):
         if self.col == 'age_in_days' and 'day_delta' in loading_option:
             col_val -= loading_option['day_delta']
         return self.process_col(col_val)
+
+
+def one_hot_sex(x):
+    return np.array([1, 0], dtype=np.float32) if x in [0, "Female"] else np.array([0, 1], dtype=np.float32)
+
+
+def make_zscore(mu, std):
+    def zscore(x):
+        return (x-mu) / (1e-8+std)
+    return zscore
+
+
+def dataframe_data_description_from_tensor_map(
+        tensor_map: TensorMap,
+        dataframe: pd.DataFrame,
+        is_input: bool = False,
+) -> DataDescription:
+    if tensor_map.is_categorical():
+        process_col = one_hot_sex
+    else:
+        process_col = make_zscore(dataframe[tensor_map.name].mean(), dataframe[tensor_map.name].std())
+    return DataFrameDataDescription(
+        dataframe,
+        col = tensor_map.name,
+        process_col = process_col,
+        name = tensor_map.input_name() if is_input else tensor_map.output_name(),
+    )
