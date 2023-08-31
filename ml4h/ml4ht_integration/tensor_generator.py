@@ -37,7 +37,6 @@ class TensorMapDataLoader(TensorGeneratorABC):
         self.iter_loader = iter(self.data_loader)
         self.true_epochs = 0
 
-
     def _collate_fn(self, batches):
         if self.keep_paths:
             return numpy_collate_fn([batch[:2] for batch in batches]) + ([batch[2] for batch in batches],)
@@ -114,6 +113,46 @@ class TensorMapDataLoaderFromDataset(TensorGeneratorABC):
             self.iter_loader = iter(self.data_loader)
             self.true_epochs += 1
             logging.info(f"Completed {self.true_epochs} true epochs.")
+            return next(self.iter_loader)
+
+    def __call__(self):
+        try:
+            next(self.iter_loader)
+        except StopIteration:
+            self.iter_loader = iter(self.data_loader)
+        return self
+
+
+class TensorMapDataLoader2():
+    def __init__(
+        self, batch_size: int, input_maps, output_maps,
+        dataset, num_workers: int,
+        drop_last: bool = True,
+        **kwargs,
+    ):
+        self.input_maps = input_maps
+        self.output_maps = output_maps
+        self.data_loader = DataLoader(
+            dataset, batch_size=batch_size, num_workers=num_workers,
+            collate_fn=self._collate_fn, drop_last=drop_last,
+        )
+        self.iter_loader = iter(self.data_loader)
+        self.true_iterations = 0
+
+    def _collate_fn(self, batches):
+        return numpy_collate_fn(batches)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        """Infinite iterator over data loader"""
+        try:
+            return next(self.iter_loader)
+        except StopIteration:
+            self.iter_loader = iter(self.data_loader)
+            self.true_iterations += 1
+            print(f"Completed {self.true_iterations} true epochs.")
             return next(self.iter_loader)
 
     def __call__(self):
