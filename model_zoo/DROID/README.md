@@ -63,7 +63,7 @@ python echo_supervised_inference_recipe.py \
     --wide_file {WIDE_FILE_PATH} \
     --splits_file {SPLITS_JSON} \
     --lmdb_folder {LMDB_DIRECTORY_PATH} \
-    --pretrained_ckpt_dir {SPECIALIZED_ENCODER_PATH} \
-    --movinet_ckpt_dir {MoViNet-A2-Base_PATH} \
+    --pretrained_chkp_dir {SPECIALIZED_ENCODER_PATH} \
+    --movinet_chkp_dir {MoViNet-A2-Base_PATH} \
     --output_dir {WHERE_TO_STORE_PREDICTIONS}
 ```
