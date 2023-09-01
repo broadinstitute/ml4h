@@ -30,8 +30,8 @@ def main(
         batch_size,
         skip_modulo,
         lmdb_folder,
-        pretrained_ckpt_dir,
-        movinet_ckpt_dir,
+        pretrained_chkp_dir,
+        movinet_chkp_dir,
         output_dir,
         extract_embeddings,
         start_beat
@@ -109,7 +109,7 @@ def main(
         n_input_frames,
         batch_size,
         num_classes=600,
-        checkpoint_dir=movinet_ckpt_dir,
+        checkpoint_dir=movinet_chkp_dir,
     )
 
     backbone_output = backbone.layers[-1].output[0]
@@ -120,7 +120,7 @@ def main(
         input_shape=(n_input_frames, 224, 224, 3),
         n_output_features=len(output_labels)
     )
-    model_plus_head.load_weights(pretrained_ckpt_dir)
+    model_plus_head.load_weights(pretrained_chkp_dir)
 
     vois = '_'.join(selected_views)
     ufm = 'conv7'
@@ -170,9 +170,9 @@ if __name__ == "__main__":
     parser.add_argument('--n_splits', type=int, default=4)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--skip_modulo', type=int, default=1)
-    parser.add_argument('--lmdb_folder')
-    parser.add_argument('--pretrained_ckpt_dir', type=str)
-    parser.add_argument('--movinet_ckpt_dir', type=str)
+    parser.add_argument('--lmdb_folder', type=str)
+    parser.add_argument('--pretrained_chkp_dir', type=str)
+    parser.add_argument('--movinet_chkp_dir', type=str)
     parser.add_argument('--output_dir', type=str)
     parser.add_argument('--extract_embeddings', action='store_true')
     parser.add_argument('--start_beat', type=int, default=0)
@@ -199,8 +199,8 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         skip_modulo=args.skip_modulo,
         lmdb_folder=args.lmdb_folder,
-        pretrained_ckpt_dir=args.pretrained_ckpt_dir,
-        movinet_ckpt_dir=args.movinet_ckpt_dir,
+        pretrained_chkp_dir=args.pretrained_chkp_dir,
+        movinet_chkp_dir=args.movinet_chkp_dir,
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
         start_beat=args.start_beat
