@@ -80,3 +80,42 @@ def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_outpu
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name="regressor")
 
     return model
+
+
+def train_model(
+        model,
+        train_loader,
+        valid_loader,
+        epochs,
+        n_train_steps,
+        n_valid_steps,
+        output_folder,
+        class_weight=None
+):
+    tb_callback = tf.keras.callbacks.TensorBoard(f'{output_folder}/logs', profile_batch=[160, 170])
+    es_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)
+    cp_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=f'{output_folder}/model/chkp',
+        monitor='val_loss',
+        save_best_only=True,
+        save_weights_only=True,
+        mode='min'
+    )
+    model.fit(
+        train_loader,
+        validation_data=valid_loader,
+        callbacks=[tb_callback, es_callback, cp_callback],
+        epochs=epochs,
+        steps_per_epoch=n_train_steps,
+        validation_steps=n_valid_steps,
+        workers=1,
+        max_queue_size=1,
+        use_multiprocessing=False,
+        class_weight=class_weight
+    )
+
+    model.load_weights(
+        f'{output_folder}/model/chkp'
+    )
+
+    return model
