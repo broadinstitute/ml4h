@@ -14,10 +14,10 @@ notebook
 pytest
 pysam
 tensorflow==2.13.0
-#tensorflow-addons==0.17.1
-#tensorflow_hub
-#tensorflow_probability==0.17.0
-#tensorflow-text
+tensorflow-addons==0.17.1
+tensorflow_hub
+tensorflow_probability==0.17.0
+tensorflow-text
 tf-models-official
 keras-tuner
 numcodecs
@@ -34,7 +34,7 @@ plotnine
 vega
 ipycanvas>=0.7.0
 ipyannotations>=0.2.1
-torch==2.0.1
+torch==1.12.1
 opencv-python
 blosc
 boto3
