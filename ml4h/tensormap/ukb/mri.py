@@ -2693,7 +2693,7 @@ def _segmented_t1map(tm, hd5, dependents={}):
 
 
 t1map_b2_segmentation = TensorMap(
-    'b2s_t1map_kassir_annotated_2',
+    'b2s_t1map_kassir_annotated',
     interpretation=Interpretation.CATEGORICAL,
     shape=(384, 384, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
     channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
