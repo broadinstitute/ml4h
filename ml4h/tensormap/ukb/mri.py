@@ -2681,7 +2681,12 @@ t1map_b2 = TensorMap(
 
 def _segmented_t1map(tm, hd5, dependents={}):
     tensor = np.zeros(tm.shape, dtype=np.float32)
-    categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
+    if f'{tm.path_prefix}/{tm.name}_1' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}_1')
+    elif f'{tm.path_prefix}/{tm.name}_2' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}_2')
+    else:
+        raise ValueError(f'Could not find T1 Map segmentation for tensormap: {tm.name}')
     categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
     tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
     return tensor
