@@ -221,6 +221,8 @@ def main(
     os.makedirs(output_folder, exist_ok=True)
     with open(f'{output_folder}/model_params.json', 'w') as json_file:
         json.dump(model_params, json_file)
+    
+    wide_df_selected.to_parquet(f'{output_folder}/wide_df_selected.pq')
 
     logging.info(model.summary())
     trained_model = train_model(
