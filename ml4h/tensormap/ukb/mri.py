@@ -12,7 +12,7 @@ from scipy.ndimage.interpolation import rotate
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
-from ml4h.metrics import weighted_crossentropy
+from ml4h.metrics import weighted_crossentropy, dice, per_class_dice
 from ml4h.normalizer import ZeroMeanStd1, Standardize
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
@@ -2688,6 +2688,8 @@ def _segmented_t1map(tm, hd5, dependents={}):
     else:
         raise ValueError(f'Could not find T1 Map segmentation for tensormap: {tm.name}')
     categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
+
+    # padding/cropping
     tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
     return tensor
 
@@ -2699,4 +2701,6 @@ t1map_b2_segmentation = TensorMap(
     channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
     path_prefix='ukb_cardiac_mri',
     tensor_from_file=_segmented_t1map,
+    loss=dice,
+    metrics=['categorical_accuracy'] + per_class_dice(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP),
 )
