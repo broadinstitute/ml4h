@@ -2689,6 +2689,11 @@ def _segmented_t1map(tm, hd5, dependents={}):
         raise ValueError(f'Could not find T1 Map segmentation for tensormap: {tm.name}')
     categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
 
+    # remove kidney label and merge body/background labels
+    categorical_one_hot = np.delete(categorical_one_hot, 6, axis=-1)
+    categorical_one_hot[..., 0] += categorical_one_hot[..., 1]
+    categorical_one_hot = np.delete(categorical_one_hot, 1, axis=-1)
+
     # padding/cropping
     tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
     return tensor
