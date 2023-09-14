@@ -126,10 +126,10 @@ def main(
     ufm = 'conv7'
     if extract_embeddings:
         output_folder = os.path.join(output_dir,
-                                     f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file}_{start_beat}')
+                                     f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
     else:
         output_folder = os.path.join(output_dir,
-                                     f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file}_{start_beat}')
+                                     f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
     os.makedirs(output_folder, exist_ok=True)
 
     if extract_embeddings:
