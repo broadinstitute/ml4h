@@ -93,7 +93,7 @@ def train_model(
         class_weight=None
 ):
     tb_callback = tf.keras.callbacks.TensorBoard(f'{output_folder}/logs', profile_batch=[160, 170])
-    es_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)
+    es_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=f'{output_folder}/model/chkp',
         monitor='val_loss',
