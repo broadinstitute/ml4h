@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from ml4ht.data.data_description import DataDescription
 
-from echo import VIEW_OPTION_KEY
+from data_descriptions.echo import VIEW_OPTION_KEY
 
 
 class EcholabDataDescription(DataDescription):
