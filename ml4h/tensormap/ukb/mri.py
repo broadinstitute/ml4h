@@ -2669,15 +2669,24 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
     tensor_from_file=None,
 )
 
+def _pad_crop_single_channel(tm, hd5, dependents={}):
+    img = np.array(
+            tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()),
+            dtype=np.float32,
+    )
+    img = img[...,[1]]
+    return pad_or_crop_array_to_shape(
+        tm.shape,
+        img,
+    )
 
 t1map_b2 = TensorMap(
     'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
-    shape=(384, 384, 2),
+    shape=(384, 384, 1),
     path_prefix='ukb_cardiac_mri',
     normalization=ZeroMeanStd1(),
-    tensor_from_file=_pad_crop_tensor,
+    tensor_from_file=_pad_crop_single_channel,
 )
-
 
 def _segmented_t1map(tm, hd5, dependents={}):
     if f'{tm.path_prefix}/{tm.name}_1' in hd5:
