@@ -6,11 +6,12 @@ To build curl commands from copy pasted forms from the biobank website
 FORM_TEXT = """
             <form name="fetch" action="https://biota.osc.ox.ac.uk/dataset.cgi" method="post">
 
-                <input type="hidden" name="id" value="671599"/>
-                <input type="hidden" name="s" value="305736"/>
-                <input type="hidden" name="t" value="1684504514"/>
+                <input type="hidden" name="id" value="674757"/>
+                <input type="hidden" name="s" value="338937"/>
+                <input type="hidden" name="t" value="1694792960"/>
                 <input type="hidden" name="i" value="67.244.49.54"/>
-                <input type="hidden" name="v" value="da5aa919c0119423d8335cf169f51bb2a834f2967558e3a45f0f49d0157d6428"/>
+                <input type="hidden" name="v" 
+value="37c30236bebda8e98e7c1bc6a9dba69483a659fce26632d202d846c3facb90cb"/>
                 <input class="btn_glow" type="submit" value="Fetch"/>
             </form>
 """
