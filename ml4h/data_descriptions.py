@@ -391,3 +391,84 @@ def dataframe_data_description_from_tensor_map(
         process_col = process_col,
         name = tensor_map.input_name() if is_input else tensor_map.output_name(),
     )
+
+
+class SurvivalWideFile(DataDescription):
+    # DataDescription for a wide file
+
+    def __init__(
+            self,
+            name: str,
+            wide_df: pd.DataFrame,
+            intervals: int = 25,
+            follow_up_years: int = 10,
+            event_age: str = 'hf_nlp_age',
+            event_column: str = 'hf_nlp_event',
+            ecg_age_column: str = 'ecg_age',
+            start_age_column: str = 'start_fu_age',
+            end_age_column: str = 'last_encounter',
+    ):
+        """
+        """
+        self.name = name
+        self.intervals = intervals
+
+        self.wide_df = wide_df
+        self.event_age = event_age
+        self.event_column = event_column
+        self.ecg_age_column = ecg_age_column
+        self.end_age_column = end_age_column
+        self.follow_up_years = follow_up_years
+        self.start_age_column = start_age_column
+        print(f'Survival Curve with {365.25 * self.follow_up_years / self.intervals:.1f} days per interval.')
+
+    def get_loading_options(self, sample_id):
+        row = self.wide_df.loc[sample_id]
+        ecg_date = pd.to_datetime(row[DATE_OPTION_KEY])
+        start_date = ecg_date + (
+                    pd.to_timedelta(row[self.start_age_column]) - pd.to_timedelta(row[self.ecg_age_column]))
+        return [{
+            DATE_OPTION_KEY: ecg_date,
+            'start_date': start_date,
+            'start_age': row[self.start_age_column],
+            'event_age': row[self.event_age],
+            'event': row[self.event_column],
+        }]
+
+    def get_raw_data(self, sample_id, loading_option):
+        """expects time of ECG in the loading option as DATE_OPTION_KEY"""
+        ecg_date = loading_option[DATE_OPTION_KEY]
+        start_date = loading_option['start_date']
+        ecg_age_difference = ecg_date - start_date
+
+        row = self.wide_df.loc[sample_id]
+        ecg_age = row[self.start_age_column] + ecg_age_difference
+
+        has_disease = row[self.event_column]
+
+        #         print(f"""
+        #               OKAY: start_date {start_date} ecg_date {ecg_date} ecg_age_difference {ecg_age_difference}
+        #               start age: {row[self.start_age_column]} ecg_age {ecg_age} has_disease: {has_disease}
+        #               event age: {row[self.event_age]}, last encounter age: {row[self.end_age_column]}
+        #               """)
+        if has_disease:
+            follow_up = pd.to_timedelta(row[self.event_age]) - ecg_age
+        else:
+            follow_up = pd.to_timedelta(row[self.end_age_column]) - ecg_age
+
+        censor_date = ecg_date + follow_up
+        days_per_interval = 365.25 * self.follow_up_years / self.intervals
+        survival_then_censor = np.zeros(self.intervals * 2, dtype=np.float32)
+
+        for i, day_delta in enumerate(np.arange(0, 365.25 * self.follow_up_years, days_per_interval)):
+            cur_date = ecg_date + datetime.timedelta(days=day_delta)
+            survival_then_censor[i] = float(cur_date < censor_date)
+            survival_then_censor[self.intervals + i] = has_disease * float(
+                censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+        # Handle prevalent diseases
+        if has_disease and pd.to_timedelta(row[self.event_age]) <= pd.to_timedelta(ecg_age):
+            survival_then_censor[self.intervals] = has_disease
+        return survival_then_censor
+
+    def name(self):
+        return self.name
