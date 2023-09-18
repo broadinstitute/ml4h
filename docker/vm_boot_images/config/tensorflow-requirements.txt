@@ -13,7 +13,7 @@ pillow
 notebook
 pytest
 pysam
-tensorflow==2.13.0
+tensorflow==2.9.1
 tensorflow-addons==0.17.1
 tensorflow_hub
 tensorflow_probability==0.17.0
