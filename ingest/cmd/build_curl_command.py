@@ -4,6 +4,16 @@ To build curl commands from copy pasted forms from the biobank website
 
 
 FORM_TEXT = """
+            <form name="fetch" action="https://biota.osc.ox.ac.uk/dataset.cgi" method="post">
+
+                <input type="hidden" name="id" value="674757"/>
+                <input type="hidden" name="s" value="338937"/>
+                <input type="hidden" name="t" value="1694792960"/>
+                <input type="hidden" name="i" value="67.244.49.54"/>
+                <input type="hidden" name="v" 
+value="37c30236bebda8e98e7c1bc6a9dba69483a659fce26632d202d846c3facb90cb"/>
+                <input class="btn_glow" type="submit" value="Fetch"/>
+            </form>
 """
 
 
@@ -12,12 +22,12 @@ NAME = "DOWNLOAD.enc"  # Downloaded file's name
 
 test = """
 <form name="fetch" action="https://biota.osc.ox.ac.uk/dataset.cgi" method="post">
-<input type="hidden" name="id" value="AAA">
-<input type="hidden" name="s" value="BBB">
-<input type="hidden" name="t" value="CCC">
-<input type="hidden" name="i" value="DDD">
-<input type="hidden" name="v" value="EEE">
-<input class="sub_go" type="submit" value="Fetch">
+<input type="hidden" name="id" value="671600"/>
+<input type="hidden" name="s" value="305736"/>
+<input type="hidden" name="t" value="1684501586"/>
+<input type="hidden" name="i" value="67.244.49.54"/>
+<input type="hidden" name="v" value="891f3ec7f3388d4c7a0c094ef1abde73f44c356f2732dade6a7921d9770dd095"/>
+<input class="btn_glow" type="submit" value="Fetch"/>
 </form>
 """
 

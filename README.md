@@ -23,15 +23,15 @@ Advanced Topics:
 Clone the repo to your home directory:
 ```
 cd ~ \
-git clone git clone https://github.com/broadinstitute/ml4h.git
+git clone https://github.com/broadinstitute/ml4h.git
 ```
 
-Run the CPU docker (the first time you do this the docker will need to download which takes awhile).:
+Run the CPU docker (this step does not work on Apple silicon). The first time you do this the docker will need to download which takes awhile:
 ```
 docker run -v ${HOME}:/home/ -it ghcr.io/broadinstitute/ml4h:tf2.9-latest-cpu
 ```
 
-Then once inside the docker try to run the tests:
+Then once inside the docker try to run the tests (again, not on Apple silicon):
 ```
 python -m pytest /home/ml4h/tests/test_recipes.py
 ```
@@ -45,6 +45,9 @@ Make sure you have installed the [Google Cloud SDK (gcloud)](https://cloud.googl
 brew cask install google-cloud-sdk
 ```
 
+Make sure you have [configured your development environment](https://cloud.google.com/api-gateway/docs/configure-dev-env#prerequisites). In particular, you will probably have to complete the steps to [prepare the Google Cloud CLI](https://cloud.google.com/api-gateway/docs/configure-dev-env#preparing_the_for_deployment) and [enable the required Google services](https://cloud.google.com/api-gateway/docs/configure-dev-env#enabling_required_services).
+
+
 ## Setting up a remote VM
 To create a VM without a GPU run:
 ```
@@ -56,7 +59,7 @@ With GPU (not recommended unless you need something beefy and expensive)
 ```
 This will take a few moments to run, after which you will have a VM in the cloud.  Remember to shut it off from the command line or console when you are not using it!  
 
-Now ssh onto your instance (replace with proper machine name, note that you can also use regular old ssh if you have the external IP provided by the script or if you login from the GCP console)
+Now ssh onto your instance (replace with proper machine name and project name, note that you can also use regular old ssh if you have the external IP provided by the script or if you login from the GCP console)
 ```
 gcloud --project your-gcp-project compute ssh ${USER}-gpu --zone us-central1-a
 ```
@@ -86,7 +89,7 @@ You need to log out after that (`exit`) then ssh back in so everything takes eff
 Now let's run a Jupyter notebook.  On your VM run:
 
 ```
-${HOME}/ml4h/scripts/jupyter.sh -p 8889
+${HOME}/ml4h/scripts/jupyter.sh
 ```
 Add a ```-c``` if you want a CPU version.
 
@@ -96,12 +99,12 @@ docker: Error response from daemon: driver failed programming external connectiv
 ```
 overwrite the default port (8888) like so
 ```
-${HOME}/ml4h/scripts/dl-jupyter.sh 8889
+${HOME}/ml4h/scripts/jupyter.sh -p 8889
 ```
 The command also outputs two command lines in red.
 Copy the line that looks like this:
 ```
-ssh -i ~/.ssh/google_compute_engine -nNT -L 8888:localhost:8888 <YOUR VM's IP ADDRESS>
+gcloud compute ssh ${USER}@${USER}-gpu -- -NnT -L 8889:localhost:8889
 ```
 Open a terminal on your local machine and paste that command.  
 
