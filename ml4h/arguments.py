@@ -150,7 +150,7 @@ def parse_args():
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
-    parser.add_argument('--dense_layers', nargs='*', default=[32], type=int, help='List of number of hidden units in neural nets dense layers.')
+    parser.add_argument('--dense_layers', nargs='*', default=[256], type=int, help='List of number of hidden units in neural nets dense layers.')
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
@@ -240,10 +240,10 @@ def parse_args():
              'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
              'If not specified, default 0.1 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
     )
-    parser.add_argument('--test_steps', default=12, type=int, help='Number of batches to use for testing.')
-    parser.add_argument('--training_steps', default=72, type=int, help='Number of training batches to examine in an epoch.')
-    parser.add_argument('--validation_steps', default=18, type=int, help='Number of validation batches to examine in an epoch validation.')
-    parser.add_argument('--learning_rate', default=0.0002, type=float, help='Learning rate during training.')
+    parser.add_argument('--test_steps', default=32, type=int, help='Number of batches to use for testing.')
+    parser.add_argument('--training_steps', default=96, type=int, help='Number of training batches to examine in an epoch.')
+    parser.add_argument('--validation_steps', default=32, type=int, help='Number of validation batches to examine in an epoch validation.')
+    parser.add_argument('--learning_rate', default=0.00005, type=float, help='Learning rate during training.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument(
         '--label_weights', nargs='*', type=float,

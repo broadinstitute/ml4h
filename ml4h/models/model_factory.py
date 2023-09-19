@@ -25,7 +25,8 @@ from ml4h.models.perceiver_blocks import PerceiverEncoder,latent_layer
 
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
-from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder, LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock
+from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
+from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss
 
 
 BLOCK_CLASSES = {
@@ -105,7 +106,7 @@ def make_multimodal_multitask_model(
     """
     tensor_maps_out = parent_sort(tensor_maps_out)
     u_connect: DefaultDict[TensorMap, Set[TensorMap]] = u_connect or defaultdict(set)
-    custom_dict = _get_custom_objects(tensor_maps_out)
+    custom_dict = get_custom_objects(tensor_maps_out)
     opt = get_optimizer(
         optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule,
         optimizer_kwargs=kwargs.get('optimizer_kwargs'),
@@ -301,14 +302,15 @@ def _load_model_encoders_and_decoders(
     return m, encoders, decoders, merger
 
 
-def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
+def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     custom_objects = {
         obj.__name__: obj
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding, MultiHeadAttention,
-                KerasLayer,latent_layer,
+                VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                MultiHeadAttention, RandomGauss,
+                KerasLayer, latent_layer,
             ],
         )
     }
