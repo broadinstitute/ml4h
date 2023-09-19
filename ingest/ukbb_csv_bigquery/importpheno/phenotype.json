@@ -10,17 +10,17 @@
     "type": "INTEGER"
   }, 
   {
-    "mode": "REQUIRED", 
+    "mode": "REQUIRED",
     "name": "instance", 
     "type": "INTEGER"
   }, 
   {
-    "mode": "REQUIRED", 
+    "mode": "REQUIRED",
     "name": "array_idx", 
     "type": "INTEGER"
   }, 
   {
-    "mode": "REQUIRED", 
+    
     "name": "value", 
     "type": "STRING"
   }, 

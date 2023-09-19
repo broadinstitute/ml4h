@@ -12,7 +12,8 @@ __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 
 #for lubitz, must replace hesin.json with hesin_lubitz.json
-for NAME in hesin hesin_diag10 hesin_diag9 hesin_oper
+#for NAME in hesin hesin_diag10 hesin_diag9 hesin_oper
+for NAME in hesin hesin_diag hesin_oper
 do
     bq --location=${GEO} load \
        --field_delimiter "\t" \

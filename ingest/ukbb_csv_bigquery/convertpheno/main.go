@@ -62,6 +62,12 @@ func main() {
 	flag.BoolVar(&acknowledge, "ack", false, "Acknowledge the limitations of the tool")
 	flag.Parse()
 
+	// flag.StringVar(&BQ.Project, "project", "broad-ml4cvd", "Name of the Google Cloud project that hosts your BigQuery database instance")
+	// flag.StringVar(&BQ.Database, "bigquery", "ukbb7089_2023_07_16", "BigQuery phenotype database name")
+	// // flag.Var(&phenoPaths, "pheno", /home/anamika/ukbio_csv/pheno_dir/ukb673202.csv)
+	// flag.BoolVar(&acknowledge, "ack", true, "Acknowledge the limitations of the tool")
+	// flag.Parse()
+	// phenoPaths = []string{"/home/anamika/ukbio_csv/pheno_dir/ukb673202.csv"}
 	if phenoPaths.String() == "" || BQ.Database == "" {
 		flag.PrintDefaults()
 		os.Exit(1)

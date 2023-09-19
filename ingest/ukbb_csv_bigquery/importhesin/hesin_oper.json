@@ -1,24 +1,39 @@
 [
   {
-    "mode": "REQUIRED", 
+    "mode": "NULLABLE", 
     "name": "eid", 
     "type": "INTEGER"
   }, 
   {
-    "mode": "REQUIRED", 
-    "name": "record_id", 
+    "mode": "NULLABLE", 
+    "name": "ins_index", 
     "type": "INTEGER"
   }, 
   {
     "mode": "NULLABLE", 
     "name": "arr_index", 
     "type": "INTEGER"
-  }, 
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "level",
+    "type": "INTEGER"
+  },  
   {
     "mode": "NULLABLE", 
     "name": "opdate", 
     "type": "STRING"
-  }, 
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "oper3",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "oper3_nb",
+    "type": "STRING"
+  },  
   {
     "mode": "NULLABLE", 
     "name": "oper4", 
@@ -28,5 +43,15 @@
     "mode": "NULLABLE", 
     "name": "oper4_nb", 
     "type": "STRING"
-  }
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "posopdur",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "preopdur",
+    "type": "INTEGER"
+  }  
 ]

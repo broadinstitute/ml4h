@@ -101,6 +101,7 @@ shift $((OPTIND - 1))
 
 ################### SCRIPT BODY ##########################################
 
+echo CPU_ONLY $CPU_ONLY
 if [[ ${CPU_ONLY} == "true" ]]; then
     BASE_IMAGE=${BASE_IMAGE_CPU}
     LATEST_TAG=${LATEST_TAG_CPU}
@@ -111,6 +112,7 @@ else
     TAG=${TAG}-gpu
 fi
 
+echo BASE_IMAGE $BASE_IMAGE LATEST_TAG $LATEST_TAG
 echo -e "${BLUE}Building Docker image '${REPO}:${TAG}' from base image '${BASE_IMAGE}', and also tagging it as '${LATEST_TAG}'...${NC}"
 # --network host allows for the container's network stack to use the Docker host's network
 docker build ${CONTEXT} \
@@ -121,6 +123,7 @@ docker build ${CONTEXT} \
     --tag "${GITHUB_REPO}:${LATEST_TAG}" \
     --network host \
 
+echo PUSH_TO_LATEST $PUSH_TO_LATEST
 if [[ ${PUSH_TO_LATEST} == "true" ]]; then
     echo -e "${BLUE}Pushing the image '${REPO}' to Github GHCR and Google Container Registry with tags '${TAG}' and '${LATEST_TAG}'...${NC}"
     docker push ${REPO}:${TAG}
@@ -130,6 +133,7 @@ if [[ ${PUSH_TO_LATEST} == "true" ]]; then
     docker push ${GITHUB_REPO}:${LATEST_TAG}
 fi
 
+echo PUSH_TO_GCR $PUSH_TO_GCR
 if [[ ${PUSH_TO_GCR} == "true" ]]; then
     echo -e "${BLUE}Pushing the image '${REPO}' to Google Container Registry with tags '${TAG}'...${NC}"
     docker push ${REPO}:${TAG}
