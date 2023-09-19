@@ -85,6 +85,7 @@ def parse_args():
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
     )
+    parser.add_argument('--gcs_cloud_bucket', default=None, help='Path to google cloud buckets to be used as output folders for ml4h training and inference runs.')
 
     # Data selection parameters
 

@@ -35,6 +35,8 @@ def default_arguments(tmpdir_factory):
         '--epochs', '2',
         '--num_workers', '0',
         '--batch_size', '4',
+        '--gcs_cloud_bucket','ml4h-core/anamika/gcs-test4/',
+
     ]
     args = parse_args()
     return args
