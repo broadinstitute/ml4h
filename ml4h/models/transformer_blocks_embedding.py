@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import tensorflow as tf
 
@@ -9,7 +9,8 @@ tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
-class TransformerEncoder(Block):
+class TransformerEncoderEmbedding(Block):
+    #this version directly intakes in tokens in the shape of (batch_size, N_tokens,embedim)
     def __init__(
         self, *, tensor_map: TensorMap, dense_layers: List[int],
         dense_regularize_rate: float, attention_heads: int, transformer_size: int, **kwargs
@@ -17,10 +18,10 @@ class TransformerEncoder(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-
+     
         self.dropout = tf.keras.layers.Dropout(rate=dense_regularize_rate)
         self.padding_mask_layer = tf.keras.layers.Lambda(
-            create_padding_mask, output_shape=(1, 1, None),
+            create_padding_mask, output_shape=(256, None),
             name='encoder_padding_mask',
         )
 
@@ -35,63 +36,18 @@ class TransformerEncoder(Block):
             input_name=tensor_map.input_name(),
         )
 
-    # def can_apply(self):
-    #     return self.tensor_map.is_language()
     def can_apply(self):
         return True
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
+
         padded = self.padding_mask_layer(x)
         y = self.encoder_layers(inputs=[x, padded])
-  
         intermediates[self.tensor_map.dependent_map].extend([x, y])
+        y = tf.keras.backend.mean(y, 1)  # batch size x output size
         return y
-
-
-class TransformerDecoder(Block):
-    def __init__(
-        self, *, tensor_map: TensorMap, dense_layers: List[int],
-        dense_regularize_rate: float, attention_heads: int, transformer_size: int, **kwargs
-    ):
-        self.tensor_map = tensor_map
-
-        self.look_ahead_mask = tf.keras.layers.Lambda(
-            create_look_ahead_mask,
-            output_shape=(1, None, None),
-            name='look_ahead_mask',
-        )
-        # mask the encoder outputs for the 2nd attention block
-        self.decoder_padding_mask = tf.keras.layers.Lambda(
-            create_padding_mask, output_shape=(1, 1, None),
-            name='decoder_padding_mask',
-        )
-        self.final_layer = tf.keras.layers.Dense(units=len(tensor_map.channel_map), name=self.tensor_map.output_name())
-        self.decoder_layers = decoder(
-            vocab_size=len(tensor_map.channel_map),
-            window_size=tensor_map.shape[0],
-            num_layers=len(dense_layers),
-            units=dense_layers[0],
-            d_model=transformer_size,
-            num_heads=attention_heads,
-            dropout=dense_regularize_rate,
-        )
-
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        encoder_input = None
-        for tm in intermediates:
-            if self.tensor_map == tm:
-                encoder_input = intermediates[self.tensor_map][0]
-                encoder_outputs = intermediates[self.tensor_map][-1]
-        if encoder_input is None:
-            return x
-        look_ahead = self.look_ahead_mask(encoder_input)  # Decoder does not need to use same domain as encoder/ can have different inputs
-        pad = self.decoder_padding_mask(encoder_input)
-        decoder_outputs = self.decoder_layers(inputs=[encoder_input, encoder_outputs, look_ahead, pad])
-        decoded = self.final_layer(decoder_outputs)
-        intermediates[self.tensor_map].append(decoded)
-        return decoded
 
 
 def scaled_dot_product_attention(query, key, value, mask):
@@ -103,14 +59,13 @@ def scaled_dot_product_attention(query, key, value, mask):
     logits = matmul_qk / tf.math.sqrt(depth)
 
     # add the mask to zero out padding tokens
+    mask = None
     if mask is not None:
         logits += (mask * -1e9)
 
     # softmax is normalized on the last axis (seq_len_k)
     attention_weights = tf.nn.softmax(logits, axis=-1)
-
     output = tf.matmul(attention_weights, value)
-
     return output
 
 
@@ -238,6 +193,7 @@ def encoder_layer(units, d_model, num_heads, dropout, name="encoder_layer", inpu
             'value': inputs,
             'mask': padding_mask,
     })
+
     attention = tf.keras.layers.Dropout(rate=dropout)(attention)
     attention = tf.keras.layers.LayerNormalization(
         epsilon=1e-6,
@@ -266,22 +222,21 @@ def encoder(
     name="encoder",
     input_name="inputs",
 ):
-    inputs = tf.keras.Input(shape=(None,), name=input_name)
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
 
-    embeddings = tf.keras.layers.Embedding(vocab_size, d_model)(inputs)
-    embeddings *= tf.math.sqrt(tf.cast(d_model, tf.float32))
+    inputs = tf.keras.Input(shape=(None, 3), name=input_name)
+    padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
+   
+    embeddings = tf.keras.layers.Dense(units=d_model, activation='relu')(inputs)
     embeddings = PositionalEncoding(window_size, d_model)(embeddings)
 
     outputs = tf.keras.layers.Dropout(rate=dropout)(embeddings)
-
     for i in range(num_layers):
         outputs = encoder_layer(
             units=units,
             d_model=d_model,
             num_heads=num_heads,
             dropout=dropout,
-            name="encoder_layer_{}".format(i),
+            name=f"encoder_layer_{i}",
             input_name=input_name,
         )([outputs, padding_mask])
 
@@ -290,150 +245,3 @@ def encoder(
     )
 
 
-def decoder_layer(units, d_model, num_heads, dropout, name="decoder_layer", input_name="inputs"):
-    inputs = tf.keras.Input(shape=(None, d_model), name=input_name)
-    enc_outputs = tf.keras.Input(shape=(None, d_model), name="encoder_outputs")
-    look_ahead_mask = tf.keras.Input(
-        shape=(1, None, None), name="look_ahead_mask",
-    )
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name='padding_mask')
-
-    attention1 = MultiHeadAttention(
-        d_model, num_heads, name="attention_1",
-    )(
-            inputs={
-                'query': inputs,
-                'key': inputs,
-                'value': inputs,
-                'mask': look_ahead_mask,
-            },
-    )
-    attention1 = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6,
-    )(attention1 + inputs)
-
-    attention2 = MultiHeadAttention(
-        d_model, num_heads, name="attention_2",
-    )(
-            inputs={
-                'query': attention1,
-                'key': enc_outputs,
-                'value': enc_outputs,
-                'mask': padding_mask,
-            },
-    )
-    attention2 = tf.keras.layers.Dropout(rate=dropout)(attention2)
-    attention2 = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6,
-    )(attention2 + attention1)
-
-    outputs = tf.keras.layers.Dense(units=units, activation='relu')(attention2)
-    outputs = tf.keras.layers.Dense(units=d_model)(outputs)
-    outputs = tf.keras.layers.Dropout(rate=dropout)(outputs)
-    outputs = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6,
-    )(outputs + attention2)
-
-    return tf.keras.Model(
-        inputs=[inputs, enc_outputs, look_ahead_mask, padding_mask],
-        outputs=outputs,
-        name=name,
-    )
-
-
-def decoder(
-    vocab_size,
-    window_size,
-    num_layers,
-    units,
-    d_model,
-    num_heads,
-    dropout,
-    name='decoder',
-    input_name='inputs',
-):
-    inputs = tf.keras.Input(shape=(None,), name=input_name)
-    enc_outputs = tf.keras.Input(shape=(None, d_model), name='encoder_outputs')
-    look_ahead_mask = tf.keras.Input(
-        shape=(1, None, None), name='look_ahead_mask',
-    )
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name='padding_mask')
-
-    embeddings = tf.keras.layers.Embedding(vocab_size, d_model)(inputs)
-    embeddings *= tf.math.sqrt(tf.cast(d_model, tf.float32))
-    embeddings = PositionalEncoding(window_size, d_model)(embeddings)
-
-    outputs = tf.keras.layers.Dropout(rate=dropout)(embeddings)
-
-    for i in range(num_layers):
-        outputs = decoder_layer(
-            units=units,
-            d_model=d_model,
-            num_heads=num_heads,
-            dropout=dropout,
-            name='decoder_layer_{}'.format(i),
-        )(inputs=[outputs, enc_outputs, look_ahead_mask, padding_mask])
-
-    return tf.keras.Model(
-        inputs=[inputs, enc_outputs, look_ahead_mask, padding_mask],
-        outputs=outputs,
-        name=name,
-    )
-
-
-def transformer(
-    vocab_size,
-    num_layers,
-    units,
-    d_model,
-    num_heads,
-    dropout,
-    name="transformer",
-    input_name="inputs",
-    decoder_input_name="dec_inputs",
-    output_name="outputs",
-):
-    inputs = tf.keras.Input(shape=(None,), name=input_name)
-    dec_inputs = tf.keras.Input(shape=(None,), name=decoder_input_name)
-
-    enc_padding_mask = tf.keras.layers.Lambda(
-        create_padding_mask, output_shape=(1, 1, None),
-        name='enc_padding_mask',
-    )(inputs)
-    # mask the future tokens for decoder inputs at the 1st attention block
-    look_ahead_mask = tf.keras.layers.Lambda(
-        create_look_ahead_mask,
-        output_shape=(1, None, None),
-        name='look_ahead_mask',
-    )(dec_inputs)
-    # mask the encoder outputs for the 2nd attention block
-    dec_padding_mask = tf.keras.layers.Lambda(
-        create_padding_mask, output_shape=(1, 1, None),
-        name='dec_padding_mask',
-    )(inputs)
-
-    enc_outputs = encoder(
-        vocab_size=vocab_size,
-        num_layers=num_layers,
-        units=units,
-        d_model=d_model,
-        num_heads=num_heads,
-        dropout=dropout,
-        input_name=input_name,
-    )(inputs=[inputs, enc_padding_mask])
-
-    dec_outputs = decoder(
-        vocab_size=vocab_size,
-        num_layers=num_layers,
-        units=units,
-        d_model=d_model,
-        num_heads=num_heads,
-        dropout=dropout,
-        input_name=input_name,
-    )(inputs=[dec_inputs, enc_outputs, look_ahead_mask, dec_padding_mask])
-
-    outputs = tf.keras.layers.Dense(
-        units=vocab_size, name=output_name,
-    )(dec_outputs)
-
-    return tf.keras.Model(inputs=[inputs, dec_inputs], outputs=outputs, name=name)
