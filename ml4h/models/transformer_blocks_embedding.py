@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import tensorflow as tf
 
@@ -36,7 +36,6 @@ class TransformerEncoderEmbedding(Block):
             input_name=tensor_map.input_name(),
         )
 
-
     def can_apply(self):
         return True
 
@@ -44,13 +43,10 @@ class TransformerEncoderEmbedding(Block):
         if not self.can_apply():
             return x
 
-     
         padded = self.padding_mask_layer(x)
         y = self.encoder_layers(inputs=[x, padded])
-        
         intermediates[self.tensor_map.dependent_map].extend([x, y])
-
-        y=tf.keras.backend.mean(y,1)#batch size x output size
+        y = tf.keras.backend.mean(y, 1)  # batch size x output size
         return y
 
 
@@ -63,15 +59,13 @@ def scaled_dot_product_attention(query, key, value, mask):
     logits = matmul_qk / tf.math.sqrt(depth)
 
     # add the mask to zero out padding tokens
-    mask =None
+    mask = None
     if mask is not None:
         logits += (mask * -1e9)
 
     # softmax is normalized on the last axis (seq_len_k)
     attention_weights = tf.nn.softmax(logits, axis=-1)
-
     output = tf.matmul(attention_weights, value)
-
     return output
 
 
@@ -191,7 +185,6 @@ def encoder_layer(units, d_model, num_heads, dropout, name="encoder_layer", inpu
     inputs = tf.keras.Input(shape=(None, d_model), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
 
-
     attention = MultiHeadAttention(
         d_model, num_heads, name="attention",
     )({
@@ -229,7 +222,8 @@ def encoder(
     name="encoder",
     input_name="inputs",
 ):
-    inputs = tf.keras.Input(shape=(None,3), name=input_name)
+
+    inputs = tf.keras.Input(shape=(None, 3), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
    
     embeddings = tf.keras.layers.Dense(units=d_model, activation='relu')(inputs)
@@ -242,7 +236,7 @@ def encoder(
             d_model=d_model,
             num_heads=num_heads,
             dropout=dropout,
-            name="encoder_layer_{}".format(i),
+            name=f"encoder_layer_{i}",
             input_name=input_name,
         )([outputs, padding_mask])
 

@@ -21,7 +21,7 @@ from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEnc
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding 
 from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
-from ml4h.models.perceiver_blocks import PerceiverEncoder,latent_layer
+from ml4h.models.perceiver_blocks import PerceiverEncoder,PerceiverLatentLayer
 
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
@@ -57,7 +57,6 @@ BLOCK_CLASSES = {
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
     'bert_encoder': BertEncoder,
-
 }
 
 
@@ -250,7 +249,6 @@ def make_multimodal_multitask_model_block(
         encodings.append(encoders[tm](inputs[tm]))
         encodings_as_inputs.append(Input(shape=encodings[-1].shape, name=f'encoding_{tm.name}'))
   
-
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
     if isinstance(multimodal_activation, list):
@@ -310,7 +308,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
             [
                 VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss,
-                KerasLayer, latent_layer,
+                KerasLayer, PerceiverLatentLayer,
             ],
         )
     }

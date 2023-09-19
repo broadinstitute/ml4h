@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import tensorflow as tf
 
@@ -6,7 +6,6 @@ from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 
 
-tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
@@ -37,28 +36,16 @@ class PerceiverEncoder(Block):
             input_name=tensor_map.input_name(),
         )
 
-
-
-
-
-    # def can_apply(self):
-    #     return self.tensor_map.is_language()
     def can_apply(self):
         return True
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-
-        #x=x[:,:1000,:]#make it shorter for debuging, remember to put it back
         padded = self.padding_mask_layer(x)
-        
         y = self.encoder_layers(inputs=[x, padded])
-        
         intermediates[self.tensor_map.dependent_map].extend([x, y])
-
-        y=tf.keras.backend.mean(y,1)#batch size x output size
-
+        y = tf.keras.backend.mean(y, 1)  # batch size x output size
         return y
 
 
@@ -142,7 +129,6 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         return outputs
 
 
-
 def create_padding_mask(x):
     mask = tf.cast(tf.math.equal(x, 0), tf.float32)
     # (batch_size, 1, 1, sequence length)
@@ -196,25 +182,23 @@ class PositionalEncoding(tf.keras.layers.Layer):
         return inputs + self.pos_encoding[:, :tf.shape(inputs)[1], :]
 
 
-class latent_layer(tf.keras.layers.Layer):
+class PerceiverLatentLayer(tf.keras.layers.Layer):
     def __init__(self, latent_dim, d_model, num_heads,dropout,**kwargs):
-        super(latent_layer, self).__init__()
-
-
-        self.latent_dim=latent_dim
-        self.d_model=d_model
-        self.dropout=dropout
-        self.num_heads=num_heads
+        super(PerceiverLatentLayer, self).__init__()
+        self.latent_dim = latent_dim
+        self.d_model = d_model
+        self.dropout = dropout
+        self.num_heads = num_heads
 
         self.latents = self.add_weight(shape=(1, latent_dim, d_model),
-                                 initializer='random_normal',
-                                 trainable=True)
+                                       initializer='random_normal',
+                                       trainable=True)
 
-        self.att=MultiHeadAttention(
+        self.att = MultiHeadAttention(
             d_model, num_heads, name="cross_attention",
         )
 
-        self.ln=tf.keras.layers.LayerNormalization(
+        self.ln = tf.keras.layers.LayerNormalization(
             epsilon=1e-6,
         )
 
@@ -229,10 +213,10 @@ class latent_layer(tf.keras.layers.Layer):
 
         return config
 
-    def call(self,inputs):
+    def call(self, inputs):
 
         # Cross-attention with inputs
-        latents=tf.tile(self.latents,[tf.shape(inputs)[0],1,1])
+        latents = tf.tile(self.latents,[tf.shape(inputs)[0],1,1])
         cross_attention = self.att({
             'query': latents,
             'key': inputs,
@@ -240,18 +224,17 @@ class latent_layer(tf.keras.layers.Layer):
             'mask': None,
         })
 
-        cross_attention =tf.keras.layers.Dropout(rate=self.dropout)(cross_attention)
-
-
-
+        cross_attention = tf.keras.layers.Dropout(rate=self.dropout)(cross_attention)
         return self.latents + cross_attention
 
-def perceiver_encoder_layer(units, d_model, num_heads, dropout, latent_dim=8, name="perceiver_layer",input_name="inputs"):
+
+def perceiver_encoder_layer(units, d_model, num_heads, dropout,
+                            latent_dim=8, name="perceiver_layer", input_name="inputs"):
     inputs = tf.keras.Input(shape=(None, d_model), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
 
   
-    latents=latent_layer(latent_dim,d_model,num_heads,dropout)(inputs)
+    latents = PerceiverLatentLayer(latent_dim, d_model, num_heads, dropout)(inputs)
 
     latents=tf.keras.layers.LayerNormalization(
         epsilon=1e-6,
@@ -260,6 +243,7 @@ def perceiver_encoder_layer(units, d_model, num_heads, dropout, latent_dim=8, na
     return tf.keras.Model(
         inputs=[inputs, padding_mask], outputs=latents, name=name,
     )
+
 
 def encoder(
     vocab_size,
@@ -292,5 +276,3 @@ def encoder(
     return tf.keras.Model(
         inputs=[inputs, padding_mask], outputs=outputs, name=name,
     )
-
-
