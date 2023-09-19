@@ -7,8 +7,8 @@
 ################### VARIABLES ############################################
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu-v1"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu-v1"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""

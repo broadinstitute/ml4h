@@ -15,15 +15,15 @@ REPO="gcr.io/broad-ml4cvd/deeplearning"
 GITHUB_REPO="ghcr.io/broadinstitute/ml4h"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
-CPU_ONLY="true"
-PUSH_TO_GCR="true"
-PUSH_TO_LATEST="true"
+CPU_ONLY="false"
+PUSH_TO_GCR="false"
+PUSH_TO_LATEST="false"
 
 BASE_IMAGE_GPU="tensorflow/tensorflow:2.9.1-gpu"
 BASE_IMAGE_CPU="tensorflow/tensorflow:2.9.1"
 
-LATEST_TAG_GPU="tf2.9-latest-gpu-v1"
-LATEST_TAG_CPU="tf2.9-latest-cpu-v1"
+LATEST_TAG_GPU="tf2.9-latest-gpu"
+LATEST_TAG_CPU="tf2.9-latest-cpu"
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
