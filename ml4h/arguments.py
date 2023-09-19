@@ -154,7 +154,7 @@ def parse_args():
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
-    parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
+    parser.add_argument('--activation', default='swish',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument(
         '--conv_width', default=[71], nargs='*', type=int,
