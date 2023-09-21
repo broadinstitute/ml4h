@@ -18,7 +18,7 @@ from ml4h.metrics import get_metric_dict
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderBottomBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding, MultiHeadAttention
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
@@ -28,6 +28,7 @@ from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, La
 
 BLOCK_CLASSES = {
     'conv_encode': ConvEncoderBlock,
+    'conv_encode_bottom': ConvEncoderBottomBlock,
     'conv_decode': ConvDecoderBlock,
     'conv_up': ConvUp,
     'conv_down': ConvDown,
@@ -172,9 +173,9 @@ def multimodal_multitask_model(
     merge = identity
     for merge_block in merge_blocks:
         if isinstance(merge_block, Block):
-            merge = compose(merge, merge_block(**kwargs))
+            merge = compose(merge, merge_block(tensor_map=tensor_maps_in[0], **kwargs))
         else:
-            merge = compose(merge, BLOCK_CLASSES[merge_block](**kwargs))
+            merge = compose(merge, BLOCK_CLASSES[merge_block](tensor_map=tm, **kwargs))
 
     decoder_block_functions = {tm: identity for tm in tensor_maps_out}
     for tm in tensor_maps_out:
@@ -246,12 +247,23 @@ def make_multimodal_multitask_model_block(
 
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
+
+    # TODO take me out
+    logging.info(f'TEMP')
+    merge_model.summary(print_fn=logging.info, expand_nested=True)
+
     if isinstance(multimodal_activation, list):
-        latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
+        # latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
+        latent_inputs = Input(shape=multimodal_activation[0].shape[1:], name='input_multimodal_space')
     else:
-        latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
+        # latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
+        latent_inputs = Input(shape=multimodal_activation.shape[1:], name='input_multimodal_space')
         logging.info(f'multimodal_activation.shapes: {multimodal_activation.shape}')
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
+
+    # TODO take me out
+    logging.info('latent inputs')
+    logging.info(latent_inputs)
 
     decoders: Dict[TensorMap, Model] = {}
     decoder_outputs = []
