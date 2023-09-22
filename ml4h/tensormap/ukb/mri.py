@@ -2684,7 +2684,7 @@ t1map_b2 = TensorMap(
     'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
     shape=(384, 384, 1),
     path_prefix='ukb_cardiac_mri',
-    normalization=ZeroMeanStd1(),
+    normalization=Standardize(mean=548.15, std=627.32),
     tensor_from_file=_pad_crop_single_channel,
 )
 
