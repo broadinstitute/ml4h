@@ -41,3 +41,5 @@ boto3
 ml4ht==0.0.10
 google-cloud-storage
 umap-learn[plot]
+neurite
+voxelmorph
