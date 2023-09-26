@@ -298,7 +298,6 @@ def inference_file_name(output_folder: str, id_: str) -> str:
 
 
 def infer_multimodal_multitask(args):
-
     stats = Counter()
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)

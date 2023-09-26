@@ -67,15 +67,16 @@ class ConvEncoderBlock(Block):
             ) for filters, x, y, z in zip(dense_blocks, x_filters[len(conv_layers):], y_filters[len(conv_layers):], z_filters[len(conv_layers):])
         ]
         self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(dense_blocks) + 1, pool_x, pool_y, pool_z)
-        # self.fully_connected = DenseBlock(
-        #     widths=dense_layers,
-        #     activation=activation,
-        #     normalization=dense_normalize,
-        #     regularization=dense_regularize,
-        #     regularization_rate=dense_regularize_rate,
-        #     name=self.tensor_map.embed_name(),
-        # ) if dense_layers else None # TODO
-        self.fully_connected = None
+
+        use_fully_connected = dense_layers and (not np.all(np.array(dense_layers)==0))
+        self.fully_connected = DenseBlock(
+            widths=dense_layers,
+            activation=activation,
+            normalization=dense_normalize,
+            regularization=dense_regularize,
+            regularization_rate=dense_regularize_rate,
+            name=self.tensor_map.embed_name(),
+        ) if use_fully_connected else None
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
@@ -97,17 +98,12 @@ class ConvEncoderBlock(Block):
         return x
 
 
-class ConvEncoderBottomBlock(Block):
+class ConvEncoderMergeBlock(Block):
     def __init__(
             self,
             *,
-            tensor_map: TensorMap,
-            bottom_dense_blocks: List[int] = [32],
-            dense_layers: List[int] = [32],
-            dense_normalize: str = None,
-            dense_regularize: str = None,
-            dense_regularize_rate: float = 0.0,
-            conv_layers: List[int] = [32],
+            merge_dimension,
+            merge_dense_blocks: List[int] = [32],
             conv_type: str = 'conv',
             conv_width: List[int] = [71],
             conv_x: List[int] = [3],
@@ -118,68 +114,40 @@ class ConvEncoderBottomBlock(Block):
             conv_normalize: str = None,
             conv_regularize: str = None,
             conv_regularize_rate: float = 0.0,
-            conv_dilate: bool = False,
             pool_type: str = 'max',
             pool_x: int = 2,
             pool_y: int = 2,
             pool_z: int = 1,
             **kwargs,
     ):
-        self.tensor_map = tensor_map
+        self.merge_dimension = merge_dimension
         if not self.can_apply():
             return
-        dimension = self.tensor_map.axes()
 
         # list of filter dimensions should match the total number of convolutional layers
-        x_filters = _repeat_dimension(conv_width if dimension == 2 else conv_x, len(bottom_dense_blocks))
-        y_filters = _repeat_dimension(conv_y, len(bottom_dense_blocks))
-        z_filters = _repeat_dimension(conv_z, len(bottom_dense_blocks))
-
-        #self.preprocess_block = PreprocessBlock(['rotate'], [0.3])
-        # self.res_block = Residual(
-        #     dimension=dimension, filters_per_conv=conv_layers, conv_layer_type=conv_type, conv_x=x_filters[:len(conv_layers)],
-        #     conv_y=y_filters[:len(conv_layers)], conv_z=z_filters[:len(conv_layers)], activation=activation, normalization=conv_normalize,
-        #     regularization=conv_regularize, regularization_rate=conv_regularize_rate, dilate=conv_dilate,
-        # )
+        x_filters = _repeat_dimension(conv_width if self.merge_dimension == 2 else conv_x, len(merge_dense_blocks))
+        y_filters = _repeat_dimension(conv_y, len(merge_dense_blocks))
+        z_filters = _repeat_dimension(conv_z, len(merge_dense_blocks))
 
         self.dense_blocks = [
             DenseConvolutional(
-                dimension=dimension, conv_layer_type=conv_type, filters=filters, conv_x=[x] * block_size, conv_y=[y] * block_size,
+                dimension=self.merge_dimension, conv_layer_type=conv_type, filters=filters, conv_x=[x] * block_size, conv_y=[y] * block_size,
                 conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=conv_normalize,
                 regularization=conv_regularize, regularization_rate=conv_regularize_rate,
-            ) for filters, x, y, z in zip(bottom_dense_blocks, x_filters, y_filters, z_filters)
+            ) for filters, x, y, z in zip(merge_dense_blocks, x_filters, y_filters, z_filters)
         ]
-        self.pools = _pool_layers_from_kind_and_dimension(dimension, pool_type, len(bottom_dense_blocks), pool_x, pool_y, pool_z)
-        # self.fully_connected = DenseBlock(
-        #     widths=dense_layers,
-        #     activation=activation,
-        #     normalization=dense_normalize,
-        #     regularization=dense_regularize,
-        #     regularization_rate=dense_regularize_rate,
-        #     name=self.tensor_map.embed_name(),
-        # ) if dense_layers else None # TODO
-        # self.fully_connected = None
-        self.upsamples = [_upsampler(dimension, pool_x, pool_y, pool_z) for _ in range(len(bottom_dense_blocks))]
-
+        self.pools = _pool_layers_from_kind_and_dimension(self.merge_dimension, pool_type, len(merge_dense_blocks), pool_x, pool_y, pool_z)
+        self.upsamples = [_upsampler(self.merge_dimension, pool_x, pool_y, pool_z) for _ in range(len(merge_dense_blocks))]
 
     def can_apply(self):
-        return self.tensor_map.axes() > 1
+        return self.merge_dimension > 1
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        # if not self.can_apply():
-        #     return x
-        #x = self.preprocess_block(x)  # TODO: upgrade to tensorflow 2.3+
-        # x = self.res_block(x)
-        # intermediates[self.tensor_map].append(x)
-        y = intermediates[self.tensor_map][-1]
+        y = [x[-1] for tm, x in intermediates.items()]
+        y = concatenate(y) if len(y) > 1 else y[0]
         for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools)):
             y = pool(y)
             y = dense_block(y)
-            # intermediates[self.tensor_map].append(x)
-        # if self.fully_connected:
-        #     x = Flatten()(x)
-        #     x = self.fully_connected(x, intermediates)
-        #     intermediates[self.tensor_map].append(x)
         for i, upsample in enumerate(self.upsamples):
             y = upsample(y)
         return y
@@ -238,14 +206,8 @@ class ConvDecoderBlock(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-
-        logging.info(f'x.shape')
-        logging.info(x.shape)
-        logging.info(f'start_shape')
-        logging.info(self.start_shape)
-
-        # if x.shape != self.start_shape:
-        #     x = self.reshape(x)
+        if x.shape[1:] != self.start_shape:
+            x = self.reshape(x)
         for i, (dense_block, upsample) in enumerate(zip(self.dense_conv_blocks, self.upsamples)):
             intermediate = [intermediates[tm][len(self.upsamples)-(i+1)] for tm in self.u_connect_parents]
             x = concatenate(intermediate + [x]) if intermediate else x
