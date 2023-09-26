@@ -19,5 +19,7 @@ bq --location=${GEO} load \
  --null_marker "NULL" \
  --source_format=CSV \
  --skip_leading_rows 1 \
- ${DATASET}.phenotype ${BUCKET}/phenotype.tsv.gz \
+ ${DATASET}.phenotype ${BUCKET}/phenotype.tsv \
  ${__dir}/phenotype.json
+
+

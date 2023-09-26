@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"time"
-
 	"cloud.google.com/go/bigquery"
 )
 

@@ -21,7 +21,7 @@ SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
 # Get group names
 GROUP_NAMES=$(groups ${USER} | sed -e 's/.*:\ //')
-
+echo $GROUP_NAMES
 # Get group names as array to iterate through
 GROUP_NAMES_ARR=( $GROUP_NAMES )
 

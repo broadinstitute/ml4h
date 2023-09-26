@@ -8,7 +8,9 @@ import h5py
 import glob
 import logging
 import numpy as np
+
 from functools import reduce
+from google.cloud import storage
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -119,9 +121,43 @@ def run(args):
     except Exception as e:
         logging.exception(e)
 
+
+    if args.gcs_cloud_bucket is not None:
+         save_to_google_cloud(args)
+
+
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+def save_to_google_cloud(args):
+
+    """
+    Function to transfer all files and result from output folder to designated location google cloud bucket.
+    Args:
+        args.output_folder(str): Local folder path where all files and results generated from run are saved:
+        args.gcs_cloud_bucket (str): Google cloud bucket folder path where all files will be stored
+    """
+    #Instantiate a storage client
+    client = storage.Client()
+
+    #get the bucket
+    split_path = args.gcs_cloud_bucket.split("/")
+    bucket_name = split_path[0]
+    blob_path = "/".join(split_path[1:])
+
+    bucket = client.get_bucket(bucket_name)
+
+    # uploading all files from local to server
+    for root,_,files in os.walk(args.output_folder):
+        for filename in files:
+            local_file_path = os.path.join(root,filename)
+            blob = bucket.blob(blob_path+filename)
+            blob.upload_from_filename(local_file_path)
+            print("Uploaded from local file path {} to {} in google cloud bucket".format(local_file_path,filename))
+
+
+
 
 
 def _find_learning_rate(args) -> float:
