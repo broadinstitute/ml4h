@@ -1,6 +1,6 @@
 # Deep learning to estimate cardiac magnetic resonance–derived left ventricular mass
 Within participants of the UK Biobank prospective cohort undergoing CMR, we trained 2 convolutional neural networks to estimate LV mass. The first (ML4Hreg) performed regression informed by manually labeled LV mass (available in 5065 individuals), while the second (ML4Hseg) performed LV segmentation informed by InlineVF (version D13A) contours. 
-# ML4H~reg~
+# ML4H<sub>reg</sub>
 The first model was a 3D convolutional neural network regressor ML4Hreg trained with the manually annotated LV mass estimates provided by Petersen and colleagues to optimize the log cosh loss function, which behaves like L2 loss for small values and L1 loss for larger values: 
 ![Lreg](attachment:Lreg) 
 Here batch size, N, is 4 random samples from the training set of 3178 after excluding testing and validation samples from the total 5065 CMR images with LV mass valuesincluded in P.
