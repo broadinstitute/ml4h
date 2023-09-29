@@ -11,3 +11,5 @@ segmenter. To facilitate model development in the absence of hand-labeled segmen
 contours to minimize Lseg; the per-pixel cross-entropy between the label and the model’s prediction. ![LSeg.png](LSeg.png)
 
 Here the batch size, N, was 4 from the total set of 33,071. Height, H, and width, W, are 256 voxels and there was a maximum of 13 Z slices along the short axis. There is a channel for each of the 3 labels, which were one-hot encoded in the training data, InlineVF (IVF), and probabilistic values from the softmax layer of ML4H<sub>seg</sub>. Segmentation architectures used U-Net-style long-range connections between early convolutional layers and deeper layers. Since not all CMR images used the same pixel dimensions, we built models to incorporate pixel size values with their fully connected layers before making predictions.
+
+Model architectures, trained weights, and more metrics are available at https://github.com/broadinstitute/ml4h/tree/master/model_zoo/cardiac_mri_derived_left_ventricular_mass/.
