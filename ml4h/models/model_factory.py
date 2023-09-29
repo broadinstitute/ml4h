@@ -18,7 +18,7 @@ from ml4h.metrics import get_metric_dict
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
 from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
 from ml4h.models.perceiver_blocks import PerceiverEncoder,PerceiverLatentLayer
@@ -32,6 +32,7 @@ BLOCK_CLASSES = {
     'conv_encode': ConvEncoderBlock,
     'merge_conv_encode': ConvEncoderMergeBlock,
     'conv_decode': ConvDecoderBlock,
+    'unet_conv_decode': ConvUnetDecoderBlock,
     'conv_up': ConvUp,
     'conv_down': ConvDown,
     'residual': ResidualBlock,

@@ -148,8 +148,6 @@ class ConvEncoderMergeBlock(Block):
         for i, (dense_block, pool) in enumerate(zip(self.dense_blocks, self.pools)):
             y = pool(y)
             y = dense_block(y)
-        for i, upsample in enumerate(self.upsamples):
-            y = upsample(y)
         return y
 
 class ConvDecoderBlock(Block):
@@ -206,7 +204,7 @@ class ConvDecoderBlock(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        if x.shape[1:] != self.start_shape:
+        if x.shape != self.start_shape:
             x = self.reshape(x)
         for i, (dense_block, upsample) in enumerate(zip(self.dense_conv_blocks, self.upsamples)):
             intermediate = [intermediates[tm][len(self.upsamples)-(i+1)] for tm in self.u_connect_parents]
@@ -217,6 +215,76 @@ class ConvDecoderBlock(Block):
         x = concatenate(intermediate + [x]) if intermediate else x
         return self.conv_label(x)
 
+
+class ConvUnetDecoderBlock(Block):
+    def __init__(
+            self,
+            *,
+            tensor_map: TensorMap,
+            decoder_dense_blocks: List[int] = [32, 32, 32],
+            conv_type: str = 'conv',
+            conv_width: List[int] = [71],
+            conv_x: List[int] = [3],
+            conv_y: List[int] = [3],
+            conv_z: List[int] = [3],
+            block_size: int = 3,
+            activation: str = 'swish',
+            conv_normalize: str = None,
+            conv_regularize: str = None,
+            conv_regularize_rate: float = 0.0,
+            pool_x: int = 2,
+            pool_y: int = 2,
+            pool_z: int = 1,
+            u_connect_parents: List[TensorMap] = None,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        if not self.can_apply():
+            return
+        dimension = tensor_map.axes()
+
+        x_filters = _repeat_dimension(conv_width if dimension == 2 else conv_x, len(decoder_dense_blocks))
+        y_filters = _repeat_dimension(conv_y, len(decoder_dense_blocks))
+        z_filters = _repeat_dimension(conv_z, len(decoder_dense_blocks))
+        self.dense_conv_blocks = [
+            DenseConvolutional(
+                dimension=tensor_map.axes(), conv_layer_type=conv_type, filters=filters, conv_x=[x] * block_size,
+                conv_y=[y]*block_size, conv_z=[z]*block_size, block_size=block_size, activation=activation, normalization=conv_normalize,
+                regularization=conv_regularize, regularization_rate=conv_regularize_rate,
+            )
+            for filters, x, y, z in zip(decoder_dense_blocks, x_filters, y_filters, z_filters)
+        ]
+        conv_layer, _ = _conv_layer_from_kind_and_dimension(dimension, 'conv', conv_x, conv_y, conv_z)
+        self.conv_label = conv_layer(tensor_map.shape[-1], _one_by_n_kernel(dimension), activation=tensor_map.activation, name=tensor_map.output_name())
+        self.upsamples = [_upsampler(dimension, pool_x, pool_y, pool_z) for _ in range(len(decoder_dense_blocks))]
+        self.u_connect_parents = u_connect_parents or []
+        self.start_shape = _start_shape_before_pooling(
+            num_upsamples=len(decoder_dense_blocks), output_shape=tensor_map.shape,
+            upsample_rates=[pool_x, pool_y, pool_z], channels=decoder_dense_blocks[0],
+        )
+        self.reshape = FlatToStructure(output_shape=self.start_shape, activation=activation, normalization=conv_normalize)
+        logging.info(f'Built a decoder with: {len(self.dense_conv_blocks)} and reshape {self.start_shape}')
+
+    def can_apply(self):
+        return self.tensor_map.axes() > 1
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        if not self.can_apply():
+            return x
+
+        logging.info('x')
+        logging.info(x.shape)
+        logging.info('self.start_shape')
+        logging.info(self.start_shape)
+
+        if x.shape[1:-1] != self.start_shape[:-1]:
+            x = self.reshape(x)
+        for i, (dense_block, upsample) in enumerate(zip(self.dense_conv_blocks, self.upsamples)):
+            intermediate = [intermediates[tm][len(self.upsamples)-(i+1)] for tm in self.u_connect_parents]
+            x = upsample(x)
+            x = concatenate(intermediate + [x]) if intermediate else x
+            x = dense_block(x)
+        return self.conv_label(x)
 
 class ResidualBlock(Block):
     def __init__(

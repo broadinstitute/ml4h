@@ -191,6 +191,7 @@ def parse_args():
     parser.add_argument('--dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument('--merge_dimension', default=3, type=int, help='Dimension of the merge layer.')
     parser.add_argument('--merge_dense_blocks', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional merge layer.')
+    parser.add_argument('--decoder_dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional decoder layers.')
     parser.add_argument('--encoder_blocks', nargs='*', default=['conv_encode'], help='List of encoding blocks.')
     parser.add_argument('--merge_blocks', nargs='*', default=['concat'], help='List of merge blocks.')
     parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode', 'dense_decode'], help='List of decoding blocks.')
