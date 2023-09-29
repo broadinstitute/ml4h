@@ -20,7 +20,7 @@ from ml4h.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MA
     MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, LAX_4CH_HEART_LABELS, LAX_4CH_MYOCARDIUM_LABELS, StorageType, LAX_3CH_HEART_LABELS, \
     LAX_2CH_HEART_LABELS
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pad_or_crop_array_to_shape, tensor_from_hd5
-from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, SAX_HEART_LABELS
+from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP, MRI_SAX_MERGED_PAP_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, SAX_HEART_LABELS
 
 
 def _slice_subset_tensor(
@@ -2717,4 +2717,15 @@ t1map_b2_segmentation = TensorMap(
     tensor_from_file=_segmented_t1map,
     loss=dice,
     metrics=['categorical_accuracy'] + per_class_dice(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP),
+)
+
+t1map_b2_segmentation_merged_paps = TensorMap(
+    'b2s_t1map_kassir_annotated',
+    interpretation=Interpretation.CATEGORICAL,
+    shape=(384, 384, len(MRI_SAX_MERGED_PAP_SEGMENTED_CHANNEL_MAP)),
+    channel_map=MRI_SAX_MERGED_PAP_SEGMENTED_CHANNEL_MAP,
+    path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_segmented_t1map,
+    loss=dice,
+    metrics=['categorical_accuracy'] + per_class_dice(MRI_SAX_MERGED_PAP_SEGMENTED_CHANNEL_MAP),
 )
