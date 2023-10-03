@@ -44,5 +44,5 @@ xxx = pickle.load(open('models/coxnet_survival_05_final.pickle', 'rb'))
 
 ### Citation
 
-**Selection of 51 predictors from 13,782 candidate multimodal features using machine learning improves coronary artery disease prediction**, Saaket Agrawal, BS*, Marcus D. R. Klarqvist, PhD,  MSc, MSc*, Connor Emdin, DPhil, MD, Aniruddh P. Patel, MD, Manish D. Paranjpe, BA, Patrick T. Ellinor, MD, PhD, Anthony Philippakis, MD, PhD, Kenney Ng, PhD, Puneet Batra, PhD, Amit V. Khera, MD, MSc
+**[Selection of 51 predictors from 13,782 candidate multimodal features using machine learning improves coronary artery disease prediction](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8672148/)**, Saaket Agrawal, BS*, Marcus D. R. Klarqvist, PhD,  MSc, MSc*, Connor Emdin, DPhil, MD, Aniruddh P. Patel, MD, Manish D. Paranjpe, BA, Patrick T. Ellinor, MD, PhD, Anthony Philippakis, MD, PhD, Kenney Ng, PhD, Puneet Batra, PhD, Amit V. Khera, MD, MSc
 
