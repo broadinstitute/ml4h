@@ -1,4 +1,4 @@
-# [Estimating body fat distribution from silhouette images](Silhouette images enable estimation of body fat distribution and associated cardiometabolic risk)
+# [Estimating body fat distribution from silhouette images](https://www.nature.com/articles/s41746-022-00654-1)
 
 ## Description
 
