@@ -1,6 +1,6 @@
 # Deep Learning to Predict Cardiac Magnetic Resonance-Derived Left Ventricular Mass and Hypertrophy from 12-Lead Electrocardiograms
 
-This folder contains models and code supporting the work described in (this paper)[https://www.ahajournals.org/doi/10.1161/CIRCIMAGING.120.012281?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed] published in the journal "Circulation: Cardiovascular Imaging". 
+This folder contains models and code supporting the work described in [this paper](https://www.ahajournals.org/doi/10.1161/CIRCIMAGING.120.012281?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) published in the journal "Circulation: Cardiovascular Imaging". 
 
 # LVM-AI
 Left Ventricular Mass-Artificial Intelligence (LVM-AI) is a one-dimensional convolutional neural network trained to predict CMR-derived LV mass using 12-lead ECGs. LVM-AI was trained within 32239 individuals from the UK Biobank with paired CMR and 12-lead ECG. It was provided with the entire 10 seconds of the 12-lead ECG waveform as well as participant age, sex, and BMI. 
