@@ -1,4 +1,4 @@
-# [Estimating body fat distribution from silhouette images](https://www.medrxiv.org/content/10.1101/2022.01.14.22269328v2)
+# Estimating body fat distribution from silhouette images
 
 ## Description
 
