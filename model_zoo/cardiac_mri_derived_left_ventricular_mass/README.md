@@ -7,14 +7,14 @@ The first model is a 3D convolutional neural network regressor ML4H<sub>reg</sub
 Here batch size, N, was 4 random samples from the training set of 3178 after excluding testing and validation samples from the total 5065 CMR images with LV mass values included in P.
 # ML4H<sub>seg</sub>
 ML4H<sub>seg</sub>, is a 3D semantic
-segmenter. To facilitate model development in the absence of hand-labeled segmentations, we trained with the InlineVF contours to minimize Lseg; the per-pixel cross-entropy between the label and the model’s prediction. ![LSeg](LSeg.png)
+segmenter. To facilitate model development in the absence of hand-labeled segmentations, the models were trained with the InlineVF contours to minimize Lseg; the per-pixel cross-entropy between the label and the model’s prediction. ![LSeg](LSeg.png)
 
 Here the batch size, N, was 4 from the total set of 33,071. Height, H, and width, W, are 256 voxels and there was a maximum of 13 Z slices along the short axis. There is a channel for each of the 3 labels, which were one-hot encoded in the training data, InlineVF (IVF), and probabilistic values from the softmax layer of ML4H<sub>seg</sub>. Segmentation architectures used U-Net-style long-range connections between early convolutional layers and deeper layers. Since not all CMR images used the same pixel dimensions, models were built to incorporate pixel size values with their fully connected layers before making predictions. 
 # Results
-We compared the accuracy of both deep learning approaches to LV mass obtained using InlineVF within an independent holdout set using manually labeled LV mass as the gold standard.
+The accuracy of both deep learning approaches wwere compared to LV mass obtained using InlineVF within an independent holdout set using manually labeled LV mass as the gold standard.
 ![Overview of left ventricular (LV) mass algorithms.](https://ars.els-cdn.com/content/image/1-s2.0-S2666693621000232-gr1.jpg) 
 
-Within 33,071 individuals who underwent CMR, we trained models to derive CMR-based LV mass using deep learning regression (ML4Hreg) and segmentation (ML4Hseg).
+Within 33,071 individuals who underwent CMR, models were trained to derive CMR-based LV mass using deep learning regression (ML4Hreg) and segmentation (ML4Hseg).
 ![Distributions of cardiac magnetic resonance (CMR)-derived left ventricular (LV) mass obtained using each estimation method.](https://ars.els-cdn.com/content/image/1-s2.0-S2666693621000232-gr2.jpg)
 
 In an independent holdout set of 891 individuals with manually labeled LV mass estimates available, ML4Hseg had favorable correlation with manually labeled LV mass (r = 0.864, 95% confidence interval 0.847–0.880; MAE 10.41 g, 95% CI 9.82–10.99) as compared to ML4Hreg (r = 0.843, 95% confidence interval 0.823–0.861; MAE 10.51, 95% CI 9.86–11.15, P = .01) and centered InlineVF (r = 0.795, 95% confidence interval 0.770–0.818; MAE 14.30, 95% CI 13.46–11.01, P < .01)
