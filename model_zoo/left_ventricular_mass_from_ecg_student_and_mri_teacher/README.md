@@ -3,7 +3,7 @@
 # LVM-AI
 Left Ventricular Mass-Artificial Intelligence (LVM-AI) is a one-dimensional convolutional neural network trained to predict CMR-derived LV mass using 12-lead ECGs. LVM-AI was trained within 32239 individuals from the UK Biobank with paired CMR and 12-lead ECG. It was provided with the entire 10 seconds of the 12-lead ECG waveform as well as participant age, sex, and BMI. 
 LVM-AI was evaluated in a UK Biobank test set as well as an external health care–based Mass General Brigham (MGB) dataset. In both test sets, LVM-AI was compared to with traditional ECG-based rules for diagnosing CMR-derived left ventricular hypertrophy. Associations between LVM-AI predicted LV mass index and incident cardiovascular events were tested in the UK Biobank and a separate MGB-based ambulatory cohort (MGB outcomes)
-![Overview of the training and test samples](TrainingAndTestSets.jpg)
+<img src="TrainingAndTestSets.jpg" alt="Overview of Training And Test Sets" width="200" height="200"/>
 When compared with any ECG rule, LVM-AI demonstrated similar LVH discrimination in the UK Biobank (LVM-AI c-statistic 0.653 [95% CI, 0.608 -0.698] versus any ECG rule c-statistic 0.618 [95% CI, 0.574 -0.663], P=0.11) and superior discrimination in MGB (0.621; 95% CI, 0.592 -0.649 versus 0.588; 95% CI, 0.564 -0.611, P=0.02). 
 
 
