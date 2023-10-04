@@ -1,4 +1,6 @@
-# <a href= "https://www.sciencedirect.com/science/article/pii/S2666693621000232?ref=pdf_download&fr=RR-2&rr=80df2c704c374cd4" >Deep learning to estimate cardiac magnetic resonance–derived left ventricular mass</a>
+# Deep learning to estimate cardiac magnetic resonance–derived left ventricular mass
+This folder contains models and code supporting the work described in <a href= "https://www.sciencedirect.com/science/article/pii/S2666693621000232?ref=pdf_download&fr=RR-2&rr=80df2c704c374cd4">this paper</a> published in the Cardiovascular Digital Health Journal.
+
 Within participants of the UK Biobank prospective cohort undergoing CMR, 2 convolutional neural networks were trained to estimate LV mass. The first (ML4H<sub>reg</sub>) performed regression informed by manually labeled LV mass (available in 5065 individuals), while the second (ML4Hseg) performed LV segmentation informed by InlineVF (version D13A) contours. All models were optimized using the Adam variant of stochastic gradient descent with initial learning rate 1 × 10-3, exponential learning rate decay, and batch size of 4 on K80 graphical processing units. 
 ![Overview of the model's layers](architecture_graph_sax_diastole_segment_no_flat.png)
 # ML4H<sub>reg</sub>
