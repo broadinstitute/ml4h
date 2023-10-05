@@ -2,6 +2,8 @@ from typing import Dict
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+
 from ml4ht.data.data_description import DataDescription
 
 from data_descriptions.echo import VIEW_OPTION_KEY
@@ -17,6 +19,7 @@ class EcholabDataDescription(DataDescription):
             column_names: str,
             name: str,
             categories: Dict = None,
+            cls_categories_map: Dict = None,
             transforms=None,
     ):
         """
@@ -28,6 +31,7 @@ class EcholabDataDescription(DataDescription):
         self.categories = categories
         self.prep_df()
         self.transforms = transforms or []
+        self.cls_categories_map = cls_categories_map
 
     def prep_df(self):
         self.wide_df.index = self.wide_df[self.sample_id_column]
@@ -62,6 +66,22 @@ class EcholabDataDescription(DataDescription):
             output_data = np.zeros(len(self.categories), dtype=np.float32)
             output_data[self.categories[data[0]]['index']] = 1.0
             return output_data
+        # ---------- Adaptation for regression + classification ---------- #
+        if self.cls_categories_map:
+            # If training include classification tasks:
+            data = []
+            reg_data = row[self.column_names].drop(self.cls_categories_map['cls_output_order']).values
+            data.append(np.squeeze(np.array(reg_data, dtype=np.float32)))
+
+            for k in self.cls_categories_map['cls_output_order']:
+                # Changing values to class labels:
+                row_cls_lbl = self.cls_categories_map[k][row[k]]
+                # Changing class indices to one hot vectors
+                cls_one_hot = tf.keras.utils.to_categorical(row_cls_lbl,
+                                                            num_classes=len(self.cls_categories_map[k]))
+                data.append(cls_one_hot)
+            return data
+        # ---------------------------------------------------------------- #
         return np.squeeze(np.array(data, dtype=np.float32))
 
     @property
