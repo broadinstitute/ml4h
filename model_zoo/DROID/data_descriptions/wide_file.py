@@ -71,7 +71,8 @@ class EcholabDataDescription(DataDescription):
             # If training include classification tasks:
             data = []
             reg_data = row[self.column_names].drop(self.cls_categories_map['cls_output_order']).values
-            data.append(np.squeeze(np.array(reg_data, dtype=np.float32)))
+            if len(reg_data) > 0:
+                data.append(np.squeeze(np.array(reg_data, dtype=np.float32)))
 
             for k in self.cls_categories_map['cls_output_order']:
                 # Changing values to class labels:
@@ -80,6 +81,10 @@ class EcholabDataDescription(DataDescription):
                 cls_one_hot = tf.keras.utils.to_categorical(row_cls_lbl,
                                                             num_classes=len(self.cls_categories_map[k]))
                 data.append(cls_one_hot)
+
+            if len(data) == 1:
+                data = data[0]
+
             return data
         # ---------------------------------------------------------------- #
         return np.squeeze(np.array(data, dtype=np.float32))
