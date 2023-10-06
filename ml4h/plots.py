@@ -2249,7 +2249,7 @@ def plot_ecg_rest(
     tensor_paths: List[str],
     rows: List[int],
     out_folder: str,
-    is_blind: bool,
+    is_blind: bool,comp
 ) -> None:
     """Plots resting ECGs including annotations and LVH criteria
 
