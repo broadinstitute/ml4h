@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -9,11 +10,12 @@ import tensorflow as tf
 
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from echo_defines import category_dictionaries
-from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor
+from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor, create_regressor_classifier
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
 
+SAVE_ONEHOT_DF_FOR_EACH_CLASS = True
 
 def main(
         n_input_frames,
@@ -34,7 +36,10 @@ def main(
         movinet_chkp_dir,
         output_dir,
         extract_embeddings,
-        start_beat
+        start_beat,
+        cls_lbl_map_path,
+        add_separate_dense_reg,
+        add_separate_dense_cls
 ):
     # Hide devices based on split
     physical_devices = tf.config.list_physical_devices('GPU')
@@ -53,6 +58,27 @@ def main(
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
         ]
+
+    # ---------- Adaptation for regression + classification ---------- #
+    if cls_lbl_map_path:
+        with open(cls_lbl_map_path, 'r') as json_file:
+            cls_category_map_dicts = json.load(json_file)
+        cls_category_len_dict = {}
+        for c_lbl in cls_category_map_dicts['cls_output_order']:
+            cls_category_len_dict[c_lbl] = len(cls_category_map_dicts[c_lbl])
+        # Reordering output labels to fit the regression-classification output order during training (assuming correct
+        # output_labels that include all saved classification output names - if not, the classification output names
+        # are added next anyway):
+        output_labels = [i for i in output_labels if i not in cls_category_map_dicts['cls_output_order']] + cls_category_map_dicts['cls_output_order']
+        logging.info(f'Updated output_label_order: {output_labels}')
+        output_reg_len = len(output_labels) - len(cls_category_map_dicts['cls_output_order'])
+        add_separate_dense_reg = cls_category_map_dicts['add_separate_dense_reg']
+        add_separate_dense_cls = cls_category_map_dicts['add_separate_dense_cls']
+        logging.warning('Using saved flag values for using a separate dense layer for classification and regression heads')
+    else:
+        output_reg_len = len(output_labels)
+        cls_category_len_dict = {}
+    # ---------------------------------------------------------------- #
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -77,7 +103,18 @@ def main(
     else:
         patient_inference = splits['patient_test']
 
+    # Testing a random subset of IDs (for speed) to see if there are matching ids in working_ids and chosen split
+    random_ids_for_test = np.random.permutation(len(working_ids))[:min(len(working_ids), 500)]
+    working_ids_subset_test = [working_ids[i] for i in random_ids_for_test]
+    inference_ids_match_test = [t for t in working_ids_subset_test if int(t.split('_')[0]) in patient_inference]
+    if len(inference_ids_match_test) == 0:
+        logging.warning(
+            f'A random test of indices showed no match between {wide_file} indices and {splits_file} indices. It is possible that there are still matches, but please verify file names. This process might take a long time to break if there are no matches, consider forcing it to stop.')
+
     inference_ids = sorted([t for t in working_ids if int(t.split('_')[0]) in patient_inference])
+    if len(inference_ids) == 0:
+        logging.error(f'No matches found between {wide_file} indices and the {splits_file} indices!')
+        sys.exit()
 
     INPUT_DD = LmdbEchoStudyVideoDataDescription(
         lmdb_folder,
@@ -115,11 +152,16 @@ def main(
     backbone_output = backbone.layers[-1].output[0]
     flatten = tf.keras.layers.Flatten()(backbone_output)
     encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
-    model_plus_head = create_regressor(
-        encoder,
-        input_shape=(n_input_frames, 224, 224, 3),
-        n_output_features=len(output_labels)
-    )
+    # ---------- Adaptation for regression + classification ---------- #
+    # Organize regressor/classifier inputs:
+    func_args = {'input_shape': (n_input_frames, 224, 224, 3),
+                 'n_output_features': output_reg_len,
+                 'categories': cls_category_len_dict,
+                 'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
+                 'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls}}
+
+    model_plus_head = create_regressor_classifier(encoder, **func_args)
+    # ---------------------------------------------------------------- #
     model_plus_head.load_weights(pretrained_chkp_dir)
 
     vois = '_'.join(selected_views)
@@ -132,6 +174,21 @@ def main(
                                      f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
     os.makedirs(output_folder, exist_ok=True)
 
+    def save_model_pred_as_df(pred, fname_suffix='', pred_col_names=[]):
+        save_df = pd.DataFrame()
+        save_df['sample_id'] = inference_ids_split
+        if len(pred_col_names) == pred.shape[1]:
+            use_pred_col_names = True
+        else:
+            use_pred_col_names = False
+        for i_p in range(pred.shape[1]):
+            if use_pred_col_names:
+                save_df[pred_col_names[i_p]] = pred[:, i_p]
+            else:
+                save_df[f'prediction_{i_p}'] = pred[:, i_p]
+
+        save_df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq'))
+
     if extract_embeddings:
         embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
         df = pd.DataFrame()
@@ -142,12 +199,38 @@ def main(
         df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
     else:
         predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
-        df = pd.DataFrame()
-        df['sample_id'] = inference_ids_split
-        for j, _ in enumerate(range(predictions.shape[1])):
-            df[f'prediction_{j}'] = predictions[:, j]
+        # predictions is a list of length = number of outputs in list, where all regression variables are in a single
+        # list element and each classification task has a separate list element.
+        # Each list element is of size:
+        # len(inference_ids_split) X number of output variables (total number of regression vars or number of classes)
+        if len(cls_category_len_dict) > 0:
+            # Case: regression + classification or classification only
+            # Currently saving actual class predictions jointly with the regression variables if exist
+            # and for each class one-hot predictions are saved in a separate pq file (flag dependent)
+            if output_reg_len > 0:
+                reg_pred = predictions[0]
+                cls_pred = predictions[1:]
+            else:
+                reg_pred = np.zeros((0, 0))
+                cls_pred = predictions
+            df = pd.DataFrame()
+            df['sample_id'] = inference_ids_split
+            for i_p in range(reg_pred.shape[1]):
+                df[f'prediction_{i_p}'] = reg_pred[:, i_p]
+            for i in range(len(cls_pred)):
+                curr_cls_name = cls_category_map_dicts['cls_output_order'][i]
+                if SAVE_ONEHOT_DF_FOR_EACH_CLASS:
+                    save_model_pred_as_df(cls_pred[i], fname_suffix='_one_hot_' + curr_cls_name)
+                cls_pred_vals_curr = cls_pred[i].argmax(axis=1)
+                cls_map_inv = {v: k for k, v in zip(cls_category_map_dicts[curr_cls_name].keys(),
+                                                    cls_category_map_dicts[curr_cls_name].values())}
+                df[cls_category_map_dicts['cls_output_order'][i]] = cls_pred_vals_curr
+                df.replace({curr_cls_name: cls_map_inv}, inplace=True)
 
-        df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
+            df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
+        else:
+            # Case: regression only
+            save_model_pred_as_df(predictions)
 
 
 if __name__ == "__main__":
@@ -176,6 +259,14 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str)
     parser.add_argument('--extract_embeddings', action='store_true')
     parser.add_argument('--start_beat', type=int, default=0)
+    # ---------- Adaptation for regression + classification ---------- #
+    parser.add_argument('--cls_lbl_map_path', type=str,
+                        help='Path to file with a dictionary of dictionaries specifying the value to class label map for every classification output. Needed if training included classification tasks.')
+    parser.add_argument('--add_separate_dense_reg', action='store_true',
+                        help='Adds an additional dense layer trained separately for the regression head')
+    parser.add_argument('--add_separate_dense_cls', action='store_true',
+                        help='Adds an additional dense layer trained separately for the classification head')
+    # ---------------------------------------------------------------- #
 
     args = parser.parse_args()
     root = logging.getLogger()
@@ -203,5 +294,10 @@ if __name__ == "__main__":
         movinet_chkp_dir=args.movinet_chkp_dir,
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
-        start_beat=args.start_beat
+        start_beat=args.start_beat,
+        # ---------- Adaptation for regression + classification ---------- #
+        cls_lbl_map_path=args.cls_lbl_map_path,
+        add_separate_dense_reg=args.add_separate_dense_reg,
+        add_separate_dense_cls=args.add_separate_dense_cls
+        # ---------------------------------------------------------------- #
     )
