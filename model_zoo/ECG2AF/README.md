@@ -2,7 +2,7 @@
 This directory contains models and code for predicting incident atrial fibrillation from 12 lead resting ECGs, as described in our 
 [Circulation paper](https://www.ahajournals.org/doi/full/10.1161/CIRCULATIONAHA.121.057480).
 
-To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the example: 
+To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the [example](./ecg2af_infer.ipynb) or run: 
 ```python
 output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3]}
 custom_dict = get_custom_objects([mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3])
