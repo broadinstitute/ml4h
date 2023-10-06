@@ -77,7 +77,7 @@ def main(
     # and computing output lengths (number of regression variables and number of classification tasks)
     if len(unq_lbl_types) > 1:
         # Both regression and classification tasks were specified
-        output_label_types_int = [0 if (ch=='r') else 1 for ch in output_labels_types.lower()]
+        output_label_types_int = [0 if (ch == 'r') else 1 for ch in output_labels_types.lower()]
         output_reg_len = len(output_label_types_int) - sum(output_label_types_int)
         cls_output_names = [output_labels[i_c] for i_c, c in enumerate(output_label_types_int) if c == 1]
         output_order = np.argsort(output_label_types_int)
@@ -148,7 +148,8 @@ def main(
         cls_category_map_dicts[c_lbl] = val2clsind_map_dict
         cls_category_len_dict[c_lbl] = len(wide_df_selected[c_lbl].drop_duplicates())
         if cls_category_len_dict[c_lbl] < 2:
-            logging.error(f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors for in the classifier')
+            logging.error(
+                f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors for in the classifier')
     cls_category_map_dicts['cls_output_order'] = cls_output_names
     # ---------------------------------------------------------------- #
 
@@ -182,18 +183,18 @@ def main(
 
     # ---------- Adaptation for regression + classification ---------- #
     # Adapting tensor output sizes for classification heads
-    if cls_output_names:
-        num_classes = [output_reg_len] + list(cls_category_len_dict.values())
+    num_classes = [output_reg_len] + list(cls_category_len_dict.values()) if output_reg_len > 0 else list(
+        cls_category_len_dict.values())
+    if len(num_classes) > 1:
         output_signatures = (
             tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32),
             tuple([tf.TensorSpec(shape=(batch_size, n_c), dtype=tf.float32)
                    for n_c in num_classes])
         )
     else:
-        num_classes = len(output_labels)
         output_signatures = (
             tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32),
-            tf.TensorSpec(shape=(batch_size, num_classes) if num_classes > 1 else (batch_size,), dtype=tf.float32)
+            tf.TensorSpec(shape=(batch_size, num_classes[0]) if num_classes[0] > 1 else (batch_size,), dtype=tf.float32)
         )
     # ---------------------------------------------------------------- #
 
