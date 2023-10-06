@@ -59,17 +59,17 @@ def main(
         unq_lbl_types = output_labels_types.lower()
     else:
         # A wrong number of task type labels was given (empty or different from 1 or 'len(output_labels)')
-        logging.info(
+        logging.warning(
             "Reverting to a regression head only since the lengths of 'output_labels' and 'output_labels_types' do not match.")
         unq_lbl_types = 'r'
     if ('r' not in unq_lbl_types) and ('c' not in unq_lbl_types):
         # Wrong task type labels were given (letters other than 'r' for regression and 'c' for classification)
-        logging.info(
+        logging.warning(
             "Reverting to a regression head only since the lengths of 'output_labels_types' contains unrecognized commands.")
         unq_lbl_types = 'r'
     if pretrained_chkp_dir and set(output_labels) == set(output_signature_labels):
         # Currently not supporting this case. TODO: check what are the 'output_signature_labels', can we support this?
-        logging.info(
+        logging.warning(
             "Reverting to a regression head only since the code currently does not support loading from checkpoint with 'output_signature_labels'")
         unq_lbl_types = 'r'
 
@@ -82,6 +82,7 @@ def main(
         cls_output_names = [output_labels[i_c] for i_c, c in enumerate(output_label_types_int) if c == 1]
         output_order = np.argsort(output_label_types_int)
         output_labels = [output_labels[i] for i in output_order]
+        logging.info(f'Updated output_label_order: {output_labels}')
     elif 'r' in unq_lbl_types:
         # Only one task type specified - regression
         output_reg_len = len(output_labels)
@@ -147,7 +148,7 @@ def main(
         cls_category_map_dicts[c_lbl] = val2clsind_map_dict
         cls_category_len_dict[c_lbl] = len(wide_df_selected[c_lbl].drop_duplicates())
         if cls_category_len_dict[c_lbl] < 2:
-            logging.info(f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors for in the classifier')
+            logging.error(f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors for in the classifier')
     cls_category_map_dicts['cls_output_order'] = cls_output_names
     # ---------------------------------------------------------------- #
 
