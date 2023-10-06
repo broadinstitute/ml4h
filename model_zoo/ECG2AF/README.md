@@ -2,7 +2,29 @@
 This directory contains models and code for predicting incident atrial fibrillation from 12 lead resting ECGs, as described in our 
 [Circulation paper](https://www.ahajournals.org/doi/full/10.1161/CIRCULATIONAHA.121.057480).
 
-To perform inference with this model run:
+To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the example: 
+```python
+output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3]}
+custom_dict = get_custom_objects([mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3])
+model = load_model('./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5', custom_objects=custom_dict)
+ecg = np.random.random((1, 5000, 12))
+prediction = model(ecg)
+```
+The model has 4 output heads: the survival curve prediction for incident atrial fibrillation, the classification of atrial fibrillation at the time of ECG, sex, and age regression.  Those outputs can be accessed with:
+```python
+for name, pred in zip(model.output_names, prediction):
+    otm = output_tensormaps[name]
+    if otm.is_survival_curve():
+        intervals = otm.shape[-1] // 2
+        days_per_bin = 1 + otm.days_window // intervals
+        predicted_survivals = np.cumprod(pred[:, :intervals], axis=1)
+        print(f'AF Risk {otm} prediction is: {str(1 - predicted_survivals[0, -1])}')
+    else:
+        print(f'{otm} prediction is {pred}')
+```
+
+
+To perform command line inference with this model run:
 ```bash
   python /path/to/ml4h/ml4h/recipes.py \
     --mode infer \
