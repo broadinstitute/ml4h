@@ -54,6 +54,8 @@ from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
 from scipy import stats
 
+from pystrum.medipy.metrics import dice
+
 import ml4h.tensormap.ukb.ecg
 import ml4h.tensormap.mgb.ecg
 from ml4h.tensormap.mgb.dynamic import make_waveform_maps
@@ -73,6 +75,7 @@ from ml4h.defines import (
 RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
 FALLOUT_LABEL = "Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)"
 PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
+DICE_LABEL = "Dice Score"
 
 SUBPLOT_SIZE = 7
 
@@ -2733,6 +2736,63 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
     plt.savefig(figure_path)
     logging.info("Saved Precision Recall curve at: {}".format(figure_path))
 
+def plot_dice(predictions, truth, labels, title, prefix="./figures/", dpi=300, width=3, height=3):
+    label_names = labels.keys()
+    logging.info(f"label_names: {label_names}")
+    label_vals = [labels[k] for k in label_names]
+    batch_size = truth.shape[0]
+    y_true = truth.argmax(-1)
+    y_true_unique = [np.unique(y_true[i]) for i in range(batch_size)]
+    missing_truth_label_vals = [[k for k in label_vals if k not in y_true_unique[i]] for i in range(batch_size)]
+
+    dice_scores = {}
+    mean_dice_scores = {}
+    for p in predictions:
+        y_pred = predictions[p].argmax(-1)
+        dice_scores[p] = np.stack([dice(y_true[i], y_pred[i], labels=label_vals) for i in range(batch_size)], axis=0)
+
+        # If a label is not in y_true nor y_pred, this is actually a perfect score
+        y_pred_unique = [np.unique(y_pred[i]) for i in range(batch_size)]
+        replace = {i: [k for k in missing_truth_label_vals[i] if k not in y_pred_unique[i]] for i in range(batch_size)}
+        for i in range(batch_size):
+            for k in replace[i]:
+                dice_scores[p][i,k] = 1.0
+
+        mean_dice_scores[p] = np.average(dice_scores[p], axis=0)
+        logging.info(f"{p} mean Dice scores {mean_dice_scores[p]}")
+
+    row = 0
+    col = 0
+    total_plots = len(label_names)
+    cols = int(math.ceil(math.sqrt(total_plots)))
+    rows = int(math.ceil(total_plots / cols))
+    f, axes = plt.subplots(
+        rows, cols, figsize=(int(cols * width), int(rows * height)), dpi=dpi,
+    )
+
+    for i,k in enumerate(label_names):
+        for j,p in enumerate(predictions):
+            axes[row, col].boxplot(dice_scores[p][:,i], positions = [j], labels=[''])
+        label_text = [f"{p} mean dice:{mean_dice_scores[p][i]:.3f}" for p in predictions]
+        axes[row, col].set_title(f"{k}")
+        axes[row, col].set_ylabel(DICE_LABEL)
+        axes[row, col].legend(label_text, loc="lower right")
+
+        row += 1
+        if row == rows:
+            row = 0
+            col += 1
+            if col >= cols:
+                break
+
+    plt.tight_layout()
+    plt.suptitle(f"{title} n={batch_size:.0f}")
+    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
+    figure_path = os.path.join(prefix, f'dice_{now_string}_{title}{IMAGE_EXT}')
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    logging.info(f"Saved Dice plots at: {figure_path}")
 
 def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
     # Compute ROC curve and ROC area for each class

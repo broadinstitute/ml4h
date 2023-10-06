@@ -43,3 +43,5 @@ google-cloud-storage
 umap-learn[plot]
 neurite
 voxelmorph
+pystrum
+
