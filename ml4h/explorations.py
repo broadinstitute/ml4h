@@ -724,7 +724,6 @@ def _get_csv_row(means, medians, stds, tensor_paths):
 def infer_medians(args):
     # Structuring element used for the erosion
     structure = _unit_disk(2)[np.newaxis, ..., np.newaxis]
-    print(structure[0, :, :, 0])
 
     tm_in = args.tensor_maps_in[0]
     tm_out = args.tensor_maps_out[0]
@@ -792,6 +791,7 @@ def infer_medians(args):
     df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
+    plt.figure()
     plt.scatter(df_true.anterolateral_pap_median, df_pred.anterolateral_pap_median)
     plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
     plt.title('anterolateral_pap_median')
@@ -800,6 +800,7 @@ def infer_medians(args):
     figure_path = os.path.join(args.output_folder, args.id, f'pixel_inference_anterolateral_pap_median_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.png')
     plt.savefig(figure_path)
 
+    plt.figure()
     plt.scatter(df_true.posteromedial_pap_median, df_pred.posteromedial_pap_median)
     plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
     plt.title('posteromedial_pap_median')
