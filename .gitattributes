@@ -15,6 +15,3 @@ model_zoo/ECG2AF/km.jpg filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG2AF/study_design.jpg filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG2AF/architecture.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG2AF/salience.jpg filter=lfs diff=lfs merge=lfs -text
-model_zoo/cardiac_mri_derived_left_ventricular_mass/Lreg.png filter=lfs diff=lfs merge=lfs -text
-model_zoo/cardiac_mri_derived_left_ventricular_mass/Lseg.png filter=lfs diff=lfs merge=lfs -text
-model_zoo/cardiac_mri_derived_left_ventricular_mass/architecture_graph_sax_diastole_segment_no_flat.png filter=lfs diff=lfs merge=lfs -text
