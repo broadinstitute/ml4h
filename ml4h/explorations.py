@@ -28,6 +28,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt  # First import matplotlib, then use Agg, then import plt
 
 from ml4h.models.legacy_models import legacy_multimodal_multitask_model
+from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.TensorMap import TensorMap, Interpretation, decompress_data
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
@@ -35,19 +36,23 @@ from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_referenc
 from ml4h.plots import evaluate_predictions, subplot_rocs, subplot_scatters, plot_categorical_tmap_over_time
 from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
+from ml4h.tensorize.tensor_writer_ukbb import _unit_disk
 
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge, Lasso
 
+from scipy.ndimage import binary_erosion
 
 CSV_EXT = '.tsv'
 
 
-def stratify_and_project_latent_space(stratify_column: str,stratify_thresh: float,stratify_std: float,latent_cols: List[str],
-                                    latent_df: pd.DataFrame,
-                                    normalize: bool = False,
-                                    train_ratio: int = 1.0):
+def stratify_and_project_latent_space(
+    stratify_column: str,stratify_thresh: float,stratify_std: float,latent_cols: List[str],
+    latent_df: pd.DataFrame,
+    normalize: bool = False,
+    train_ratio: int = 1.0,
+):
     """
     Stratify data and project it to new latent space.
     Args:
@@ -61,13 +66,13 @@ def stratify_and_project_latent_space(stratify_column: str,stratify_thresh: floa
 
     Returns:
         Dict[str, Tuple[float,float,float]]
-    """  
+    """
     if train_ratio == 1.0:
         train = latent_df
         test = latent_df
     else:
         train = latent_df.sample(frac=train_ratio)
-        test = latent_df.drop(train.index)        
+        test = latent_df.drop(train.index)
     hit = train.loc[train[stratify_column] >= stratify_thresh+(1*stratify_std)]
     miss = train.loc[train[stratify_column] < stratify_thresh-(1*stratify_std)]
     hit_np = hit[latent_cols].to_numpy()
@@ -75,10 +80,10 @@ def stratify_and_project_latent_space(stratify_column: str,stratify_thresh: floa
     miss_mean_vector = np.mean(miss_np, axis=0)
     hit_mean_vector = np.mean(hit_np, axis=0)
     angle = angle_between(miss_mean_vector, hit_mean_vector)
-        
+
     hit_test = test.loc[test[stratify_column] >= stratify_thresh+(1*stratify_std)]
     miss_test = test.loc[test[stratify_column] < stratify_thresh-(1*stratify_std)]
-    
+
     if normalize:
         phenotype_vector = unit_vector(hit_mean_vector-miss_mean_vector)
         hit_dots = [np.dot(phenotype_vector, unit_vector(v)) for v in hit_test[latent_cols].to_numpy()]
@@ -88,8 +93,8 @@ def stratify_and_project_latent_space(stratify_column: str,stratify_thresh: floa
         hit_dots = [np.dot(phenotype_vector, v) for v in hit_test[latent_cols].to_numpy()]
         miss_dots = [np.dot(phenotype_vector, v) for v in miss_test[latent_cols].to_numpy()]
     t2, p2 = stats.ttest_ind(hit_dots, miss_dots, equal_var = False)
-    
-    return {f'{stratify_column}': (t2, p2, len(hit)) }
+
+    return {f'{stratify_column}': (t2, p2, len(hit))}
 
 
 
@@ -100,7 +105,7 @@ def plot_nested_dictionary(all_scores: DefaultDict[str, DefaultDict[str, Tuple[f
         all_scores (DefaultDict[str, DefaultDict[str, Tuple[float, float, float]]]): Nested dictionary containing the scores.
     Returns:
         None
-     """  
+     """
     n = 4
     eps = 1e-300
     for model in all_scores:
@@ -221,10 +226,12 @@ def confounder_matrix(adjust_cols: List[str], df: pd.DataFrame, space: np.ndarra
         vectors.append(cv)
     return np.array(vectors), scores
 
-def iterative_subspace_removal(adjust_cols: List[str], latent_df: pd.DataFrame, latent_cols: List[str],
-                               r2_thresh: float = 0.01, fit_pca: bool = False):
+def iterative_subspace_removal(
+    adjust_cols: List[str], latent_df: pd.DataFrame, latent_cols: List[str],
+    r2_thresh: float = 0.01, fit_pca: bool = False,
+):
     """
-    Perform iterative subspace removal based on specified columns, a latent dataframe, 
+    Perform iterative subspace removal based on specified columns, a latent dataframe,
     and other parameters to remove confounder variables.
 
     Args:
@@ -690,6 +697,116 @@ def infer_with_pixels(args):
             if stats['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
+
+def _compute_masked_stats(img, y, nb_classes):
+    img = np.tile(img, nb_classes)
+    melt_shape = (img.shape[0], img.shape[1] * img.shape[2], img.shape[3])
+    img = img.reshape(melt_shape)
+    y = y.reshape(melt_shape)
+
+    masked_img = np.ma.array(img, mask=np.logical_not(y))
+    means = masked_img.mean(axis=1).data
+    medians = np.ma.median(masked_img, axis=1).data
+    stds = masked_img.std(axis=1).data
+
+    return means, medians, stds
+
+def _to_categorical(y, nb_classes):
+    return np.eye(nb_classes)[y]
+
+def _get_csv_row(means, medians, stds, tensor_paths):
+    res = np.concatenate([means, medians, stds], axis=-1)
+    sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+    csv_row = [sample_id]
+    csv_row += res[0].astype('str').tolist()
+    return csv_row
+
+def infer_medians(args):
+    # Structuring element used for the erosion
+    structure = _unit_disk(2)[np.newaxis, ..., np.newaxis]
+    print(structure[0, :, :, 0])
+
+    tm_in = args.tensor_maps_in[0]
+    tm_out = args.tensor_maps_out[0]
+    assert(len(args.tensor_maps_out) == 1)
+    assert (tm_in.shape[-1] == 1)
+    assert (args.batch_size == 1)
+
+    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+
+    stats = Counter()
+    tensor_paths_inferred = set()
+    inference_tsv_true = os.path.join(args.output_folder, args.id, f'pixel_inference_true_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
+    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'pixel_inference_pred_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
+
+    with open(inference_tsv_true, mode='w') as inference_file_true, open(inference_tsv_pred, mode='w') as inference_file_pred:
+        inference_writer_true = csv.writer(inference_file_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        inference_writer_pred = csv.writer(inference_file_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        header = ['sample_id']
+        header += [f'{k}_mean' for k in tm_out.channel_map.keys()]
+        header += [f'{k}_median' for k in tm_out.channel_map.keys()]
+        header += [f'{k}_std' for k in tm_out.channel_map.keys()]
+        inference_writer_true.writerow(header)
+        inference_writer_pred.writerow(header)
+
+        while True:
+            batch = next(generate_test)
+            data, labels, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            if tensor_paths[0] in tensor_paths_inferred:
+                next(generate_test)  # this print end of epoch info
+                logging.info(
+                    f"Inference on {stats['count']} tensors finished. Inference TSV files at: {inference_tsv_true}, {inference_tsv_pred}",
+                )
+                break
+
+            img = data[tm_in.input_name()]
+            img = tm_in.rescale(img)
+            y_true = labels[tm_out.output_name()]
+            nb_classes = y_true.shape[-1]
+            y_pred = model.predict(data, batch_size=args.batch_size, verbose=0)
+            y_pred = np.argmax(y_pred, axis=-1)
+            y_pred = _to_categorical(y_pred, nb_classes)
+
+            y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
+            y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
+
+            means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_classes)
+            means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_classes)
+
+            csv_row_true = _get_csv_row(means_true, medians_true, stds_true, tensor_paths)
+            csv_row_pred = _get_csv_row(means_pred, medians_pred, stds_pred, tensor_paths)
+
+            inference_writer_true.writerow(csv_row_true)
+            inference_writer_pred.writerow(csv_row_pred)
+
+            tensor_paths_inferred.add(tensor_paths[0])
+            stats['count'] += 1
+            if stats['count'] % 250 == 0:
+                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
+
+    inference_tsv_true = os.path.join(args.output_folder, args.id, f'pixel_inference_true_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
+    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'pixel_inference_pred_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
+
+    df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+    plt.scatter(df_true.anterolateral_pap_median, df_pred.anterolateral_pap_median)
+    plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
+    plt.title('anterolateral_pap_median')
+    plt.xlabel('true')
+    plt.ylabel('pred')
+    figure_path = os.path.join(args.output_folder, args.id, f'pixel_inference_anterolateral_pap_median_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.png')
+    plt.savefig(figure_path)
+
+    plt.scatter(df_true.posteromedial_pap_median, df_pred.posteromedial_pap_median)
+    plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
+    plt.title('posteromedial_pap_median')
+    plt.xlabel('true')
+    plt.ylabel('pred')
+    figure_path = os.path.join(args.output_folder, args.id, f'pixel_inference_posteromedial_pap_median_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.png')
+    plt.savefig(figure_path)
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
