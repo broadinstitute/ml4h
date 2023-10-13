@@ -722,11 +722,11 @@ def _get_csv_row(means, medians, stds, tensor_paths):
 
 def infer_medians(args):
     assert (args.batch_size == 1) # no support here for iterating over larger batches
-    assert (len(args.tensor_maps_out) == 1) # no support here for stats on multi-channel inputs
+    assert (len(args.tensor_maps_out) == 1) # no support here for multiple output channels
 
     tm_in = args.tensor_maps_in[0]
     tm_out = args.tensor_maps_out[0]
-    assert (tm_in.shape[-1] == 1)
+    assert (tm_in.shape[-1] == 1) # no support here for stats on multiple input channels
 
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
@@ -782,18 +782,15 @@ def infer_medians(args):
 
             # prune unnecessary labels
             y_true = np.delete(y_true, bad_channels, axis=-1)
-            y_pred = np.delete(y_pred, bad_channels, axis=-1)
-
             y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
-            y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
-
             means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_good_classes)
-            means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_good_classes)
-
             csv_row_true = _get_csv_row(means_true, medians_true, stds_true, tensor_paths)
-            csv_row_pred = _get_csv_row(means_pred, medians_pred, stds_pred, tensor_paths)
-
             inference_writer_true.writerow(csv_row_true)
+
+            y_pred = np.delete(y_pred, bad_channels, axis=-1)
+            y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
+            means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_good_classes)
+            csv_row_pred = _get_csv_row(means_pred, medians_pred, stds_pred, tensor_paths)
             inference_writer_pred.writerow(csv_row_pred)
 
             tensor_paths_inferred.add(tensor_paths[0])
