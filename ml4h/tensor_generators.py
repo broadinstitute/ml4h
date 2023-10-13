@@ -666,13 +666,6 @@ def get_train_valid_test_paths(
 
     logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
-    if len(train_paths) == 0 or len(valid_paths) == 0 or len(test_paths) == 0:
-        raise ValueError(
-            f'Not enough tensors at {tensors}\n'
-            f'Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors\n'
-            f'Discarded {len(discard_paths)} tensors',
-        )
-
     return train_paths, valid_paths, test_paths
 
 
@@ -811,7 +804,10 @@ def test_train_valid_tensor_generators(
     num_train_workers = int(training_steps / (training_steps + validation_steps) * num_workers) or (1 if num_workers else 0)
     num_valid_workers = int(validation_steps / (training_steps + validation_steps) * num_workers) or (1 if num_workers else 0)
 
-    generator_class = pick_generator(train_paths, weights, mixup_alpha, siamese)
+    # use the longest list of [train_paths, valid_paths, test_paths], avoiding hard-coding one
+    # in case it is empty
+    paths = max([train_paths, valid_paths, test_paths], key=len)
+    generator_class = pick_generator(paths, weights, mixup_alpha, siamese) # TODO
 
     generate_train = generator_class(
         batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out,
