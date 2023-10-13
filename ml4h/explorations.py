@@ -708,7 +708,6 @@ def _compute_masked_stats(img, y, nb_classes):
     means = masked_img.mean(axis=1).data
     medians = np.ma.median(masked_img, axis=1).data
     stds = masked_img.std(axis=1).data
-
     return means, medians, stds
 
 def _to_categorical(y, nb_classes):
@@ -722,17 +721,31 @@ def _get_csv_row(means, medians, stds, tensor_paths):
     return csv_row
 
 def infer_medians(args):
-    # Structuring element used for the erosion
-    structure = _unit_disk(2)[np.newaxis, ..., np.newaxis]
+    assert (args.batch_size == 1) # no support here for iterating over larger batches
+    assert (len(args.tensor_maps_out) == 1) # no support here for stats on multi-channel inputs
 
     tm_in = args.tensor_maps_in[0]
     tm_out = args.tensor_maps_out[0]
-    assert(len(args.tensor_maps_out) == 1)
     assert (tm_in.shape[-1] == 1)
-    assert (args.batch_size == 1)
 
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+
+    # TODO remove this hard-coding
+    important_structures = [
+        'interventricular_septum', 'LV_free_wall', 'anterolateral_pap', 'posteromedial_pap',
+        'LV_cavity', 'RV_free_wall', 'RV_cavity',
+    ]
+    # end TODO remove this hard-coding
+
+    good_channels = sorted([tm_out.channel_map[k] for k in important_structures])
+    good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels]
+    nb_orig_classes = len(tm_out.channel_map)
+    nb_good_classes = len(good_channels)
+    bad_channels = [k for k in range(nb_orig_classes) if k not in good_channels]
+
+    # Structuring element used for the erosion
+    structure = _unit_disk(2)[np.newaxis, ..., np.newaxis]
 
     stats = Counter()
     tensor_paths_inferred = set()
@@ -744,9 +757,9 @@ def infer_medians(args):
         inference_writer_pred = csv.writer(inference_file_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
         header = ['sample_id']
-        header += [f'{k}_mean' for k in tm_out.channel_map.keys()]
-        header += [f'{k}_median' for k in tm_out.channel_map.keys()]
-        header += [f'{k}_std' for k in tm_out.channel_map.keys()]
+        header += [f'{k}_mean' for k in good_structures]
+        header += [f'{k}_median' for k in good_structures]
+        header += [f'{k}_std' for k in good_structures]
         inference_writer_true.writerow(header)
         inference_writer_pred.writerow(header)
 
@@ -763,16 +776,19 @@ def infer_medians(args):
             img = data[tm_in.input_name()]
             img = tm_in.rescale(img)
             y_true = labels[tm_out.output_name()]
-            nb_classes = y_true.shape[-1]
             y_pred = model.predict(data, batch_size=args.batch_size, verbose=0)
             y_pred = np.argmax(y_pred, axis=-1)
-            y_pred = _to_categorical(y_pred, nb_classes)
+            y_pred = _to_categorical(y_pred, nb_orig_classes)
+
+            # prune unnecessary labels
+            y_true = np.delete(y_true, bad_channels, axis=-1)
+            y_pred = np.delete(y_pred, bad_channels, axis=-1)
 
             y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
             y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
 
-            means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_classes)
-            means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_classes)
+            means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_good_classes)
+            means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_good_classes)
 
             csv_row_true = _get_csv_row(means_true, medians_true, stds_true, tensor_paths)
             csv_row_pred = _get_csv_row(means_pred, medians_pred, stds_pred, tensor_paths)
