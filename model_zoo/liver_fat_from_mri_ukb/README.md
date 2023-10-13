@@ -1,6 +1,6 @@
 # Machine learning enables new insights into clinical significance of and genetic contributions to liver fat accumulation
 
-This folder contains models and code supporting the work described in [this paper](https://www.medrxiv.org/content/10.1101/2020.09.03.20187195v1) published in Cell Genomics
+This folder contains models and code supporting the work described in [this paper](https://www.sciencedirect.com/science/article/pii/S2666979X21000823) published in Cell Genomics
 
 Here we host two models for estimating liver fat from abdominal MRI. 
 The liver fat percentage training data is from the returned liver fat values in the [UK Biobank field ID 22402](https://biobank.ctsu.ox.ac.uk/crystal/field.cgi?id=22402).  These values were only calculated for the echo protocol, so to infer liver fat from the ideal protocl we used a teacher/student modeling approach.
