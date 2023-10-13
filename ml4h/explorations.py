@@ -38,6 +38,10 @@ from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MIS
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 from ml4h.tensorize.tensor_writer_ukbb import _unit_disk
 
+# TODO remove this hard-coding
+from ml4h.defines import MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP
+# end TODO remove this hard-coding
+
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge, Lasso
@@ -722,11 +726,22 @@ def _get_csv_row(means, medians, stds, tensor_paths):
 
 def infer_medians(args):
     assert (args.batch_size == 1) # no support here for iterating over larger batches
-    assert (len(args.tensor_maps_out) == 1) # no support here for multiple output channels
+    assert (len(args.tensor_maps_out) <= 1) # no support here for multiple output channels
 
     tm_in = args.tensor_maps_in[0]
-    tm_out = args.tensor_maps_out[0]
     assert (tm_in.shape[-1] == 1) # no support here for stats on multiple input channels
+
+    # TODO remove this hard-coding
+    if len(args.tensor_maps_out) == 0:
+        has_y_true = False
+        channel_map = MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP
+        output_name = 'output_b2s_t1map_kassir_annotated'
+    elif len(args.tensor_maps_out) == 1:
+        has_y_true = True
+        tm_out = args.tensor_maps_out[0]
+        channel_map = tm_out.channel_map
+        output_name = tm_out.output_name()
+    # end TODO remove this hard-coding
 
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
@@ -738,9 +753,9 @@ def infer_medians(args):
     ]
     # end TODO remove this hard-coding
 
-    good_channels = sorted([tm_out.channel_map[k] for k in important_structures])
-    good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels]
-    nb_orig_classes = len(tm_out.channel_map)
+    good_channels = sorted([channel_map[k] for k in important_structures])
+    good_structures = [[k for k in channel_map.keys() if channel_map[k] == v][0] for v in good_channels]
+    nb_orig_classes = len(channel_map)
     nb_good_classes = len(good_channels)
     bad_channels = [k for k in range(nb_orig_classes) if k not in good_channels]
 
@@ -749,8 +764,8 @@ def infer_medians(args):
 
     stats = Counter()
     tensor_paths_inferred = set()
-    inference_tsv_true = os.path.join(args.output_folder, args.id, f'pixel_inference_true_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
-    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'pixel_inference_pred_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
+    inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
+    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
     with open(inference_tsv_true, mode='w') as inference_file_true, open(inference_tsv_pred, mode='w') as inference_file_pred:
         inference_writer_true = csv.writer(inference_file_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -775,17 +790,17 @@ def infer_medians(args):
 
             img = data[tm_in.input_name()]
             img = tm_in.rescale(img)
-            y_true = labels[tm_out.output_name()]
             y_pred = model.predict(data, batch_size=args.batch_size, verbose=0)
             y_pred = np.argmax(y_pred, axis=-1)
             y_pred = _to_categorical(y_pred, nb_orig_classes)
 
-            # prune unnecessary labels
-            y_true = np.delete(y_true, bad_channels, axis=-1)
-            y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
-            means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_good_classes)
-            csv_row_true = _get_csv_row(means_true, medians_true, stds_true, tensor_paths)
-            inference_writer_true.writerow(csv_row_true)
+            if has_y_true:
+                y_true = labels[tm_out.output_name()]
+                y_true = np.delete(y_true, bad_channels, axis=-1)
+                y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
+                means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_good_classes)
+                csv_row_true = _get_csv_row(means_true, medians_true, stds_true, tensor_paths)
+                inference_writer_true.writerow(csv_row_true)
 
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
@@ -798,29 +813,30 @@ def infer_medians(args):
             if stats['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
-    inference_tsv_true = os.path.join(args.output_folder, args.id, f'pixel_inference_true_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
-    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'pixel_inference_pred_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.tsv')
+    inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
+    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
     df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-    plt.figure()
-    plt.scatter(df_true.anterolateral_pap_median, df_pred.anterolateral_pap_median)
-    plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
-    plt.title('anterolateral_pap_median')
-    plt.xlabel('true')
-    plt.ylabel('pred')
-    figure_path = os.path.join(args.output_folder, args.id, f'pixel_inference_anterolateral_pap_median_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.png')
-    plt.savefig(figure_path)
+    if has_y_true:
+        plt.figure()
+        plt.scatter(df_true.anterolateral_pap_median, df_pred.anterolateral_pap_median)
+        plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
+        plt.title('anterolateral_pap_median')
+        plt.xlabel('true')
+        plt.ylabel('pred')
+        figure_path = os.path.join(args.output_folder, args.id, f'medians_inference_anterolateral_pap_median_{args.id}_{tm_in.input_name()}_{output_name}.png')
+        plt.savefig(figure_path)
 
-    plt.figure()
-    plt.scatter(df_true.posteromedial_pap_median, df_pred.posteromedial_pap_median)
-    plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
-    plt.title('posteromedial_pap_median')
-    plt.xlabel('true')
-    plt.ylabel('pred')
-    figure_path = os.path.join(args.output_folder, args.id, f'pixel_inference_posteromedial_pap_median_{args.id}_{tm_in.input_name()}_{tm_out.output_name()}.png')
-    plt.savefig(figure_path)
+        plt.figure()
+        plt.scatter(df_true.posteromedial_pap_median, df_pred.posteromedial_pap_median)
+        plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
+        plt.title('posteromedial_pap_median')
+        plt.xlabel('true')
+        plt.ylabel('pred')
+        figure_path = os.path.join(args.output_folder, args.id, f'medians_inference_posteromedial_pap_median_{args.id}_{tm_in.input_name()}_{output_name}.png')
+        plt.savefig(figure_path)
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
