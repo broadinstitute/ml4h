@@ -82,11 +82,6 @@ MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP = {
     'interventricular_septum': 5, 'LV_free_wall': 6, 'anterolateral_pap': 7,  'posteromedial_pap': 8, 'LV_cavity': 9,
     'RV_free_wall': 10, 'RV_cavity': 11,
 }
-MRI_SAX_MERGED_PAP_SEGMENTED_CHANNEL_MAP = {
-    'background': 0, 'thoracic_cavity': 1, 'liver': 2, 'stomach': 3, 'spleen': 4,
-    'interventricular_septum': 5, 'LV_free_wall': 6, 'anterolateral_pap': 7,  'posteromedial_pap': 7, 'LV_cavity': 8,
-    'RV_free_wall': 9, 'RV_cavity': 10,
-}
 MRI_SAX_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
     'RV_cavity': 5, 'thoracic_cavity': 6, 'liver': 7, 'stomach': 8, 'spleen': 9, 'kidney': 11, 'body': 10,
