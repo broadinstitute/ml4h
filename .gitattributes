@@ -18,3 +18,5 @@ model_zoo/ECG2AF/salience.jpg filter=lfs diff=lfs merge=lfs -text
 model_zoo/cardiac_mri_derived_left_ventricular_mass/Lseg.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/cardiac_mri_derived_left_ventricular_mass/Lreg.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/left_ventricular_mass_from_ecg_student_and_mri_teacher/TrainingAndTestSets.jpg filter=lfs diff=lfs merge=lfs -text
+model_zoo/liver_fat_from_mri_ukb/liver_fat_from_echo_teacher_model.png filter=lfs diff=lfs merge=lfs -text
+model_zoo/liver_fat_from_mri_ukb/liver_fat_from_ideal_student_model.png filter=lfs diff=lfs merge=lfs -text
