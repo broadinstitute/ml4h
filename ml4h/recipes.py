@@ -8,6 +8,7 @@ import h5py
 import glob
 import logging
 import numpy as np
+import pandas as pd
 
 from functools import reduce
 from google.cloud import storage
@@ -22,18 +23,24 @@ from ml4h.models.train import train_model_from_generators
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
+from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe
+from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
+from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
+from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_survival
-from ml4h.plots import plot_reconstruction, plot_hit_to_miss_transforms, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
 from ml4h.models.legacy_models import make_character_model_plus, embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
-from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, make_paired_autoencoder_model
+from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_survival
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
+
+from ml4ht.data.util.date_selector import DATE_OPTION_KEY
+from ml4ht.data.sample_getter import DataDescriptionSampleGetter
+from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoch
 
 
 def run(args):
@@ -56,6 +63,8 @@ def run(args):
             train_multimodal_multitask(args)
         elif 'train_legacy' == args.mode:
             train_legacy(args)
+        elif 'train_xdl' == args.mode:
+            train_xdl(args)
         elif 'test' == args.mode:
             test_multimodal_multitask(args)
         elif 'compare' == args.mode:
@@ -274,6 +283,83 @@ def compare_multimodal_scalar_task_models(args):
     outs = _get_common_outputs(models_io, "output")
     predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generate_test, args.test_steps, outs, "input", "output")
     _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
+
+
+def standardize_by_sample_ecg(ecg, _):
+    """Z Score ECG"""
+    return (ecg - np.mean(ecg)) / (np.std(ecg) + 1e-6)
+
+def train_xdl(args):
+    mrn_df = pd.read_csv(args.app_csv)
+    mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    mrn_df = mrn_df.set_index('sample_id')
+
+    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+
+    ecg_dd = ECGDataDescription(
+        args.tensors,
+        name=args.tensor_maps_in[0].input_name(),
+        ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+        transforms=[standardize_by_sample_ecg],  # these will be applied in order
+        # data will be automatically localized from s3
+    )
+
+    def option_picker(sample_id, data_descriptions):
+        ecg_dts = ecg_dd.get_loading_options(sample_id)
+        htn_dt = output_dds[0].get_loading_options(sample_id)[0]['start_fu_datetime']
+        min_ecg_dt = htn_dt - pd.to_timedelta("1095d")
+        max_ecg_dt = htn_dt + pd.to_timedelta("1095d")
+        dates = []
+        for dt in ecg_dts:
+            if min_ecg_dt <= dt[DATE_OPTION_KEY] <= max_ecg_dt:
+                dates.append(dt)
+        if len(dates) == 0:
+            raise ValueError('No matching dates')
+        chosen_dt = np.random.choice(dates)
+        chosen_dt['day_delta'] = (htn_dt - chosen_dt[DATE_OPTION_KEY]).days
+        return {dd: chosen_dt for dd in data_descriptions}
+
+    sg = DataDescriptionSampleGetter(
+        input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
+        output_data_descriptions=output_dds,  # what we want a model to predict from the input data
+        option_picker=option_picker,
+    )
+    model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
+
+    train_ids = list(mrn_df[mrn_df.split == 'train'].index)
+    valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
+    test_ids = list(mrn_df[mrn_df.split == 'test'].index)
+
+    train_dataset = SampleGetterIterableDataset(sample_ids=list(train_ids), sample_getter=sg,
+                                                get_epoch=shuffle_get_epoch)
+    valid_dataset = SampleGetterIterableDataset(sample_ids=list(valid_ids), sample_getter=sg,
+                                                get_epoch=shuffle_get_epoch)
+
+    num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+    num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+
+    generate_train = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=train_dataset,
+        num_workers=num_train_workers,
+    )
+    generate_valid = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=valid_dataset,
+        num_workers=num_valid_workers,
+    )
+
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model,
+    )
+    for tm in encoders:
+        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+    for tm in decoders:
+        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+    if merger:
+        merger.save(f'{args.output_folder}{args.id}/merger.h5')
 
 
 def _make_tmap_nan_on_fail(tmap):
