@@ -131,8 +131,8 @@ def run(args):
         logging.exception(e)
     
     
-    if args.gcs_cloud_bucket is not None:
-         save_to_google_cloud(args)
+    # if args.gcs_cloud_bucket is not None:
+    #      save_to_google_cloud(args)
 
 
     end_time = timer()
