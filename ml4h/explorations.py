@@ -717,11 +717,9 @@ def _compute_masked_stats(img, y, nb_classes):
 def _to_categorical(y, nb_classes):
     return np.eye(nb_classes)[y]
 
-def _get_csv_row(means, medians, stds, tensor_paths):
+def _get_csv_row(sample_id, means, medians, stds, date):
     res = np.concatenate([means, medians, stds], axis=-1)
-    sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-    csv_row = [sample_id]
-    csv_row += res[0].astype('str').tolist()
+    csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
 def infer_medians(args):
@@ -762,6 +760,14 @@ def infer_medians(args):
     # Structuring element used for the erosion
     structure = _unit_disk(2)[np.newaxis, ..., np.newaxis]
 
+    # Get the dates
+    # TODO remove this hard-coding
+    dates_filename = '/home/pace/csvs/mri_dates_instance2.csv'
+    with open(dates_filename, mode='r') as dates_file:
+        dates_reader = csv.reader(dates_file)
+        dates_dict = {rows[0]:rows[1] for rows in dates_reader}
+    # end TODO remove this hard-coding
+
     stats = Counter()
     tensor_paths_inferred = set()
     inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
@@ -775,6 +781,7 @@ def infer_medians(args):
         header += [f'{k}_mean' for k in good_structures]
         header += [f'{k}_median' for k in good_structures]
         header += [f'{k}_std' for k in good_structures]
+        header += ['mri_date']
         inference_writer_true.writerow(header)
         inference_writer_pred.writerow(header)
 
@@ -794,18 +801,21 @@ def infer_medians(args):
             y_pred = np.argmax(y_pred, axis=-1)
             y_pred = _to_categorical(y_pred, nb_orig_classes)
 
+            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+            date = dates_dict[sample_id]
+
             if has_y_true:
                 y_true = labels[tm_out.output_name()]
                 y_true = np.delete(y_true, bad_channels, axis=-1)
                 y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
                 means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_good_classes)
-                csv_row_true = _get_csv_row(means_true, medians_true, stds_true, tensor_paths)
+                csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
                 inference_writer_true.writerow(csv_row_true)
 
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
             means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_good_classes)
-            csv_row_pred = _get_csv_row(means_pred, medians_pred, stds_pred, tensor_paths)
+            csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
 
             tensor_paths_inferred.add(tensor_paths[0])
