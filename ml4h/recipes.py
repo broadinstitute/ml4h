@@ -291,7 +291,10 @@ def standardize_by_sample_ecg(ecg, _):
 
 def train_xdl(args):
     mrn_df = pd.read_csv(args.app_csv)
-    mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    if 'start_fu_age' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif 'start_fu' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
     mrn_df = mrn_df.set_index('sample_id')
