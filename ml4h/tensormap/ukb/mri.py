@@ -2670,8 +2670,15 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
 )
 
 def _pad_crop_single_channel(tm, hd5, dependents={}):
+    if f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2'
+    elif f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2'
+    else:
+        raise ValueError(f'Could not find T1 Map image for tensormap: {tm.name}')
+
     img = np.array(
-            tm.hd5_first_dataset_in_group(hd5, tm.hd5_key_guess()),
+            tm.hd5_first_dataset_in_group(hd5, key_prefix),
             dtype=np.float32,
     )
     img = img[...,[1]]
