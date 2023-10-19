@@ -20,6 +20,7 @@ SAVE_ONEHOT_DF_FOR_EACH_CLASS = True
 
 def main(
         n_input_frames,
+        output_labels,
         wide_file,
         splits_file,
         selected_views,
@@ -43,8 +44,12 @@ def main(
     with open(model_param_path, 'r') as json_file:
         model_params = json.load(json_file)
 
-    output_labels = model_params['output_labels']
-    logging.info(f'Loaded model works with output labels: {output_labels}')
+    output_labels = model_params['output_labels'] if not output_labels else output_labels
+    selected_views = model_params['selected_views'] if not selected_views else selected_views
+    selected_doppler = model_params['selected_doppler'] if not selected_doppler else selected_doppler
+    selected_quality = model_params['selected_quality'] if not selected_quality else selected_quality
+    selected_canonical = model_params['selected_canonical'] if not selected_canonical else selected_canonical
+    logging.info(f'Loaded model with output labels: {output_labels}, views: {selected_views}, doppler: {selected_doppler}, quality: {selected_quality}, canonical: {selected_canonical}')
 
     # ---------- Adaptation for regression + classification ---------- #
     if ('output_labels_types' in model_params.keys()) and ('c' in model_params['output_labels_types'].lower()):
@@ -249,16 +254,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_input_frames', type=int, default=50)
+    parser.add_argument('-o', '--output_labels', action='append', required=False)
     parser.add_argument('--wide_file', type=str)
     parser.add_argument('--splits_file')
     parser.add_argument('-v', '--selected_views', action='append', choices=category_dictionaries['view'].keys(),
-                        required=True)
+                        required=False)
     parser.add_argument('-d', '--selected_doppler', action='append', choices=category_dictionaries['doppler'].keys(),
-                        required=True)
+                        required=False)
     parser.add_argument('-q', '--selected_quality', action='append', choices=category_dictionaries['quality'].keys(),
-                        required=True)
+                        required=False)
     parser.add_argument('-c', '--selected_canonical', action='append',
-                        choices=category_dictionaries['canonical'].keys(), required=True)
+                        choices=category_dictionaries['canonical'].keys(), required=False)
     parser.add_argument('-n', '--n_train_patients', default='all')
     parser.add_argument('--split_idx', type=int, choices=range(4))
     parser.add_argument('--n_splits', type=int, default=4)
@@ -280,6 +286,7 @@ if __name__ == "__main__":
 
     main(
         n_input_frames=args.n_input_frames,
+        output_labels=args.output_labels,
         wide_file=args.wide_file,
         splits_file=args.splits_file,
         selected_views=args.selected_views,
