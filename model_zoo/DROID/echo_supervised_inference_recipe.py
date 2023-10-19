@@ -17,9 +17,9 @@ tf.get_logger().setLevel(logging.ERROR)
 
 SAVE_ONEHOT_DF_FOR_EACH_CLASS = True
 
+
 def main(
         n_input_frames,
-        output_labels,
         wide_file,
         splits_file,
         selected_views,
@@ -36,11 +36,44 @@ def main(
         movinet_chkp_dir,
         output_dir,
         extract_embeddings,
-        start_beat,
-        cls_lbl_map_path,
-        add_separate_dense_reg,
-        add_separate_dense_cls
+        start_beat
 ):
+    # Loading information on saved model:
+    model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0], 'model_params.json')
+    with open(model_param_path, 'r') as json_file:
+        model_params = json.load(json_file)
+
+    output_labels = model_params['output_labels']
+    logging.info(f'Loaded model works with output labels: {output_labels}')
+
+    # ---------- Adaptation for regression + classification ---------- #
+    if ('output_labels_types' in model_params.keys()) and ('c' in model_params['output_labels_types'].lower()):
+        cls_lbl_map_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
+                                        'classification_class_label_mapping_per_output.json')
+        with open(cls_lbl_map_path, 'r') as json_file:
+            cls_category_map_dicts = json.load(json_file)
+        cls_category_len_dict = {}
+        for c_lbl in cls_category_map_dicts['cls_output_order']:
+            cls_category_len_dict[c_lbl] = len(cls_category_map_dicts[c_lbl])
+        # Reordering output labels to fit the regression-classification output order during training (assuming correct
+        # output_labels that include all saved classification output names - if not, the classification output names
+        # are added next anyway):
+        output_labels = ([i for i in output_labels if i not in cls_category_map_dicts['cls_output_order']] +
+                         cls_category_map_dicts['cls_output_order'])
+        logging.info(f'Loaded model contains classification heads. Updated output_label_order: {output_labels}, with classification heads for: {cls_category_map_dicts["cls_output_order"]}')
+        output_reg_len = len(output_labels) - len(cls_category_map_dicts['cls_output_order'])
+        add_separate_dense_reg = cls_category_map_dicts['add_separate_dense_reg']
+        add_separate_dense_cls = cls_category_map_dicts['add_separate_dense_cls']
+    else:
+        logging.info(f'Loaded model contains only regression variables.')
+        output_reg_len = len(output_labels)
+        cls_category_len_dict = {}
+        add_separate_dense_reg = model_params[
+            'add_separate_dense_reg'] if 'add_separate_dense_reg' in model_params.keys() else False
+        add_separate_dense_cls = model_params[
+            'add_separate_dense_cls'] if 'add_separate_dense_cls' in model_params.keys() else False
+    # ---------------------------------------------------------------- #
+
     # Hide devices based on split
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.set_visible_devices([physical_devices[split_idx % 4]], 'GPU')
@@ -58,27 +91,6 @@ def main(
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
         ]
-
-    # ---------- Adaptation for regression + classification ---------- #
-    if cls_lbl_map_path:
-        with open(cls_lbl_map_path, 'r') as json_file:
-            cls_category_map_dicts = json.load(json_file)
-        cls_category_len_dict = {}
-        for c_lbl in cls_category_map_dicts['cls_output_order']:
-            cls_category_len_dict[c_lbl] = len(cls_category_map_dicts[c_lbl])
-        # Reordering output labels to fit the regression-classification output order during training (assuming correct
-        # output_labels that include all saved classification output names - if not, the classification output names
-        # are added next anyway):
-        output_labels = [i for i in output_labels if i not in cls_category_map_dicts['cls_output_order']] + cls_category_map_dicts['cls_output_order']
-        logging.info(f'Updated output_label_order: {output_labels}')
-        output_reg_len = len(output_labels) - len(cls_category_map_dicts['cls_output_order'])
-        add_separate_dense_reg = cls_category_map_dicts['add_separate_dense_reg']
-        add_separate_dense_cls = cls_category_map_dicts['add_separate_dense_cls']
-        logging.warning('Using saved flag values for using a separate dense layer for classification and regression heads')
-    else:
-        output_reg_len = len(output_labels)
-        cls_category_len_dict = {}
-    # ---------------------------------------------------------------- #
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -237,7 +249,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_input_frames', type=int, default=50)
-    parser.add_argument('-o', '--output_labels', action='append')
     parser.add_argument('--wide_file', type=str)
     parser.add_argument('--splits_file')
     parser.add_argument('-v', '--selected_views', action='append', choices=category_dictionaries['view'].keys(),
@@ -259,14 +270,6 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str)
     parser.add_argument('--extract_embeddings', action='store_true')
     parser.add_argument('--start_beat', type=int, default=0)
-    # ---------- Adaptation for regression + classification ---------- #
-    parser.add_argument('--cls_lbl_map_path', type=str,
-                        help='Path to file with a dictionary of dictionaries specifying the value to class label map for every classification output. Needed if training included classification tasks.')
-    parser.add_argument('--add_separate_dense_reg', action='store_true',
-                        help='Adds an additional dense layer trained separately for the regression head')
-    parser.add_argument('--add_separate_dense_cls', action='store_true',
-                        help='Adds an additional dense layer trained separately for the classification head')
-    # ---------------------------------------------------------------- #
 
     args = parser.parse_args()
     root = logging.getLogger()
@@ -277,7 +280,6 @@ if __name__ == "__main__":
 
     main(
         n_input_frames=args.n_input_frames,
-        output_labels=args.output_labels,
         wide_file=args.wide_file,
         splits_file=args.splits_file,
         selected_views=args.selected_views,
@@ -295,9 +297,4 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
         start_beat=args.start_beat,
-        # ---------- Adaptation for regression + classification ---------- #
-        cls_lbl_map_path=args.cls_lbl_map_path,
-        add_separate_dense_reg=args.add_separate_dense_reg,
-        add_separate_dense_cls=args.add_separate_dense_cls
-        # ---------------------------------------------------------------- #
     )
