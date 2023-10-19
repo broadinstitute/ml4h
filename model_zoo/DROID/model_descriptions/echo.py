@@ -132,13 +132,15 @@ def train_model(
         n_train_steps,
         n_valid_steps,
         output_folder,
+        es_flags,
         class_weight=None
 ):
     tb_callback = tf.keras.callbacks.TensorBoard(f'{output_folder}/logs', profile_batch=[160, 170])
-    es_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+    es_callback = tf.keras.callbacks.EarlyStopping(monitor=es_flags['es_loss2monitor'],
+                                                   patience=es_flags['es_patience'])
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=f'{output_folder}/model/chkp',
-        monitor='val_loss',
+        monitor=es_flags['es_loss2monitor'],
         save_best_only=True,
         save_weights_only=True,
         mode='min'

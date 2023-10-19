@@ -40,59 +40,87 @@ def main(
         output_dir,
         adam,
         scale_outputs,
-        output_signature_labels,
+        es_patience,
+        es_loss2monitor,
         output_labels_types,
         add_separate_dense_reg,
-        add_separate_dense_cls
+        add_separate_dense_cls,
+        loss_weights
 ):
     lmdb_vois = '_'.join(selected_views)
     olabels = '_'.join(output_labels)
 
     # ---------- Adaptation for regression + classification ---------- #
-    # ---- Processing input values and handling incorrect inputs ----- #
-    # Specify parameters for regression and classification heads:
-    if len(output_labels_types) == len(output_labels):
-        # Number of task types labels (regression/classification) is equal to the number of output variables
-        unq_lbl_types = set([ch for ch in output_labels_types.lower()])
-    elif len(output_labels_types) == 1:
-        # Only one task type label (regression/classification) is given for all output variables
-        unq_lbl_types = output_labels_types.lower()
-    else:
-        # A wrong number of task type labels was given (empty or different from 1 or 'len(output_labels)')
-        raise TypeError("The lengths of 'output_labels' and 'output_labels_types' do not match (should be equal or 'len(output_labels_types)=1').")
-    if not set(unq_lbl_types) <= {'r', 'c'}:
-        # Wrong task type labels were given (letters other than 'r' for regression and 'c' for classification)
-        raise TypeError("'output_labels_types' contains unrecognized letters (should include 'r' and/or 'c' only).")
+    def process_labels_types(o_lbls, o_lbls_types, var_type='output_labels'):
+        # ---- Processing input values and handling incorrect inputs ----- #
+        # Specify parameters for regression and classification heads:
+        if len(o_lbls_types) == len(o_lbls):
+            # Number of task types labels (regression/classification) is equal to the number of output variables
+            unq_lbl_types = set([ch for ch in o_lbls_types.lower()])
+        elif len(o_lbls_types) == 1:
+            # Only one task type label (regression/classification) is given for all output variables
+            unq_lbl_types = o_lbls_types.lower()
+        else:
+            # A wrong number of task type labels was given (empty or different from 1 or 'len(output_labels)')
+            raise TypeError(
+                f"The lengths of '{var_type}' and '{var_type}_types' do not match (should be equal or 'len({var_type}_types)=1').")
+        if not set(unq_lbl_types) <= {'r', 'c'}:
+            # Wrong task type labels were given (letters other than 'r' for regression and 'c' for classification)
+            raise TypeError(f"'{var_type}_types' contains unrecognized letters (should include 'r' and/or 'c' only).")
 
-    if pretrained_chkp_dir and set(output_labels) == set(output_signature_labels):
-        # Currently not supporting this case. TODO: check what are the 'output_signature_labels', can we support this?
-        logging.warning(
-            "Reverting to a regression head only since the code currently does not support loading from checkpoint with 'output_signature_labels'")
-        unq_lbl_types = 'r'
+        # Grouping regression tasks together and classification tasks together
+        # and computing output lengths (number of regression variables and number of classification tasks)
+        if len(unq_lbl_types) > 1:
+            # Both regression and classification tasks were specified
+            output_label_types_int = [0 if (ch == 'r') else 1 for ch in o_lbls_types.lower()]
+            o_reg_len = len(output_label_types_int) - sum(output_label_types_int)
+            cls_o_names = [o_lbls[i_c] for i_c, c in enumerate(output_label_types_int) if c == 1]
+            output_order = np.argsort(output_label_types_int)
+            o_lbls = [o_lbls[i] for i in output_order]
+            if var_type == 'output_labels':
+                logging.info('Training with regression and classification heads')
+            else:
+                logging.info('Loaded model has regression and classification heads')
+            logging.info(f'Updated {var_type} order: {o_lbls}')
+        elif 'r' in unq_lbl_types:
+            # Only one task type specified - regression
+            o_reg_len = len(o_lbls)
+            cls_o_names = []
+            if var_type == 'output_labels':
+                logging.info('Training only with a regression head')
+            else:
+                logging.info('Loaded model has only a regression head')
+        else:
+            # Only one task type - classification
+            o_reg_len = 0
+            cls_o_names = o_lbls
+            if var_type == 'output_labels':
+                logging.info('Training only with a classification head')
+            else:
+                logging.info('Loaded model has only a classification head')
 
-    # Grouping regression tasks together and classification tasks together
-    # and computing output lengths (number of regression variables and number of classification tasks)
-    if len(unq_lbl_types) > 1:
-        # Both regression and classification tasks were specified
-        output_label_types_int = [0 if (ch == 'r') else 1 for ch in output_labels_types.lower()]
-        output_reg_len = len(output_label_types_int) - sum(output_label_types_int)
-        cls_output_names = [output_labels[i_c] for i_c, c in enumerate(output_label_types_int) if c == 1]
-        output_order = np.argsort(output_label_types_int)
-        output_labels = [output_labels[i] for i in output_order]
-        logging.info('Training with regression and classification heads')
-        logging.info(f'Updated output_label_order: {output_labels}')
-    elif 'r' in unq_lbl_types:
-        # Only one task type specified - regression
-        output_reg_len = len(output_labels)
-        cls_output_names = []
-        logging.info('Training only with a regression head')
-    else:
-        # Only one task type - classification
-        output_reg_len = 0
-        cls_output_names = output_labels
-        logging.info('Training only with a classification head')
+        return o_lbls, o_reg_len, cls_o_names
+
+    def process_class_categories(df, cls_o_names, var_type='output_labels'):
+        # Creating dictionaries specifying number of classes for each output_label name
+        # and mapping between wide_file values to class labels:
+        clsc_map_dicts = {}
+        clsc_len_dict = {}
+        for c_lbl in cls_o_names:
+            all_cls_vals = np.sort(df[c_lbl].drop_duplicates().tolist())
+            val2clsind_map_dict = {val: c_ind for val, c_ind in zip(all_cls_vals, range(len(all_cls_vals)))}
+            clsc_map_dicts[c_lbl] = val2clsind_map_dict
+            clsc_len_dict[c_lbl] = len(df[c_lbl].drop_duplicates())
+            if clsc_len_dict[c_lbl] < 2:
+                logging.error(
+                    f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors in the classifier. Error raised when processing {var_type} related classification variables.')
+        clsc_map_dicts['cls_output_order'] = cls_o_names
+        return clsc_map_dicts, clsc_len_dict
+
     # ---------------------------------------------------------------- #
-
+    output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
+                                                                           var_type='output_labels')
+    # ---------------------------------------------------------------- #
     wide_df = pd.read_parquet(wide_file)
 
     # Select only view(s) of interest
@@ -128,9 +156,15 @@ def main(
     # If scale_outputs, normalize by summary stats of training set
     if scale_outputs:
         wide_df_train = wide_df_selected[wide_df_selected['sample_id'].isin(train_ids)]
-        mean_outputs = np.mean(wide_df_train[output_labels].values, axis=0)
-        std_outputs = np.std(wide_df_train[output_labels].values, axis=0)
-        wide_df_selected.loc[:, output_labels] = (wide_df_selected[output_labels].values - mean_outputs) / std_outputs
+        output_labels_to_scale = np.array([l for l in output_labels if l not in cls_output_names])
+        output_labels_to_scale = list(output_labels_to_scale[
+                                          np.logical_and(wide_df_train[output_labels_to_scale].dtypes != 'object',
+                                                         wide_df_train[output_labels_to_scale].dtypes != 'string')])
+        logging.info(
+            f'Not scaling classification columns and columns containing strings/objects, unscaled columns: {[l for l in output_labels if l not in output_labels_to_scale]}')
+        mean_outputs = np.mean(wide_df_train[output_labels_to_scale].values, axis=0)
+        std_outputs = np.std(wide_df_train[output_labels_to_scale].values, axis=0)
+        wide_df_selected.loc[:, output_labels_to_scale] = (wide_df_selected[output_labels_to_scale].values - mean_outputs) / std_outputs
         logging.info(mean_outputs)
         logging.info(std_outputs)
 
@@ -138,19 +172,8 @@ def main(
     valid_ids = list(set(valid_ids).intersection(set(working_ids)))
 
     # ---------- Adaptation for regression + classification ---------- #
-    # Creating dictionaries specifying number of classes for each output_label name
-    # and mapping between wide_file values to class labels:
-    cls_category_map_dicts = {}
-    cls_category_len_dict = {}
-    for c_lbl in cls_output_names:
-        all_cls_vals = np.sort(wide_df_selected[c_lbl].drop_duplicates().tolist())
-        val2clsind_map_dict = {val: c_ind for val, c_ind in zip(all_cls_vals, range(len(all_cls_vals)))}
-        cls_category_map_dicts[c_lbl] = val2clsind_map_dict
-        cls_category_len_dict[c_lbl] = len(wide_df_selected[c_lbl].drop_duplicates())
-        if cls_category_len_dict[c_lbl] < 2:
-            logging.error(
-                f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors for in the classifier')
-    cls_category_map_dicts['cls_output_order'] = cls_output_names
+    cls_category_map_dicts, cls_category_len_dict = process_class_categories(wide_df_selected, cls_output_names,
+                                                                             var_type='output_labels')
     # ---------------------------------------------------------------- #
 
     INPUT_DD = LmdbEchoStudyVideoDataDescription(
@@ -183,8 +206,9 @@ def main(
 
     # ---------- Adaptation for regression + classification ---------- #
     # Adapting tensor output sizes for classification heads
-    num_classes = [output_reg_len] + list(cls_category_len_dict.values()) if output_reg_len > 0 else list(
-        cls_category_len_dict.values())
+    num_classes = [output_reg_len] + [cls_category_len_dict[c] for c in
+                                      cls_category_map_dicts['cls_output_order']] if output_reg_len > 0 else [
+        cls_category_len_dict[c] for c in cls_category_map_dicts['cls_output_order']]
     if len(num_classes) > 1:
         output_signatures = (
             tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32),
@@ -245,16 +269,39 @@ def main(
         # ---------------------------------------------------------------- #
 
         if pretrained_chkp_dir:
-            # TODO: Check if we can achieve compatability with output_signature_labels, currently left unchanged for that scenario
-            model = create_regressor(
+            signature_model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
+                                                      'model_params.json')
+            f = open(signature_model_param_path)
+            signature_model_params = json.load(f)
+            sig_add_separate_dense_reg = signature_model_params[
+                'add_separate_dense_reg'] if 'add_separate_dense_reg' in signature_model_params.keys() else False
+            sig_add_separate_dense_cls = signature_model_params[
+                'add_separate_dense_cls'] if 'add_separate_dense_cls' in signature_model_params.keys() else False
+            output_signature_labels_types = signature_model_params[
+                'output_labels_types'] if 'output_labels_types' in signature_model_params.keys() else 'r'
+            output_signature_labels = signature_model_params['output_labels']
+            logging.info(f'output_labels of loaded model: {output_signature_labels}')
+
+            output_signature_labels, output_signature_reg_len, cls_output_signature_names = process_labels_types(
+                output_signature_labels, output_signature_labels_types, var_type='output_signature_labels')
+            cls_category_signature_map_dicts, cls_category_signature_len_dict = process_class_categories(
+                wide_df_selected, cls_output_signature_names, var_type='output_signature_labels')
+
+            model = create_regressor_classifier(
                 encoder,
                 input_shape=(n_input_frames, 224, 224, 3),
-                n_output_features=len(output_signature_labels),
-                trainable=not fine_tune
+                trainable=not fine_tune,
+                n_output_features=output_signature_reg_len,
+                categories=cls_category_signature_len_dict,
+                category_order=cls_category_signature_map_dicts[
+                    'cls_output_order'] if cls_category_signature_len_dict else None,
+                add_dense={'regressor': sig_add_separate_dense_reg, 'classifier': sig_add_separate_dense_cls}
             )
             model.load_weights(pretrained_chkp_dir)
 
-            if set(output_labels) != set(output_signature_labels):
+            if (output_labels != output_signature_labels) or (output_signature_reg_len != output_reg_len) or (
+                    cls_output_signature_names != cls_output_names):
+                logging.info('Redefining regression and/or classification heads due to differences in outputs used')
                 # ---------- Adaptation for regression + classification ---------- #
                 model = create_regressor_classifier(encoder, **func_args)
                 # ---------------------------------------------------------------- #
@@ -286,6 +333,7 @@ def main(
             optimizer=optimizer,
             loss=loss,
             metrics=metrics,
+            loss_weights=loss_weights if loss_weights else None
         )
 
     options = tf.data.Options()
@@ -316,6 +364,8 @@ def main(
             json.dump(cls_category_map_dicts, json_file)
     # ---------------------------------------------------------------- #
 
+    es_flags = {'es_patience': es_patience, 'es_loss2monitor': es_loss2monitor}
+
     logging.info(model.summary())
     trained_model = train_model(
         model,
@@ -324,7 +374,8 @@ def main(
         epochs,
         n_train_steps,
         n_valid_steps,
-        output_folder
+        output_folder,
+        es_flags
     )
 
 
@@ -354,7 +405,10 @@ if __name__ == "__main__":
     parser.add_argument('--splits_file')
     parser.add_argument('--adam', default=None, type=float)
     parser.add_argument('--scale_outputs', action='store_true')
-    parser.add_argument('-os', '--output_signature_labels', action='append', type=str)
+    parser.add_argument('--es_patience', default=3, type=int,
+                        help='Number of epochs with no change before early stopping.')
+    parser.add_argument('--es_loss2monitor', default='val_loss', type=str,
+                        help='Loss on which the early stopping will be based, options are "val_loss", "val_echolab_loss" for regression loss, or "val_cls_COLUMN-NAME_loss" for classification loss.')
     # ---------- Adaptation for regression + classification ---------- #
     parser.add_argument('--output_labels_types', default='r', type=str,
                         help='A string indicating task types: r for regression, c for classification. Should be of length 1 or the same length of the specified output_labels variable, e.g. "r" or "rrcr".')
@@ -362,10 +416,10 @@ if __name__ == "__main__":
                         help='Adds an additional dense layer trained separately for the regression head')
     parser.add_argument('--add_separate_dense_cls', action='store_true',
                         help='Adds an additional dense layer trained separately for the classification head')
+    parser.add_argument('-lw', '--loss_weights', action='append', type=float,
+                        help='Loss weights, number of weights to specify should be: No. classification tasks (columns) + 1 if there are regression variables. For example, for output_labels_types="rrcc", the length should be 2+1=3.')
     # ---------------------------------------------------------------- #
     args = parser.parse_args()
-
-    # TODO? add option to set number of classes parameter manually for classification (in case there are more classes than the ones in the data?)
 
     root = logging.getLogger()
     root.setLevel(logging.INFO)
@@ -396,10 +450,12 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         adam=args.adam,
         scale_outputs=args.scale_outputs,
-        output_signature_labels=args.output_signature_labels,
+        es_patience=args.es_patience,
+        es_loss2monitor=args.es_loss2monitor,
         # ---------- Adaptation for regression + classification ---------- #
         output_labels_types=args.output_labels_types,
         add_separate_dense_reg=args.add_separate_dense_reg,
-        add_separate_dense_cls=args.add_separate_dense_cls
+        add_separate_dense_cls=args.add_separate_dense_cls,
+        loss_weights=args.loss_weights
         # ---------------------------------------------------------------- #
     )
