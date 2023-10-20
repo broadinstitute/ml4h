@@ -726,6 +726,48 @@ def get_train_valid_test_paths_split_by_csvs(
     return train_paths, valid_paths, test_paths
 
 
+# TODO prototyping
+# https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
+def augment_using_layers(images, mask):
+
+    def aug():
+
+        rota = tf.keras.layers.RandomRotation(factor=(0.014), fill_mode='constant')
+
+        zoom = tf.keras.layers.RandomZoom(
+            height_factor=(-0.05, 0.05),
+            width_factor=None,
+            fill_mode='constant',
+        )
+
+        trans = tf.keras.layers.RandomTranslation(
+            height_factor=(-0.042, 0.042),
+            width_factor=(-0.042, 0.042),
+            fill_mode='constant',
+        )
+
+        layers = [rota, zoom, trans]
+        aug_model = tf.keras.Sequential(layers)
+
+        return aug_model
+
+    aug = aug()
+
+    images = images['input_shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map_continuous']
+    mask = mask['output_b2s_t1map_kassir_annotated_categorical']
+
+    images_mask = tf.concat([images, mask], -1)
+    images_mask = aug(images_mask)
+
+    image = images_mask[..., 0]
+    image = image[..., tf.newaxis]
+    mask = images_mask[..., 1:]
+
+    return image, mask
+# end TODO prototyping
+
+
+
 def test_train_valid_tensor_generators(
     tensor_maps_in: List[TensorMap],
     tensor_maps_out: List[TensorMap],
@@ -824,7 +866,8 @@ def test_train_valid_tensor_generators(
         paths=test_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
         keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
-    if wrap_with_tf_dataset:
+    # TODO prototyping
+    if True:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
         out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
         train_dataset = tf.data.Dataset.from_generator(
@@ -832,6 +875,11 @@ def test_train_valid_tensor_generators(
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
             output_shapes=(in_shapes, out_shapes),
         )
+        train_dataset = train_dataset.map(lambda x, y: augment_using_layers(x, y))
+    # end TODO prototyping
+    if wrap_with_tf_dataset:
+        in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
+        out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
         valid_dataset = tf.data.Dataset.from_generator(
             generate_valid,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
@@ -844,7 +892,10 @@ def test_train_valid_tensor_generators(
         )
         return train_dataset, valid_dataset, test_dataset
     else:
-        return generate_train, generate_valid, generate_test
+        # TODO prototyping
+        # return generate_train, generate_valid, generate_test
+        return train_dataset, generate_valid, generate_test
+        # end TODO prototyping
 
 
 def _log_first_error(stats: Counter, tensor_path: str):
