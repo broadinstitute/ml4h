@@ -113,7 +113,7 @@ def main(
             clsc_len_dict[c_lbl] = len(df[c_lbl].drop_duplicates())
             if clsc_len_dict[c_lbl] < 2:
                 logging.error(
-                    f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - will cause errors in the classifier. Error raised when processing {var_type} related classification variables.')
+                    f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - might cause errors in the classifier. Error raised when processing {var_type} related classification variables.')
         clsc_map_dicts['cls_output_order'] = cls_o_names
         return clsc_map_dicts, clsc_len_dict
 
@@ -174,6 +174,24 @@ def main(
     # ---------- Adaptation for regression + classification ---------- #
     cls_category_map_dicts, cls_category_len_dict = process_class_categories(wide_df_selected, cls_output_names,
                                                                              var_type='output_labels')
+
+    if pretrained_chkp_dir:
+        cls_lbl_map_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
+                                        'classification_class_label_mapping_per_output.json')
+        define_new_heads = False
+        if os.path.isfile(cls_lbl_map_path):
+            with open(cls_lbl_map_path, 'r') as json_file:
+                cls_category_signature_map_dicts = json.load(json_file)
+            similar_cls = [c for c in cls_output_names if c in cls_category_signature_map_dicts.keys()]
+            for c in similar_cls:
+                if (len(cls_category_signature_map_dicts[c]) > len(cls_category_map_dicts[c])) and set(
+                        cls_category_map_dicts[c].keys()).issubset(set(cls_category_signature_map_dicts[c].keys())):
+                    cls_category_map_dicts[c] = cls_category_signature_map_dicts[c]
+                    cls_category_len_dict[c] = len(cls_category_map_dicts[c])
+                    logging.info(f'Using mapping from pretrained_chkp_dir for classification task on {c}')
+                elif not set(
+                        cls_category_map_dicts[c].keys()).issubset(set(cls_category_signature_map_dicts[c].keys())):
+                    define_new_heads = True
     # ---------------------------------------------------------------- #
 
     INPUT_DD = LmdbEchoStudyVideoDataDescription(
@@ -284,8 +302,13 @@ def main(
 
             output_signature_labels, output_signature_reg_len, cls_output_signature_names = process_labels_types(
                 output_signature_labels, output_signature_labels_types, var_type='output_signature_labels')
-            cls_category_signature_map_dicts, cls_category_signature_len_dict = process_class_categories(
-                wide_df_selected, cls_output_signature_names, var_type='output_signature_labels')
+
+            if 'c' in output_signature_labels_types.lower():
+                cls_category_signature_len_dict = {}
+                for c_lbl in cls_category_signature_map_dicts['cls_output_order']:
+                    cls_category_signature_len_dict[c_lbl] = len(cls_category_signature_map_dicts[c_lbl])
+            else:
+                cls_category_signature_len_dict = {}
 
             model = create_regressor_classifier(
                 encoder,
@@ -300,7 +323,7 @@ def main(
             model.load_weights(pretrained_chkp_dir)
 
             if (output_labels != output_signature_labels) or (output_signature_reg_len != output_reg_len) or (
-                    cls_output_signature_names != cls_output_names):
+                    cls_output_signature_names != cls_output_names) or define_new_heads:
                 logging.info('Redefining regression and/or classification heads due to differences in outputs used')
                 # ---------- Adaptation for regression + classification ---------- #
                 model = create_regressor_classifier(encoder, **func_args)
