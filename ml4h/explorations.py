@@ -9,6 +9,7 @@ import logging
 import operator
 import datetime
 from scipy import stats
+from seaborn import lmplot
 from functools import reduce
 from itertools import combinations
 from collections import defaultdict, Counter, OrderedDict
@@ -768,7 +769,7 @@ def infer_medians(args):
         dates_dict = {rows[0]:rows[1] for rows in dates_reader}
     # end TODO remove this hard-coding
 
-    stats = Counter()
+    stats_counter = Counter()
     tensor_paths_inferred = set()
     inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
     inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
@@ -791,7 +792,7 @@ def infer_medians(args):
             if tensor_paths[0] in tensor_paths_inferred:
                 next(generate_test)  # this print end of epoch info
                 logging.info(
-                    f"Inference on {stats['count']} tensors finished. Inference TSV files at: {inference_tsv_true}, {inference_tsv_pred}",
+                    f"Inference on {stats_counter['count']} tensors finished. Inference TSV files at: {inference_tsv_true}, {inference_tsv_pred}",
                 )
                 break
 
@@ -819,9 +820,9 @@ def infer_medians(args):
             inference_writer_pred.writerow(csv_row_pred)
 
             tensor_paths_inferred.add(tensor_paths[0])
-            stats['count'] += 1
-            if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
+            stats_counter['count'] += 1
+            if stats_counter['count'] % 250 == 0:
+                logging.info(f"Wrote:{stats_counter['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
     inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
     inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
@@ -830,23 +831,46 @@ def infer_medians(args):
     df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
     if has_y_true:
-        plt.figure()
-        plt.scatter(df_true.anterolateral_pap_median, df_pred.anterolateral_pap_median)
-        plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
-        plt.title('anterolateral_pap_median')
-        plt.xlabel('true')
-        plt.ylabel('pred')
-        figure_path = os.path.join(args.output_folder, args.id, f'medians_inference_anterolateral_pap_median_{args.id}_{tm_in.input_name()}_{output_name}.png')
-        plt.savefig(figure_path)
+        cols = ['anterolateral_pap_median', 'posteromedial_pap_median']
+        for col in cols:
+            plot_data = pd.concat(
+                [df_true[col], df_pred[col]],
+                axis=1, keys=['true', 'pred'],
+            )
 
-        plt.figure()
-        plt.scatter(df_true.posteromedial_pap_median, df_pred.posteromedial_pap_median)
-        plt.plot([0, 1300], [0, 1300], color='k', linestyle='--', linewidth=2)
-        plt.title('posteromedial_pap_median')
-        plt.xlabel('true')
-        plt.ylabel('pred')
-        figure_path = os.path.join(args.output_folder, args.id, f'medians_inference_posteromedial_pap_median_{args.id}_{tm_in.input_name()}_{output_name}.png')
-        plt.savefig(figure_path)
+            for i in range(2):
+                if i == 1:
+                    plot_data = plot_data[plot_data.true != 0]
+                    plot_data = plot_data[plot_data.pred != 0]
+
+                plt.figure()
+                g = lmplot(x='true', y='pred', data=plot_data)
+                ax = plt.gca()
+                title = col.replace('_', ' ')
+                ax.set_xlabel(f'{title} T1 Time (ms) - Manual Segmentation')
+                ax.set_ylabel(f'{title} T1 Time (ms) - Model Segmentation')
+                if i == 0:
+                    min_value = -50
+                    max_value = 1300
+                else:
+                    min_value, max_value = plot_data.min(), plot_data.max()
+                    min_value = min([min_value['true'], min_value['pred']]) - 100
+                    max_value = min([max_value['true'], max_value['pred']]) + 100
+                ax.set_xlim([min_value, max_value])
+                ax.set_ylim([min_value, max_value])
+                res = stats.pearsonr(plot_data['true'], plot_data['pred'])
+                conf = res.confidence_interval(confidence_level=0.95)
+                text = f'Pearson Correlation Coefficient r={res.statistic:.2f},\n95% CI {conf.low:.2f} - {conf.high:.2f}'
+                ax.text(0.25, 0.1, text, transform=ax.transAxes)
+                if i == 0:
+                    postfix = ''
+                else:
+                    postfix = '_no_zeros'
+                figure_path = os.path.join(
+                    args.output_folder, args.id,
+                    f'medians_inference_{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
+                )
+                plt.savefig(figure_path)
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
