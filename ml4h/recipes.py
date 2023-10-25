@@ -384,15 +384,12 @@ def float_to_datetime(fl):
 def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000):
     dataloader_iterator = iter(dataloader)
     space_dict = defaultdict(list)
-    logging.info(f'In dataloader inference')
     for i in range(max_batches):
         try:
             data, target = next(dataloader_iterator)
-            logging.info(f'Got targets')
             for k in data:
                 data[k] = np.array(data[k])
             prediction = model.predict(data, verbose=0)
-            logging.info(f'Made prediction')
             if len(model.output_names) == 1:
                 prediction = [prediction]
             predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
@@ -428,8 +425,6 @@ def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000
 
 
 def infer_xdl(args):
-    import torch
-    torch.multiprocessing.set_sharing_strategy('file_system')
     mrn_df = pd.read_csv(args.app_csv)
     if 'start_fu_age' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
@@ -479,7 +474,6 @@ def infer_xdl(args):
     dataloader = DataLoader(dataset, num_workers=0, batch_size=args.batch_size)
 
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-    logging.info(f'Try to infer on dataloader.')
     infer_df = infer_from_dataloader(dataloader, model, args.tensor_maps_out)
     if 'mgh' in args.tensors:
         hospital = 'mgh'
