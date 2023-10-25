@@ -478,6 +478,7 @@ def infer_xdl(args):
     dataloader = DataLoader(dataset, num_workers=0, batch_size=args.batch_size)
 
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+    logging.info(f'Try to infer on dataloader.')
     infer_df = infer_from_dataloader(dataloader, model, args.tensor_maps_out)
     if 'mgh' in args.tensors:
         hospital = 'mgh'
