@@ -2747,6 +2747,7 @@ def plot_dice(predictions, truth, labels, title, prefix="./figures/", dpi=300, w
 
     dice_scores = {}
     mean_dice_scores = {}
+    std_dice_scores = {}
     for p in predictions:
         y_pred = predictions[p].argmax(-1)
         dice_scores[p] = np.stack([dice(y_true[i], y_pred[i], labels=label_vals) for i in range(batch_size)], axis=0)
@@ -2760,6 +2761,8 @@ def plot_dice(predictions, truth, labels, title, prefix="./figures/", dpi=300, w
 
         mean_dice_scores[p] = np.average(dice_scores[p], axis=0)
         logging.info(f"{p} mean Dice scores {mean_dice_scores[p]}")
+        std_dice_scores[p] = np.std(dice_scores[p], axis=0)
+        logging.info(f"{p} std Dice scores {std_dice_scores[p]}")
 
     row = 0
     col = 0
