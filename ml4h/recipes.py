@@ -417,9 +417,9 @@ def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000
                     else:
                         space_dict[f'{k}'].append(target[k][b, -1].numpy())
             if i % 100 == 0:
-                print(f'Inferred on {i} batches, {len(space_dict[k])} rows')
+                logging.info(f'Inferred on {i} batches, {len(space_dict[k])} rows')
         except StopIteration:
-            print('loaded all batches')
+            logging.info(f'Inferred on all {i} batches.')
             break
     return pd.DataFrame.from_dict(space_dict)
 
@@ -476,19 +476,19 @@ def infer_xdl(args):
     infer_df = infer_from_dataloader(dataloader, model, args.tensor_maps_out)
     if 'mgh' in args.tensors:
         hospital = 'mgh'
-        df_ecg_2_disease = infer_df.rename(columns={'MRN': 'MGH_MRN'})
-        df_ecg_2_disease.MGH_MRN = infer_df.MGH_MRN.astype(int)
+        infer_df = infer_df.rename(columns={'MRN': 'MGH_MRN'})
+        infer_df.MGH_MRN = infer_df.MGH_MRN.astype(int)
     else:
         hospital = 'bwh'
-        df_ecg_2_disease = infer_df.rename(columns={'MRN': 'BWH_MRN'})
-        df_ecg_2_disease.BWH_MRN = infer_df.BWH_MRN.astype(int)
+        infer_df = infer_df.rename(columns={'MRN': 'BWH_MRN'})
+        infer_df.BWH_MRN = infer_df.BWH_MRN.astype(int)
 
-    df_ecg_2_disease.linker_id = df_ecg_2_disease.linker_id.astype(int)
+    infer_df.linker_id = infer_df.linker_id.astype(int)
     names = '_'.join([otm.name for otm in args.tensor_maps_out])
     now_string = datetime.datetime.now().strftime('%Y_%m_%d')
     out_file = f'./ecg_{names}_{hospital}_inference_v{now_string}.tsv'
-    df_ecg_2_disease.to_csv(out_file, sep='\t', index=False)
-    print(f'Saved inferences to: {out_file}')
+    infer_df.to_csv(out_file, sep='\t', index=False)
+    logging.info(f'Infer dataframe head: {infer_df.head()}  \n\n Saved inferences to: {out_file}')
 
 
 def _make_tmap_nan_on_fail(tmap):
