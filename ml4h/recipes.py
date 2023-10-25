@@ -430,7 +430,7 @@ def infer_xdl(args):
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
     elif 'start_fu' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
-    mrn_df = mrn_df.rename(columns={'Dem.Gender.no_filter_x': 'sex'})
+    mrn_df = mrn_df.rename(columns={'Dem.Gender.no_filter_x': 'sex', 'Dem.Gender.no_filter': 'sex'})
     mrn_df['is_c3po'] = mrn_df.cohort == 'c3po'
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
