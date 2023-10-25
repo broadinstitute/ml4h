@@ -866,6 +866,7 @@ def infer_medians(args):
                     postfix = ''
                 else:
                     postfix = '_no_zeros'
+                logging.info(f'{col} pearson{postfix} {res.statistic}')
                 figure_path = os.path.join(
                     args.output_folder, args.id,
                     f'medians_inference_{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
