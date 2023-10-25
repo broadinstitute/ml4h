@@ -2764,32 +2764,42 @@ def plot_dice(predictions, truth, labels, title, prefix="./figures/", dpi=300, w
         std_dice_scores[p] = np.std(dice_scores[p], axis=0)
         logging.info(f"{p} std Dice scores {std_dice_scores[p]}")
 
-    row = 0
-    col = 0
-    total_plots = len(label_names)
-    cols = int(math.ceil(math.sqrt(total_plots)))
-    rows = int(math.ceil(total_plots / cols))
-    f, axes = plt.subplots(
-        rows, cols, figsize=(int(cols * width), int(rows * height)), dpi=dpi,
-    )
+    if len(predictions) > 1:
+        row = 0
+        col = 0
+        total_plots = len(label_names)
+        cols = int(math.ceil(math.sqrt(total_plots)))
+        rows = int(math.ceil(total_plots / cols))
+        f, axes = plt.subplots(
+            rows, cols, figsize=(int(cols * width), int(rows * height)), dpi=dpi,
+        )
 
-    for i,k in enumerate(label_names):
-        for j,p in enumerate(predictions):
-            axes[row, col].boxplot(dice_scores[p][:,i], positions = [j], labels=[''])
-        label_text = [f"{p} mean dice:{mean_dice_scores[p][i]:.3f}" for p in predictions]
-        axes[row, col].set_title(f"{k}")
-        axes[row, col].set_ylabel(DICE_LABEL)
-        axes[row, col].legend(label_text, loc="lower right")
+        for i,k in enumerate(label_names):
+            for j,p in enumerate(predictions):
+                axes[row, col].boxplot(dice_scores[p][:,i], positions = [j], labels=[''])
+            label_text = [f"{p} mean dice:{mean_dice_scores[p][i]:.3f}" for p in predictions]
+            axes[row, col].set_title(f"{k}")
+            axes[row, col].set_ylabel(DICE_LABEL)
+            axes[row, col].legend(label_text, loc="lower right")
 
-        row += 1
-        if row == rows:
-            row = 0
-            col += 1
-            if col >= cols:
-                break
+            row += 1
+            if row == rows:
+                row = 0
+                col += 1
+                if col >= cols:
+                    break
+
+    else:
+        logging.info([p for p in predictions])
+        p = list(predictions.keys())[0]
+        for i,k in enumerate(label_names):
+            plt.boxplot(dice_scores[p][:,i], positions = [i], labels=[k])
+
+        ax = plt.gca()
+        ax.set_ylabel(DICE_LABEL)
+        plt.xticks(rotation=90)
 
     plt.tight_layout()
-    plt.suptitle(f"{title} n={batch_size:.0f}")
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
     figure_path = os.path.join(prefix, f'dice_{now_string}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
