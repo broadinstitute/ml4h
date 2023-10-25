@@ -428,6 +428,8 @@ def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000
 
 
 def infer_xdl(args):
+    import torch
+    torch.multiprocessing.set_sharing_strategy('file_system')
     mrn_df = pd.read_csv(args.app_csv)
     if 'start_fu_age' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
