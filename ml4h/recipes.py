@@ -474,12 +474,8 @@ def infer_xdl(args):
     )
 
     dataset = SampleGetterIterableDataset(sample_ids=list(mrn_df.index), sample_getter=sg, get_epoch=shuffle_get_epoch)
-    #dataloader = DataLoader(dataset, num_workers=0, batch_size=args.batch_size)
-    dataloader = TensorMapDataLoader2(
-        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
-        dataset=dataset,
-        num_workers=0,
-    )
+    dataloader = DataLoader(dataset, num_workers=0, batch_size=args.batch_size)
+
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     logging.info(f'Try to infer on dataloader.')
     infer_df = infer_from_dataloader(dataloader, model, args.tensor_maps_out)
