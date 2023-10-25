@@ -486,7 +486,7 @@ def infer_xdl(args):
     infer_df.linker_id = infer_df.linker_id.astype(int)
     names = '_'.join([otm.name for otm in args.tensor_maps_out])
     now_string = datetime.datetime.now().strftime('%Y_%m_%d')
-    out_file = f'./ecg_{names}_{hospital}_inference_v{now_string}.tsv'
+    out_file = f'{args.output_folder}/{args.id}/infer_{names}_{hospital}_v{now_string}.tsv'
     infer_df.to_csv(out_file, sep='\t', index=False)
     logging.info(f'Infer dataframe head: {infer_df.head()}  \n\n Saved inferences to: {out_file}')
 
