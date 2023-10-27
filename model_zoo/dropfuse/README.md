@@ -1,5 +1,5 @@
 ## A Cross-Modal Autoencoder Framework Learns Holistic Representations of Cardiovascular State
-This directory contains code and instructions to create the models and results from [this paper](https://www.nature.com/articles/s41467-023-38125-0).
+This directory contains code and instructions to create the models and results from [this paper](https://www.nature.com/articles/s41467-023-38125-0) published in Nature Communications.
 
 In the paper, using the heart as a model system, we develop a cross-modal autoencoder framework for integrating distinct data modalities and constructing a holistic representation of cardio-vascular state. 
 In particular, we use our framework to construct such cross-modal representations from cardiac magnetic resonance images (MRIs), containing structural information, and electrocardiograms (ECGs), containing myoelectric information.
