@@ -2,11 +2,11 @@
 `ML4H` is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more. The diverse data modalities of biomedicine offer different perspectives on the underlying challenge of understanding human health. For this reason, `ML4H` is built on a foundation of multimodal multitask modeling, hoping to leverage all available data to help power research and inform clinical care. Our tools help apply clinical research standards to ML models by carefully considering bias and longitudinal outcomes. Our project grew out of efforts at the Broad Institute to make it easy to work with the UK Biobank on the Google Cloud Platform and has since expanded to include proprietary data from academic medical centers. To put cutting-edge AI and ML to use making the world healthier, we're fostering interdisciplinary collaborations across industry and academia.  We'd love to work with you too!    
 
 `ML4H` is best described with Five Verbs: Ingest, Tensorize, TensorMap, Model, Evaluate
-* Ingest: collect files onto one system
-* Tensorize: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
-* TensorMap: tag data (typically from an HD5) with an interpretation and a method for generation
-* ModelFactory: connect TensorMaps with a trainable neural network architecture loss function, and optimization strategy
-* Evaluate: generate plots that enable domain-driven inspection of models and results
+* *Ingest*: collect files onto one system
+* *Tensorize*: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
+* *TensorMap*: tag data (typically from an HD5) with an interpretation and a method for generation
+* *ModelFactory*: connect TensorMaps with a trainable neural network architecture loss function, and optimization strategy
+* *Evaluate*: generate plots that enable domain-driven inspection of models and results
 
 # Getting Started
 * [Setting up your local environment](#setting-up-your-local-environment)
