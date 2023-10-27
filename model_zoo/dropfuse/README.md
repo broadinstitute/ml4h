@@ -63,6 +63,7 @@ Having trained the two unimodal autoencoders above with encoders and decoders se
 ${HOME}/ml4h/scripts/tf.sh ${HOME}/ml4h/ml4h/recipes.py \
   --mode train \
   --tensors ${TENSORS} \
+  --tensormap_prefix ml4h.tensormap.ukb \
   --input_tensors ecg.ecg_rest_median_raw_10 mri.lax_4ch_heart_center \
   --output_tensors ecg.ecg_rest_median_raw_10 mri.lax_4ch_heart_center \
   --encoder_blocks ${HOME}/results/hypertuned_ecg_median_raw_10_autoencoder_256d/encoder_ecg_rest_median_raw_10.h5 \
@@ -81,6 +82,7 @@ ${HOME}/ml4h/scripts/tf.sh ${HOME}/ml4h/ml4h/recipes.py \
 ${HOME}/ml4h/scripts/tf.sh ${HOME}/ml4h/ml4h/recipes.py \
   --mode infer_encoders \
   --tensors ${TENSORS} \
+  --tensormap_prefix ml4h.tensormap.ukb \
   --input_tensors ecg.ecg_rest_median_raw_10 mri.lax_4ch_heart_center \
   --output_tensors ecg.ecg_rest_median_raw_10 mri.lax_4ch_heart_center \
   --id dropfuse_256d \
