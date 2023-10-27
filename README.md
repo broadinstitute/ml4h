@@ -5,7 +5,7 @@
 * Ingest: collect files onto one system
 * Tensorize: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
 * TensorMap: tag data (typically from an HD5) with an interpretation and a method for generation
-* ModelFactory: connect TensorMaps with a trainable architectures
+* ModelFactory: connect TensorMaps with a trainable neural network architecture loss function, and optimization strategy
 * Evaluate: generate plots that enable domain-driven inspection of models and results
 
 # Getting Started
