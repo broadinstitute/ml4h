@@ -731,7 +731,7 @@ def get_train_valid_test_paths_split_by_csvs(
 def augment_using_layers(images, mask):
 
     def aug():
-
+        # TODO pull these parameters out and default to None - if any are not none then go through wrapper
         rota = tf.keras.layers.RandomRotation(factor=(0.014), fill_mode='constant')
 
         zoom = tf.keras.layers.RandomZoom(
@@ -753,12 +753,14 @@ def augment_using_layers(images, mask):
 
     aug = aug()
 
+    # TODO just one for now, assert to make sure it's not multimodal
     images = images['input_shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map_continuous']
     mask = mask['output_b2s_t1map_kassir_annotated_categorical']
 
     images_mask = tf.concat([images, mask], -1)
     images_mask = aug(images_mask)
 
+    # TODO can get from tm shape
     image = images_mask[..., 0]
     image = image[..., tf.newaxis]
     mask = images_mask[..., 1:]
@@ -867,6 +869,7 @@ def test_train_valid_tensor_generators(
         keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
     # TODO prototyping
+    # TODO if wrap_with_tf_dataset or <any args for augmentation>
     if True:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
         out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
