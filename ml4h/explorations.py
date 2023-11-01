@@ -759,7 +759,8 @@ def infer_medians(args):
     bad_channels = [k for k in range(nb_orig_classes) if k not in good_channels]
 
     # Structuring element used for the erosion
-    structure = _unit_disk(2)[np.newaxis, ..., np.newaxis]
+    # TODO this can be a parameter
+    structure = _unit_disk(1)[np.newaxis, ..., np.newaxis]
 
     # Get the dates
     # TODO remove this hard-coding
@@ -797,25 +798,42 @@ def infer_medians(args):
                 break
 
             img = data[tm_in.input_name()]
-            img = tm_in.rescale(img)
+            rescaled_img = tm_in.rescale(img)
             y_pred = model.predict(data, batch_size=args.batch_size, verbose=0)
             y_pred = np.argmax(y_pred, axis=-1)
-            y_pred = _to_categorical(y_pred, nb_orig_classes)
+            # y_pred = _to_categorical(y_pred, nb_orig_classes) # TODO may need this with no threshold
 
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             date = dates_dict[sample_id]
 
             if has_y_true:
                 y_true = labels[tm_out.output_name()]
+
+                # TODO new
+                y_true = np.argmax(y_true, axis=-1)[..., np.newaxis]
+                y_true[np.logical_and(img >= 1.37, y_true == 7)] = 9
+                y_true[np.logical_and(img >= 1.37, y_true == 8)] = 9
+                y_true = y_true[...,0]
+                y_true = _to_categorical(y_true, nb_orig_classes)
+                # end TODO new
+
                 y_true = np.delete(y_true, bad_channels, axis=-1)
                 y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
-                means_true, medians_true, stds_true = _compute_masked_stats(img, y_true, nb_good_classes)
+                means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_classes)
                 csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
                 inference_writer_true.writerow(csv_row_true)
 
+            # TODO new
+            y_pred = y_pred[..., np.newaxis]
+            y_pred[np.logical_and(img >= 1.37, y_pred == 7)] = 9
+            y_pred[np.logical_and(img >= 1.37, y_pred == 8)] = 9
+            y_pred = y_pred[...,0]
+            y_pred = _to_categorical(y_pred, nb_orig_classes)
+            # end TODO new
+
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
-            means_pred, medians_pred, stds_pred = _compute_masked_stats(img, y_pred, nb_good_classes)
+            means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_classes)
             csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
 
@@ -830,18 +848,26 @@ def infer_medians(args):
     df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
+    # TODO fix me
     if has_y_true:
         cols = ['anterolateral_pap_median', 'posteromedial_pap_median']
         for col in cols:
-            plot_data = pd.concat(
-                [df_true[col], df_pred[col]],
-                axis=1, keys=['true', 'pred'],
-            )
-
             for i in range(2):
+                plot_data = pd.concat(
+                    [df_true['sample_id'], df_true[col], df_pred[col]],
+                    axis=1, keys=['sample_id', 'true', 'pred'],
+                )
+
+                if i == 0:
+                    logging.info(plot_data)
+                    true_outliers = plot_data[plot_data.true == 0]
+                    pred_outliers = plot_data[plot_data.pred == 0]
+                    logging.info(true_outliers)
+                    logging.info(pred_outliers)
                 if i == 1:
                     plot_data = plot_data[plot_data.true != 0]
                     plot_data = plot_data[plot_data.pred != 0]
+                plot_data = plot_data.drop('sample_id', axis=1)
 
                 plt.figure()
                 g = lmplot(x='true', y='pred', data=plot_data)
@@ -872,6 +898,7 @@ def infer_medians(args):
                     f'medians_inference_{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
                 )
                 plt.savefig(figure_path)
+    # end TODO fix me
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
