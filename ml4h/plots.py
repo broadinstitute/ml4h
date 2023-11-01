@@ -2736,7 +2736,7 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
     plt.savefig(figure_path)
     logging.info("Saved Precision Recall curve at: {}".format(figure_path))
 
-def plot_dice(predictions, truth, labels, title, prefix="./figures/", dpi=300, width=3, height=3):
+def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi=300, width=3, height=3):
     label_names = labels.keys()
     logging.info(f"label_names: {label_names}")
     label_vals = [labels[k] for k in label_names]
@@ -2758,6 +2758,26 @@ def plot_dice(predictions, truth, labels, title, prefix="./figures/", dpi=300, w
         for i in range(batch_size):
             for k in replace[i]:
                 dice_scores[p][i,k] = 1.0
+
+        # TODO take me out
+        al_pap_dice_scores = dice_scores[p][:,7]
+        pm_pap_dice_scores = dice_scores[p][:,8]
+        al_percentiles = [np.percentile(al_pap_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
+        pm_percentiles = [np.percentile(pm_pap_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
+        al_idx = [min(range(len(al_pap_dice_scores)), key=lambda i: abs(al_pap_dice_scores[i] - perc)) for perc in al_percentiles]
+        pm_idx = [min(range(len(pm_pap_dice_scores)), key=lambda i: abs(pm_pap_dice_scores[i] - perc)) for perc in pm_percentiles]
+        logging.info([paths[i] for i in al_idx])
+        logging.info([paths[i] for i in pm_idx])
+        logging.info('sorted al paps (worst to best):')
+        sorted_al_paths = [paths[k] for k in sorted(range(len(al_pap_dice_scores)), key=lambda k:al_pap_dice_scores[k])]
+        for p in sorted_al_paths:
+            logging.info(p)
+        logging.info('sorted pm paps (worst to best):')
+        sorted_pm_paths = [paths[k] for k in sorted(range(len(pm_pap_dice_scores)), key=lambda k:pm_pap_dice_scores[k])]
+        for p in sorted_pm_paths:
+            logging.info(p)
+        assert(False)
+        # end TODO take me out
 
         mean_dice_scores[p] = np.average(dice_scores[p], axis=0)
         logging.info(f"{p} mean Dice scores {mean_dice_scores[p]}")

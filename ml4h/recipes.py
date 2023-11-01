@@ -866,7 +866,7 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
         elif tm.is_categorical() and tm.axes() == 3:
             # have to plot dice before the reshape
             plot_dice(
-                predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder,
+                predictions[tm], outputs[tm.output_name()], tm.channel_map, paths, plot_title, plot_folder,
                 dpi=args.dpi, width=args.plot_width, height=args.plot_height,
             )
             for p in predictions[tm]:
