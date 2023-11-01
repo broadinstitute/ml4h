@@ -39,10 +39,6 @@ from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MIS
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 from ml4h.tensorize.tensor_writer_ukbb import _unit_disk
 
-# TODO remove this hard-coding
-from ml4h.defines import MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP
-# end TODO remove this hard-coding
-
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge, Lasso
@@ -723,57 +719,72 @@ def _get_csv_row(sample_id, means, medians, stds, date):
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
+def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label):
+    y = np.argmax(y, axis=-1)[..., np.newaxis]
+    y[np.logical_and(img >= intensity_thresh, np.isin(y, in_labels))] = out_label
+    y = y[..., 0]
+    y = _to_categorical(y, nb_orig_classes)
+    return y
+
 def infer_medians(args):
-    assert (args.batch_size == 1) # no support here for iterating over larger batches
-    assert (len(args.tensor_maps_out) <= 1) # no support here for multiple output channels
 
-    tm_in = args.tensor_maps_in[0]
-    assert (tm_in.shape[-1] == 1) # no support here for stats on multiple input channels
-
-    # TODO remove this hard-coding
-    if len(args.tensor_maps_out) == 0:
-        has_y_true = False
-        channel_map = MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP
-        output_name = 'output_b2s_t1map_kassir_annotated'
-    elif len(args.tensor_maps_out) == 1:
-        has_y_true = True
-        tm_out = args.tensor_maps_out[0]
-        channel_map = tm_out.channel_map
-        output_name = tm_out.output_name()
-    # end TODO remove this hard-coding
-
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-
-    # TODO remove this hard-coding
-    important_structures = [
+    # TODO make these command-line arguments
+    has_y_true = True
+    dates_filename = '/home/pace/csvs/mri_dates_instance2.csv'
+    structures_to_analyze = [
         'interventricular_septum', 'LV_free_wall', 'anterolateral_pap', 'posteromedial_pap',
         'LV_cavity', 'RV_free_wall', 'RV_cavity',
     ]
-    # end TODO remove this hard-coding
+    erosion_radius = 1
+    intensity_thresh = 1.37
+    intensity_thresh_in_structures = ['anterolateral_pap', 'posteromedial_pap']
+    intensity_thresh_out_structure = 'LV_cavity'
+    results_to_plot = ['anterolateral_pap_median', 'posteromedial_pap_median']
+    # end TODO make these command-line argument
 
-    good_channels = sorted([channel_map[k] for k in important_structures])
-    good_structures = [[k for k in channel_map.keys() if channel_map[k] == v][0] for v in good_channels]
-    nb_orig_classes = len(channel_map)
-    nb_good_classes = len(good_channels)
-    bad_channels = [k for k in range(nb_orig_classes) if k not in good_channels]
+    assert(args.batch_size == 1) # no support here for iterating over larger batches
+    assert(len(args.tensor_maps_in) == 1) # no support here for multiple input maps
+    assert(len(args.tensor_maps_out) == 1) # no support here for multiple output channels
+
+    tm_in = args.tensor_maps_in[0]
+    tm_out = args.tensor_maps_out[0]
+    assert(tm_in.shape[-1] == 1)  # no support here for stats on multiple input channels
+    assert(tm_out.shape[-1] == 1)  # no support here for stats on multiple output channels
+
+    # don't filter datasets for ground truth segmentations if we want to run inference on everything
+    gen_args = copy.deep_copy(args)
+    if not has_y_true:
+        gen_args.tensor_maps_out = []
+
+    _, _, generate_test = test_train_valid_tensor_generators(**gen_args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**gen_args.__dict__)
+
+    # good_structures has to be sorted by channel idx
+    good_channels = sorted([tm_out.channel_map[k] for k in structures_to_analyze])
+    good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels]
+    nb_orig_channels = len(tm_out.channel_map)
+    nb_good_channels = len(good_channels)
+    bad_channels = [k for k in range(nb_orig_channels) if k not in good_channels]
 
     # Structuring element used for the erosion
-    # TODO this can be a parameter
-    structure = _unit_disk(1)[np.newaxis, ..., np.newaxis]
+    structure = _unit_disk(erosion_radius)[np.newaxis, ..., np.newaxis]
+
+    # Setup for intensity thresholding
+    if intensity_thresh:
+        intensity_thresh_in_channels = [tm_out.channel_map[k] for k in intensity_thresh_in_structures]
+        intensity_thresh_out_channel = tm_out.channel_map[intensity_thresh_out_structure]
 
     # Get the dates
-    # TODO remove this hard-coding
-    dates_filename = '/home/pace/csvs/mri_dates_instance2.csv'
     with open(dates_filename, mode='r') as dates_file:
         dates_reader = csv.reader(dates_file)
         dates_dict = {rows[0]:rows[1] for rows in dates_reader}
-    # end TODO remove this hard-coding
+
+    output_name = tm_out.output_name()
+    inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
+    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
     stats_counter = Counter()
     tensor_paths_inferred = set()
-    inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
-    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
     with open(inference_tsv_true, mode='w') as inference_file_true, open(inference_tsv_pred, mode='w') as inference_file_pred:
         inference_writer_true = csv.writer(inference_file_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -801,39 +812,27 @@ def infer_medians(args):
             rescaled_img = tm_in.rescale(img)
             y_pred = model.predict(data, batch_size=args.batch_size, verbose=0)
             y_pred = np.argmax(y_pred, axis=-1)
-            # y_pred = _to_categorical(y_pred, nb_orig_classes) # TODO may need this with no threshold
+            y_pred = _to_categorical(y_pred, nb_orig_channels)
+            if has_y_true:
+                y_true = labels[tm_out.output_name()]
 
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             date = dates_dict[sample_id]
 
             if has_y_true:
-                y_true = labels[tm_out.output_name()]
-
-                # TODO new
-                y_true = np.argmax(y_true, axis=-1)[..., np.newaxis]
-                y_true[np.logical_and(img >= 1.37, y_true == 7)] = 9
-                y_true[np.logical_and(img >= 1.37, y_true == 8)] = 9
-                y_true = y_true[...,0]
-                y_true = _to_categorical(y_true, nb_orig_classes)
-                # end TODO new
-
+                if intensity_thresh:
+                    y_true = _thresh_labels_above(y_true, img, intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel)
                 y_true = np.delete(y_true, bad_channels, axis=-1)
                 y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
-                means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_classes)
+                means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
                 csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
                 inference_writer_true.writerow(csv_row_true)
 
-            # TODO new
-            y_pred = y_pred[..., np.newaxis]
-            y_pred[np.logical_and(img >= 1.37, y_pred == 7)] = 9
-            y_pred[np.logical_and(img >= 1.37, y_pred == 8)] = 9
-            y_pred = y_pred[...,0]
-            y_pred = _to_categorical(y_pred, nb_orig_classes)
-            # end TODO new
-
+            if intensity_thresh:
+                y_pred = _thresh_labels_above(y_pred, img, intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel)
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
-            means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_classes)
+            means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
             csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
 
@@ -845,26 +844,25 @@ def infer_medians(args):
     inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
     inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
-    df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
-    # TODO fix me
+    # Scatter plots
     if has_y_true:
-        cols = ['anterolateral_pap_median', 'posteromedial_pap_median']
-        for col in cols:
-            for i in range(2):
+        df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        for col in results_to_plot:
+            for i in ['all', 'filter_outliers']: # Two types of plots
                 plot_data = pd.concat(
                     [df_true['sample_id'], df_true[col], df_pred[col]],
                     axis=1, keys=['sample_id', 'true', 'pred'],
                 )
 
-                if i == 0:
-                    logging.info(plot_data)
+                if i == 'all':
+                    logging.info(plot_data) # TODO fix me up
                     true_outliers = plot_data[plot_data.true == 0]
                     pred_outliers = plot_data[plot_data.pred == 0]
-                    logging.info(true_outliers)
-                    logging.info(pred_outliers)
-                if i == 1:
+                    logging.info(true_outliers) # TODO fix me up
+                    logging.info(pred_outliers) # TODO fix me up
+                elif i == 'filter_outliers':
                     plot_data = plot_data[plot_data.true != 0]
                     plot_data = plot_data[plot_data.pred != 0]
                 plot_data = plot_data.drop('sample_id', axis=1)
@@ -875,10 +873,10 @@ def infer_medians(args):
                 title = col.replace('_', ' ')
                 ax.set_xlabel(f'{title} T1 Time (ms) - Manual Segmentation')
                 ax.set_ylabel(f'{title} T1 Time (ms) - Model Segmentation')
-                if i == 0:
+                if i == 'all':
                     min_value = -50
                     max_value = 1300
-                else:
+                elif i == 'filter_outliers':
                     min_value, max_value = plot_data.min(), plot_data.max()
                     min_value = min([min_value['true'], min_value['pred']]) - 100
                     max_value = min([max_value['true'], max_value['pred']]) + 100
@@ -888,17 +886,16 @@ def infer_medians(args):
                 conf = res.confidence_interval(confidence_level=0.95)
                 text = f'Pearson Correlation Coefficient r={res.statistic:.2f},\n95% CI {conf.low:.2f} - {conf.high:.2f}'
                 ax.text(0.25, 0.1, text, transform=ax.transAxes)
-                if i == 0:
+                if i == 'all':
                     postfix = ''
-                else:
-                    postfix = '_no_zeros'
+                elif i == 'filter_outliers':
+                    postfix = '_no_outliers'
                 logging.info(f'{col} pearson{postfix} {res.statistic}')
                 figure_path = os.path.join(
                     args.output_folder, args.id,
                     f'medians_inference_{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
                 )
                 plt.savefig(figure_path)
-    # end TODO fix me
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
