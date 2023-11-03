@@ -2,6 +2,7 @@
 
 # Imports
 import os
+import csv
 import re
 import math
 import h5py
@@ -2738,7 +2739,6 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
 
 def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi=300, width=3, height=3):
     label_names = labels.keys()
-    logging.info(f"label_names: {label_names}")
     label_vals = [labels[k] for k in label_names]
     batch_size = truth.shape[0]
     y_true = truth.argmax(-1)
@@ -2759,31 +2759,20 @@ def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi
             for k in replace[i]:
                 dice_scores[p][i,k] = 1.0
 
-        # TODO take me out
-        al_pap_dice_scores = dice_scores[p][:,7]
-        pm_pap_dice_scores = dice_scores[p][:,8]
-        al_percentiles = [np.percentile(al_pap_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
-        pm_percentiles = [np.percentile(pm_pap_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
-        al_idx = [min(range(len(al_pap_dice_scores)), key=lambda i: abs(al_pap_dice_scores[i] - perc)) for perc in al_percentiles]
-        pm_idx = [min(range(len(pm_pap_dice_scores)), key=lambda i: abs(pm_pap_dice_scores[i] - perc)) for perc in pm_percentiles]
-        logging.info([paths[i] for i in al_idx])
-        logging.info([paths[i] for i in pm_idx])
-        logging.info('sorted al paps (worst to best):')
-        sorted_al_paths = [paths[k] for k in sorted(range(len(al_pap_dice_scores)), key=lambda k:al_pap_dice_scores[k])]
-        for p in sorted_al_paths:
-            logging.info(p)
-        logging.info('sorted pm paps (worst to best):')
-        sorted_pm_paths = [paths[k] for k in sorted(range(len(pm_pap_dice_scores)), key=lambda k:pm_pap_dice_scores[k])]
-        for p in sorted_pm_paths:
-            logging.info(p)
-        assert(False)
-        # end TODO take me out
-
+        # stats
         mean_dice_scores[p] = np.average(dice_scores[p], axis=0)
         logging.info(f"{p} mean Dice scores {mean_dice_scores[p]}")
         std_dice_scores[p] = np.std(dice_scores[p], axis=0)
         logging.info(f"{p} std Dice scores {std_dice_scores[p]}")
 
+        # percentiles
+        for k in label_names:
+            structure_dice_scores = dice_scores[p][:,labels[k]]
+            structure_dice_percentiles = [np.percentile(structure_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
+            structure_dice_percentile_idxs = [min(range(len(structure_dice_scores)), key=lambda i: abs(structure_dice_scores[i] - perc)) for perc in structure_dice_percentiles]
+            logging.info(f'{p}: sample_ids for [5, 25, 50, 75, 95] percentiles for {k}: {[paths[i] for i in structure_dice_percentile_idxs]}')
+
+    # Plot fig
     if len(predictions) > 1:
         row = 0
         col = 0
@@ -2810,7 +2799,6 @@ def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi
                     break
 
     else:
-        logging.info([p for p in predictions])
         p = list(predictions.keys())[0]
         for i,k in enumerate(label_names):
             plt.boxplot(dice_scores[p][:,i], positions = [i], labels=[k])
@@ -2826,6 +2814,16 @@ def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved Dice plots at: {figure_path}")
+
+    # Save tsv
+    for p in predictions:
+        tsv_path = os.path.join(prefix, f'dice_{p}_{now_string}_{title}.tsv')
+        with open(tsv_path, mode='w') as tsv_file:
+            tsv_writer = csv.writer(tsv_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            tsv_writer.writerow(label_names)
+            for r in range(dice_scores[p].shape[0]):
+                tsv_writer.writerow(dice_scores[p][r,:])
+        logging.info(f"Saved dice tsv at: {tsv_path}")
 
 def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
     # Compute ROC curve and ROC area for each class
