@@ -272,6 +272,11 @@ def parse_args():
         help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.',
     )
 
+    # 2D image data augmentation parameters
+    parser.add_argument('--rotation_factor', default=0., type=float, help='a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]')
+    parser.add_argument('--zoom_factor', default=0., type=float, help='a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]')
+    parser.add_argument('--translation_factor', default=0., type=float, help='a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions')
+
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
     parser.add_argument('--random_seed', default=12878, type=int, help='Random seed to use throughout run.  Always use np.random.')
