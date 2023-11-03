@@ -719,11 +719,11 @@ def _get_csv_row(sample_id, means, medians, stds, date):
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
-def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label):
+def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig_channels):
     y = np.argmax(y, axis=-1)[..., np.newaxis]
     y[np.logical_and(img >= intensity_thresh, np.isin(y, in_labels))] = out_label
     y = y[..., 0]
-    y = _to_categorical(y, nb_orig_classes)
+    y = _to_categorical(y, nb_orig_channels)
     return y
 
 def infer_medians(args):
@@ -749,15 +749,13 @@ def infer_medians(args):
     tm_in = args.tensor_maps_in[0]
     tm_out = args.tensor_maps_out[0]
     assert(tm_in.shape[-1] == 1)  # no support here for stats on multiple input channels
-    assert(tm_out.shape[-1] == 1)  # no support here for stats on multiple output channels
 
     # don't filter datasets for ground truth segmentations if we want to run inference on everything
-    gen_args = copy.deep_copy(args)
     if not has_y_true:
-        gen_args.tensor_maps_out = []
+        args.tensor_maps_out = []
 
-    _, _, generate_test = test_train_valid_tensor_generators(**gen_args.__dict__)
-    model, _, _, _ = make_multimodal_multitask_model(**gen_args.__dict__)
+    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
 
     # good_structures has to be sorted by channel idx
     good_channels = sorted([tm_out.channel_map[k] for k in structures_to_analyze])
@@ -780,8 +778,8 @@ def infer_medians(args):
         dates_dict = {rows[0]:rows[1] for rows in dates_reader}
 
     output_name = tm_out.output_name()
-    inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
-    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
+    inference_tsv_true = os.path.join(args.output_folder, args.id, f'true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
+    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
     stats_counter = Counter()
     tensor_paths_inferred = set()
@@ -821,7 +819,11 @@ def infer_medians(args):
 
             if has_y_true:
                 if intensity_thresh:
-                    y_true = _thresh_labels_above(y_true, img, intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel)
+                    y_true = _thresh_labels_above(
+                        y_true, img, intensity_thresh,
+                        intensity_thresh_in_channels, intensity_thresh_out_channel,
+                        nb_orig_channels,
+                    )
                 y_true = np.delete(y_true, bad_channels, axis=-1)
                 y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
                 means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
@@ -829,7 +831,11 @@ def infer_medians(args):
                 inference_writer_true.writerow(csv_row_true)
 
             if intensity_thresh:
-                y_pred = _thresh_labels_above(y_pred, img, intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel)
+                y_pred = _thresh_labels_above(
+                    y_pred, img, intensity_thresh,
+                    intensity_thresh_in_channels, intensity_thresh_out_channel,
+                    nb_orig_channels,
+                )
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
             means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
@@ -840,9 +846,6 @@ def infer_medians(args):
             stats_counter['count'] += 1
             if stats_counter['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats_counter['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
-
-    inference_tsv_true = os.path.join(args.output_folder, args.id, f'medians_inference_true_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
-    inference_tsv_pred = os.path.join(args.output_folder, args.id, f'medians_inference_pred_{args.id}_{tm_in.input_name()}_{output_name}.tsv')
 
     # Scatter plots
     if has_y_true:
@@ -857,11 +860,12 @@ def infer_medians(args):
                 )
 
                 if i == 'all':
-                    logging.info(plot_data) # TODO fix me up
                     true_outliers = plot_data[plot_data.true == 0]
                     pred_outliers = plot_data[plot_data.pred == 0]
-                    logging.info(true_outliers) # TODO fix me up
-                    logging.info(pred_outliers) # TODO fix me up
+                    logging.info(f'sample_ids where {col} is zero in the manual segmentation:')
+                    logging.info(true_outliers['sample_id'].to_list())
+                    logging.info(f'sample_ids where {col} is zero in the model segmentation:')
+                    logging.info(pred_outliers['sample_id'].to_list())
                 elif i == 'filter_outliers':
                     plot_data = plot_data[plot_data.true != 0]
                     plot_data = plot_data[plot_data.pred != 0]
@@ -893,7 +897,7 @@ def infer_medians(args):
                 logging.info(f'{col} pearson{postfix} {res.statistic}')
                 figure_path = os.path.join(
                     args.output_folder, args.id,
-                    f'medians_inference_{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
+                    f'{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
                 )
                 plt.savefig(figure_path)
 
