@@ -727,21 +727,6 @@ def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig
     return y
 
 def infer_medians(args):
-
-    # TODO make these command-line arguments
-    has_y_true = True
-    dates_filename = '/home/pace/csvs/mri_dates_instance2.csv'
-    structures_to_analyze = [
-        'interventricular_septum', 'LV_free_wall', 'anterolateral_pap', 'posteromedial_pap',
-        'LV_cavity', 'RV_free_wall', 'RV_cavity',
-    ]
-    erosion_radius = 1
-    intensity_thresh = 1.37
-    intensity_thresh_in_structures = ['anterolateral_pap', 'posteromedial_pap']
-    intensity_thresh_out_structure = 'LV_cavity'
-    results_to_plot = ['anterolateral_pap_median', 'posteromedial_pap_median']
-    # end TODO make these command-line argument
-
     assert(args.batch_size == 1) # no support here for iterating over larger batches
     assert(len(args.tensor_maps_in) == 1) # no support here for multiple input maps
     assert(len(args.tensor_maps_out) == 1) # no support here for multiple output channels
@@ -751,29 +736,33 @@ def infer_medians(args):
     assert(tm_in.shape[-1] == 1)  # no support here for stats on multiple input channels
 
     # don't filter datasets for ground truth segmentations if we want to run inference on everything
-    if not has_y_true:
+    # TODO HELP - this isn't giving me all 56K anymore
+    if not args.analyze_ground_truth:
+        args.output_tensors = []
         args.tensor_maps_out = []
 
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
 
     # good_structures has to be sorted by channel idx
-    good_channels = sorted([tm_out.channel_map[k] for k in structures_to_analyze])
+    good_channels = sorted([tm_out.channel_map[k] for k in args.structures_to_analyze])
     good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels]
     nb_orig_channels = len(tm_out.channel_map)
     nb_good_channels = len(good_channels)
     bad_channels = [k for k in range(nb_orig_channels) if k not in good_channels]
 
     # Structuring element used for the erosion
-    structure = _unit_disk(erosion_radius)[np.newaxis, ..., np.newaxis]
+    if args.erosion_radius > 0:
+        structure = _unit_disk(args.erosion_radius)[np.newaxis, ..., np.newaxis]
 
     # Setup for intensity thresholding
-    if intensity_thresh:
-        intensity_thresh_in_channels = [tm_out.channel_map[k] for k in intensity_thresh_in_structures]
-        intensity_thresh_out_channel = tm_out.channel_map[intensity_thresh_out_structure]
+    do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
+    if do_intensity_thresh:
+        intensity_thresh_in_channels = [tm_out.channel_map[k] for k in args.intensity_thresh_in_structures]
+        intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
 
     # Get the dates
-    with open(dates_filename, mode='r') as dates_file:
+    with open(args.dates_file, mode='r') as dates_file:
         dates_reader = csv.reader(dates_file)
         dates_dict = {rows[0]:rows[1] for rows in dates_reader}
 
@@ -811,33 +800,27 @@ def infer_medians(args):
             y_pred = model.predict(data, batch_size=args.batch_size, verbose=0)
             y_pred = np.argmax(y_pred, axis=-1)
             y_pred = _to_categorical(y_pred, nb_orig_channels)
-            if has_y_true:
+            if args.analyze_ground_truth:
                 y_true = labels[tm_out.output_name()]
 
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             date = dates_dict[sample_id]
 
-            if has_y_true:
-                if intensity_thresh:
-                    y_true = _thresh_labels_above(
-                        y_true, img, intensity_thresh,
-                        intensity_thresh_in_channels, intensity_thresh_out_channel,
-                        nb_orig_channels,
-                    )
+            if args.analyze_ground_truth:
+                if do_intensity_thresh:
+                    y_true = _thresh_labels_above(y_true, img, args.intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
                 y_true = np.delete(y_true, bad_channels, axis=-1)
-                y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
+                if args.erosion_radius > 0:
+                    y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
                 means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
                 csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
                 inference_writer_true.writerow(csv_row_true)
 
-            if intensity_thresh:
-                y_pred = _thresh_labels_above(
-                    y_pred, img, intensity_thresh,
-                    intensity_thresh_in_channels, intensity_thresh_out_channel,
-                    nb_orig_channels,
-                )
+            if do_intensity_thresh:
+                y_pred = _thresh_labels_above(y_pred, img, args.intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
-            y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
+            if args.erosion_radius > 0:
+                y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
             means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
             csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
@@ -848,11 +831,11 @@ def infer_medians(args):
                 logging.info(f"Wrote:{stats_counter['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
     # Scatter plots
-    if has_y_true:
+    if args.analyze_ground_truth:
         df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-        for col in results_to_plot:
+        for col in args.results_to_plot:
             for i in ['all', 'filter_outliers']: # Two types of plots
                 plot_data = pd.concat(
                     [df_true['sample_id'], df_true[col], df_pred[col]],

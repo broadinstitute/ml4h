@@ -379,6 +379,16 @@ def parse_args():
         default='3M',
     )
 
+    # Arguments for explorations/infer_medians
+    parser.add_argument('--analyze_ground_truth', default=True, help='Whether or not to filter by images with ground truth segmentations, for comparison')
+    parser.add_argument('--dates_file', help='File containing dates for each sample_id')
+    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv outputs')
+    parser.add_argument('--erosion_radius', default=1, type=int, help='Radius of the unit disk structuring element for erosion preprocessing')
+    parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
+    parser.add_argument('--intensity_thresh_in_structures', nargs='*', default=[], help='Structure names whose pixels should be replaced if the images has intensity above the threshold')
+    parser.add_argument('--intensity_thresh_out_structure', help='Replacement structure name')
+    parser.add_argument('--results_to_plot', nargs='*', default=[], help='Structure names to make scatter plots')
+
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")
 
