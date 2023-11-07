@@ -16,8 +16,6 @@ from google.cloud import storage
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
-from torch.utils.data import DataLoader
-
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
 from ml4h.optimizers import find_learning_rate
@@ -45,6 +43,7 @@ from ml4ht.data.util.date_selector import DATE_OPTION_KEY
 from ml4ht.data.sample_getter import DataDescriptionSampleGetter
 from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoch
 
+from torch.utils.data import DataLoader
 
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
