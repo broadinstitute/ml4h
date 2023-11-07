@@ -156,8 +156,9 @@ def main(
                 tf.TensorSpec(shape=(None, n_input_frames, 224, 224, 3), dtype=tf.float32),
             ),
             args=(sample_ids,)
-        )
-    )
+        ),
+        num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
 
     model, backbone = create_movinet_classifier(
         n_input_frames,
@@ -229,7 +230,9 @@ def main(
                 cls_pred = predictions[1:]
             else:
                 reg_pred = np.zeros((0, 0))
-                cls_pred = predictions
+                cls_pred = predictions     
+                if len(cls_pred.shape) < 3:
+                    cls_pred = [predictions]
             df = pd.DataFrame()
             df['sample_id'] = inference_ids_split
             for i_p in range(reg_pred.shape[1]):
