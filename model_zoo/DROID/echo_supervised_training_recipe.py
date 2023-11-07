@@ -248,8 +248,9 @@ def main(
             ),
             output_signature=output_signatures,
             args=(sample_ids,)
-        )
-    ).repeat(epochs).prefetch(8)
+        ),
+	num_parallel_calls=tf.data.AUTOTUNE
+    ).repeat(epochs).prefetch(tf.data.AUTOTUNE)
 
     io_valid_ds = body_valid_ids.interleave(
         lambda sample_ids: tf.data.Dataset.from_generator(
@@ -259,8 +260,9 @@ def main(
             ),
             output_signature=output_signatures,
             args=(sample_ids,)
-        )
-    ).repeat(epochs).prefetch(8)
+        ),
+	num_parallel_calls=tf.data.AUTOTUNE
+    ).repeat(epochs).prefetch(tf.data.AUTOTUNE)
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
