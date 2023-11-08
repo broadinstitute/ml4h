@@ -415,7 +415,7 @@ lax_2ch_diastole_slice0_3d = TensorMap(
         'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
     ),
 )
-lax_3ch_diastole_slice_224_160_3d = TensorMap(
+lax_2ch_diastole_slice_224_160_3d = TensorMap(
     'lax_2ch_diastole_slice_224_160_3d',
     Interpretation.CONTINUOUS,
     shape=(224, 160, 1),
