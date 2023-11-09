@@ -2745,6 +2745,7 @@ def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi
     y_true_unique = [np.unique(y_true[i]) for i in range(batch_size)]
     missing_truth_label_vals = [[k for k in label_vals if k not in y_true_unique[i]] for i in range(batch_size)]
 
+    logging.info(f"label_names: {label_names}")
     dice_scores = {}
     mean_dice_scores = {}
     std_dice_scores = {}
@@ -2770,6 +2771,7 @@ def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi
             structure_dice_scores = dice_scores[p][:,labels[k]]
             structure_dice_percentiles = [np.percentile(structure_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
             structure_dice_percentile_idxs = [min(range(len(structure_dice_scores)), key=lambda i: abs(structure_dice_scores[i] - perc)) for perc in structure_dice_percentiles]
+            logging.info(f'{p}: [5, 25, 50, 75, 95] percentiles for {k}: {structure_dice_percentiles}')
             logging.info(f'{p}: sample_ids for [5, 25, 50, 75, 95] percentiles for {k}: {[paths[i] for i in structure_dice_percentile_idxs]}')
 
     # Plot fig
@@ -2820,9 +2822,9 @@ def plot_dice(predictions, truth, labels, paths, title, prefix="./figures/", dpi
         tsv_path = os.path.join(prefix, f'dice_{p}_{now_string}_{title}.tsv')
         with open(tsv_path, mode='w') as tsv_file:
             tsv_writer = csv.writer(tsv_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            tsv_writer.writerow(label_names)
-            for r in range(dice_scores[p].shape[0]):
-                tsv_writer.writerow(dice_scores[p][r,:])
+            tsv_writer.writerow(['sample_id'] + list(label_names))
+            for i in range(dice_scores[p].shape[0]):
+                tsv_writer.writerow([paths[i]] + list(dice_scores[p][i,:]))
         logging.info(f"Saved dice tsv at: {tsv_path}")
 
 def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
