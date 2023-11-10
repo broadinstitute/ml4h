@@ -83,7 +83,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             video_container = av.open(in_mem_bytes_io, metadata_errors="ignore")
             video_frames = itertools.cycle(video_container.decode(video=0))
             
-            total_frames = len(video_frames)
+            total_frames = len(list(ideo_frames))
             print(total_frames)
             if self.randomize_start_frame:
                 self.start_frame = np.randint(total_frames - (self.nframes * self.skip_modulo))
