@@ -192,6 +192,8 @@ def main(
                                      f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
     os.makedirs(output_folder, exist_ok=True)
 
+    wide_df_selected.to_parquet(f'{output_folder}/wide_df_selected.pq')
+
     def save_model_pred_as_df(pred, fname_suffix='', pred_col_names=[]):
         save_df = pd.DataFrame()
         save_df['sample_id'] = inference_ids_split
@@ -231,7 +233,7 @@ def main(
             else:
                 reg_pred = np.zeros((0, 0))
                 cls_pred = predictions     
-                if len(cls_pred.shape) < 3:
+                if len(cls_category_len_dict) == 1: 
                     cls_pred = [predictions]
             df = pd.DataFrame()
             df['sample_id'] = inference_ids_split
