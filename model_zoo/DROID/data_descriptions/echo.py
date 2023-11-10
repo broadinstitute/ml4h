@@ -39,14 +39,15 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             transforms=None,
             nframes: int = None,
             skip_modulo: int = 1,
-            start_beat=0,
+            start_frame=0,
+            randomize_start_frame = False
     ):
 
         self.local_lmdb_dir = local_lmdb_dir
         self._name = name
         self.nframes = nframes
-        self.nframes = (nframes + start_beat) * skip_modulo
-        self.start_beat = start_beat
+        self.start_frame = start_frame
+        self.nframes = start_frame + (nframes * skip_modulo)
         # transformations
         self.transforms = transforms or []
         self.skip_modulo = skip_modulo
@@ -81,10 +82,16 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             in_mem_bytes_io = io.BytesIO(txn.get(view.encode('utf-8')))
             video_container = av.open(in_mem_bytes_io, metadata_errors="ignore")
             video_frames = itertools.cycle(video_container.decode(video=0))
+            
+            total_frames = len(video_frames)
+            print(total_frames)
+            if self.randomize_start_frame:
+                self.start_frame = np.randint(total_frames - (self.nframes * self.skip_modulo))
+            
             for i, frame in enumerate(video_frames):
                 if i == nframes:
                     break
-                if i < (self.start_beat * self.skip_modulo):
+                if i < (self.start_frame):
                     continue
                 if self.skip_modulo > 1:
                     if (i % self.skip_modulo) != 0:
