@@ -732,8 +732,29 @@ def get_train_valid_test_paths_split_by_csvs(
             logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
     return train_paths, valid_paths, test_paths
 
-# https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
-def augment_using_layers(images, mask, in_shapes, out_shapes, rotation_factor, zoom_factor, translation_factor):
+def augment_using_layers(
+        images: Dict[str, tf.Tensor],
+        mask: Dict[str, tf.Tensor],
+        in_shapes: Dict[str, Tuple[int, int, int, int]],
+        out_shapes: Dict[str, Tuple[int, int, int, int]],
+        rotation_factor: float,
+        zoom_factor: float,
+        translation_factor: float,
+) -> Tuple[tf.Tensor, tf.Tensor]:
+    """
+    Applies random data augmentation (rotation, zoom and/or translation) to pairs of 2D images and segmentations.
+    :param images: a dictionary mapping an input tensor map's name to an image tensor
+    :param mask: a dictionary mapping an output tensor map's name to a segmentation tensor
+    :param in_shapes: a dictionary mapping an input tensor map's name to its shape (including the batch_size)
+    :param out_shapes: a dictionary mapping an output tensor map's name to its shape (including the batch_size)
+    :param rotation_factor: a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
+    :param zoom_factor: a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
+    :param translation_factor: a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
+    :return: an augmented image tensor and its corresponding augmented segmentation tensor
+    """
+
+    # Adapted from:
+    # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
 
     assert(len(in_shapes) == 1, 'no support for multiple inputs')
     assert(len(out_shapes) == 1, 'no support for mulitple outputs')
@@ -828,9 +849,9 @@ def test_train_valid_tensor_generators(
     :param valid_csv: CSV file of sample ids to use for validation, mutually exclusive with valid_ratio
     :param test_csv: CSV file of sample ids to use for testing, mutually exclusive with test_ratio
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
-    :param rotation_factor: rotation for data augmentation: a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
-    :param zoom_factor: zoom for data augmentation: a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
-    :param translation_factor: translation for data augmentation: a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
+    :param rotation_factor: for data augmentation, a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
+    :param zoom_factor: for data augmentation, a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
+    :param translation_factor: for data augmentation, a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
     :param wrap_with_tf_dataset: if True will return tf.dataset objects for the 3 generators
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
