@@ -23,7 +23,7 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe, infer_medians
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe, infer_stats_from_segmented_regions
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -66,8 +66,8 @@ def run(args):
             infer_hidden_layer_multimodal_multitask(args)
         elif 'infer_pixels' == args.mode:
             infer_with_pixels(args)
-        elif 'infer_medians' == args.mode:
-            infer_medians(args)
+        elif 'infer_stats_from_segmented_regions' == args.mode:
+            infer_stats_from_segmented_regions(args)
         elif 'infer_encoders' == args.mode:
             infer_encoders_block_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:

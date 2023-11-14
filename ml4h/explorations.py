@@ -726,14 +726,70 @@ def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig
     y = _to_categorical(y, nb_orig_channels)
     return y
 
-def infer_medians(args):
-    assert(args.batch_size == 1) # no support here for iterating over larger batches
-    assert(len(args.tensor_maps_in) == 1) # no support here for multiple input maps
-    assert(len(args.tensor_maps_out) == 1) # no support here for multiple output channels
+def _scatter_plots_from_segmented_region_stats(
+    inference_tsv_true, inference_tsv_pred, structures_to_analyze,
+    output_folder, id, input_name, output_name,
+):
+    df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+    results_to_plot = [f'{s}_median' for s in structures_to_analyze]
+    for col in results_to_plot:
+        for i in ['all', 'filter_outliers']: # Two types of plots
+            plot_data = pd.concat(
+                [df_true['sample_id'], df_true[col], df_pred[col]],
+                axis=1, keys=['sample_id', 'true', 'pred'],
+            )
+
+            if i == 'all':
+                true_outliers = plot_data[plot_data.true == 0]
+                pred_outliers = plot_data[plot_data.pred == 0]
+                logging.info(f'sample_ids where {col} is zero in the manual segmentation:')
+                logging.info(true_outliers['sample_id'].to_list())
+                logging.info(f'sample_ids where {col} is zero in the model segmentation:')
+                logging.info(pred_outliers['sample_id'].to_list())
+            elif i == 'filter_outliers':
+                plot_data = plot_data[plot_data.true != 0]
+                plot_data = plot_data[plot_data.pred != 0]
+            plot_data = plot_data.drop('sample_id', axis=1)
+
+            plt.figure()
+            g = lmplot(x='true', y='pred', data=plot_data)
+            ax = plt.gca()
+            title = col.replace('_', ' ')
+            ax.set_xlabel(f'{title} T1 Time (ms) - Manual Segmentation')
+            ax.set_ylabel(f'{title} T1 Time (ms) - Model Segmentation')
+            if i == 'all':
+                min_value = -50
+                max_value = 1300
+            elif i == 'filter_outliers':
+                min_value, max_value = plot_data.min(), plot_data.max()
+                min_value = min([min_value['true'], min_value['pred']]) - 100
+                max_value = min([max_value['true'], max_value['pred']]) + 100
+            ax.set_xlim([min_value, max_value])
+            ax.set_ylim([min_value, max_value])
+            res = stats.pearsonr(plot_data['true'], plot_data['pred'])
+            conf = res.confidence_interval(confidence_level=0.95)
+            text = f'Pearson Correlation Coefficient r={res.statistic:.2f},\n95% CI {conf.low:.2f} - {conf.high:.2f}'
+            ax.text(0.25, 0.1, text, transform=ax.transAxes)
+            if i == 'all':
+                postfix = ''
+            elif i == 'filter_outliers':
+                postfix = '_no_outliers'
+            logging.info(f'{col} pearson{postfix} {res.statistic}')
+            figure_path = os.path.join(
+                output_folder, id, f'{col}_{id}_{input_name}_{output_name}{postfix}.png',
+            )
+            plt.savefig(figure_path)
+
+def infer_stats_from_segmented_regions(args):
+    assert(args.batch_size == 1, 'no support here for iterating over larger batches')
+    assert(len(args.tensor_maps_in) == 1, 'no support here for multiple input maps')
+    assert(len(args.tensor_maps_out) == 1, 'no support here for multiple output channels')
 
     tm_in = args.tensor_maps_in[0]
     tm_out = args.tensor_maps_out[0]
-    assert(tm_in.shape[-1] == 1)  # no support here for stats on multiple input channels
+    assert(tm_in.shape[-1] == 1, 'no support here for stats on multiple input channels')
 
     # don't filter datasets for ground truth segmentations if we want to run inference on everything
     # TODO HELP - this isn't giving me all 56K anymore
@@ -762,7 +818,7 @@ def infer_medians(args):
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
 
     # Get the dates
-    with open(args.dates_file, mode='r') as dates_file:
+    with open(args.app_csv, mode='r') as dates_file:
         dates_reader = csv.reader(dates_file)
         dates_dict = {rows[0]:rows[1] for rows in dates_reader}
 
@@ -832,57 +888,10 @@ def infer_medians(args):
 
     # Scatter plots
     if args.analyze_ground_truth:
-        df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
-        for col in args.results_to_plot:
-            for i in ['all', 'filter_outliers']: # Two types of plots
-                plot_data = pd.concat(
-                    [df_true['sample_id'], df_true[col], df_pred[col]],
-                    axis=1, keys=['sample_id', 'true', 'pred'],
-                )
-
-                if i == 'all':
-                    true_outliers = plot_data[plot_data.true == 0]
-                    pred_outliers = plot_data[plot_data.pred == 0]
-                    logging.info(f'sample_ids where {col} is zero in the manual segmentation:')
-                    logging.info(true_outliers['sample_id'].to_list())
-                    logging.info(f'sample_ids where {col} is zero in the model segmentation:')
-                    logging.info(pred_outliers['sample_id'].to_list())
-                elif i == 'filter_outliers':
-                    plot_data = plot_data[plot_data.true != 0]
-                    plot_data = plot_data[plot_data.pred != 0]
-                plot_data = plot_data.drop('sample_id', axis=1)
-
-                plt.figure()
-                g = lmplot(x='true', y='pred', data=plot_data)
-                ax = plt.gca()
-                title = col.replace('_', ' ')
-                ax.set_xlabel(f'{title} T1 Time (ms) - Manual Segmentation')
-                ax.set_ylabel(f'{title} T1 Time (ms) - Model Segmentation')
-                if i == 'all':
-                    min_value = -50
-                    max_value = 1300
-                elif i == 'filter_outliers':
-                    min_value, max_value = plot_data.min(), plot_data.max()
-                    min_value = min([min_value['true'], min_value['pred']]) - 100
-                    max_value = min([max_value['true'], max_value['pred']]) + 100
-                ax.set_xlim([min_value, max_value])
-                ax.set_ylim([min_value, max_value])
-                res = stats.pearsonr(plot_data['true'], plot_data['pred'])
-                conf = res.confidence_interval(confidence_level=0.95)
-                text = f'Pearson Correlation Coefficient r={res.statistic:.2f},\n95% CI {conf.low:.2f} - {conf.high:.2f}'
-                ax.text(0.25, 0.1, text, transform=ax.transAxes)
-                if i == 'all':
-                    postfix = ''
-                elif i == 'filter_outliers':
-                    postfix = '_no_outliers'
-                logging.info(f'{col} pearson{postfix} {res.statistic}')
-                figure_path = os.path.join(
-                    args.output_folder, args.id,
-                    f'{col}_{args.id}_{tm_in.input_name()}_{output_name}{postfix}.png',
-                )
-                plt.savefig(figure_path)
+        _scatter_plots_from_segmented_region_stats(
+            inference_tsv_true, inference_tsv_pred, args.structures_to_analyze,
+            args.output_folder, args.id, tm_in.input_name(), args.output_name,
+        )
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""

@@ -666,6 +666,13 @@ def get_train_valid_test_paths(
 
     logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
+    if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
+        raise ValueError(
+            f'Not enough tensors at {tensors}\n'
+            f'Found {len(train_paths)} training, {len(valid_paths)} validation, and {len(test_paths)} testing tensors\n'
+            f'Discarded {len(discard_paths)} tensors',
+        )
+
     return train_paths, valid_paths, test_paths
 
 
@@ -728,8 +735,8 @@ def get_train_valid_test_paths_split_by_csvs(
 # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
 def augment_using_layers(images, mask, in_shapes, out_shapes, rotation_factor, zoom_factor, translation_factor):
 
-    assert(len(in_shapes) == 1) # no support for multiple inputs
-    assert(len(out_shapes) == 1) # no support for mulitple outputs
+    assert(len(in_shapes) == 1, 'no support for multiple inputs')
+    assert(len(out_shapes) == 1, 'no support for mulitple outputs')
 
     def aug():
         rota = tf.keras.layers.RandomRotation(factor=rotation_factor, fill_mode='constant')
@@ -877,11 +884,11 @@ def test_train_valid_tensor_generators(
     )
 
     do_augmentation = bool(rotation_factor or zoom_factor or translation_factor)
-    logging.info(f'doing_augmentation {do_augmentation}')
+    logging.info(f'doing_augmentation {do_augmentation} with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
 
     if do_augmentation:
-        assert(len(tensor_maps_in) == 1) # no support for multiple input tensors
-        assert(len(tensor_maps_out) == 1) # no support for multiple output tensors
+        assert(len(tensor_maps_in) == 1, 'no support for multiple input tensors')
+        assert(len(tensor_maps_out) == 1, 'no support for multiple output tensors')
 
     if wrap_with_tf_dataset or do_augmentation:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
