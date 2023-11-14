@@ -45,13 +45,13 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
 
         self.local_lmdb_dir = local_lmdb_dir
         self._name = name
-        self.nframes = nframes
         self.start_frame = start_frame
-        self.nframes = start_frame + (nframes * skip_modulo)
+        self.nframes = nframes
         # transformations
         self.transforms = transforms or []
         self.skip_modulo = skip_modulo
-
+        self.randomize_start_frame = randomize_start_frame
+        
     def get_loading_options(self, sample_id):
         _, study, view = sample_id.split('_')
         lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
@@ -76,6 +76,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
 
         env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         nframes = self.nframes
+        #print(f"nframes: {nframes}")
 
         frames = []
         with env.begin(buffers=True) as txn:
@@ -83,22 +84,29 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             video_container = av.open(in_mem_bytes_io, metadata_errors="ignore")
             video_frames = itertools.cycle(video_container.decode(video=0))
             
-            total_frames = len(list(video_frames))
-            print(total_frames)
-            if self.randomize_start_frame:
-                self.start_frame = np.randint(total_frames - (self.nframes * self.skip_modulo))
+            total_frames = len(list(video_container.decode(video=0)))
+            #print(total_frames)
+            video_container.seek(0)
             
+            if self.randomize_start_frame:
+                frame_range = total_frames - (self.nframes * self.skip_modulo)
+                if frame_range > 0:
+                    self.start_frame = np.random.randint(frame_range)
+            end_frame = self.start_frame + (self.nframes * self.skip_modulo)
+            #print(f"using start frame: {self.start_frame}")
             for i, frame in enumerate(video_frames):
-                if i == nframes:
+                #print(f'evaluating frame: {i}')
+                if i == end_frame:
                     break
                 if i < (self.start_frame):
                     continue
                 if self.skip_modulo > 1:
-                    if (i % self.skip_modulo) != 0:
+                    if ((i - self.start_frame) % self.skip_modulo) != 0:
                         continue
                 frame = np.array(frame.to_image())
                 for transform in self.transforms:
                     frame = transform(frame, loading_option)
+                #print(f"adding frame: {i}")
                 frames.append(frame)
             del video_frames
             video_container.close()
