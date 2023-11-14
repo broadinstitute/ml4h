@@ -45,7 +45,8 @@ def main(
         output_labels_types,
         add_separate_dense_reg,
         add_separate_dense_cls,
-        loss_weights
+        loss_weights,
+        sampling_ratio
 ):
     lmdb_vois = '_'.join(selected_views)
     olabels = '_'.join(output_labels)
@@ -434,6 +435,7 @@ if __name__ == "__main__":
                         help='Number of epochs with no change before early stopping.')
     parser.add_argument('--es_loss2monitor', default='val_loss', type=str,
                         help='Loss on which the early stopping will be based, options are "val_loss", "val_echolab_loss" for regression loss, or "val_cls_COLUMN-NAME_loss" for classification loss.')
+    parser.add_argument('--sampling_ratio', default=9, type=int)
     # ---------- Adaptation for regression + classification ---------- #
     parser.add_argument('--output_labels_types', default='r', type=str,
                         help='A string indicating task types: r for regression, c for classification. Should be of length 1 or the same length of the specified output_labels variable, e.g. "r" or "rrcr".')
@@ -481,6 +483,7 @@ if __name__ == "__main__":
         output_labels_types=args.output_labels_types,
         add_separate_dense_reg=args.add_separate_dense_reg,
         add_separate_dense_cls=args.add_separate_dense_cls,
-        loss_weights=args.loss_weights
+        loss_weights=args.loss_weights,
         # ---------------------------------------------------------------- #
+        sampling_ratio = args.sampling_ratio
     )
