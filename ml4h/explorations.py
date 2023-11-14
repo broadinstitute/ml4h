@@ -783,6 +783,12 @@ def _scatter_plots_from_segmented_region_stats(
             plt.savefig(figure_path)
 
 def infer_stats_from_segmented_regions(args):
+    """
+    Computes .tsv files of intensity means, medians and standard deviations within predicted segmentations for
+    a given list of structures of interest. If ground truth segmentations are available, computes the same
+    statistics within them, as well as scatter plots that compare median intensities within predicted and
+    ground truth segmentations.
+    """
     assert(args.batch_size == 1, 'no support here for iterating over larger batches')
     assert(len(args.tensor_maps_in) == 1, 'no support here for multiple input maps')
     assert(len(args.tensor_maps_out) == 1, 'no support here for multiple output channels')
