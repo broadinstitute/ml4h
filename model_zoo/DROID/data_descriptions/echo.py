@@ -76,7 +76,6 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
 
         env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         nframes = self.nframes
-        #print(f"nframes: {nframes}")
 
         frames = []
         with env.begin(buffers=True) as txn:
@@ -85,7 +84,6 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             video_frames = itertools.cycle(video_container.decode(video=0))
             
             total_frames = len(list(video_container.decode(video=0)))
-            #print(total_frames)
             video_container.seek(0)
             
             if self.randomize_start_frame:
@@ -93,10 +91,9 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
                 if frame_range > 0:
                     self.start_frame = np.random.randint(frame_range)
             end_frame = self.start_frame + (self.nframes * self.skip_modulo)
-            #print(f"using start frame: {self.start_frame}")
+            frames =[]
             for i, frame in enumerate(video_frames):
-                #print(f'evaluating frame: {i}')
-                if i == end_frame:
+                if len(frames) == self.nframes:
                     break
                 if i < (self.start_frame):
                     continue
@@ -106,7 +103,6 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
                 frame = np.array(frame.to_image())
                 for transform in self.transforms:
                     frame = transform(frame, loading_option)
-                #print(f"adding frame: {i}")
                 frames.append(frame)
             del video_frames
             video_container.close()
