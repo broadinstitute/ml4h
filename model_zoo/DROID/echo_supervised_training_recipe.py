@@ -220,7 +220,8 @@ def main(
         'image',
         [],
         n_input_frames,
-        skip_modulo
+        skip_modulo,
+        randomize_start_frame = False
     )
 
     OUTPUT_DD = EcholabDataDescription(
