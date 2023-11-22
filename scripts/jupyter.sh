@@ -15,6 +15,7 @@ DOCKER_COMMAND="docker"
 PORT="8888"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 GPU_DEVICE="--gpus all"
+ENV=""
 
 ################### HELP TEXT ############################################
 
@@ -36,12 +37,14 @@ usage()
         -p                  Port to use, by default '${PORT}'
 
         -i      <image>     Run Docker with the specified custom <image>. The default image is '${DOCKER_IMAGE}'.
+
+        -e                  Run Docker with the specified environment variables set
 USAGE_MESSAGE
 }
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:p:ch" opt ; do
+while getopts ":i:p:e:ch" opt ; do
     case ${opt} in
         h)
             usage
@@ -56,6 +59,9 @@ while getopts ":i:p:ch" opt ; do
         c)
             DOCKER_IMAGE=${DOCKER_IMAGE_NO_GPU}
           GPU_DEVICE=""
+            ;;
+        e)
+            ENV="--env $OPTARG"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -102,6 +108,7 @@ ${GPU_DEVICE} \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
 -p 0.0.0.0:${PORT}:${PORT} \
+${ENV} \
 ${DOCKER_IMAGE} /bin/bash -c "pip3 install --upgrade pip
 pip3 install /home/${USER}/ml4h;
 jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"

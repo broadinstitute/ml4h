@@ -72,7 +72,7 @@ def parse_args():
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--sample_csv', default=None, help='Path to CSV with Sample IDs to restrict tensor paths')
     parser.add_argument('--tsv_style', default='standard', choices=['standard', 'genetics'], help='Format choice for the TSV file produced in output by infer and explore modes.')
-    parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
+    parser.add_argument('--app_csv', help='Path to file used by the recipe')
     parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
@@ -189,6 +189,9 @@ def parse_args():
     parser.add_argument('--pool_z', default=1, type=int, help='Pooling size in the z-axis, if 1 no pooling will be performed.')
     parser.add_argument('--padding', default='same', help='Valid or same border padding on the convolutional layers.')
     parser.add_argument('--dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional layers.')
+    parser.add_argument('--merge_dimension', default=3, type=int, help='Dimension of the merge layer.')
+    parser.add_argument('--merge_dense_blocks', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional merge layer.')
+    parser.add_argument('--decoder_dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional decoder layers.')
     parser.add_argument('--encoder_blocks', nargs='*', default=['conv_encode'], help='List of encoding blocks.')
     parser.add_argument('--merge_blocks', nargs='*', default=['concat'], help='List of merge blocks.')
     parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode', 'dense_decode'], help='List of decoding blocks.')
@@ -268,6 +271,11 @@ def parse_args():
         '--save_last_model', default=False, action='store_true',
         help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.',
     )
+
+    # 2D image data augmentation parameters
+    parser.add_argument('--rotation_factor', default=0., type=float, help='for data augmentation, a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]')
+    parser.add_argument('--zoom_factor', default=0., type=float, help='for data augmentation, a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]')
+    parser.add_argument('--translation_factor', default=0., type=float, help='for data augmentation, a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -375,6 +383,14 @@ def parse_args():
         help='Frequency string indicating resolution of counts over time. Also multiples are accepted, e.g. "3M".',
         default='3M',
     )
+
+    # Arguments for explorations/infer_stats_from_segmented_regions
+    parser.add_argument('--analyze_ground_truth', default=True, help='Whether or not to filter by images with ground truth segmentations, for comparison')
+    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots')
+    parser.add_argument('--erosion_radius', default=1, type=int, help='Radius of the unit disk structuring element for erosion preprocessing')
+    parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
+    parser.add_argument('--intensity_thresh_in_structures', nargs='*', default=[], help='Structure names whose pixels should be replaced if the images has intensity above the threshold')
+    parser.add_argument('--intensity_thresh_out_structure', help='Replacement structure name')
 
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")

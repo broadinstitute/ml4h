@@ -12,7 +12,7 @@ from scipy.ndimage.interpolation import rotate
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
-from ml4h.metrics import weighted_crossentropy
+from ml4h.metrics import weighted_crossentropy, dice, per_class_dice
 from ml4h.normalizer import ZeroMeanStd1, Standardize
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
@@ -2669,29 +2669,59 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
     tensor_from_file=None,
 )
 
+def _pad_crop_single_channel(tm, hd5, dependents={}):
+    if f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2'
+    elif f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2'
+    else:
+        raise ValueError(f'Could not find T1 Map image for tensormap: {tm.name}')
+
+    img = np.array(
+            tm.hd5_first_dataset_in_group(hd5, key_prefix),
+            dtype=np.float32,
+    )
+    img = img[...,[1]]
+    return pad_or_crop_array_to_shape(
+        tm.shape,
+        img,
+    )
 
 t1map_b2 = TensorMap(
     'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
-    shape=(384, 384, 2),
+    shape=(384, 384, 1),
     path_prefix='ukb_cardiac_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_pad_crop_tensor,
+    normalization=Standardize(mean=455.81, std=609.50),
+    tensor_from_file=_pad_crop_single_channel,
 )
 
-
 def _segmented_t1map(tm, hd5, dependents={}):
+    if f'{tm.path_prefix}/{tm.name}_1' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}_1')
+    elif f'{tm.path_prefix}/{tm.name}_2' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}_2')
+    else:
+        raise ValueError(f'Could not find T1 Map segmentation for tensormap: {tm.name}')
+
+    # remove kidney label and merge body/background labels
+    orig_num_channels = len(tm.channel_map) + 2
+    categorical_one_hot = to_categorical(categorical_index_slice, orig_num_channels)
+    categorical_one_hot = np.delete(categorical_one_hot, 6, axis=-1)
+    categorical_one_hot[..., 0] += categorical_one_hot[..., 1]
+    categorical_one_hot = np.delete(categorical_one_hot, 1, axis=-1)
+
+    # padding/cropping
     tensor = np.zeros(tm.shape, dtype=np.float32)
-    categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
-    categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
     tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
     return tensor
 
-
 t1map_b2_segmentation = TensorMap(
-    'b2s_t1map_kassir_annotated_2',
+    'b2s_t1map_kassir_annotated',
     interpretation=Interpretation.CATEGORICAL,
     shape=(384, 384, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
     channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
     path_prefix='ukb_cardiac_mri',
     tensor_from_file=_segmented_t1map,
+    loss=dice,
+    metrics=['categorical_accuracy'] + per_class_dice(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP),
 )
