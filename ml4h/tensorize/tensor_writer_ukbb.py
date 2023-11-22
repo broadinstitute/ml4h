@@ -664,7 +664,7 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
 
 def _unit_disk(r) -> np.ndarray:
     y, x = np.ogrid[-r: r + 1, -r: r + 1]
-    return (x ** 2 + y ** 2 <= r ** 2).astype(np.int)
+    return (x ** 2 + y ** 2 <= r ** 2).astype(np.int32)
 
 
 def _outline_to_mask(labeled_outline, idx) -> np.ndarray:
