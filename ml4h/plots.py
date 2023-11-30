@@ -766,7 +766,7 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(title)
+    ax1.set_title(f'{title} N = {len(prediction)}' )
     ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
