@@ -62,6 +62,7 @@ MRI_CARDIAC_SERIES = [
     'shmolli_192i_b7_sax_b7s_sax_b7s_sax_b7s_t1map',
 
 ]
+MRI_PANCREAS_SERIES = ['shmolli_192i_pancreas_t1map']
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'}
@@ -455,6 +456,8 @@ def _write_tensors_from_dicoms(
             mri_group = 'ukb_liver_mri'
         elif v in MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED:
             mri_group = 'ukb_cardiac_mri'
+        elif v in MRI_PANCREAS_SERIES:
+            mri_group = 'ukb_pancreas_mri'
         else:
             mri_group = 'ukb_mri'
 
