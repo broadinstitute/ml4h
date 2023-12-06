@@ -253,6 +253,25 @@ def _slice_tensor(tensor_key, slice_index):
     return _slice_tensor_from_file
 
 
+def _random_slice_tensor(tensor_key, max_random=50):
+    def _slice_tensor_from_file(tm, hd5, dependents={}):
+        slice_index = np.random.randint(max_random)
+        if tm.shape[-1] == 1:
+            t = pad_or_crop_array_to_shape(
+                tm.shape[:-1],
+                np.array(hd5[tensor_key][..., slice_index], dtype=np.float32),
+            )
+            tensor = np.expand_dims(t, axis=-1)
+        else:
+            tensor = pad_or_crop_array_to_shape(
+                tm.shape,
+                np.array(hd5[tensor_key][..., slice_index], dtype=np.float32),
+            )
+        return tensor
+
+    return _slice_tensor_from_file
+
+
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', step=1, total_slices=50):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -387,6 +406,12 @@ lax_4ch_diastole_slice0_224_3d = TensorMap(
     'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
+)
+
+lax_4ch_diastole_random_slice_3d = TensorMap(
+    'lax_4ch_diastole_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0'),
 )
 
 lax_4ch_diastole_slice0_224_3d_augmented = TensorMap(
