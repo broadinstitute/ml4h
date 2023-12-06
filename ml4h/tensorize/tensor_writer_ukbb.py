@@ -72,7 +72,7 @@ MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_opti
 
 DICOM_MRI_FIELDS = [
     '20209', '20208', '20210', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
-    '20227', '20225', '20217', '20158', '20259'
+    '20227', '20225', '20217', '20158', '20259',
 ]
 
 DXA_FIELD = '20158'
@@ -174,7 +174,7 @@ def write_tensors_from_dicom_pngs(
     tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
     sample_header='sample_id', dicom_header='dicom_file',
     instance_header='instance_number', png_postfix='.png.mask.png',
-    path_prefix='ukb_cardiac_mri',
+    path_prefix='ukb_pancreas_mri',
 ):
     stats = Counter()
     reader = csv.reader(open(manifest_tsv), delimiter='\t')
