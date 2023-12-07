@@ -5,9 +5,9 @@ WITH dated_fields AS (
       WHEN cod.meaning LIKE ('%unknown%') THEN SAFE.PARSE_DATE("%E4Y-%m-%d", denroll.value)
       ELSE SAFE.PARSE_DATE("%E4Y-%m-%d", d.value)
     END vdate
-  FROM `broad-ml4cvd.ukbb7089_201904.phenotype` p
-  JOIN `broad-ml4cvd.ukbb7089_201904.phenotype` denroll ON denroll.FieldID=53 AND denroll.sample_id=p.sample_id AND denroll.instance = 0 AND denroll.array_idx = 0
-  JOIN `broad-ml4cvd.ukbb7089_201904.phenotype` d ON d.sample_id=p.sample_id AND d.instance = p.instance AND d.array_idx = p.array_idx
+  FROM `broad-ml4cvd.ukbb7089_2023_07_25.phenotype` p
+  JOIN `broad-ml4cvd.ukbb7089_2023_07_25.phenotype` denroll ON denroll.FieldID=53 AND denroll.sample_id=p.sample_id AND denroll.instance = 0 AND denroll.array_idx = 0
+  JOIN `broad-ml4cvd.ukbb7089_2023_07_25.phenotype` d ON d.sample_id=p.sample_id AND d.instance = p.instance AND d.array_idx = p.array_idx
     AND (
       FALSE
       OR (p.FieldID=42013 AND d.FieldID=42012)
@@ -16,7 +16,7 @@ WITH dated_fields AS (
       OR (p.FieldID=42007 AND d.FieldID=42006)
       OR (p.FieldID=42001 AND d.FieldID=42000)
     )
-  LEFT JOIN `broad-ml4cvd.ukbb7089_201904.coding` cod ON cod.coding_file_id = d.coding_file_id AND cod.coding = d.value
+  LEFT JOIN `broad-ml4cvd.ukbb7089_2023_07_25.coding` cod ON cod.coding_file_id = d.coding_file_id AND cod.coding = d.value
 ), 
 dated_fields_fractional AS (
   SELECT p.FieldID, p.sample_id eid, p.value code, cod.meaning,
@@ -25,16 +25,16 @@ dated_fields_fractional AS (
       WHEN cod.meaning LIKE ('%unknown%') THEN SAFE.PARSE_DATE("%E4Y-%m-%d", denroll.value)
       ELSE SAFE.PARSE_DATE("%Y", d.value)
     END vdate
-  FROM `broad-ml4cvd.ukbb7089_201904.phenotype` p
-  JOIN `broad-ml4cvd.ukbb7089_201904.phenotype` denroll ON denroll.FieldID=53 AND denroll.sample_id=p.sample_id AND denroll.instance = 0 AND denroll.array_idx = 0
-  JOIN `broad-ml4cvd.ukbb7089_201904.phenotype` d ON d.sample_id=p.sample_id AND d.instance = p.instance AND d.array_idx = p.array_idx
+  FROM `broad-ml4cvd.ukbb7089_2023_07_25.phenotype` p
+  JOIN `broad-ml4cvd.ukbb7089_2023_07_25.phenotype` denroll ON denroll.FieldID=53 AND denroll.sample_id=p.sample_id AND denroll.instance = 0 AND denroll.array_idx = 0
+  JOIN `broad-ml4cvd.ukbb7089_2023_07_25.phenotype` d ON d.sample_id=p.sample_id AND d.instance = p.instance AND d.array_idx = p.array_idx
     AND (
       FALSE
       OR (p.FieldID=20004 AND d.FieldID=20010)
       OR (p.FieldID=20002 AND d.FieldID=20008)
       OR (p.FieldID=20001 AND d.FieldID=20006)
     )
-  LEFT JOIN `broad-ml4cvd.ukbb7089_201904.coding` cod ON cod.coding_file_id = d.coding_file_id AND cod.coding = d.value
+  LEFT JOIN `broad-ml4cvd.ukbb7089_2023_07_25.coding` cod ON cod.coding_file_id = d.coding_file_id AND cod.coding = d.value
 )
 
 SELECT 
