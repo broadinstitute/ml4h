@@ -172,24 +172,24 @@ def write_tensors(
 
 def write_tensors_from_dicom_pngs(
     tensors, png_path, manifest_tsv, series, min_sample_id, max_sample_id, x=256, y=256,
-    sample_header='', dicom_header='SOP Instance UID',
-    instance_header='instance_number', png_postfix='.png.mask.png',
+    sample_header='sample_id', dicom_header='dicom_file',
+    instance_header='instance', png_postfix='.png.mask.png',
     path_prefix='ukb_pancreas_mri',
 ):
     stats = Counter()
-    reader = csv.reader(open(manifest_tsv), delimiter='\t')
+    reader = csv.reader(open(manifest_tsv), delimiter=' ')
     header = next(reader)
     logging.info(f"DICOM Manifest Header is:{header}")
-    # instance_index = header.index(instance_header)
+    instance_index = header.index(instance_header)
     sample_index = header.index(sample_header)
     dicom_index = header.index(dicom_header)
     for row in reader:
-        sample_id = row[sample_index].split('/')[8].split('_')[0]
+        sample_id = row[sample_index]
         if not min_sample_id <= int(sample_id) < max_sample_id:
             continue
         stats[sample_header + '_' + sample_id] += 1
         if 'train' in png_path:
-            dicom_file = row[dicom_index] + '.dcm'
+            dicom_file = row[dicom_index]
         elif 'valid' in png_path:
             search_file = os.path.join(png_path, f'*_{sample_id}_*')
             dicom_file = glob.glob(search_file)
@@ -206,7 +206,7 @@ def write_tensors_from_dicom_pngs(
             if not os.path.exists(os.path.dirname(tensor_file)):
                 os.makedirs(os.path.dirname(tensor_file))
             with h5py.File(tensor_file, 'a') as hd5:
-                tensor_name = series + '_annotated_' + '2' #row[instance_index]
+                tensor_name = series + '_annotated_' + row[instance_index]
                 tp = tensor_path(path_prefix, tensor_name)
                 if tp in hd5:
                     tensor = first_dataset_at_path(hd5, tp)
