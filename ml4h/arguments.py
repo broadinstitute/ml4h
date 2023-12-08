@@ -385,7 +385,9 @@ def parse_args():
     )
 
     # Arguments for explorations/infer_stats_from_segmented_regions
-    parser.add_argument('--analyze_ground_truth', default=True, help='Whether or not to filter by images with ground truth segmentations, for comparison')
+    parser.add_argument('--analyze_ground_truth', action='store_true', help='Filter by images with ground truth segmentations, for comparison')
+    parser.add_argument('--no_analyze_ground_truth', dest='analyze_ground_truth', action='store_false', help='Do not filter by images with ground truth segmentations, for comparison')
+    parser.set_defaults(analyze_ground_truth=True)
     parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots')
     parser.add_argument('--erosion_radius', default=1, type=int, help='Radius of the unit disk structuring element for erosion preprocessing')
     parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
