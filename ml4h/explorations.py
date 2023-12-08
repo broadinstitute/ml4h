@@ -896,7 +896,7 @@ def infer_stats_from_segmented_regions(args):
     if args.analyze_ground_truth:
         _scatter_plots_from_segmented_region_stats(
             inference_tsv_true, inference_tsv_pred, args.structures_to_analyze,
-            args.output_folder, args.id, tm_in.input_name(), args.output_name,
+            args.output_folder, args.id, tm_in.input_name(), tm_out.output_name(),
         )
 
 def _softmax(x):
