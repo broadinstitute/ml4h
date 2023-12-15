@@ -100,7 +100,10 @@ MRI_LVOT_SEGMENTED_CHANNEL_MAP = {
     'aortic_root': 7, 'ascending_aorta': 8, 'pulmonary_artery': 9, 'ascending_aortic_wall': 10, 'LVOT': 11,
 }
 MRI_LIVER_SEGMENTED_CHANNEL_MAP = {'background': 0, 'liver': 1, 'inferior_vena_cava': 2, 'abdominal_aorta': 3, 'body': 4}
-
+MRI_PANCREAS_SEGMENTED_CHANNEL_MAP = {
+    'background': 0, 'body': 1, 'pancreas': 2, 'liver': 3, 'stomach': 4, 'spleen': 5,
+    'kidney': 6, 'bowel': 7, 'spine': 8, 'aorta':9, 'ivc': 10,
+}
 
 # TODO: These values should ultimately come from the coding table
 CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
