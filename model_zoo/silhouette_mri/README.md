@@ -17,4 +17,4 @@ Several files are provided:
 
 ### Citation
 
-**Estimating body fat distribution - a driver of cardiometabolic health - from silhouette images**, Marcus D. R. Klarqvist, PhD*, Saaket Agrawal, BS*, Nathaniel Diamant, BS, Patrick T. Ellinor, MD, PhD, Anthony Philippakis, MD, PhD,  Kenney Ng, PhD, Puneet Batra, PhD, Amit V. Khera, MD
+**[Estimating body fat distribution - a driver of cardiometabolic health - from silhouette images](https://www.medrxiv.org/content/10.1101/2022.01.14.22269328v2)**, Marcus D. R. Klarqvist, PhD*, Saaket Agrawal, BS*, Nathaniel Diamant, BS, Patrick T. Ellinor, MD, PhD, Anthony Philippakis, MD, PhD,  Kenney Ng, PhD, Puneet Batra, PhD, Amit V. Khera, MD
