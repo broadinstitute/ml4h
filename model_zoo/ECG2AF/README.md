@@ -2,6 +2,12 @@
 This directory contains models and code for predicting incident atrial fibrillation from 12 lead resting ECGs, as described in our 
 [Circulation paper](https://www.ahajournals.org/doi/full/10.1161/CIRCULATIONAHA.121.057480).
 
+The raw model files are stored using `git lfs` so you must have it installed and localize the full ~200MB files with:
+```bash
+git lfs pull --include model_zoo/ECG2AF/ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5
+git lfs pull --include model_zoo/ECG2AF/strip_*
+```
+
 To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the [example](./ecg2af_infer.ipynb) or run: 
 ```python
 output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3]}
@@ -10,6 +16,8 @@ model = load_model('./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.
 ecg = np.random.random((1, 5000, 12))
 prediction = model(ecg)
 ```
+If above does not work you may need to use an absolute path in `load_model`.
+
 The model has 4 output heads: the survival curve prediction for incident atrial fibrillation, the classification of atrial fibrillation at the time of ECG, sex, and age regression.  Those outputs can be accessed with:
 ```python
 for name, pred in zip(model.output_names, prediction):
@@ -47,7 +55,10 @@ and II: [strip_II_survival_curve_af_v2021_06_15.h5](./strip_II_survival_curve_af
 
 ### Study Design
 Flow chart of study design
-![Flow chart of study design](./study_design.jpg)
+<div style="padding: 10px; background-color: white;">
+    ![Flow chart of study design](./study_design.jpg)
+</div>
+
 ### Performance
 Risk stratification model comparison
 ![Risk stratification model comparison](./km.jpg)
