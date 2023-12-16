@@ -53,15 +53,17 @@ age regression, sex classification and prevalent (at the time of ECG) atrial fib
 We also include single lead models for lead strip I:[strip_I_survival_curve_af_v2021_06_15.h5](./strip_I_survival_curve_af_v2021_06_15.h5)
 and II: [strip_II_survival_curve_af_v2021_06_15.h5](./strip_II_survival_curve_af_v2021_06_15.h5)
 
-### Study Design
-Flow chart of study design
-<div style="padding: 10px; background-color: white;">
-    ![Flow chart of study design](./study_design.jpg)
+### Study design
+<div style="padding: 10px; background-color: white; display: inline-block;">
+    <img src="./study_design.jpg" alt="Flow chart of study design" />
 </div>
 
 ### Performance
 Risk stratification model comparison
-![Risk stratification model comparison](./km.jpg)
+<div style="padding: 10px; background-color: white; display: inline-block;">
+    <img src="./km.jpg" alt="Risk stratification model comparison" />
+</div>
+
 ### Salience
 Salience and Median waveforms from predicted risk extremes.
 ![Salience and Median waveforms](./salience.jpg)
