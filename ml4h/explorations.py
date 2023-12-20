@@ -798,7 +798,6 @@ def infer_stats_from_segmented_regions(args):
     assert(tm_in.shape[-1] == 1, 'no support here for stats on multiple input channels')
 
     # don't filter datasets for ground truth segmentations if we want to run inference on everything
-    # TODO HELP - this isn't giving me all 56K anymore
     if not args.analyze_ground_truth:
         args.output_tensors = []
         args.tensor_maps_out = []
