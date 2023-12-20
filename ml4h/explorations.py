@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import multiprocessing as mp
 from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 from tensorflow.keras.models import Model
 
 
@@ -719,11 +720,24 @@ def _get_csv_row(sample_id, means, medians, stds, date):
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
-def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig_channels):
+def _thresh_labels_above(y, img, intensity_thresh, intensity_thresh_perc, in_labels, out_label, nb_orig_channels):
     y = np.argmax(y, axis=-1)[..., np.newaxis]
-    y[np.logical_and(img >= intensity_thresh, np.isin(y, in_labels))] = out_label
+    if intensity_thresh:
+        img_intensity_thresh = intensity_thresh
+    elif intensity_thresh_perc:
+        img_intensity_thresh = np.percentile(img, intensity_thresh_perc)
+    y[np.logical_and(img >= img_intensity_thresh, np.isin(y, in_labels))] = out_label
     y = y[..., 0]
     y = _to_categorical(y, nb_orig_channels)
+    return y
+
+def _intensity_thresh_k_means(y, img, intensity_thresh_k_means):
+    X = img[y==1][...,np.newaxis]
+    if X.size > 1:
+        kmeans = KMeans(n_clusters=intensity_thresh_k_means[0], random_state=0, n_init="auto").fit(X)
+        labels = kmeans.predict(img.flatten()[...,np.newaxis])
+        labels = np.reshape(labels, img.shape)
+        y[np.logical_and(labels==intensity_thresh_k_means[1], y==1)] = 0
     return y
 
 def _scatter_plots_from_segmented_region_stats(
@@ -759,13 +773,9 @@ def _scatter_plots_from_segmented_region_stats(
             title = col.replace('_', ' ')
             ax.set_xlabel(f'{title} T1 Time (ms) - Manual Segmentation')
             ax.set_ylabel(f'{title} T1 Time (ms) - Model Segmentation')
-            if i == 'all':
-                min_value = -50
-                max_value = 1300
-            elif i == 'filter_outliers':
-                min_value, max_value = plot_data.min(), plot_data.max()
-                min_value = min([min_value['true'], min_value['pred']]) - 100
-                max_value = min([max_value['true'], max_value['pred']]) + 100
+            min_value, max_value = plot_data.min(), plot_data.max()
+            min_value = min([min_value['true'], min_value['pred']]) - 100
+            max_value = min([max_value['true'], max_value['pred']]) + 100
             ax.set_xlim([min_value, max_value])
             ax.set_ylim([min_value, max_value])
             res = stats.pearsonr(plot_data['true'], plot_data['pred'])
@@ -819,6 +829,8 @@ def infer_stats_from_segmented_regions(args):
     # Setup for intensity thresholding
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
     if do_intensity_thresh:
+        assert (not (args.intensity_thresh and args.intensity_thresh_perc))
+        assert (not (args.intensity_thresh_k_means and len(args.intensity_thresh_in_structures) > 1))
         intensity_thresh_in_channels = [tm_out.channel_map[k] for k in args.intensity_thresh_in_structures]
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
 
@@ -869,19 +881,23 @@ def infer_stats_from_segmented_regions(args):
 
             if args.analyze_ground_truth:
                 if do_intensity_thresh:
-                    y_true = _thresh_labels_above(y_true, img, args.intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
+                    y_true = _thresh_labels_above(y_true, img, args.intensity_thresh, args.intensity_thresh_perc, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
                 y_true = np.delete(y_true, bad_channels, axis=-1)
                 if args.erosion_radius > 0:
                     y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
+                if args.intensity_thresh_k_means:
+                    y_true = _intensity_thresh_k_means(y_true, img, args.intensity_thresh_k_means)
                 means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
                 csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
                 inference_writer_true.writerow(csv_row_true)
 
             if do_intensity_thresh:
-                y_pred = _thresh_labels_above(y_pred, img, args.intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
+                y_pred = _thresh_labels_above(y_pred, img, args.intensity_thresh, args.intensity_thresh_perc, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             if args.erosion_radius > 0:
                 y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
+            if args.intensity_thresh_k_means:
+                y_pred = _intensity_thresh_k_means(y_pred, img, args.intensity_thresh_k_means)
             means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
             csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
