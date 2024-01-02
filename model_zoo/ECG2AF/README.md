@@ -8,8 +8,15 @@ git lfs pull --include model_zoo/ECG2AF/ecg_5000_survival_curve_af_quadruple_tas
 git lfs pull --include model_zoo/ECG2AF/strip_*
 ```
 
-To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the [example](./ecg2af_infer.ipynb) or run: 
+To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the [example](./ecg2af_infer.ipynb) or run:
+
 ```python
+import numpy as np
+from tensorflow.keras.models import load_model
+from ml4h.models.model_factory import get_custom_objects
+from ml4h.tensormap.ukb.survival import mgb_afib_wrt_instance2
+from ml4h.tensormap.ukb.demographics import age_2_wide, af_dummy, sex_dummy3
+
 output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3]}
 custom_dict = get_custom_objects([mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3])
 model = load_model('./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5', custom_objects=custom_dict)
@@ -50,7 +57,7 @@ The model weights for the main model which performs incident atrial fibrillation
 age regression, sex classification and prevalent (at the time of ECG) atrial fibrillation:
 [ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5](./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5)
 
-We also include single lead models for lead strip I:[strip_I_survival_curve_af_v2021_06_15.h5](./strip_I_survival_curve_af_v2021_06_15.h5)
+We also include single lead models for lead/strip I: [strip_I_survival_curve_af_v2021_06_15.h5](./strip_I_survival_curve_af_v2021_06_15.h5)
 and II: [strip_II_survival_curve_af_v2021_06_15.h5](./strip_II_survival_curve_af_v2021_06_15.h5)
 
 ### Study design
