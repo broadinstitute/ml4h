@@ -843,7 +843,7 @@ def _predict_and_evaluate(
     scatters = []
     rocs = []
 
-    y_predictions = model.predict(test_data, batch_size=batch_size)
+    y_predictions = model.predict(test_data, batch_size=batch_size, verbose=0)
     protected_data = {tm: test_labels[tm.output_name()] for tm in tensor_maps_protected}
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
@@ -892,7 +892,7 @@ def _predict_scalars_and_evaluate_from_generator(
     for i in range(steps):
         batch = next(generate_test)
         input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
-        y_predictions = model.predict(input_data)
+        y_predictions = model.predict(input_data, verbose=0)
         test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
