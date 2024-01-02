@@ -909,6 +909,9 @@ def _predict_scalars_and_evaluate_from_generator(
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
 
+        if i % 100 == 0:
+            logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')
+
     performance_metrics = {}
     scatters = []
     rocs = []
