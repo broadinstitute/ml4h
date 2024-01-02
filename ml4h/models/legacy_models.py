@@ -1344,7 +1344,7 @@ def make_paired_autoencoder_model(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
     embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
-    return embed_model.predict(test_data, batch_size=batch_size)
+    return embed_model.predict(test_data, batch_size=batch_size, verbose=0)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
