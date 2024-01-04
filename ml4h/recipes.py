@@ -383,13 +383,18 @@ def train_xdl(args):
 
 def train_xdl_af(args):
     mrn_df = pd.read_csv(args.app_csv)
+    mrn_df = mrn_df.dropna(subset=['last_encounter'])
+    mrn_df.MRN = mrn_df.MRN.astype(int)
+    mrn_df['survival_curve_af'] = mrn_df.af_event
+
     if 'start_fu_age' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
     elif 'start_fu' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
-    mrn_df = mrn_df.set_index('sample_id')
+        
+    mrn_df = mrn_df.set_index('MRN')
 
     output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
 
