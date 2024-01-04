@@ -409,7 +409,7 @@ def train_xdl_af(args):
 
     def option_picker(sample_id, data_descriptions):
         ecg_dts = ecg_dd.get_loading_options(sample_id)
-        start_dt = output_dds[0].get_loading_options(sample_id)[0]['start_date']
+        start_dt = output_dds[0].get_loading_options(sample_id)[0]['start_fu_datetime']
         min_ecg_dt = start_dt - pd.to_timedelta("1095d")
         dates = []
         for dt in ecg_dts:
