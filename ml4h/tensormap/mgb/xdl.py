@@ -25,6 +25,10 @@ dm = TensorMap(name='dm', interpretation=Interpretation.CATEGORICAL, channel_map
 hypercholesterolemia = TensorMap(name='hypercholesterolemia', interpretation=Interpretation.CATEGORICAL,
                                  channel_map={'no_hypercholesterolemia': 0, 'hypercholesterolemia': 1})
 
+n_intervals = 25
+af_tmap = TensorMap('survival_curve_af', Interpretation.SURVIVAL_CURVE, shape=(n_intervals*2,),)
+death_tmap = TensorMap('death_event', Interpretation.SURVIVAL_CURVE, shape=(n_intervals*2,),)
+
 
 def ecg_median_biosppy(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     tensor = np.zeros(tm.shape, dtype=np.float32)
