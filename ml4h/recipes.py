@@ -423,6 +423,7 @@ def train_xdl_af(args):
         return {dd: chosen_dt for dd in data_descriptions}
 
     logging.info(f'output_dds[0].name {output_dds[0].name}')
+    logging.info(f'output_dds[0].get_loading_options(sample_id)[0] {output_dds[0].get_loading_options(3773)[0]}')
     logging.info(f'option_picker {option_picker(3773, [ecg_dd])}')
 
     sg = DataDescriptionSampleGetter(
