@@ -28,7 +28,7 @@ from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
 from ml4h.explorations import test_labels_to_label_map, infer_with_pixels
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
 
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe, infer_stats_from_segmented_regions
+#from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe, infer_stats_from_segmented_regions
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_roc, \
     plot_precision_recall_per_class
