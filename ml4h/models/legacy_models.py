@@ -350,7 +350,7 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
-    intermediate_layer_model.predict(dummy_input)
+    intermediate_layer_model.predict(dummy_input, verbose=0)
     return intermediate_layer_model
 
 
@@ -1344,7 +1344,7 @@ def make_paired_autoencoder_model(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def embed_model_predict(model, tensor_maps_in, embed_layer, test_data, batch_size):
     embed_model = make_hidden_layer_model(model, tensor_maps_in, embed_layer)
-    return embed_model.predict(test_data, batch_size=batch_size)
+    return embed_model.predict(test_data, batch_size=batch_size, verbose=0)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
