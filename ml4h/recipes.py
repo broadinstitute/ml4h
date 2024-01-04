@@ -393,7 +393,7 @@ def train_xdl_af(args):
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
-        
+
     mrn_df = mrn_df.set_index('MRN')
 
     output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
@@ -421,11 +421,17 @@ def train_xdl_af(args):
         chosen_dt['day_delta'] = (start_dt - chosen_dt[DATE_OPTION_KEY]).days
         return {dd: chosen_dt for dd in data_descriptions}
 
+    logging.info(f'option_picker {option_picker(3773, [ecg_dd])}')
+
     sg = DataDescriptionSampleGetter(
         input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
         output_data_descriptions=output_dds,  # what we want a model to predict from the input data
         option_picker=option_picker,
     )
+
+    b = sg(3773)
+    logging.info(f'batch output: {b[1]}')
+
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
 
     train_ids = list(mrn_df[mrn_df.split == 'train'].index)
