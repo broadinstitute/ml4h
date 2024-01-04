@@ -386,7 +386,8 @@ def train_xdl_af(args):
     mrn_df = mrn_df.dropna(subset=['last_encounter'])
     mrn_df.MRN = mrn_df.MRN.astype(int)
     mrn_df['survival_curve_af'] = mrn_df.af_event
-
+    mrn_df['start_date'] = mrn_df.start_fu_datetime
+    
     if 'start_fu_age' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
     elif 'start_fu' in mrn_df:
