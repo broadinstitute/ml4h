@@ -204,8 +204,6 @@ class TensorMap(object):
         elif self.activation is None and (self.is_survival_curve() or self.is_time_to_event()):
             self.activation = 'sigmoid'
 
-
-
         if self.channel_map is None and self.is_time_to_event():
             self.channel_map = DEFAULT_TIME_TO_EVENT_CHANNELS
 

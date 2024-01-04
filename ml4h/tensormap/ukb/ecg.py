@@ -574,6 +574,7 @@ ecg_rest_median_raw_10 = TensorMap(
     metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
 
+
 ecg_rest_median_576 = TensorMap(
     'ecg_rest_median_576', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(576, 12), loss='logcosh',
     activation='linear', tensor_from_file=_make_ecg_rest(), channel_map=ECG_REST_MEDIAN_LEADS,
@@ -595,8 +596,10 @@ ecg_rest_median = TensorMap(
 )
 
 ecg_rest_median_raw_10_prediction = TensorMap(
-    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear', normalization=ZeroMeanStd1(),
-    tensor_from_file=named_tensor_from_hd5('ecg_rest_median_raw_10_prediction'), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS,
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, shape=(600, 12), loss='logcosh', activation='linear',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=named_tensor_from_hd5('ecg_rest_median_raw_10_prediction'), metrics=['mse', 'mae'],
+    channel_map=ECG_REST_MEDIAN_LEADS,
 )
 
 

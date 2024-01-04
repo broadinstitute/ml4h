@@ -5,6 +5,7 @@ import glob
 from typing import Callable, List, Union, Optional, Tuple, Dict, Any
 
 import h5py
+import datetime
 import numcodecs
 import numpy as np
 import pandas as pd
@@ -331,10 +332,9 @@ class DataFrameDataDescription(DataDescription):
     ):
         """
         Gets data from a column of the provided DataFrame.
-        :param df: Must be multi-indexed with sample_id, loading_option
-        # TODO: allow multiple loading options
         :param col: The column name to get data from
         :param process_col: Function to turn the column value into Tensor
+        :param name: Optional overwrite of the df column name
         """
         self.process_col = process_col or self._default_process_call
         self.df = df
