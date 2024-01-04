@@ -386,8 +386,8 @@ def train_xdl_af(args):
     mrn_df = mrn_df.dropna(subset=['last_encounter'])
     mrn_df.MRN = mrn_df.MRN.astype(int)
     mrn_df['survival_curve_af'] = mrn_df.af_event
-    mrn_df['start_date'] = mrn_df.start_fu_datetime
-    
+    #mrn_df['start_date'] = mrn_df.start_fu_datetime
+
     if 'start_fu_age' in mrn_df:
         mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
     elif 'start_fu' in mrn_df:
@@ -422,6 +422,7 @@ def train_xdl_af(args):
         chosen_dt['day_delta'] = (start_dt - chosen_dt[DATE_OPTION_KEY]).days
         return {dd: chosen_dt for dd in data_descriptions}
 
+    logging.info(f'output_dds[0].name {output_dds[0].name}')
     logging.info(f'option_picker {option_picker(3773, [ecg_dd])}')
 
     sg = DataDescriptionSampleGetter(

@@ -381,13 +381,13 @@ def dataframe_data_description_from_tensor_map(
         dataframe: pd.DataFrame,
         is_input: bool = False,
 ) -> DataDescription:
-    if tensor_map.name == 'survival_curve_af':
-        event_age = 'af_age',
-        event_column = 'survival_curve_af'
-    else:
-        event_age = f'{tensor_map.name.replace("_event", "_age")}'
-        event_column = tensor_map.name
     if tensor_map.is_survival_curve():
+        if tensor_map.name == 'survival_curve_af':
+            event_age = 'af_age',
+            event_column = 'survival_curve_af'
+        else:
+            event_age = f'{tensor_map.name.replace("_event", "_age")}'
+            event_column = tensor_map.name
         return SurvivalWideFile(
             wide_df=dataframe,
             name=tensor_map.output_name(),
