@@ -34,7 +34,8 @@ from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in
 from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
-from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
+from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, \
+    log_pearson_coefficients, concordance_index_censored
 
 from ml4h.plots import plot_dice
 from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
@@ -490,6 +491,8 @@ def train_xdl_af(args):
     logging.info(f'Now start testing... output keys: {list(next(generate_test)[1].keys())}')
     for X, y in generate_test:
         preds = model.predict(X, verbose=0)
+        if len(model.output_names) == 1:
+            preds = [preds]
         predictions_dict = {name: pred for name, pred in zip(model.output_names, preds)}
         for otm in args.tensor_maps_out:
             y_preds[otm.name].extend(predictions_dict[otm.output_name()])
