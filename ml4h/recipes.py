@@ -29,7 +29,7 @@ from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_
 
 from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, infer_stats_from_segmented_regions
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
-from ml4h.plots import plot_roc, plot_precision_recall_per_class
+from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
 from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
@@ -512,7 +512,7 @@ def train_xdl_af(args):
             plot_precision_recall_per_class(y_preds[otm.name], y_trues[otm.name], otm.channel_map,
                                             f'{otm.name} Precision Recall')
         elif otm.is_continuous():
-            plot_scatters(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
+            plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
 
 
 def datetime_to_float(d):
