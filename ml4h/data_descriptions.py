@@ -383,7 +383,7 @@ def dataframe_data_description_from_tensor_map(
 ) -> DataDescription:
     if tensor_map.is_survival_curve():
         if tensor_map.name == 'survival_curve_af':
-            event_age = 'af_age',
+            event_age = 'af_age'
             event_column = 'survival_curve_af'
         else:
             event_age = f'{tensor_map.name.replace("_event", "_age")}'
