@@ -399,20 +399,20 @@ def train_xdl_af(args):
 
     output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
 
-    ecg_dd = ECGDataDescription(
-            args.tensors,
-            name=f'input_ecg_strip_I_continuous',
-            ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
-            transforms=[standardize_by_sample_ecg],  # these will be applied in order
-            leads={'I': 0},
-        )
     # ecg_dd = ECGDataDescription(
-    #     args.tensors,
-    #     name=args.tensor_maps_in[0].input_name(),
-    #     ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
-    #     transforms=[standardize_by_sample_ecg],  # these will be applied in order
-    #     # data will be automatically localized from s3
-    # )
+    #         args.tensors,
+    #         name=f'input_ecg_strip_I_continuous',
+    #         ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+    #         transforms=[standardize_by_sample_ecg],  # these will be applied in order
+    #         leads={'I': 0},
+    #     )
+    ecg_dd = ECGDataDescription(
+        args.tensors,
+        name=args.tensor_maps_in[0].input_name(),
+        ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+        transforms=[standardize_by_sample_ecg],  # these will be applied in order
+        # data will be automatically localized from s3
+    )
 
     def option_picker(sample_id, data_descriptions):
         ecg_dts = ecg_dd.get_loading_options(sample_id)
