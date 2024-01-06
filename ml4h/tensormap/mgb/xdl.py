@@ -5,6 +5,7 @@ import numpy as np
 from ml4h.TensorMap import TensorMap, Interpretation
 
 ecg_5000_std = TensorMap('ecg_5000_std', Interpretation.CONTINUOUS, shape=(5000, 12))
+ecg_single_lead_I = TensorMap(f'ecg_strip_I', Interpretation.CONTINUOUS, shape=(5000, 1))
 
 hypertension_icd_only = TensorMap(name='hypertension_icd_only', interpretation=Interpretation.CATEGORICAL,
                                   channel_map={'no_hypertension_icd_only': 0, 'hypertension_icd_only': 1})
