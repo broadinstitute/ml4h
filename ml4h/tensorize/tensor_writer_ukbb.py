@@ -454,6 +454,8 @@ def _write_tensors_from_dicoms(
             dxa_number = dicom.split('.')[-4]
             name = f'dxa_{series_num}_{dxa_number}'
             create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
+        else:
+            stats[f'Could not process series {series}'] += 1
 
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
