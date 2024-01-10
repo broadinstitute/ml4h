@@ -219,6 +219,9 @@ def write_tensors_from_dicom_pngs(
         except FileNotFoundError:
             logging.warning(f'Could not find file: {os.path.join(png_path, dicom_file + png_postfix)}')
             stats['File not found error'] += 1
+        except ValueError:
+            logging.warning(f'Could not convert file: {os.path.join(png_path, dicom_file + png_postfix)}')
+            stats['Value error'] += 1
     for k in stats:
         if sample_header in k and stats[k] == 50:
             continue
