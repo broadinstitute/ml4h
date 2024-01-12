@@ -25,6 +25,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
+from tensorflow.keras.regularizers import L1, L2
 
 
 Tensor = tf.Tensor
@@ -52,9 +53,14 @@ CONV_REGULARIZATION_CLASSES = {
     # class name -> (dimension -> class)
     'spatial_dropout': {2: SpatialDropout1D, 3: SpatialDropout2D, 4: SpatialDropout3D},
     'dropout': defaultdict(lambda _: Dropout),
+    'l1': L1,
+    'l2': L2,
 }
 DENSE_REGULARIZATION_CLASSES = {
-    'dropout': Dropout,  # TODO: add l1, l2
+    'dropout': Dropout,
+    'dropout': Dropout,
+    'l1': L1,
+    'l2': L2,
 }
 
 

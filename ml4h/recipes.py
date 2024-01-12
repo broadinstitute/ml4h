@@ -220,37 +220,39 @@ def train_multimodal_multitask(args):
     if merger:
         merger.save(f'{args.output_folder}{args.id}/merger.h5')
 
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    performance_metrics = _predict_and_evaluate(
-        model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-        args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
-        args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
-    )
+    performance_metrics = {}
+    if args.test_steps > 0:
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+        performance_metrics = _predict_and_evaluate(
+            model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+            args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
+            args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
+        )
 
-    predictions_list = model.predict(test_data)
-    samples = min(args.test_steps * args.batch_size, 12)
-    out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
-    if len(args.tensor_maps_out) == 1:
-        predictions_list = [predictions_list]
-    predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
-    logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
+        predictions_list = model.predict(test_data)
+        samples = min(args.test_steps * args.batch_size, 12)
+        out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
+        if len(args.tensor_maps_out) == 1:
+            predictions_list = [predictions_list]
+        predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
+        logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
 
-    for i, etm in enumerate(encoders):
-        embed = encoders[etm].predict(test_data[etm.input_name()])
-        if etm.output_name() in predictions_dict:
-            plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
-        for dtm in decoders:
-            reconstruction = decoders[dtm].predict(embed)
-            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
-            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-            os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
-            if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
-            else:
-                evaluate_predictions(
-                    dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
-                    test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
-                )
+        for i, etm in enumerate(encoders):
+            embed = encoders[etm].predict(test_data[etm.input_name()])
+            if etm.output_name() in predictions_dict:
+                plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+            for dtm in decoders:
+                reconstruction = decoders[dtm].predict(embed)
+                logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
+                my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
+                os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
+                if dtm.axes() > 1:
+                    plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
+                else:
+                    evaluate_predictions(
+                        dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
+                        test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                    )
     return performance_metrics
 
 
