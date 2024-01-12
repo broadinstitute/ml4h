@@ -27,7 +27,6 @@ from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
 from ml4h.explorations import test_labels_to_label_map, infer_with_pixels
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-
 from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe, infer_stats_from_segmented_regions
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
 from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
@@ -36,7 +35,6 @@ from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_mod
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_survival, plot_dice
 from ml4h.plots import plot_reconstruction, plot_hit_to_miss_transforms, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 
@@ -141,11 +139,10 @@ def run(args):
 
     except Exception as e:
         logging.exception(e)
-
+        
     if args.gcs_cloud_bucket is not None:
          save_to_google_cloud(args)
-
-
+    
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
