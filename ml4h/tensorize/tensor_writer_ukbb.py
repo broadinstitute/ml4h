@@ -647,22 +647,22 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
         small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
         big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
-        small_structure = _unit_disk(small_radius)
+        small_structure = unit_disk(small_radius)
         m1 = binary_closing(overlay, small_structure).astype(np.int)
-        big_structure = _unit_disk(big_radius)
+        big_structure = unit_disk(big_radius)
         m2 = binary_closing(overlay, big_structure).astype(np.int)
         anatomical_mask = m1 + m2
         ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:  # try to rescue small ventricles
-            erode_structure = _unit_disk(small_radius*1.5)
+            erode_structure = unit_disk(small_radius * 1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
             ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
             myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         return overlay, anatomical_mask, ventricle_pixels, myocardium_pixels
 
 
-def _unit_disk(r) -> np.ndarray:
+def unit_disk(r) -> np.ndarray:
     y, x = np.ogrid[-r: r + 1, -r: r + 1]
     return (x ** 2 + y ** 2 <= r ** 2).astype(np.int32)
 
