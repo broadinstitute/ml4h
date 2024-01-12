@@ -98,7 +98,7 @@ dxa_12 = TensorMap(
 )
 dxa_11 = TensorMap(
     'dxa_1_11',
-    shape=(896, 352, 1),
+    shape=(896, 384, 1),
     path_prefix='ukb_dxa',
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
