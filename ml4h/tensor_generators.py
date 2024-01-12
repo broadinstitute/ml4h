@@ -95,7 +95,7 @@ class TensorGenerator(TensorGeneratorABC):
         :param paths: If weights is provided, paths should be a list of path lists the same length as weights
         """
         self.augment = augment
-        self.paths = sum(paths) if isinstance(paths[0], list) else paths
+        self.paths = sum(paths) if (len(paths) > 0 and isinstance(paths[0], list)) else paths
         self.run_on_main_thread = num_workers == 0
         self.q = None
         self.stats_q = None
