@@ -38,7 +38,7 @@ from ml4h.plots import plot_histograms_in_pdf, plot_heatmap, plot_cross_referenc
 from ml4h.plots import evaluate_predictions, subplot_rocs, subplot_scatters, plot_categorical_tmap_over_time
 from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MISSING, CODING_VALUES_LESS_THAN_ONE
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
-from ml4h.tensorize.tensor_writer_ukbb import _unit_disk
+from ml4h.tensorize.tensor_writer_ukbb import unit_disk
 
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -824,7 +824,7 @@ def infer_stats_from_segmented_regions(args):
 
     # Structuring element used for the erosion
     if args.erosion_radius > 0:
-        structure = _unit_disk(args.erosion_radius)[np.newaxis, ..., np.newaxis]
+        structure = unit_disk(args.erosion_radius)[np.newaxis, ..., np.newaxis]
 
     # Setup for intensity thresholding
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
