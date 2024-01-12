@@ -720,12 +720,12 @@ def _get_csv_row(sample_id, means, medians, stds, date):
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
-def _thresh_labels_above(y, img, intensity_thresh, intensity_thresh_perc, in_labels, out_label, nb_orig_channels):
+def _thresh_labels_above(y, img, intensity_thresh, intensity_thresh_percentile, in_labels, out_label, nb_orig_channels):
     y = np.argmax(y, axis=-1)[..., np.newaxis]
     if intensity_thresh:
         img_intensity_thresh = intensity_thresh
-    elif intensity_thresh_perc:
-        img_intensity_thresh = np.percentile(img, intensity_thresh_perc)
+    elif intensity_thresh_percentile:
+        img_intensity_thresh = np.percentile(img, intensity_thresh_percentile)
     y[np.logical_and(img >= img_intensity_thresh, np.isin(y, in_labels))] = out_label
     y = y[..., 0]
     y = _to_categorical(y, nb_orig_channels)
@@ -829,7 +829,7 @@ def infer_stats_from_segmented_regions(args):
     # Setup for intensity thresholding
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
     if do_intensity_thresh:
-        assert (not (args.intensity_thresh and args.intensity_thresh_perc))
+        assert (not (args.intensity_thresh and args.intensity_thresh_percentile))
         assert (not (args.intensity_thresh_k_means and len(args.intensity_thresh_in_structures) > 1))
         intensity_thresh_in_channels = [tm_out.channel_map[k] for k in args.intensity_thresh_in_structures]
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
@@ -881,7 +881,7 @@ def infer_stats_from_segmented_regions(args):
 
             if args.analyze_ground_truth:
                 if do_intensity_thresh:
-                    y_true = _thresh_labels_above(y_true, img, args.intensity_thresh, args.intensity_thresh_perc, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
+                    y_true = _thresh_labels_above(y_true, img, args.intensity_thresh, args.intensity_thresh_percentile, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
                 y_true = np.delete(y_true, bad_channels, axis=-1)
                 if args.erosion_radius > 0:
                     y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
@@ -892,7 +892,7 @@ def infer_stats_from_segmented_regions(args):
                 inference_writer_true.writerow(csv_row_true)
 
             if do_intensity_thresh:
-                y_pred = _thresh_labels_above(y_pred, img, args.intensity_thresh, args.intensity_thresh_perc, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
+                y_pred = _thresh_labels_above(y_pred, img, args.intensity_thresh, args.intensity_thresh_percentile, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
             y_pred = np.delete(y_pred, bad_channels, axis=-1)
             if args.erosion_radius > 0:
                 y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
