@@ -145,12 +145,12 @@ def run(args):
         logging.exception(e)
 
     if args.gcs_cloud_bucket is not None:
-         save_to_google_cloud(args)
-
+        save_to_google_cloud(args)
 
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
 
 def save_to_google_cloud(args):
 
