@@ -381,15 +381,29 @@ def dataframe_data_description_from_tensor_map(
         dataframe: pd.DataFrame,
         is_input: bool = False,
 ) -> DataDescription:
+    if tensor_map.is_survival_curve():
+        if tensor_map.name == 'survival_curve_af':
+            event_age = 'af_age'
+            event_column = 'survival_curve_af'
+        else:
+            event_age = f'{tensor_map.name.replace("_event", "_age")}'
+            event_column = tensor_map.name
+        return SurvivalWideFile(
+            wide_df=dataframe,
+            name=tensor_map.output_name(),
+            intervals=tensor_map.shape[0]//2,
+            event_age=event_age,
+            event_column=event_column,
+        )
     if tensor_map.is_categorical():
         process_col = one_hot_sex
     else:
         process_col = make_zscore(dataframe[tensor_map.name].mean(), dataframe[tensor_map.name].std())
     return DataFrameDataDescription(
         dataframe,
-        col = tensor_map.name,
-        process_col = process_col,
-        name = tensor_map.input_name() if is_input else tensor_map.output_name(),
+        col=tensor_map.name,
+        process_col=process_col,
+        name=tensor_map.input_name() if is_input else tensor_map.output_name(),
     )
 
 
