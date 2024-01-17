@@ -62,6 +62,7 @@ MRI_CARDIAC_SERIES = [
     'shmolli_192i_b7_sax_b7s_sax_b7s_sax_b7s_t1map',
 
 ]
+MRI_PANCREAS_SERIES = ['shmolli_192i_pancreas_t1map']
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
 MRI_BRAIN_SERIES = ['t1_p2_1mm_fov256_sag_ti_880', 't2_flair_sag_p2_1mm_fs_ellip_pf78']
 MRI_NIFTI_FIELD_ID_TO_ROOT = {'20251': 'SWI', '20252': 'T1', '20253': 'T2_FLAIR'}
@@ -71,7 +72,7 @@ MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_opti
 
 DICOM_MRI_FIELDS = [
     '20209', '20208', '20210', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
-    '20227', '20225', '20217', '20158',
+    '20227', '20225', '20217', '20158', '20259',
 ]
 
 DXA_FIELD = '20158'
@@ -136,7 +137,7 @@ def write_tensors(
         if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder):
             continue
         try:
-            with h5py.File(tp, 'w') as hd5:
+            with h5py.File(tp, 'a') as hd5:
                 _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
@@ -209,6 +210,9 @@ def write_tensors_from_dicom_pngs(
         except FileNotFoundError:
             logging.warning(f'Could not find file: {os.path.join(png_path, dicom_file + png_postfix)}')
             stats['File not found error'] += 1
+        except ValueError:
+            logging.warning(f'Could not convert file: {os.path.join(png_path, dicom_file + png_postfix)}')
+            stats['Value error'] += 1
     for k in stats:
         if sample_header in k and stats[k] == 50:
             continue
@@ -433,7 +437,7 @@ def _write_tensors_from_dicoms(
         if series + '_12bit' in MRI_LIVER_SERIES_12BIT and d.LargestImagePixelValue > 2048:
             views[series + '_12bit'].append(d)
             stats[series + '_12bit'] += 1
-        elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
+        elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES + MRI_PANCREAS_SERIES:
             views[series].append(d)
             stats[series] += 1
         elif series == 'dxa_images':
@@ -441,6 +445,8 @@ def _write_tensors_from_dicoms(
             dxa_number = dicom.split('.')[-4]
             name = f'dxa_{series_num}_{dxa_number}'
             create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
+        else:
+            stats[f'Could not process series {series}'] += 1
 
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
@@ -455,6 +461,8 @@ def _write_tensors_from_dicoms(
             mri_group = 'ukb_liver_mri'
         elif v in MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED:
             mri_group = 'ukb_cardiac_mri'
+        elif v in MRI_PANCREAS_SERIES:
+            mri_group = 'ukb_pancreas_mri'
         else:
             mri_group = 'ukb_mri'
 
@@ -564,14 +572,14 @@ def _tensorize_brain_mri(slices: List[pydicom.Dataset], series: str, mri_date: d
 
 
 def _save_pixel_dimensions_if_missing(slicer, series, hd5):
-    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_WIDTH + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT + MRI_PANCREAS_SERIES:
         hd5.create_dataset(MRI_PIXEL_WIDTH + '_' + series, data=float(slicer.PixelSpacing[0]))
-    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_PIXEL_HEIGHT + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT + MRI_PANCREAS_SERIES:
         hd5.create_dataset(MRI_PIXEL_HEIGHT + '_' + series, data=float(slicer.PixelSpacing[1]))
 
 
 def _save_slice_thickness_if_missing(slicer, series, hd5):
-    if MRI_SLICE_THICKNESS + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if MRI_SLICE_THICKNESS + '_' + series not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT + MRI_PANCREAS_SERIES:
         hd5.create_dataset(MRI_SLICE_THICKNESS + '_' + series, data=float(slicer.SliceThickness))
 
 
@@ -581,9 +589,9 @@ def _save_series_orientation_and_position_if_missing(slicer, series, hd5, instan
     if instance:
         orientation_ds_name += HD5_GROUP_CHAR + instance
         position_ds_name += HD5_GROUP_CHAR + instance
-    if orientation_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if orientation_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT + MRI_PANCREAS_SERIES:
         hd5.create_dataset(orientation_ds_name, data=[float(x) for x in slicer.ImageOrientationPatient])
-    if position_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT:
+    if position_ds_name not in hd5 and series in MRI_BRAIN_SERIES + MRI_CARDIAC_SERIES + MRI_CARDIAC_SERIES_SEGMENTED + MRI_LIVER_SERIES + MRI_LIVER_SERIES_12BIT + MRI_PANCREAS_SERIES:
         hd5.create_dataset(position_ds_name, data=[float(x) for x in slicer.ImagePositionPatient])
 
 
@@ -647,22 +655,22 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         short_side = min((max_pos[0] - min_pos[0]), (max_pos[1] - min_pos[1]))
         small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
         big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
-        small_structure = _unit_disk(small_radius)
+        small_structure = unit_disk(small_radius)
         m1 = binary_closing(overlay, small_structure).astype(np.int)
-        big_structure = _unit_disk(big_radius)
+        big_structure = unit_disk(big_radius)
         m2 = binary_closing(overlay, big_structure).astype(np.int)
         anatomical_mask = m1 + m2
         ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:  # try to rescue small ventricles
-            erode_structure = _unit_disk(small_radius*1.5)
+            erode_structure = unit_disk(small_radius * 1.5)
             anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
             ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
             myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         return overlay, anatomical_mask, ventricle_pixels, myocardium_pixels
 
 
-def _unit_disk(r) -> np.ndarray:
+def unit_disk(r) -> np.ndarray:
     y, x = np.ogrid[-r: r + 1, -r: r + 1]
     return (x ** 2 + y ** 2 <= r ** 2).astype(np.int32)
 
