@@ -2,18 +2,18 @@
 To build curl commands from copy pasted forms from the biobank website
 """
 
+import sys
 
 FORM_TEXT = """
             <form name="fetch" action="https://biota.osc.ox.ac.uk/dataset.cgi" method="post">
 
-                <input type="hidden" name="id" value="674757"/>
-                <input type="hidden" name="s" value="338937"/>
-                <input type="hidden" name="t" value="1694792960"/>
-                <input type="hidden" name="i" value="67.244.49.54"/>
-                <input type="hidden" name="v" 
-value="37c30236bebda8e98e7c1bc6a9dba69483a659fce26632d202d846c3facb90cb"/>
-                <input class="btn_glow" type="submit" value="Fetch"/>
-            </form>
+<input type="hidden" name="id" value="67343563">
+<input type="hidden" name="s" value="38023627">
+<input type="hidden" name="t" value="1262365114">
+<input type="hidden" name="i" value="76.66.198.53">
+<input type="hidden" name="v" value="dc7d7089413fa4a56c6s301a059148asa81904816804130e7909ec72402">
+<input class="btn_glow" type="submit" value="Fetch">
+</form>
 """
 
 
@@ -61,5 +61,14 @@ curl -d "id={id}&s={s}&t={t}&i={i}&v={v}&submit=Fetch" \
 def txt_to_curl(name, txt):
     return fields_to_curl(name, **get_fields(txt))
 
+# check to see if an argument was provided (single argument with path to form text in a file)
+if len(sys.argv) > 1:
+    try:
+        with open (sys.argv[1], "r") as form_text_file:
+            FORM_TEXT = form_text_file.read()
+    except:
+        print(f'This program expects the input argument, if provided, to be a path')
+        print(f'to a file containing the form data from the ukbiobank website.')
+        exit(1)
 
 print(txt_to_curl(NAME, FORM_TEXT))
