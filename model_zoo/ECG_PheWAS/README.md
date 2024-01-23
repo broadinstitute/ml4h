@@ -1,6 +1,6 @@
 ## ECG PheWAS
 This directory contains python notebooks and instructions to create the models and results from 
-[this paper](https://www.medrxiv.org/content/10.1101/2022.12.21.22283757v1).
+[this preprint](https://www.medrxiv.org/content/10.1101/2022.12.21.22283757v1).
 
 The electrocardiogram (ECG) is an inexpensive and widely available diagnostic tool, and therefore has great potential 
 to facilitate disease detection in large-scale populations. 
