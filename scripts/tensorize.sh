@@ -116,10 +116,8 @@ shift $((OPTIND - 1))
 START_TIME=$(date +%s)
 
 # Variables used to bin sample IDs so we can tensorize them in parallel
-INCREMENT=$(( ( $SAMPLE_IDS_END - $SAMPLE_IDS_START ) / $NUM_JOBS ))
-COUNTER=1
 MIN_SAMPLE_ID=$SAMPLE_IDS_START
-MAX_SAMPLE_ID=$(( $MIN_SAMPLE_ID + $INCREMENT - 1 ))
+MAX_SAMPLE_ID=$SAMPLE_IDS_END
 
 # We want to get the zip folder that was passes to recipes.py - look for the --zip_folder argument and extract the value passed after that
 ZIP_FOLDER=$(echo ${PYTHON_ARGS} | sed 's/--zip_folder \([^ ]*\).*/\1/')
@@ -138,7 +136,8 @@ find $ZIP_FOLDER -name '*.zip' | xargs -I {} basename {} | cut -d '_' -f 1 \
                                | awk -v min="$MIN_SAMPLE_ID" -v max="$MAX_SAMPLE_ID" '$1 > min && $1 < max' \
                                | sort | uniq > /tmp/ml4h/sample_ids_trimmed.txt
 
-echo "Including $(cat /tmp/ml4h/sample_ids_trimmed.txt | wc -l) samples in this tensorization job."
+NUM_SAMPLES_TO_PROCESS=$(cat /tmp/ml4h/sample_ids_trimmed.txt | wc -l)
+echo "Including $NUM_SAMPLES_TO_PROCESS samples in this tensorization job."
 
 
 echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
@@ -179,5 +178,5 @@ bash -c "$TF_COMMAND"
 
 END_TIME=$(date +%s)
 ELAPSED_TIME=$(($END_TIME - $START_TIME))
-printf "\nDispatched $((COUNTER - 1)) tensorization jobs in "
+printf "\nDispatched $NUM_SAMPLES_TO_PROCESS tensorization jobs in "
 display_time $ELAPSED_TIME
