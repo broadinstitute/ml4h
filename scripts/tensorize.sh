@@ -5,7 +5,7 @@
 ################### VARIABLES ############################################
 
 TENSOR_PATH=
-NUM_JOBS=96
+NUM_JOBS=20
 SAMPLE_IDS_START=1000000
 SAMPLE_IDS_END=6030000
 XML_FIELD=  # exclude ecg data
@@ -168,7 +168,7 @@ chmod +x /tmp/ml4h/tensorize_single_sample.sh
 read -r -d '' TF_COMMAND <<LAUNCH_CMDLINE_MESSAGE
     $HOME/ml4h/scripts/tf.sh -m "/tmp/ml4h/" -c " --version; \
         cat /tmp/ml4h/sample_ids_trimmed.txt | \
-                xargs -P 11 -I {} /tmp/ml4h/tensorize_single_sample.sh $HOME $TENSORIZE_MODE $TENSOR_PATH {} $PYTHON_ARGS"
+                xargs -P $NUM_JOBS -I {} /tmp/ml4h/tensorize_single_sample.sh $HOME $TENSORIZE_MODE $TENSOR_PATH {} $PYTHON_ARGS"
 LAUNCH_CMDLINE_MESSAGE
 
 echo "Executing command within tf.sh: $TF_COMMAND"
