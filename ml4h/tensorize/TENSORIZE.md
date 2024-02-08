@@ -148,11 +148,52 @@ scripts/tensorize.sh  -t /mnt/disks/my-disk/ -i log -n 4 -s 1000000 -e 1030000 -
 ``` 
 
 This creates and writes tensors to `/mnt/disks/my-disk` (logs can be found at `/mnt/disks/my-disk/log`)
-by running `4` jobs in parallel (recommended to match that number to your VM's number of vCPUs) 
-starting with the sample ID `1000000` and ending with the sample ID `1004000` using both the `EKG` (field ID `20205`) 
-and the `MRI` (field ID `20209`) data. The tensors will be `.hd5` files named after corresponding sample IDs 
-(e.g. `/mnt/disks/my-disk/1002798.hd5`).
+by running `4` jobs in parallel (the `-n 4`) starting with the sample ID `1000000` and ending with the sample ID `1004000` 
+using both the `EKG` (field ID `20205`) and the `MRI` (field ID `20209`) data. The tensors will be `.hd5` 
+files named after corresponding sample IDs (e.g. `/mnt/disks/my-disk/1002798.hd5`).
 
+### Determining machine size
+It is recommended to match the `-n` value to your VM's number of vCPUs since these jobs run efficiently.  
+If we run too many in parallel, we will hit up against other limits on the machine, most notably disk speed.
+SSD is highly recommended to make these jobs run faster, but at a certain num of vCPUs and associated -n values
+disk speed will be the bottleneck.  You can check the resource usage for your VM in the
+Google Cloud Console's VM Observability Page, which you can access from the Observability tab within the VM
+instance details page.  It is recommended to install the Ops Agent in order to check memory usage if you are looking
+to optimize the speed/resource usage, or if you are finding these jobs taking longer than expected and you want 
+to figure out why.  
+
+As an example use case to help figure out how to understand usage or scale the VM properly, we had ~100k5k nifti 
+zips to process, producing ~50k tensors.  On a machine with 22 cores and the data on SSD, this took ~20 hours to run.
+This instance type was a `c3-standard-22` which has 88 GB of memory.  Tensorization never went about 20% of memory usage,
+but SSD speed and CPU speed were at near 100%, suggesting we could run in the same time on a machine with 22 cores and 
+~18GB of ram.  
+
+### Validating and checking progress on tensors
+While tensorization runs on the VM, you will see output from each tensorization job, but as these run in parallel
+it's a bit hard to understand how far along we are.  If you leave the `tmux` session where this is running, you
+can check how far along we are on tensorization (how many hd5s have been generated) by running something like 
+`ls /mnt/disks/output_tensors_directory | wc -l`.  In order to validate the hd5s that we've generated, you can 
+use the following script: `./scripts/validate_tensors.sh /mnt/disks/output_tensors_directory 20 | tee completed_tensors.txt`
+where the number 20 should be the same value you used for tensorization above (usually number of vCPUs).  This
+will output a file called completed_tensors.txt that says "OK" or "BAD" - you can then filter down on BAD files and
+determine what went wrong.  
+
+### Notes on tensorizing UKBB data
+The `DOWNLOAD.bulk` file or downloaded zips will tell us what samples/files we're going to process, you can get the
+unique set of sample ids with a command like this: `cat DOWNLOAD.bulk | cut -d ' ' -f 1 | sort | uniq`.  This can be
+helpful in validating we have all our output tensors.
+We can check whether we have all input data turned into tensors with a command like this:
+`comm -23 <(cat DOWNLOAD.bulk | cut -d ' ' -f 1 | sort | uniq) <(ls /mnt/disks/output_tensors_directory | cut -d '.' -f 1 | sort | uniq)`
+That will look for all sample ids in the bulk download file and compare that to the output tensors directory, only outputting
+samples that tensors were not found for.  
+
+Note that for ecgs and mris there are some instances within the UKBB where data
+was only collected at instance 3 and not instance 2 (whereas most samples have instance 2 and sometimes instance 3) - tensorization
+will skip these cases where only instance 3 data exists.  You can check if a given sample only has instance 2 data using a command
+like this `comm -23 <(cat DOWNLOAD.bulk | grep "3_0" | cut -d ' ' -f 1 | sort | uniq) <(cat DOWNLOAD.bulk | grep "2_0" | cut -d ' ' -f 1 | sort | uniq)`
+This will output sample ids that only have instance 2 data.
+
+### Managing the generated tensors
 If you're happy with the results and would like to share them with your collaborators, don't forget to make your disk
 `read-only` so they can attach their VMs to it as well. You can do this by
 
