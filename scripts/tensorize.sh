@@ -5,7 +5,7 @@
 ################### VARIABLES ############################################
 
 TENSOR_PATH=
-NUM_JOBS=96
+NUM_JOBS=20
 SAMPLE_IDS_START=1000000
 SAMPLE_IDS_END=6030000
 XML_FIELD=  # exclude ecg data
@@ -116,43 +116,65 @@ shift $((OPTIND - 1))
 START_TIME=$(date +%s)
 
 # Variables used to bin sample IDs so we can tensorize them in parallel
-INCREMENT=$(( ( $SAMPLE_IDS_END - $SAMPLE_IDS_START ) / $NUM_JOBS ))
-COUNTER=1
 MIN_SAMPLE_ID=$SAMPLE_IDS_START
-MAX_SAMPLE_ID=$(( $MIN_SAMPLE_ID + $INCREMENT - 1 ))
+MAX_SAMPLE_ID=$SAMPLE_IDS_END
 
-# Run every parallel job within its own container -- 'tf.sh' handles the Docker launching
-while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
-    echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
+# We want to get the zip folder that was passes to recipes.py - look for the --zip_folder argument and extract the value passed after that
+ZIP_FOLDER=$(echo ${PYTHON_ARGS} | sed 's/--zip_folder \([^ ]*\).*/\1/')
+if [ ! -e $ZIP_FOLDER ]; then
+    echo "ERROR: Zip folder passed was not valid, found $ZIP_FOLDER but expected folder path." 1>&2
+    exit 1
+fi
 
-        cat <<LAUNCH_CMDLINE_MESSAGE
-            $HOME/ml4h/scripts/tf.sh -c $HOME/ml4h/ml4h/recipes.py
-                --mode $TENSORIZE_MODE \
-                --tensors $TENSOR_PATH \
-                --output_folder $TENSOR_PATH \
-                $PYTHON_ARGS \
-                --min_sample_id $MIN_SAMPLE_ID \
-                --max_sample_id $MAX_SAMPLE_ID &
+# create a directory in the /tmp/ folder to store some utilities for use later
+mkdir -p /tmp/ml4h
+# Write out a file with the ids of every sample in the input folder
+echo "Gathering list of input zips to process between $MIN_SAMPLE_ID and $MAX_SAMPLE_ID, this takes several seconds..."
+find $ZIP_FOLDER -name '*.zip' | xargs -I {} basename {} | cut -d '_' -f 1 \
+                               | awk -v min="$MIN_SAMPLE_ID" -v max="$MAX_SAMPLE_ID" '$1 > min && $1 < max' \
+                               | sort | uniq > /tmp/ml4h/sample_ids_trimmed.txt
+
+NUM_SAMPLES_TO_PROCESS=$(cat /tmp/ml4h/sample_ids_trimmed.txt | wc -l)
+echo "Including $NUM_SAMPLES_TO_PROCESS samples in this tensorization job."
+
+
+echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
+
+# we need to run a command using xargs in parallel, and it gets rather complex and messy unless we can just run
+# a shell script - the string below is written to a shell script that takes in positional arguments and sets
+# min and max sample id to be the incoming sample id (min) to incoming sample id + 1 (max) - this lets us
+# run on a single sample at a time
+SINGLE_SAMPLE_SCRIPT='HOME=$1
+                    TENSORIZE_MODE=$2
+                    TENSOR_PATH=$3
+                    SAMPLE_ID=$4
+                    # drop those first 4 above and get all the rest of the arguments
+                    shift 4
+                    PYTHON_ARGS="$@"
+                    python $HOME/ml4h/ml4h/recipes.py --mode $TENSORIZE_MODE \
+        --tensors $TENSOR_PATH \
+        --output_folder $TENSOR_PATH \
+        $PYTHON_ARGS \
+        --min_sample_id $SAMPLE_ID \
+        --max_sample_id $(($SAMPLE_ID+1))'
+echo "$SINGLE_SAMPLE_SCRIPT" > /tmp/ml4h/tensorize_single_sample.sh
+chmod +x /tmp/ml4h/tensorize_single_sample.sh
+
+# NOTE: the < " --version;  > below is very much a hack - it's a way to escape tf.sh's running "python" followed by 
+#       whatever you pass with -c.  This causes it to run "python --version; " and then whatever you have after the semicolon.
+read -r -d '' TF_COMMAND <<LAUNCH_CMDLINE_MESSAGE
+    $HOME/ml4h/scripts/tf.sh -m "/tmp/ml4h/" -c " --version; \
+        cat /tmp/ml4h/sample_ids_trimmed.txt | \
+                xargs -P $NUM_JOBS -I {} /tmp/ml4h/tensorize_single_sample.sh $HOME $TENSORIZE_MODE $TENSOR_PATH {} $PYTHON_ARGS"
 LAUNCH_CMDLINE_MESSAGE
 
-    $HOME/ml4h/scripts/tf.sh -c $HOME/ml4h/ml4h/recipes.py \
-		--mode $TENSORIZE_MODE \
-		--tensors $TENSOR_PATH \
-		--output_folder $TENSOR_PATH \
-		$PYTHON_ARGS \
-		--min_sample_id $MIN_SAMPLE_ID \
-		--max_sample_id $MAX_SAMPLE_ID &
+echo "Executing command within tf.sh: $TF_COMMAND"
+bash -c "$TF_COMMAND"
 
-    let COUNTER=COUNTER+1
-    let MIN_SAMPLE_ID=MIN_SAMPLE_ID+INCREMENT
-    let MAX_SAMPLE_ID=MAX_SAMPLE_ID+INCREMENT
-
-    sleep 4s
-done
 
 ################### DISPLAY TIME #########################################
 
 END_TIME=$(date +%s)
 ELAPSED_TIME=$(($END_TIME - $START_TIME))
-printf "\nDispatched $((COUNTER - 1)) tensorization jobs in "
+printf "\nDispatched $NUM_SAMPLES_TO_PROCESS tensorization jobs in "
 display_time $ELAPSED_TIME
