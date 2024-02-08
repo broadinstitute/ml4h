@@ -126,8 +126,6 @@ if [ ! -e $ZIP_FOLDER ]; then
     exit 1
 fi
 
-ZIP_FOLDER=$(echo ${PYTHON_ARGS} | sed 's/--zip_folder \([^ ]*\).*/\1/')
-
 # create a directory in the /tmp/ folder to store some utilities for use later
 mkdir -p /tmp/ml4h
 # Write out a file with the ids of every sample in the input folder
