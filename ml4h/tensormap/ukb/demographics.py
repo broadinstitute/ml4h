@@ -336,6 +336,10 @@ af_dummy = TensorMap(
     'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
     channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
 )
+af_dummy2 = TensorMap(
+    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_af_in_read': 0, 'af_in_read':1},
+)
 sex_dummy = TensorMap(
     'sex_from_wide', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
     path_prefix='categorical', annotation_units=2,
