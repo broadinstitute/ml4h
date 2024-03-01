@@ -61,7 +61,11 @@ python ml4h/tensorize/tensorize_dataflow.py  \
 
   * gcp_project: The name of the Google Cloud Platform project. Defaults to "broad-ml4cvd". 
 
+  * gcp_region: The Google Cloud Platform region. Defaults to "us-central1".
+
   * gcs_output_path: gs:// folder path excluding the bucket name where tensors will be written to. (e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder)
+  
+  * logging_level: The Logging level the command should be run with. Options are "DEBUG", "INFO", "WARNING", "ERROR", or "CRITICAL".
 
 
 
