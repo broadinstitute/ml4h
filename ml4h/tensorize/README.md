@@ -36,24 +36,8 @@ requirements = (here / 'docker/vm_boot_images/config/tensorflow-requirements.txt
 ...
 install_requires=requirements,
 ```
-* Run the application to submit the pipeline to Dataflow to be executed remotely provided the command line argument `--beam_runner` is set to `DataflowRunner`. Set it to `DirectRunner` for local execution.
+* Run the application to submit the pipeline to Dataflow to be executed remotely provided the command line argument `--beam_runner` is set to `DataflowRunner`. Set it to `DirectRunner` for local execution. For Example: 
 
-Parameters
-* #id: The user-defined identifier for this pipeline run. **Note** that Google requires the `id` consist of only the characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or number.
-
-* tensor_type: The type of data to be tensorized. Options are 'categorical', 'continuous', 'icd', 'disease', 'death', or 'phecode_disease'
-
-* bigquery_dataset: The BigQuery dataset where the data will be drawn from. Defaults to 'ukbb_dev'
-
-* beam_runner: The Apache Beam runner that will execute the pipeline. DataflowRunner is for remote execution. DirectRunner is for local execution
-
-* repo_root: The root directory of the cloned ml repo
-
-* gcp_project: The name of the Google Cloud Platform project. Defaults to "broad-ml4cvd". 
-
-* gcs_output_path: gs:// folder path excluding the bucket name where tensors will be written to. (e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder)
-
-Example Command:
 ```
 python ml4h/tensorize/tensorize_dataflow.py  \
     --id example_id  \
@@ -63,6 +47,23 @@ python ml4h/tensorize/tensorize_dataflow.py  \
     --repo_root /Users/johndoe/Dropbox/Code/ml4h \
     --gcs_output_path /path/to/Example_Folder
 ```
+
+Parameters
+* id: The user-defined identifier for this pipeline run. **Note** that Google requires the `id` consist of only the characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or number.
+
+* tensor_type: The type of data to be tensorized. Options are 'categorical', 'continuous', 'icd', 'disease', 'death', or 'phecode_disease'.
+
+* bigquery_dataset: The BigQuery dataset where the data will be drawn from. Defaults to 'ukbb_dev'.
+
+* beam_runner: The Apache Beam runner that will execute the pipeline. DataflowRunner is for remote execution. DirectRunner is for local execution.
+
+* repo_root: The root directory of the cloned ml repo.
+
+* gcp_project: The name of the Google Cloud Platform project. Defaults to "broad-ml4cvd". 
+
+* gcs_output_path: gs:// folder path excluding the bucket name where tensors will be written to. (e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder)
+
+
 
 * The pipeline can be run multiple times to tensorize different types of fields. This will populate the per-sample tensors
 in specified GCS buckets. In order to unify them, they can be downloaded via `gsutil` as shown below
