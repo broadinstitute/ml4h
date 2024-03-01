@@ -65,7 +65,7 @@ python ml4h/tensorize/tensorize_dataflow.py  \
 
   * gcs_output_path: gs:// folder path excluding the bucket name where tensors will be written to. (e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder)
   
-  * logging_level: The Logging level the command should be run with. Options are "DEBUG", "INFO", "WARNING", "ERROR", or "CRITICAL". Defaults to "info". 
+  * logging_level: The Logging level the command should be run with. Options are "DEBUG", "INFO", "WARNING", "ERROR", or "CRITICAL". Defaults to "INFO". 
 
 
 
