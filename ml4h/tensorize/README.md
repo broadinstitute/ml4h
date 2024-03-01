@@ -48,20 +48,20 @@ python ml4h/tensorize/tensorize_dataflow.py  \
     --gcs_output_path /path/to/Example_Folder
 ```
 
-Parameters
-* id: The user-defined identifier for this pipeline run. **Note** that Google requires the `id` consist of only the characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or number.
+* Parameters of tensorize_dataflow.py:
+*  id: The user-defined identifier for this pipeline run. **Note** that Google requires the `id` consist of only the characters `[-a-z0-9]`, i.e. starting with a letter and ending with a letter or number.
 
-* tensor_type: The type of data to be tensorized. Options are 'categorical', 'continuous', 'icd', 'disease', 'death', or 'phecode_disease'.
+*  tensor_type: The type of data to be tensorized. Options are 'categorical', 'continuous', 'icd', 'disease', 'death', or 'phecode_disease'.
 
-* bigquery_dataset: The BigQuery dataset where the data will be drawn from. Defaults to 'ukbb_dev'.
+*  bigquery_dataset: The BigQuery dataset where the data will be drawn from. Defaults to 'ukbb_dev'.
 
-* beam_runner: The Apache Beam runner that will execute the pipeline. DataflowRunner is for remote execution. DirectRunner is for local execution.
+*  beam_runner: The Apache Beam runner that will execute the pipeline. DataflowRunner is for remote execution. DirectRunner is for local execution.
 
-* repo_root: The root directory of the cloned ml repo.
+*  repo_root: The root directory of the cloned ml repo.
 
-* gcp_project: The name of the Google Cloud Platform project. Defaults to "broad-ml4cvd". 
+*  gcp_project: The name of the Google Cloud Platform project. Defaults to "broad-ml4cvd". 
 
-* gcs_output_path: gs:// folder path excluding the bucket name where tensors will be written to. (e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder)
+*  gcs_output_path: gs:// folder path excluding the bucket name where tensors will be written to. (e.g. specifying /path/to/folder will write to gs://<gcs_bucket>/path/to/folder)
 
 
 
