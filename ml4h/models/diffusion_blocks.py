@@ -410,6 +410,13 @@ class DiffusionBlock(Block):
             return
 
         self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size, conv_x)
+        import tensorflow_addons as tfa
+        self.diffusion_model.compile(
+            optimizer=tfa.optimizers.AdamW(
+                learning_rate=learning_rate, weight_decay=weight_decay
+            ),
+            loss=keras.losses.mean_absolute_error,
+        )
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
