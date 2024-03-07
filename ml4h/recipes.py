@@ -210,11 +210,21 @@ def train_legacy(args):
 def train_multimodal_multitask(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
-    model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model,
-    )
+    if len(decoders) == 0:
+        for tm in encoders:
+            encoders[tm] = train_model_from_generators(
+                encoders[tm], generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+                args.epochs,
+                args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+                args.tensor_maps_out,
+                save_last_model=args.save_last_model,
+            )
+    else:
+        model = train_model_from_generators(
+            model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+            args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+            save_last_model=args.save_last_model,
+        )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
     for tm in decoders:
