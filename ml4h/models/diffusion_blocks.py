@@ -152,6 +152,13 @@ class DiffusionModel(keras.Model):
     def metrics(self):
         return [self.noise_loss_tracker, self.image_loss_tracker]
 
+    def __call__(self, x: Tensor) -> Tensor:
+        if not self.can_apply():
+            return x
+        x = self.network(x)
+        return x
+
+
     def denormalize(self, images):
         # convert the pixel values back to 0-1 range
         # images = images - tf.math.reduce_mean(images) + images * tf.math.reduce_std(images)
@@ -400,16 +407,19 @@ class DiffusionBlock(Block):
             tensor_map: TensorMap,
             dense_blocks: List[int] = [32, 32, 32],
             dense_layers: List[int] = [256],
+            batch_size: int = 16,
             block_size: int = 3,
             conv_x: int = 3,
             activation: str = 'swish',
             **kwargs,
     ):
         self.tensor_map = tensor_map
+        self.batch_size = batch_size
         if not self.can_apply():
             return
 
         self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size, conv_x)
+        self.noise_variances = keras.Input(shape=[1] * len(tensor_map.shape))
         import tensorflow_addons as tfa
         self.diffusion_model.compile(
             optimizer=tfa.optimizers.AdamW(
@@ -424,7 +434,8 @@ class DiffusionBlock(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        x = self.diffusion_model(x)
+        times = tf.ones((self.batch_size,)+self.tensor_map.shape)
+        x = self.diffusion_model([x, times])
         intermediates[self.tensor_map].append(x)
         return x
 
