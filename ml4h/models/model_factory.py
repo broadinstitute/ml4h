@@ -23,7 +23,8 @@ from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASS
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
 from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
-from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss
+from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss, \
+    IdentityDecoderBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
@@ -61,6 +62,7 @@ BLOCK_CLASSES = {
     'movinet_encoder': MoviNetEncoder,
     'bert_encoder': BertEncoder,
     'diffusion': DiffusionBlock,
+    'identity_decode': IdentityDecoderBlock,
 }
 
 

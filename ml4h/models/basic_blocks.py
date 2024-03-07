@@ -259,3 +259,18 @@ class RandomGauss(tf.keras.layers.Layer):
             "scalar": self.scalar,
         })
         return config
+
+
+class IdentityDecoderBlock(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+
+    def can_apply(self):
+        return True
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        return intermediates[self.tensor_map][-1]
