@@ -8,6 +8,7 @@ from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
 from tensorflow_hub import KerasLayer
@@ -125,6 +126,7 @@ def make_multimodal_multitask_model(
     full_model.compile(
         optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        loss = keras.losses.mean_absolute_error,
     )
     full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
@@ -275,7 +277,8 @@ def make_multimodal_multitask_model_block(
             decoder_outputs.append(decoders[tm](multimodal_activation))
     if len(decoder_outputs) == 0:
         decoder_outputs = [multimodal_activation]
-    return Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model'), encoders, decoders, merge_model
+    full_model = Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model')
+    return full_model, encoders, decoders, merge_model
 
 
 def _load_model_encoders_and_decoders(
