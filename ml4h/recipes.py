@@ -212,6 +212,10 @@ def train_multimodal_multitask(args):
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
     if len(decoders) == 0:
         for tm in encoders:
+            from tensorflow import keras
+            import tensorflow_addons as tfa
+            weight_decay = 1e-4
+            encoders[tm].compile(optimizer=tfa.optimizers.AdamW(learning_rate=args.learning_rate, weight_decay=weight_decay), loss=keras.losses.mean_absolute_error,)
             encoders[tm] = train_model_from_generators(
                 encoders[tm], generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                 args.epochs,
