@@ -123,10 +123,11 @@ def make_multimodal_multitask_model(
         encoder_blocks, decoder_blocks, merge_blocks,
         custom_dict, u_connect, **kwargs
     )
+    losses = [tm.loss for tm in tensor_maps_out]
+    if len(losses) == 0:
+        losses = [keras.losses.mean_absolute_error]
     full_model.compile(
-        optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
-        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
-        loss = keras.losses.mean_absolute_error,
+        optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
     full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
