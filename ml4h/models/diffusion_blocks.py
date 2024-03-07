@@ -437,7 +437,7 @@ class DiffusionBlock(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        times = tf.ones((self.batch_size,)+self.tensor_map.shape)
+        times = tf.ones([self.batch_size]+[1]*self.tensor_map.axes())
         x = self.diffusion_model([x, times])
         intermediates[self.tensor_map].append(x)
         return x
