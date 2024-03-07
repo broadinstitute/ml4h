@@ -431,7 +431,7 @@ class DiffusionBlock(Block):
             ),
             loss=keras.losses.mean_absolute_error,
         )
-        self.loss_layer = L2LossLayer(1.0)
+        #self.loss_layer = L2LossLayer(1.0)
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
@@ -440,7 +440,7 @@ class DiffusionBlock(Block):
             return x
         times = tf.ones([self.batch_size]+[1]*self.tensor_map.axes())
         x = self.diffusion_model([x, times])
-        x = self.loss_layer(x)
+        #x = self.loss_layer(x)
         intermediates[self.tensor_map].append(x)
         return x
 
