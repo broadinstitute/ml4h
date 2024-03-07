@@ -15,17 +15,18 @@ from tensorflow_hub import KerasLayer
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
+from ml4h.models.diffusion_blocks import DiffusionBlock
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
+from ml4h.models.perceiver_blocks import PerceiverEncoder, PerceiverLatentLayer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
-from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
 from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
-from ml4h.models.perceiver_blocks import PerceiverEncoder,PerceiverLatentLayer
+from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
+from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss
+from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
-from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
-from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 
 
 BLOCK_CLASSES = {
@@ -58,6 +59,7 @@ BLOCK_CLASSES = {
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
     'bert_encoder': BertEncoder,
+    'diffusion': DiffusionBlock,
 }
 
 
