@@ -23,7 +23,6 @@ max_signal_rate = 0.95
 # architecture
 embedding_dims = 256
 embedding_max_frequency = 1000.0
-block_depth = 2
 
 # optimization
 batch_size = 16
@@ -31,8 +30,8 @@ ema = 0.999
 learning_rate = 5e-4
 weight_decay = 1e-4
 
-#plotting
-plot_diffusion_steps=20
+# plotting
+plot_diffusion_steps = 20
 
 
 def sinusoidal_embedding(x):
@@ -45,86 +44,101 @@ def sinusoidal_embedding(x):
         )
     )
     angular_speeds = 2.0 * math.pi * frequencies
+    #     embeddings = tf.concat(
+    #         [tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3
+    #     )
     embeddings = tf.concat(
-        [tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3
+        [tf.sin(angular_speeds * x)], axis=2
     )
     return embeddings
 
 
-def ResidualBlock(width):
+def ResidualBlock(width, conv, kernel_size):
     def apply(x):
-        input_width = x.shape[3]
+        input_width = x.shape[-1]
         if input_width == width:
             residual = x
         else:
-            residual = layers.Conv2D(width, kernel_size=1)(x)
+            residual = conv(width, kernel_size=1)(x)
         x = layers.BatchNormalization(center=False, scale=False)(x)
-        x = layers.Conv2D(
-            width, kernel_size=3, padding="same", activation=keras.activations.swish
+        x = conv(
+            width, kernel_size=kernel_size, padding="same", activation=keras.activations.swish
         )(x)
-        x = layers.Conv2D(width, kernel_size=3, padding="same")(x)
+        x = conv(width, kernel_size=kernel_size, padding="same")(x)
         x = layers.Add()([x, residual])
         return x
 
     return apply
 
 
-def DownBlock(width, block_depth):
+def DownBlock(width, block_depth, conv, pool, kernel_size):
     def apply(x):
         x, skips = x
         for _ in range(block_depth):
-            x = ResidualBlock(width)(x)
+            x = ResidualBlock(width, conv,  kernel_size)(x)
             skips.append(x)
-        x = layers.AveragePooling2D(pool_size=2)(x)
+        x = pool(pool_size=2)(x)
         return x
 
     return apply
 
 
-def UpBlock(width, block_depth):
+def UpBlock(width, block_depth, conv, upsample, kernel_size):
     def apply(x):
         x, skips = x
-        x = layers.UpSampling2D(size=2, interpolation="bilinear")(x)
+        # x = upsample(size=2, interpolation="bilinear")(x)
+        x = upsample(size=2)(x)
         for _ in range(block_depth):
             x = layers.Concatenate()([x, skips.pop()])
-            x = ResidualBlock(width)(x)
+            x = ResidualBlock(width, conv, kernel_size)(x)
         return x
 
     return apply
 
 
-def get_network(input_shape, widths, block_depth):
+def layers_from_shape(input_shape):
+    if len(input_shape) == 2:
+        return layers.Conv1D, layers.UpSampling1D, layers.AveragePooling1D
+    elif len(input_shape) == 3:
+        return layers.Conv2D, layers.UpSampling2D, layers.AveragePooling2D
+    elif len(input_shape) == 4:
+        return layers.Conv3D, layers.UpSampling3D, layers.AveragePooling3D
+
+
+def get_network(input_shape, widths, block_depth, kernel_size):
     noisy_images = keras.Input(shape=input_shape)
-    noise_variances = keras.Input(shape=(1, 1, 1))
+    conv, upsample, pool = layers_from_shape(input_shape)
+    noise_variances = keras.Input(shape=[1] * len(input_shape))
 
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
-    e = layers.UpSampling2D(size=input_shape[:-1], interpolation="nearest")(e)
-
-    x = layers.Conv2D(widths[0], kernel_size=1)(noisy_images)
+    # e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
+    e = upsample(size=input_shape[-2])(e)
+    print(f'e shape: {e.shape}')
+    x = conv(widths[0], kernel_size=1)(noisy_images)
     x = layers.Concatenate()([x, e])
 
     skips = []
     for width in widths[:-1]:
-        x = DownBlock(width, block_depth)([x, skips])
+        x = DownBlock(width, block_depth, conv, pool, kernel_size)([x, skips])
 
     for _ in range(block_depth):
-        x = ResidualBlock(widths[-1])(x)
+        x = ResidualBlock(widths[-1], conv, kernel_size)(x)
 
     for width in reversed(widths[:-1]):
-        x = UpBlock(width, block_depth)([x, skips])
+        x = UpBlock(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
-    x = layers.Conv2D(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
+    x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances], x, name="residual_unet")
 
 
 class DiffusionModel(keras.Model):
-    def __init__(self, tensor_map, widths, block_depth):
+    def __init__(self, tensor_map, widths, block_depth, kernel_size):
         super().__init__()
 
         self.tensor_map = tensor_map
         self.normalizer = layers.Normalization()
-        self.network = get_network(self.tensor_map.shape, widths, block_depth)
+        self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
         self.ema_network = keras.models.clone_model(self.network)
 
     def compile(self, **kwargs):
@@ -387,6 +401,7 @@ class DiffusionBlock(Block):
             dense_blocks: List[int] = [32, 32, 32],
             dense_layers: List[int] = [256],
             block_size: int = 3,
+            conv_x: int = 3,
             activation: str = 'swish',
             **kwargs,
     ):
@@ -394,7 +409,7 @@ class DiffusionBlock(Block):
         if not self.can_apply():
             return
 
-        self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size)
+        self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size, conv_x)
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
