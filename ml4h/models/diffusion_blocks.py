@@ -25,7 +25,7 @@ embedding_dims = 256
 embedding_max_frequency = 1000.0
 
 # optimization
-batch_size = 16
+batch_size = 4
 ema = 0.999
 learning_rate = 5e-4
 weight_decay = 1e-4
@@ -140,6 +140,9 @@ class DiffusionModel(keras.Model):
         self.normalizer = layers.Normalization()
         self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
         self.ema_network = keras.models.clone_model(self.network)
+
+    def can_apply(self):
+        return self.tensor_map.axes() > 1
 
     def compile(self, **kwargs):
         super().compile(**kwargs)
