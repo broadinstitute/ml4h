@@ -27,8 +27,10 @@ from collections import defaultdict
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
+from ml4h.tensormap.general import build_embedded_tensor_from_file
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
-from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
+    generate_latent_tensor_map_from_file
 from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
@@ -96,6 +98,12 @@ def parse_args():
     parser.add_argument(
         '--categorical_file_columns', nargs='*', default=[],
         help='Column headers in file from which categorical TensorMap(s) will be made.',
+    )
+    parser.add_argument(
+        '--latent_input_file', default=None, help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first input_tensors'
+        'argument to the TensorMap made from this file.',
     )
 
     parser.add_argument(
@@ -495,6 +503,10 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
+    if args.latent_input_file is not None:
+        args.tensor_maps_in.append(
+            generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0))
+        )
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
@@ -519,6 +531,7 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                 ),
             )
+
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]

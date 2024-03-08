@@ -2,6 +2,8 @@ import os
 import csv
 import logging
 import operator
+
+import h5py
 import numpy as np
 import pandas as pd
 from typing.io import TextIO
@@ -12,7 +14,8 @@ from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4h.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
-from ml4h.tensormap.general import build_tensor_from_file, build_categorical_tensor_from_file
+from ml4h.tensormap.general import build_tensor_from_file, build_categorical_tensor_from_file, \
+    build_latent_tensor_from_file
 from ml4h.tensormap.text import random_text_window_tensor, token_dictionary_and_text_from_file, token_dictionary_from_hd5_key, random_array_window_tensors
 from ml4h.tensorize.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
@@ -262,6 +265,34 @@ def generate_categorical_tensor_map_from_file(
             f'{tensor_map_name}', Interpretation.CATEGORICAL, channel_map=channel_map,
             tensor_from_file=build_categorical_tensor_from_file(file_name, column_name),
     )
+
+
+def _space_tensor_from_file(df: pd.DataFrame, dimensions: int, sample_column: str = 'sample_id'):
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        try:
+            row = df[df[sample_column] == os.path.basename(hd5.filename).replace('.hd5', '')].iloc[0]
+            print(f'Got a row {row}, now try values...')
+            values = [row.iloc[i] for i in range(1, dimensions+1)]
+            return np.array(values, dtype=np.float32)
+        except KeyError:
+            raise KeyError(f'Sample id not in dataframe.')
+
+    return tensor_from_file
+
+
+def generate_latent_tensor_map_from_file(
+    file_name: str,
+    tensor_map_name: str,
+) -> TensorMap:
+    ext = file_name.split('.')[1]
+    delimiter = ',' if ext == 'csv' else '\t'
+    df = pd.read_csv(file_name, delimiter=delimiter)
+    dimensions = len(df)-1
+    return TensorMap(
+            f'{tensor_map_name}', Interpretation.CONTINUOUS, shape=(dimensions,),
+            tensor_from_file=_space_tensor_from_file(df, dimensions),
+    )
+
 
 def generate_random_text_tensor_maps(text_file: str, window_size: int) -> Tuple[TensorMap, TensorMap]:
     name = os.path.basename(text_file).split('.')[0]
