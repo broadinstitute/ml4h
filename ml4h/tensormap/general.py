@@ -199,21 +199,3 @@ def build_categorical_tensor_from_file(
             raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
-
-
-def build_latent_tensor_from_file(
-    df: pd.DataFrame,
-    dimensions: int,
-):
-    """
-    Build a tensor_from_file function from a row in a TSV/CSV file.
-    """
-    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        try:
-            return df[
-                os.path.basename(hd5.filename).replace('.hd5', '')
-            ].copy()
-        except KeyError:
-            raise KeyError(f'Sample id not in file {file_name}.')
-
-    return tensor_from_file

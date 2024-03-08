@@ -27,7 +27,6 @@ from collections import defaultdict
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
-from ml4h.tensormap.general import build_embedded_tensor_from_file
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
     generate_latent_tensor_map_from_file
