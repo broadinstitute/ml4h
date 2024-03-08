@@ -123,8 +123,6 @@ class EncodeIdentityBlock(Block):
         super()
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        for tm in intermediates:
-            intermediates[tm].append(x)
         return x
 
 
