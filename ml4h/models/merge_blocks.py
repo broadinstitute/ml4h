@@ -27,7 +27,7 @@ class FlatConcatBlock(Block):
         pass
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        y = [Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()]
+        y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
         y = concatenate(y) if len(y) > 1 else y[0]
         return y
 
