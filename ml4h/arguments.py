@@ -34,13 +34,6 @@ from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_rand
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
 
-BOTTLENECK_STR_TO_ENUM = {
-    'flatten_restructure': BottleneckType.FlattenRestructure,
-    'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
-    'variational': BottleneckType.Variational,
-    'no_bottleneck': BottleneckType.NoBottleNeck,
-}
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -212,7 +205,6 @@ def parse_args():
         '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
-    parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
@@ -531,9 +523,7 @@ def _process_args(args):
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
 
-    args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
-    if args.bottleneck_type == BottleneckType.NoBottleNeck:
-        check_no_bottleneck(args.u_connect, args.tensor_maps_out)
+    check_no_bottleneck(args.u_connect, args.tensor_maps_out)
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
