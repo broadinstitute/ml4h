@@ -274,7 +274,7 @@ class IdentityEncoderBlock(Block):
         return True
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        intermediates[self.tensor_map] = x
+        intermediates[self.tensor_map].append(x)
         return x
 
 
