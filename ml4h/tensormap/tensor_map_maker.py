@@ -14,8 +14,7 @@ from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
 from ml4h.defines import DICTIONARY_TABLE, CODING_TABLE, PHENOTYPE_TABLE, JOIN_CHAR
-from ml4h.tensormap.general import build_tensor_from_file, build_categorical_tensor_from_file, \
-    build_latent_tensor_from_file
+from ml4h.tensormap.general import build_tensor_from_file, build_categorical_tensor_from_file
 from ml4h.tensormap.text import random_text_window_tensor, token_dictionary_and_text_from_file, token_dictionary_from_hd5_key, random_array_window_tensors
 from ml4h.tensorize.tensor_writer_ukbb import disease_prevalence_status, get_disease2tsv, disease_incidence_status, disease_censor_status
 
