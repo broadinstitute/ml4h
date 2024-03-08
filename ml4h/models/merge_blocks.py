@@ -119,11 +119,12 @@ class EncodeIdentityBlock(Block):
     """
     Adds the input tensor to the intermediates dictionary, useful for TensorMaps with pretrained embeddings
     """
-    def __init__(self, tensor_map, **kwargs):
-        self.tensor_map = tensor_map
+    def __init__(self, **kwargs):
+        super()
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        intermediates[self.tensor_map].append(x)
+        for tm in intermediates:
+            intermediates[tm].append(x)
         return x
 
 

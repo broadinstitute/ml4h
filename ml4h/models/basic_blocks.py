@@ -232,7 +232,6 @@ class LanguagePredictionBlock(Block):
         self.dense = Dense(units, activation=activation)
         self.final_layer = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=tensor_map.activation)
 
-
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         x = self.dense(self.drop(x))
         if self.tensor_map.is_continuous():
