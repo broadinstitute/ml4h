@@ -42,7 +42,7 @@ class DenseEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
-            dense_layers: List[int] = [32],
+            dense_layers: List[int] = [256],
             activation: str = 'swish',
             dense_normalize: str = None,
             dense_regularize: str = None,
@@ -64,7 +64,7 @@ class DenseEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 1# and not self.tensor_map.is_embedding()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         y = self.fully_connected(x, intermediates)
