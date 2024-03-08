@@ -286,7 +286,7 @@ def generate_latent_tensor_map_from_file(
     ext = file_name.split('.')[1]
     delimiter = ',' if ext == 'csv' else '\t'
     df = pd.read_csv(file_name, delimiter=delimiter)
-    dimensions = len(df)-1
+    dimensions = len(df.columns)-1
     return TensorMap(
             f'{tensor_map_name}', Interpretation.CONTINUOUS, shape=(dimensions,),
             tensor_from_file=_space_tensor_from_file(df, dimensions),
