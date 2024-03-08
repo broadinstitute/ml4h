@@ -268,7 +268,7 @@ def generate_categorical_tensor_map_from_file(
 
 def _space_tensor_from_file(df: pd.DataFrame, dimensions: int, sample_column: str = 'sample_id'):
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
-        sample_id = os.path.basename(hd5.filename).replace('.hd5', '')
+        sample_id = int(os.path.basename(hd5.filename).replace('.hd5', ''))
         row = df[df[sample_column] == sample_id]
         if len(row) == 0:
             raise KeyError(f'Sample id not in dataframe.')
