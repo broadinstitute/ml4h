@@ -215,9 +215,9 @@ def train_multimodal_multitask(args):
             from tensorflow import keras
             import tensorflow_addons as tfa
             weight_decay = 1e-4
-            encoders[tm].compile(optimizer=tfa.optimizers.AdamW(learning_rate=args.learning_rate, weight_decay=weight_decay), loss=keras.losses.mean_absolute_error,)
-            encoders[tm] = train_model_from_generators(
-                encoders[tm], generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
+            #encoders[tm].compile(optimizer=tfa.optimizers.AdamW(learning_rate=args.learning_rate, weight_decay=weight_decay), loss=keras.losses.mean_absolute_error,)
+            encoders[tm].diffusion_model = train_model_from_generators(
+                encoders[tm].diffusion_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
                 args.epochs,
                 args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
                 args.tensor_maps_out,
