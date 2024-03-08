@@ -269,7 +269,9 @@ def generate_categorical_tensor_map_from_file(
 def _space_tensor_from_file(df: pd.DataFrame, dimensions: int, sample_column: str = 'sample_id'):
     def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
         try:
-            row = df[df[sample_column] == os.path.basename(hd5.filename).replace('.hd5', '')].iloc[0]
+            sample_id = os.path.basename(hd5.filename).replace('.hd5', '')
+            print(f'Got a sample_id {sample_id}, now try row...')
+            row = df[df[sample_column] == sample_id]
             print(f'Got a row {row}, now try values...')
             values = [row.iloc[i] for i in range(1, dimensions+1)]
             return np.array(values, dtype=np.float32)
