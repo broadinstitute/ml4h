@@ -31,6 +31,14 @@ t1_mni_slice_80 = TensorMap(
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
+t1_mni_slice_80_216 = TensorMap(
+    'axial_80',
+    shape=(216, 216, 1),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
+
 t1_slice_85 = TensorMap(
     'axial_85',
     shape=(216, 256, 1),
