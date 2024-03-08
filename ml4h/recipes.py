@@ -17,10 +17,11 @@ from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
 from ml4h.arguments import parse_args
+from ml4h.models.diffusion_blocks import DiffusionModel
 from ml4h.models.inspect import saliency_map
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
-from ml4h.models.train import train_model_from_generators
+from ml4h.models.train import train_model_from_generators, train_diffusion_model
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
@@ -110,8 +111,8 @@ def run(args):
             plot_partners_ecgs(args)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
-        elif 'train_char' == args.mode:
-            train_char_model(args)
+        elif 'train_diffusion' == args.mode:
+            train_diffusion_model(args)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
@@ -838,33 +839,6 @@ def train_shallow_model(args):
     return _predict_and_evaluate(
         model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
         args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha,
-        args.dpi, args.plot_width, args.plot_height,
-    )
-
-
-def train_char_model(args):
-    args.num_workers = 0
-    logging.info(f'Number of workers forced to 0 for character emitting LSTM model.')
-    base_model = legacy_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(
-        args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
-        args.language_prefix, args.model_layers,
-    )
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-
-    model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-    )
-    batch = next(generate_test)
-    input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
-    sample_from_char_embed_model(args.tensor_maps_in, char_model, input_data, tensor_paths)
-
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(
-        model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-        args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
         args.dpi, args.plot_width, args.plot_height,
     )
 

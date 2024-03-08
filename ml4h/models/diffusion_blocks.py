@@ -1,13 +1,16 @@
 import logging
+import os
 from typing import Dict, List, Tuple, Sequence
-
 import math
+
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 from tensorflow import keras
 from keras import layers
 
+from ml4h.defines import IMAGE_EXT
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 
@@ -310,7 +313,7 @@ class DiffusionModel(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
-    def plot_images(self, epoch=None, logs=None, num_rows=3, num_cols=6):
+    def plot_images(self, epoch=None, logs=None, num_rows=3, num_cols=6, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             num_images=num_rows * num_cols,
@@ -325,8 +328,10 @@ class DiffusionModel(keras.Model):
                 plt.imshow(generated_images[index], cmap='gray')
                 plt.axis("off")
         plt.tight_layout()
-        plt.show()
-        plt.close()
+        figure_path = os.path.join(prefix, "diffusion_generations" + IMAGE_EXT)
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path, bbox_inches="tight")
 
     def plot_reconstructions(self, images_original, diffusion_amount=0,
                              epoch=None, logs=None, num_rows=3, num_cols=6):

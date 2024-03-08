@@ -281,8 +281,7 @@ def generate_latent_tensor_map_from_file(
     file_name: str,
     tensor_map_name: str,
 ) -> TensorMap:
-    ext = file_name.split('.')[1]
-    delimiter = ',' if ext == 'csv' else '\t'
+    delimiter = ',' if file_name.split('.')[1].lower() == 'csv' else '\t'
     df = pd.read_csv(file_name, delimiter=delimiter)
     dimensions = len(df.columns)-1
     return TensorMap(

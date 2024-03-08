@@ -4,15 +4,20 @@ import os
 import logging
 from typing import List, Tuple, Iterable, Union
 
+import tensorflow as tf
+from tensorflow import keras
+import tensorflow_addons as tfa
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 
 from ml4h.TensorMap import TensorMap
+from ml4h.models.diffusion_blocks import DiffusionModel
 from ml4h.plots import plot_metric_history
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
 from ml4h.models.model_factory import get_custom_objects
+from ml4h.tensor_generators import test_train_valid_tensor_generators
 
 
 def train_model_from_generators(
@@ -93,3 +98,62 @@ def _get_callbacks(
     ]
     
     return callbacks
+
+
+def train_diffusion_model(args):
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    diffusion_model = DiffusionModel(args.tensor_maps_in[0], args.dense_blocks, args.block_size, args.conv_x)
+
+    diffusion_model.compile(
+        optimizer=tfa.optimizers.AdamW(
+            learning_rate=args.learning_rate, weight_decay=1e-4
+        ),
+        loss=keras.losses.mean_absolute_error,
+    )
+    batch = next(generate_train)
+    for k in batch[0]:
+        logging.info(f"input {k} {batch[0][k].shape}")
+        feature_batch = batch[0][k]
+    for k in batch[1]:
+        logging.info(f"label {k} {batch[1][k].shape}")
+    checkpoint_path = f"{args.output_folder}/{args.id}/checkpoints"
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_path,
+        save_weights_only=True,
+        monitor="val_i_loss",
+        mode="min",
+        save_best_only=True,
+    )
+
+    # calculate mean and variance of training dataset for normalization
+    diffusion_model.normalizer.adapt(feature_batch)
+    if args.inspect_model:
+        tf.keras.utils.plot_model(
+            diffusion_model.network,
+            to_file=f"{args.output_folder}/{args.id}/architecture_diffusion_unet.png",
+            show_shapes=True,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
+            expand_nested=True,
+            dpi=args.dpi,
+            layer_range=None,
+            show_layer_activations=False,
+        )
+    history = diffusion_model.fit(
+        generate_train,
+        steps_per_epoch=args.training_steps,
+        epochs=args.epochs,
+        validation_data=generate_valid,
+        validation_steps=args.validation_steps,
+        callbacks=[
+            #keras.callbacks.LambdaCallback(on_epoch_end=diffusion_model.plot_images),
+            checkpoint_callback,
+        ],
+    )
+    diffusion_model.load_weights(checkpoint_path)
+    #diffusion_model.compile(optimizer='adam', loss='mse')
+    plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
+    if args.inspect_model:
+        diffusion_model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path)+'/final_')
+    return diffusion_model
