@@ -140,8 +140,11 @@ def train_diffusion_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
+
     if os.path.exists(checkpoint_path):
         model.load_weights(checkpoint_path)
+        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+
     history = model.fit(
         generate_train,
         steps_per_epoch=args.training_steps,
