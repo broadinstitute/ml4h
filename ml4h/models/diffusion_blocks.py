@@ -327,6 +327,26 @@ class DiffusionModel(keras.Model):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
 
+    def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
+        # plot random generated images for visual evaluation of generation quality
+        generated_images = self.generate(
+            num_images=max(batch_size, num_rows * num_cols),
+            diffusion_steps=plot_diffusion_steps,
+        )
+
+        plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
+        for row in range(num_rows):
+            for col in range(num_cols):
+                index = row * num_cols + col
+                plt.subplot(num_rows, num_cols, index + 1)
+                plt.plot(generated_images[index, ..., 0])
+                plt.axis("off")
+        plt.tight_layout()
+        figure_path = os.path.join(prefix, "diffusion_generations" + IMAGE_EXT)
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path, bbox_inches="tight")
+
     def plot_reconstructions(self, images_original, diffusion_amount=0,
                              epoch=None, logs=None, num_rows=3, num_cols=6):
         images = images_original[0][self.tensor_map.input_name()]
