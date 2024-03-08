@@ -319,24 +319,6 @@ class LinearTransform(tf.keras.layers.Layer):
     def call(self, inputs):
         return self.gamma * inputs[0] + self.beta
 
-# class ContrastiveLossLayer(Layer):
-#     """Layer that creates a Contrastive between modalities"""
-#
-#     def __init__(self, weight, batch_size, **kwargs):
-#         super(ContrastiveLossLayer, self).__init__(**kwargs)
-#         self.weight = weight
-#         self.batch_size = batch_size
-#         self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
-#
-#     def get_config(self):
-#         config = super().get_config().copy()
-#         config.update({'weight': self.weight, 'batch_size': self.batch_size})
-#         return config
-#
-#     def call(self, inputs):
-#         self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
-#         return inputs
-
 
 class VariationalDiagNormal(Layer):
     def __init__(

@@ -48,7 +48,6 @@ tfd = tfp.distributions
 class BottleneckType(Enum):
     FlattenRestructure = auto()  # All decoder outputs are flattened to put into embedding
     GlobalAveragePoolStructured = auto()  # Structured (not flat) decoder outputs are global average pooled
-    Variational = auto()  # All decoder outputs are flattened then variationally sampled to put into embedding
     NoBottleNeck = auto()  # only works when everything is u_connected
     PairLoss = auto()  # Distance between paired modalities is added to the loss
 
@@ -550,126 +549,6 @@ class UConnectBottleNeck:
                 **{tmap_out: tensor for tmap_out in self.u_connect[tmap_in]},
             }
         return out
-
-
-def l2_norm(x, axis=None):
-    """
-    takes an input tensor and returns the l2 norm along specified axis
-    """
-
-    square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
-    norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
-
-    return norm
-
-
-def pairwise_cosine_difference(t1, t2):
-    t1_norm = t1 / l2_norm(t1, axis=-1)
-    t2_norm = t2 / l2_norm(t2, axis=-1)
-    dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
-    return K.mean(tf.acos(dot))
-
-
-class CosineLossLayer(Layer):
-    """Layer that creates an Cosine loss."""
-
-    def __init__(self, weight, **kwargs):
-        super(CosineLossLayer, self).__init__(**kwargs)
-        self.weight = weight
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({'weight': self.weight})
-        return config
-
-    def call(self, inputs):
-        # We use `add_loss` to create a regularization loss
-        # that depends on the inputs.
-        self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
-        return inputs
-
-
-class L2LossLayer(Layer):
-    """Layer that creates an L2 loss."""
-
-    def __init__(self, weight, **kwargs):
-        super(L2LossLayer, self).__init__(**kwargs)
-        self.weight = weight
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({'weight': self.weight})
-        return config
-
-    def call(self, inputs):
-        self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
-        return inputs
-
-
-class VariationalDiagNormal(Layer):
-    def __init__(
-            self,
-            latent_size: int,
-            kl_divergence_weight: float = 1.,
-            **kwargs
-    ):
-        self.latent_size = latent_size
-        self.kl_divergence_weight = kl_divergence_weight
-        super(VariationalDiagNormal, self).__init__(**kwargs)
-        self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros([latent_size]), scale_identity_multiplier=1.0)
-
-    def call(self, mu: Tensor, log_sigma: Tensor, **kwargs):
-        """mu and sigma must be shape (None, latent_size)"""
-        approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
-        kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
-        self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl, name='KL_divergence')
-        return approx_posterior.sample()
-
-    def get_config(self):
-        return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}
-
-
-class VariationalBottleNeck:
-    def __init__(
-            self,
-            activation: str,
-            normalization: str,
-            fully_connected_widths: List[int],
-            latent_size: int,
-            regularization: str,
-            regularization_rate: float,
-            pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]],
-    ):
-        self.fully_connected = FullyConnected(
-            widths=fully_connected_widths,
-            activation=activation,
-            normalization=normalization,
-            regularization=regularization,
-            regularization_rate=regularization_rate,
-        ) if fully_connected_widths else None
-        self.restructures = {
-            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
-            for tm, shape in pre_decoder_shapes.items() if shape is not None
-        }
-        self.latent_size = latent_size
-        self.sampler: Layer = VariationalDiagNormal(latent_size, regularization_rate)
-        self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
-
-    def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
-        y = [Flatten()(x) for x in encoder_outputs.values()]
-        if len(y) > 1:
-            y = concatenate(y)
-        else:
-            y = y[0]
-        y = self.fully_connected(y) if self.fully_connected else y
-        mu = Dense(self.latent_size, name='embed')(y)
-        log_sigma = Dense(self.latent_size, name='log_sigma')(y)
-        y = self.sampler(mu, log_sigma)
-        return {
-            **{tm: restructure(y) for tm, restructure in self.restructures.items()},
-            **{tm: y for tm in self.no_restructures},
-        }
 
 
 class ConcatenateRestructure:
