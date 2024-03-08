@@ -62,7 +62,7 @@ class DenseEncoder(Block):
         )
 
     def can_apply(self):
-        return self.tensor_map.axes() == 1 and not self.tensor_map.is_embedding()
+        return self.tensor_map.axes() == 1# and not self.tensor_map.is_embedding()
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
