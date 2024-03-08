@@ -116,7 +116,7 @@ def train_diffusion_model(args):
         feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
-    checkpoint_path = f"{args.output_folder}/{args.id}/checkpoints"
+    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}"
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=True,
@@ -151,10 +151,7 @@ def train_diffusion_model(args):
         epochs=args.epochs,
         validation_data=generate_valid,
         validation_steps=args.validation_steps,
-        callbacks=[
-            #keras.callbacks.LambdaCallback(on_epoch_end=diffusion_model.plot_images),
-            checkpoint_callback,
-        ],
+        callbacks=[checkpoint_callback],
     )
     model.load_weights(checkpoint_path)
     #diffusion_model.compile(optimizer='adam', loss='mse')
