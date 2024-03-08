@@ -272,7 +272,6 @@ def _space_tensor_from_file(df: pd.DataFrame, dimensions: int, sample_column: st
         row = df[df[sample_column] == sample_id]
         if len(row) == 0:
             raise KeyError(f'Sample id not in dataframe.')
-        print(f'Got a row {row}, now try values...')
         values = row.iloc[0].tolist()[1:dimensions+1]
         return np.array(values, dtype=np.float32)
     return tensor_from_file
