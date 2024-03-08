@@ -102,9 +102,9 @@ def _get_callbacks(
 
 def train_diffusion_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    diffusion_model = DiffusionModel(args.tensor_maps_in[0], args.dense_blocks, args.block_size, args.conv_x)
+    model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x)
 
-    diffusion_model.compile(
+    model.compile(
         optimizer=tfa.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4
         ),
@@ -126,10 +126,10 @@ def train_diffusion_model(args):
     )
 
     # calculate mean and variance of training dataset for normalization
-    diffusion_model.normalizer.adapt(feature_batch)
+    model.normalizer.adapt(feature_batch)
     if args.inspect_model:
         tf.keras.utils.plot_model(
-            diffusion_model.network,
+            model.network,
             to_file=f"{args.output_folder}/{args.id}/architecture_diffusion_unet.png",
             show_shapes=True,
             show_dtype=False,
@@ -140,7 +140,7 @@ def train_diffusion_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
-    history = diffusion_model.fit(
+    history = model.fit(
         generate_train,
         steps_per_epoch=args.training_steps,
         epochs=args.epochs,
@@ -151,9 +151,9 @@ def train_diffusion_model(args):
             checkpoint_callback,
         ],
     )
-    diffusion_model.load_weights(checkpoint_path)
+    model.load_weights(checkpoint_path)
     #diffusion_model.compile(optimizer='adam', loss='mse')
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     if args.inspect_model:
-        diffusion_model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path)+'/final_')
-    return diffusion_model
+        model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path)+'/final_')
+    return model

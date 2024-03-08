@@ -134,10 +134,11 @@ def get_network(input_shape, widths, block_depth, kernel_size):
 
 
 class DiffusionModel(keras.Model):
-    def __init__(self, tensor_map, widths, block_depth, kernel_size):
+    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size):
         super().__init__()
 
         self.tensor_map = tensor_map
+        self.batch_size = batch_size
         self.normalizer = layers.Normalization()
         self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
         self.ema_network = keras.models.clone_model(self.network)
@@ -203,7 +204,7 @@ class DiffusionModel(keras.Model):
             noisy_images = next_noisy_images
 
             # separate the current noisy image to its components
-            diffusion_times = tf.ones((num_images, 1, 1, 1)) - step * step_size
+            diffusion_times = tf.ones([num_images, ] + [1] * self.tensor_map.axes()) - step * step_size
             noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
             pred_noises, pred_images = self.denoise(
                 noisy_images, noise_rates, signal_rates, training=False
@@ -240,7 +241,7 @@ class DiffusionModel(keras.Model):
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=(batch_size, 1, 1, 1), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.tensor_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -279,7 +280,7 @@ class DiffusionModel(keras.Model):
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=(batch_size, 1, 1, 1), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.tensor_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -333,7 +334,7 @@ class DiffusionModel(keras.Model):
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(batch_size,) + self.tensor_map.shape)
 
-        diffusion_times = diffusion_amount * tf.ones(shape=(batch_size, 1, 1, 1))
+        diffusion_times = diffusion_amount * tf.ones(shape=[self.batch_size, ] + [1] * self.tensor_map.axes())
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
@@ -368,7 +369,7 @@ class DiffusionModel(keras.Model):
             noisy_images = next_noisy_images
 
             # separate the current noisy image to its components
-            diffusion_times = tf.ones((num_images, 1, 1, 1)) - step * step_size
+            diffusion_times = tf.ones([num_images, ] + [1] * self.tensor_map.axes()) - step * step_size
             noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
             pred_noises, generated_images = self.denoise(
                 noisy_images, noise_rates, signal_rates, training=False
