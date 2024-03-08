@@ -24,7 +24,7 @@ from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEnc
 from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
 from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
 from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss, \
-    IdentityDecoderBlock
+    IdentityEncoderBlock, IdentityDecoderBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
@@ -63,6 +63,7 @@ BLOCK_CLASSES = {
     'bert_encoder': BertEncoder,
     'diffusion': DiffusionBlock,
     'identity_decode': IdentityDecoderBlock,
+    'identity_encode': IdentityEncoderBlock,
 }
 
 
@@ -171,7 +172,7 @@ def multimodal_multitask_model(
     """
     encoder_block_functions = {tm: identity for tm in tensor_maps_in}  # Dict[TensorMap, Block]
     for tm in tensor_maps_in:
-        print("***tm",tm,len(tensor_maps_in))
+        print("***tm", tm, len(tensor_maps_in))
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
             if isinstance(encode_block, Block):
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))

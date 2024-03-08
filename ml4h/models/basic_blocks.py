@@ -156,6 +156,7 @@ class PartitionedLinearDecoder(Block):
         intermediates[self.tensor_map].append(x)
         return x
 
+
 class ModelAsBlock(Block):
     """Takes a serialized model and applies it, can be used to encode or decode Tensors"""
     def __init__(
@@ -259,6 +260,22 @@ class RandomGauss(tf.keras.layers.Layer):
             "scalar": self.scalar,
         })
         return config
+
+
+class IdentityEncoderBlock(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+
+    def can_apply(self):
+        return True
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        intermediates[self.tensor_map] = x
+        return x
 
 
 class IdentityDecoderBlock(Block):

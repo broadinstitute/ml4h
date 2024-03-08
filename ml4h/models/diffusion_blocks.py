@@ -10,10 +10,7 @@ from keras import layers
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
-from ml4h.models.basic_blocks import DenseBlock
-from ml4h.models.layer_wrappers import _upsampler, _activation_layer, _regularization_layer, _normalization_layer
-from ml4h.models.layer_wrappers import _conv_layer_from_kind_and_dimension, _pool_layers_from_kind_and_dimension, _one_by_n_kernel
-from ml4h.models.merge_blocks import L2LossLayer
+
 
 Tensor = tf.Tensor
 
@@ -423,7 +420,6 @@ class DiffusionBlock(Block):
             return
 
         self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size, conv_x)
-        self.noise_variances = keras.Input(shape=[1] * len(tensor_map.shape))
         import tensorflow_addons as tfa
         self.diffusion_model.compile(
             optimizer=tfa.optimizers.AdamW(
@@ -431,7 +427,6 @@ class DiffusionBlock(Block):
             ),
             loss=keras.losses.mean_absolute_error,
         )
-        #self.loss_layer = L2LossLayer(1.0)
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
