@@ -156,13 +156,6 @@ class DiffusionModel(keras.Model):
     def metrics(self):
         return [self.noise_loss_tracker, self.image_loss_tracker]
 
-    def __call__(self, x: Tensor) -> Tensor:
-        if not self.can_apply():
-            return x
-        x = self.network(x)
-        return x
-
-
     def denormalize(self, images):
         # convert the pixel values back to 0-1 range
         # images = images - tf.math.reduce_mean(images) + images * tf.math.reduce_std(images)
