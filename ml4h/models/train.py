@@ -141,9 +141,11 @@ def train_diffusion_model(args):
             show_layer_activations=False,
         )
 
-    #if os.path.exists(checkpoint_path):
-    model.load_weights(checkpoint_path)
-    logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+    if os.path.exists(checkpoint_path+'.index'):
+        model.load_weights(checkpoint_path)
+        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+    else:
+        logging.info(f'No checkpoint at: {checkpoint_path}')
 
     history = model.fit(
         generate_train,
