@@ -13,6 +13,7 @@
 * [Setting up a remote VM](#setting-up-a-remote-vm)
 * Modeling/Data Sources/Tests [(`ml4h/DATA_MODELING_TESTS.md`)](ml4h/DATA_MODELING_TESTS.md)
 * [Contributing Code](#contributing-code)
+* [Releases and Versioning](#releases)
 * [Command line interface](#command-line-interface)
 
 Advanced Topics:
@@ -128,28 +129,17 @@ Step 4: connect to the VM by pressing F1 and type "Remote-SSH: Connect to Host..
 Step 5: open the folder you want to work on in the VM, type in your Broad password, and you are good to go!
 
 
-
-
 ## Contributing code
 
 Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
 
-## Citation
-If you use ML4H for research, you can use this citation format:
-```
-@misc{ml4h,
-	title = {ml4h},
-	copyright = {BSD 3-Clause License, 2021},
-	url = {https://github.com/broadinstitute/ml4h},
-	author = {{Data Sciences Platform at Broad Institute of MIT and Harvard}},
-	abstract = {ML4H is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
-	urldate = {2021-03-31},
-	publisher = {Broad Institute},
-	month = mar,
-	year = {2021},
-	note = {original-date: 2019-04-10}
-}
-```
+## Releases
+Ideally, each release should be available on our [github releases page](https://github.com/broadinstitute/ml4h/releases)
+In addition, the version # in setup.py should be incremented. 
+The pip installable [ml4h package on pypi should also be updated](https://pypi.org/project/ml4h/). 
+
+If the release changed the docker image, the new dockers both (CPU & GPU) should update the “latest” tag and should be pushed to both gcr: `gcr.io/broad-ml4cvd/deeplearning`, and the [ml4h github docker repo](https://github.com/broadinstitute/ml4h/pkgs/container/ml4h) with appropriate tags: ` ghcr.io/broadinstitute/ml4h`
+
 
 ## Command line interface
 The ml4h package is designed to be accessable through the command line using "recipes".
