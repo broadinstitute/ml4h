@@ -35,7 +35,7 @@ weight_decay = 1e-4
 plot_diffusion_steps = 20
 
 
-def sinusoidal_embedding(x):
+def sinusoidal_embedding(x, dims=1):
     embedding_min_frequency = 1.0
     frequencies = tf.exp(
         tf.linspace(
@@ -45,12 +45,14 @@ def sinusoidal_embedding(x):
         )
     )
     angular_speeds = 2.0 * math.pi * frequencies
-    #     embeddings = tf.concat(
-    #         [tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3
-    #     )
-    embeddings = tf.concat(
-        [tf.sin(angular_speeds * x)], axis=2
-    )
+    if dims == 1:
+        embeddings = tf.concat([tf.sin(angular_speeds * x)], axis=2)
+    elif dims == 2:
+        embeddings = tf.concat([tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3)
+    elif dims == 3:
+        embeddings = tf.concat([tf.sin(angular_speeds * x), tf.cos(angular_speeds * x), -tf.sin(angular_speeds * x)],
+                               axis=4)
+
     return embeddings
 
 
