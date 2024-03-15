@@ -799,13 +799,13 @@ class DiffusionController(keras.Model):
             diffusion_steps=plot_diffusion_steps,
             reseed=reseed,
         )
-
+        logging.info(f'Generated ECGs with shape:{generated_images.shape}')
         plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
         for row in range(num_rows):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.plot(generated_images[index, ..., 0])
+                plt.plot(generated_images[index, 0])
                 plt.axis("off")
         plt.tight_layout()
         figure_path = os.path.join(prefix, "diffusion_generations" + IMAGE_EXT)
