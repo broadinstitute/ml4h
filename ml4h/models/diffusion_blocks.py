@@ -561,7 +561,7 @@ class DiffusionController(keras.Model):
             noisy_images = next_noisy_images
 
             # separate the current noisy image to its components
-            diffusion_times = tf.ones((num_images, 1, 1, 1)) - step * step_size
+            diffusion_times = tf.ones((num_images,) + self.input_map.shape) - step * step_size
             noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
             pred_noises, pred_images = self.denoise(
                 control_embed, noisy_images, noise_rates, signal_rates, training=False
