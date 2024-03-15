@@ -170,7 +170,7 @@ def train_diffusion_control_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
     base_model_path = f"{args.output_folder}diffusion_{args.tensor_maps_in[0].name}/diffusion_{args.tensor_maps_in[0].name}"
-    model = DiffusionController(args.tensor_maps_out[0], args.tensor_maps_in, base_model_path,
+    model = DiffusionController(args.tensor_maps_in[0], args.tensor_maps_out, base_model_path,
                                 args.batch_size, args.dense_blocks, args.block_size, args.conv_x[0], args.dense_layers[0])
 
     model.compile(
