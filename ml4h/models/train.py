@@ -222,7 +222,7 @@ def train_diffusion_control_model(args):
         epochs=args.epochs,
         validation_data=generate_valid,
         validation_steps=args.validation_steps,
-        callbacks=[checkpoint_callback],
+        #callbacks=[checkpoint_callback],
     )
     model.load_weights(checkpoint_path)
     #diffusion_model.compile(optimizer='adam', loss='mse')
