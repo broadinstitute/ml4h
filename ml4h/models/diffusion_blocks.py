@@ -495,12 +495,12 @@ class DiffusionController(keras.Model):
 
         self.diffusion_model = DiffusionModel(tensor_map, batch_size, widths, block_depth, conv_x)
         #self.diffusion_model.load_weights(base_model_path)
-        self.input_map = tensor_map
+        self.output_map = tensor_map
         self.batch_size = batch_size
         self.output_maps = output_maps
         self.control_embed_model = get_control_embed_model(output_maps, control_size)
         self.normalizer = layers.Normalization()
-        self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size)
+        self.network = get_control_network(self.output_map.shape, widths, block_depth, conv_x, control_size)
         self.ema_network = keras.models.clone_model(self.network)
 
     def compile(self, **kwargs):
@@ -561,7 +561,7 @@ class DiffusionController(keras.Model):
             noisy_images = next_noisy_images
 
             # separate the current noisy image to its components
-            diffusion_times = tf.ones([num_images, ] + [1, ]*self.input_map.axes()) - step * step_size
+            diffusion_times = tf.ones([num_images, ] + [1, ] * self.output_map.axes()) - step * step_size
             noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
             pred_noises, pred_images = self.denoise(
                 control_embed, noisy_images, noise_rates, signal_rates, training=False
@@ -585,10 +585,10 @@ class DiffusionController(keras.Model):
 
         if reseed is not None:
             if renoise is not None:
-                noiser = tf.random.normal(shape=(num_images,) + self.input_map.shape) * renoise
+                noiser = tf.random.normal(shape=(num_images,) + self.output_map.shape) * renoise
             tf.random.set_seed(reseed)
 
-        initial_noise = tf.random.normal(shape=(num_images,) + self.input_map.shape)
+        initial_noise = tf.random.normal(shape=(num_images,) + self.output_map.shape)
 
         generated_images = self.reverse_diffusion(control_embed, initial_noise, diffusion_steps)
         generated_images = self.denormalize(generated_images)
@@ -601,17 +601,17 @@ class DiffusionController(keras.Model):
 
     def train_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
-        images = batch[0][self.input_map.input_name()]
+        images = batch[0][self.output_map.input_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=True)
 
         control_embed = self.control_embed_model(batch[1])
 
-        noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.output_map.shape)
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=[self.batch_size, ] + [1] * self.input_map.axes(), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.output_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -642,17 +642,17 @@ class DiffusionController(keras.Model):
 
     def test_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
-        images = batch[0][self.input_map.input_name()]
+        images = batch[0][self.output_map.input_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
 
         control_embed = self.control_embed_model(batch[1])
 
-        noises = tf.random.normal(shape=(batch_size,) + self.input_map.shape)
+        noises = tf.random.normal(shape=(batch_size,) + self.output_map.shape)
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=[self.batch_size, ] + [1] * self.input_map.axes(), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.output_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -709,11 +709,11 @@ class DiffusionController(keras.Model):
 
     def plot_reconstructions(self, batch, diffusion_amount=0,
                              epoch=None, logs=None, num_rows=4, num_cols=4):
-        images = batch[0][self.input_map.input_name()]
+        images = batch[0][self.output_map.input_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
-        noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
-        diffusion_times = diffusion_amount * tf.ones(shape = [self.batch_size, ] + [1] * self.input_map.axes())
+        noises = tf.random.normal(shape=(self.batch_size,) + self.output_map.shape)
+        diffusion_times = diffusion_amount * tf.ones(shape = [self.batch_size, ] + [1] * self.output_map.axes())
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
