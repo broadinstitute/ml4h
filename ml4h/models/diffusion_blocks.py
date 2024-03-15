@@ -193,10 +193,10 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
     return keras.Model([noisy_images, noise_variances, control], x, name="control_unet")
 
 
-def get_control_embed_model(output_maps, control_size):
+def get_control_embed_model(control_maps, control_size):
     control_ins = []
-    for cm in output_maps:
-        control_ins.append(keras.Input(shape=cm.shape, name=cm.output_name()))
+    for cm in control_maps:
+        control_ins.append(keras.Input(shape=cm.shape, name=cm.input_name()))
     c = layers.Concatenate()(control_ins)
     c = layers.Dense(control_size, activation='swish')(c)
     return keras.Model(control_ins, c, name='control_embed')
@@ -497,7 +497,7 @@ class DiffusionController(keras.Model):
         #self.diffusion_model.load_weights(base_model_path)
         self.output_map = tensor_map
         self.batch_size = batch_size
-        self.output_maps = output_maps
+        self.control_maps = output_maps
         self.control_embed_model = get_control_embed_model(output_maps, control_size)
         self.normalizer = layers.Normalization()
         self.network = get_control_network(self.output_map.shape, widths, block_depth, conv_x, control_size)
@@ -601,7 +601,7 @@ class DiffusionController(keras.Model):
 
     def train_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
-        images = batch[0][self.output_map.output_name()]
+        images = batch[1][self.output_map.output_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=True)
 
@@ -642,7 +642,7 @@ class DiffusionController(keras.Model):
 
     def test_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
-        images = batch[0][self.output_map.output_name()]
+        images = batch[1][self.output_map.output_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
 
@@ -681,10 +681,10 @@ class DiffusionController(keras.Model):
 
     def plot_images(self, epoch=None, logs=None, num_rows=2, num_cols=8, prefix='./figures/'):
         control_batch = {}
-        for cm in self.output_maps:
-            control_batch[cm.output_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
+        for cm in self.control_maps:
+            control_batch[cm.input_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
             if 'Sex' in cm.name:
-                control_batch[cm.output_name()][:, 0] = 1  # all female
+                control_batch[cm.input_name()][:, 0] = 1  # all female
 
         print(f'\nControl batch keys: {list(control_batch.keys())}')
         control_embed = self.control_embed_model(control_batch)
@@ -709,7 +709,7 @@ class DiffusionController(keras.Model):
 
     def plot_reconstructions(self, batch, diffusion_amount=0,
                              epoch=None, logs=None, num_rows=4, num_cols=4):
-        images = batch[0][self.output_map.output_name()]
+        images = batch[1][self.output_map.output_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(self.batch_size,) + self.output_map.shape)
@@ -785,10 +785,10 @@ class DiffusionController(keras.Model):
 
     def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
         control_batch = {}
-        for cm in self.output_maps:
-            control_batch[cm.output_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
+        for cm in self.control_maps:
+            control_batch[cm.input_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
             if 'Sex' in cm.name:
-                control_batch[cm.output_name()][:, 0] = 1  # all female
+                control_batch[cm.input_name()][:, 0] = 1  # all female
 
         print(f'\nControl batch keys: {list(control_batch.keys())}')
         control_embed = self.control_embed_model(control_batch)
