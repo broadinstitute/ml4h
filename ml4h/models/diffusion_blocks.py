@@ -679,10 +679,10 @@ class DiffusionController(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
-    def plot_images(self, epoch=None, logs=None, num_rows=2, num_cols=8):
+    def plot_images(self, epoch=None, logs=None, num_rows=2, num_cols=8, prefix='./figures/'):
         control_batch = {}
         for cm in self.output_maps:
-            control_batch[cm.output_name()] = np.zeros((self.batch_size,) + cm.shape)
+            control_batch[cm.output_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
             if 'Sex' in cm.name:
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
@@ -691,10 +691,9 @@ class DiffusionController(keras.Model):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
-            num_images=num_rows * num_cols,
+            num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
         )
-
         plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
         for row in range(num_rows):
             for col in range(num_cols):
@@ -703,8 +702,10 @@ class DiffusionController(keras.Model):
                 plt.imshow(generated_images[index], cmap='gray')
                 plt.axis("off")
         plt.tight_layout()
-        plt.show()
-        plt.close()
+        figure_path = os.path.join(prefix, "diffusion_image_generations" + IMAGE_EXT)
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path, bbox_inches="tight")
 
     def plot_reconstructions(self, batch, diffusion_amount=0,
                              epoch=None, logs=None, num_rows=4, num_cols=4):
