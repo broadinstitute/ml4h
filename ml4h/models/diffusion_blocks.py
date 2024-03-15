@@ -782,6 +782,38 @@ class DiffusionController(keras.Model):
 
         return generated_images
 
+    def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
+        control_batch = {}
+        for cm in self.output_maps:
+            control_batch[cm.output_name()] = np.zeros((self.batch_size,) + cm.shape)
+            if 'Sex' in cm.name:
+                control_batch[cm.output_name()][:, 0] = 1  # all female
+
+        print(f'\nControl batch keys: {list(control_batch.keys())}')
+        control_embed = self.control_embed_model(control_batch)
+
+        # plot random generated images for visual evaluation of generation quality
+        generated_images = self.generate(
+            control_embed,
+            num_images=max(self.batch_size, num_rows * num_cols),
+            diffusion_steps=plot_diffusion_steps,
+            reseed=reseed,
+        )
+
+        plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
+        for row in range(num_rows):
+            for col in range(num_cols):
+                index = row * num_cols + col
+                plt.subplot(num_rows, num_cols, index + 1)
+                plt.plot(generated_images[index, ..., 0])
+                plt.axis("off")
+        plt.tight_layout()
+        figure_path = os.path.join(prefix, "diffusion_generations" + IMAGE_EXT)
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path, bbox_inches="tight")
+
+
 class DiffusionBlock(Block):
     def __init__(
             self,
