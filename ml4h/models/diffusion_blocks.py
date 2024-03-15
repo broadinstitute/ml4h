@@ -498,7 +498,7 @@ class DiffusionController(keras.Model):
         self.output_map = tensor_map
         self.batch_size = batch_size
         self.control_maps = output_maps
-        self.control_embed_model = get_control_embed_model(output_maps, control_size)
+        self.control_embed_model = get_control_embed_model(self.control_maps, control_size)
         self.normalizer = layers.Normalization()
         self.network = get_control_network(self.output_map.shape, widths, block_depth, conv_x, control_size)
         self.ema_network = keras.models.clone_model(self.network)
@@ -602,6 +602,7 @@ class DiffusionController(keras.Model):
     def train_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
         images = batch[1][self.output_map.output_name()]
+        logging.info(f'In Train step with images: {images.shape}')
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=True)
 
