@@ -785,7 +785,7 @@ class DiffusionController(keras.Model):
     def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
         control_batch = {}
         for cm in self.output_maps:
-            control_batch[cm.output_name()] = np.zeros((self.batch_size,) + cm.shape)
+            control_batch[cm.output_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
             if 'Sex' in cm.name:
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
