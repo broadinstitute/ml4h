@@ -171,7 +171,7 @@ def train_diffusion_control_model(args):
 
     base_model_path = f"{args.output_folder}diffusion_{args.tensor_maps_in[0].name}/diffusion_{args.tensor_maps_in[0].name}"
     model = DiffusionController(args.tensor_maps_in[0], args.tensor_maps_out, base_model_path,
-                                args.dense_blocks, args.block_size, args.dense_layers[0])
+                                args.batch_size, args.dense_blocks, args.block_size, args.conv_x, args.dense_layers[0])
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(

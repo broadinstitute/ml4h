@@ -99,6 +99,18 @@ def UpBlock(width, block_depth, conv, upsample, kernel_size):
 
 def layers_from_shape(input_shape):
     if len(input_shape) == 2:
+        return layers.Conv1D, layers.UpSampling1D, layers.AveragePooling1D, tuple(
+            [slice(None), np.newaxis, slice(None)])
+    elif len(input_shape) == 3:
+        return layers.Conv2D, layers.UpSampling2D, layers.AveragePooling2D, tuple(
+            [slice(None), np.newaxis, np.newaxis, slice(None)])
+    elif len(input_shape) == 4:
+        return layers.Conv3D, layers.UpSampling3D, layers.AveragePooling3D, tuple(
+            [slice(None), np.newaxis, np.newaxis, np.newaxis, slice(None)])
+
+
+def layers_from_shape(input_shape):
+    if len(input_shape) == 2:
         return layers.Conv1D, layers.UpSampling1D, layers.AveragePooling1D
     elif len(input_shape) == 3:
         return layers.Conv2D, layers.UpSampling2D, layers.AveragePooling2D
@@ -135,29 +147,34 @@ def get_network(input_shape, widths, block_depth, kernel_size):
 
 def get_control_network(input_shape, widths, block_depth, control_size):
     noisy_images = keras.Input(shape=input_shape)
-    noise_variances = keras.Input(shape=(1, 1, 1))
+    noise_variances = keras.Input(shape=[1] * len(input_shape))
+
+    conv, upsample, pool, control_idxs = layers_from_shape(input_shape)
     control = keras.Input(shape=(control_size,))
 
-    x = layers.Conv2D(widths[0], kernel_size=1)(noisy_images)
-
+    x = conv(widths[0], kernel_size=1)(noisy_images)
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
-    e = layers.UpSampling2D(size=input_shape[:-1], interpolation="nearest")(e)
 
-    c = layers.UpSampling2D(size=input_shape[:-1], interpolation="nearest")(control[:, np.newaxis, np.newaxis, :])
-
+    if len(input_shape) == 2:  # 1D Signal
+        up_size = input_shape[0]
+    else:
+        up_size = input_shape[:-1]
+    e = upsample(size=up_size)(e)
+    c = upsample(size=up_size)(control[control_idxs])
+    print(f'Control upsampled shape shape: {c.shape}')
     x = layers.Concatenate()([x, e, c])
 
     skips = []
     for width in widths[:-1]:
-        x = DownBlock(width, block_depth)([x, skips])
+        x = DownBlock(width, block_depth, conv, pool)([x, skips])
 
     for _ in range(block_depth):
-        x = ResidualBlock(widths[-1])(x)
+        x = ResidualBlock(widths[-1], conv)(x)
 
     for width in reversed(widths[:-1]):
-        x = UpBlock(width, block_depth)([x, skips])
+        x = UpBlock(width, block_depth, conv, upsample)([x, skips])
 
-    x = layers.Conv2D(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
+    x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances, control], x, name="control_unet")
 
@@ -275,7 +292,7 @@ class DiffusionModel(keras.Model):
         # images = images['input_lax_4ch_diastole_slice0_224_3d_continuous']
         images = self.normalizer(images, training=True)
         # images = images.numpy() - images.numpy().mean() / images.numpy().std()
-        noises = tf.random.normal(shape=(batch_size,) + self.tensor_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
@@ -314,7 +331,7 @@ class DiffusionModel(keras.Model):
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
         # images = images - tf.math.reduce_mean(images) / tf.math.reduce_std(images)
-        noises = tf.random.normal(shape=(batch_size,) + self.tensor_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
@@ -339,7 +356,7 @@ class DiffusionModel(keras.Model):
         # this is computationally demanding, kid_diffusion_steps has to be small
         images = self.denormalize(images)
         generated_images = self.generate(
-            num_images=batch_size, diffusion_steps=20
+            num_images=self.batch_size, diffusion_steps=20
         )
         #         self.kid.update_state(images, generated_images)
 
@@ -368,7 +385,7 @@ class DiffusionModel(keras.Model):
     def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
-            num_images=max(batch_size, num_rows * num_cols),
+            num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
         )
 
@@ -390,7 +407,7 @@ class DiffusionModel(keras.Model):
         images = images_original[0][self.tensor_map.input_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
-        noises = tf.random.normal(shape=(batch_size,) + self.tensor_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
 
         diffusion_times = diffusion_amount * tf.ones(shape=[self.batch_size, ] + [1] * self.tensor_map.axes())
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
@@ -414,7 +431,7 @@ class DiffusionModel(keras.Model):
 
     def in_paint(self, images_original, masks, diffusion_steps=64, num_rows=3, num_cols=6):
         images = images_original[0][self.tensor_map.input_name()]
-        noises = tf.random.normal(shape=(batch_size,) + self.tensor_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
         # reverse diffusion = sampling
         num_images = images.shape[0]
         step_size = 1.0 / max(0.0001, diffusion_steps)
@@ -459,13 +476,13 @@ class DiffusionModel(keras.Model):
 
 
 class DiffusionController(keras.Model):
-    def __init__(self, tensor_map, output_maps, base_model_path, widths, block_depth, control_size):
+    def __init__(self, tensor_map, output_maps, base_model_path, batch_size, widths, block_depth, conv_x, control_size):
         super().__init__()
 
-        self.diffusion_model = DiffusionModel(tensor_map, widths, block_depth)
+        self.diffusion_model = DiffusionModel(tensor_map, batch_size, widths, block_depth, conv_x)
         self.diffusion_model.load_weights(base_model_path)
-
         self.input_map = tensor_map
+        self.batch_size = batch_size
         self.output_maps = output_maps
         self.control_embed_model = get_control_embed_model(output_maps, control_size)
         self.normalizer = layers.Normalization()
@@ -576,11 +593,11 @@ class DiffusionController(keras.Model):
 
         control_embed = self.control_embed_model(batch[1])
 
-        noises = tf.random.normal(shape=(batch_size,) + self.input_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=(batch_size, 1, 1, 1), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.tensor_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -621,7 +638,7 @@ class DiffusionController(keras.Model):
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=(batch_size, 1, 1, 1), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.tensor_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -642,7 +659,7 @@ class DiffusionController(keras.Model):
         # this is computationally demanding, kid_diffusion_steps has to be small
         images = self.denormalize(images)
         generated_images = self.generate(
-            control_embed, num_images=batch_size, diffusion_steps=20
+            control_embed, num_images=self.batch_size, diffusion_steps=20
         )
         #         self.kid.update_state(images, generated_images)
 
@@ -651,7 +668,7 @@ class DiffusionController(keras.Model):
     def plot_images(self, epoch=None, logs=None, num_rows=2, num_cols=8):
         control_batch = {}
         for cm in self.output_maps:
-            control_batch[cm.output_name()] = np.zeros((batch_size,) + cm.shape)
+            control_batch[cm.output_name()] = np.zeros((self.batch_size,) + cm.shape)
             if 'Sex' in cm.name:
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
@@ -680,9 +697,8 @@ class DiffusionController(keras.Model):
         images = batch[0][self.input_map.input_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
-        noises = tf.random.normal(shape=(batch_size,) + self.input_map.shape)
-
-        diffusion_times = diffusion_amount * tf.ones(shape=(batch_size, 1, 1, 1))
+        noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
+        diffusion_times = diffusion_amount * tf.ones(shape = [self.batch_size, ] + [1] * self.tensor_map.axes())
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
@@ -710,7 +726,7 @@ class DiffusionController(keras.Model):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
-            num_images=max(batch_size, num_rows * num_cols),
+            num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
             reseed=reseed,
             renoise=renoise,
@@ -734,7 +750,7 @@ class DiffusionController(keras.Model):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate_from_noise(
             control_embed,
-            num_images=max(batch_size, num_rows * num_cols),
+            num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
             initial_noise=initial_noise,
         )
