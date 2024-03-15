@@ -609,7 +609,7 @@ class DiffusionController(keras.Model):
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=[self.batch_size, ] + [1] * self.tensor_map.axes(), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.input_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
@@ -650,7 +650,7 @@ class DiffusionController(keras.Model):
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
-            shape=[self.batch_size, ] + [1] * self.tensor_map.axes(), minval=0.0, maxval=1.0
+            shape=[self.batch_size, ] + [1] * self.input_map.axes(), minval=0.0, maxval=1.0
         )
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
