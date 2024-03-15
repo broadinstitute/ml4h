@@ -795,7 +795,7 @@ class DiffusionController(keras.Model):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
-            num_images=min(self.batch_size, num_rows * num_cols),
+            num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
             reseed=reseed,
         )
