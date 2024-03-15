@@ -145,11 +145,23 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     return keras.Model([noisy_images, noise_variances], x, name="residual_unet")
 
 
+def layers_from_shape_control(input_shape):
+    if len(input_shape) == 2:
+        return layers.Conv1D, layers.UpSampling1D, layers.AveragePooling1D, tuple(
+            [slice(None), np.newaxis, slice(None)])
+    elif len(input_shape) == 3:
+        return layers.Conv2D, layers.UpSampling2D, layers.AveragePooling2D, tuple(
+            [slice(None), np.newaxis, np.newaxis, slice(None)])
+    elif len(input_shape) == 4:
+        return layers.Conv3D, layers.UpSampling3D, layers.AveragePooling3D, tuple(
+            [slice(None), np.newaxis, np.newaxis, np.newaxis, slice(None)])
+
+
 def get_control_network(input_shape, widths, block_depth, kernel_size, control_size):
     noisy_images = keras.Input(shape=input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
-    conv, upsample, pool, control_idxs = layers_from_shape(input_shape)
+    conv, upsample, pool, control_idxs = layers_from_shape_control(input_shape)
     control = keras.Input(shape=(control_size,))
 
     x = conv(widths[0], kernel_size=1)(noisy_images)
