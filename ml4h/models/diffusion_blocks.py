@@ -603,7 +603,7 @@ class DiffusionController(keras.Model):
         # normalize images to have standard deviation of 1, like the noises
         images = batch[1][self.output_map.output_name()]
         logging.info(f'In Train step with images: {images.shape}')
-        self.normalizer.update_state(images)
+        #self.normalizer.update_state(images)
         images = self.normalizer(images, training=True)
 
         control_embed = self.control_embed_model(batch[0])
