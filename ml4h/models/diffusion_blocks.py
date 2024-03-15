@@ -605,7 +605,7 @@ class DiffusionController(keras.Model):
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=True)
 
-        control_embed = self.control_embed_model(batch[1])
+        control_embed = self.control_embed_model(batch[0])
 
         noises = tf.random.normal(shape=(self.batch_size,) + self.output_map.shape)
 
@@ -646,7 +646,7 @@ class DiffusionController(keras.Model):
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
 
-        control_embed = self.control_embed_model(batch[1])
+        control_embed = self.control_embed_model(batch[0])
 
         noises = tf.random.normal(shape=(batch_size,) + self.output_map.shape)
 
@@ -718,7 +718,7 @@ class DiffusionController(keras.Model):
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
 
-        control_embed = self.control_embed_model(batch[1])
+        control_embed = self.control_embed_model(batch[0])
 
         # use the network to separate noisy images to their components
         pred_noises, generated_images = self.denoise(
