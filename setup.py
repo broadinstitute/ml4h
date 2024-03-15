@@ -7,13 +7,13 @@ requirements = (here / 'docker/vm_boot_images/config/tensorflow-requirements.txt
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
     name='ml4h',
-    version='0.0.7',
+    version='0.0.11rc1',
     description='Machine Learning for Health python package',
     long_description=long_description,  # Optional
     long_description_content_type='text/markdown',
     url='https://github.com/broadinstitute/ml4h',
     python_requires='>=3.6',
-    #install_requires=["ml4ht", "tensorflow", "pytest", "numcodecs"], # requirements
-    install_requires=requirements,
+    install_requires=["ml4ht", "tensorflow", "pytest", "numcodecs"], # requirements
+    #install_requires=requirements,
     packages=find_packages(),
 )
