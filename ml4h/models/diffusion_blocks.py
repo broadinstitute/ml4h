@@ -145,7 +145,7 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     return keras.Model([noisy_images, noise_variances], x, name="residual_unet")
 
 
-def get_control_network(input_shape, widths, block_depth, control_size):
+def get_control_network(input_shape, widths, block_depth, kernel_size, control_size):
     noisy_images = keras.Input(shape=input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
@@ -166,13 +166,13 @@ def get_control_network(input_shape, widths, block_depth, control_size):
 
     skips = []
     for width in widths[:-1]:
-        x = DownBlock(width, block_depth, conv, pool)([x, skips])
+        x = DownBlock(width, block_depth, conv, pool, kernel_size)([x, skips])
 
     for _ in range(block_depth):
-        x = ResidualBlock(widths[-1], conv)(x)
+        x = ResidualBlock(widths[-1], conv, kernel_size)(x)
 
     for width in reversed(widths[:-1]):
-        x = UpBlock(width, block_depth, conv, upsample)([x, skips])
+        x = UpBlock(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
     x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
@@ -486,7 +486,7 @@ class DiffusionController(keras.Model):
         self.output_maps = output_maps
         self.control_embed_model = get_control_embed_model(output_maps, control_size)
         self.normalizer = layers.Normalization()
-        self.network = get_control_network(self.input_map.shape, widths, block_depth, control_size)
+        self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size)
         self.ema_network = keras.models.clone_model(self.network)
 
     def compile(self, **kwargs):
