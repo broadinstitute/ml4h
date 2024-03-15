@@ -712,7 +712,7 @@ class DiffusionController(keras.Model):
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
-        diffusion_times = diffusion_amount * tf.ones(shape = [self.batch_size, ] + [1] * self.tensor_map.axes())
+        diffusion_times = diffusion_amount * tf.ones(shape = [self.batch_size, ] + [1] * self.input_map.axes())
         noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
