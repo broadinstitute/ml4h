@@ -601,7 +601,7 @@ class DiffusionController(keras.Model):
 
     def train_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
-        images = batch[0][self.output_map.input_name()]
+        images = batch[0][self.output_map.output_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=True)
 
@@ -642,7 +642,7 @@ class DiffusionController(keras.Model):
 
     def test_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
-        images = batch[0][self.output_map.input_name()]
+        images = batch[0][self.output_map.output_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
 
@@ -709,7 +709,7 @@ class DiffusionController(keras.Model):
 
     def plot_reconstructions(self, batch, diffusion_amount=0,
                              epoch=None, logs=None, num_rows=4, num_cols=4):
-        images = batch[0][self.output_map.input_name()]
+        images = batch[0][self.output_map.output_name()]
         self.normalizer.update_state(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(self.batch_size,) + self.output_map.shape)
