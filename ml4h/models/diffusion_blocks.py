@@ -805,7 +805,8 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.plot(generated_images[index, 0])
+                for lead in range(generated_images.shape[-1]):
+                    plt.plot(generated_images[index, :, lead], label=lead)
                 plt.axis("off")
         plt.tight_layout()
         figure_path = os.path.join(prefix, "diffusion_generations" + IMAGE_EXT)
