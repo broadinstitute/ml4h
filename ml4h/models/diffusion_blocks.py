@@ -195,6 +195,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
 
 def get_control_embed_model(output_maps, control_size):
     control_ins = []
+    logging.info(f'Build control embedder on :{output_maps}')
     for cm in output_maps:
         control_ins.append(keras.Input(shape=cm.shape, name=cm.output_name()))
     c = layers.Concatenate()(control_ins)
@@ -498,7 +499,7 @@ class DiffusionController(keras.Model):
         self.input_map = tensor_map
         self.batch_size = batch_size
         self.output_maps = output_maps
-        self.control_embed_model = get_control_embed_model(output_maps, control_size)
+        self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
         self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size)
         self.ema_network = keras.models.clone_model(self.network)
