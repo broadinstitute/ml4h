@@ -536,7 +536,7 @@ def _process_args(args):
                 ),
             )
     if args.latent_output_file is not None:
-        args.tensor_maps_in.append(
+        args.tensor_maps_out.append(
             generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0))
         )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
