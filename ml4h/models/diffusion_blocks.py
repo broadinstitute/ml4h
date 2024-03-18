@@ -811,7 +811,7 @@ class DiffusionController(keras.Model):
                     plt.plot(generated_images[index, :, lead], label=lead)
                 plt.axis("off")
         plt.tight_layout()
-        figure_path = os.path.join(prefix, "diffusion_generations" + IMAGE_EXT)
+        figure_path = os.path.join(prefix, "diffusion_ecg_generations" + IMAGE_EXT)
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
