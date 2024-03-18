@@ -138,7 +138,7 @@ Ideally, each release should be available on our [github releases page](https://
 In addition, the version # in setup.py should be incremented. 
 The pip installable [ml4h package on pypi should also be updated](https://pypi.org/project/ml4h/). 
 
-If the release changed the docker image, the new dockers both (CPU & GPU) should update the “latest” tag and should be pushed to both gcr: `gcr.io/broad-ml4cvd/deeplearning`, and the [ml4h github container repo](https://github.com/broadinstitute/ml4h/pkgs/container/ml4h) with appropriate tags (e.g. `tf2.9-latest-gpu` for the latest GPU docker image or `tf2.9-latest-cpu` for the CPU) at the: ` ghcr.io/broadinstitute/ml4h`
+If the release changed the docker image, the new dockers both (CPU & GPU) should update the “latest” tag and should be pushed to both gcr: `gcr.io/broad-ml4cvd/deeplearning`, and the [ml4h github container repo](https://github.com/broadinstitute/ml4h/pkgs/container/ml4h) with appropriate tags (e.g. `tf2.9-latest-gpu` for the latest GPU docker image or `tf2.9-latest-cpu` for the CPU) at: ` ghcr.io/broadinstitute/ml4h`
 
 
 ## Command line interface
