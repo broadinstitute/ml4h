@@ -26,7 +26,6 @@ embedding_dims = 256
 embedding_max_frequency = 1000.0
 
 # optimization
-batch_size = 4
 ema = 0.999
 learning_rate = 5e-4
 weight_decay = 1e-4
@@ -649,7 +648,7 @@ class DiffusionController(keras.Model):
 
         control_embed = self.control_embed_model(batch[1])
 
-        noises = tf.random.normal(shape=(batch_size,) + self.input_map.shape)
+        noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
 
         # sample uniform random diffusion times
         diffusion_times = tf.random.uniform(
