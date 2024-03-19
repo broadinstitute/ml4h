@@ -494,7 +494,7 @@ class DiffusionController(keras.Model):
     def __init__(self, tensor_map, output_maps, base_model_path, batch_size, widths, block_depth, conv_x, control_size):
         super().__init__()
 
-        self.diffusion_model = DiffusionModel(tensor_map, batch_size, widths, block_depth, conv_x)
+        #self.diffusion_model = DiffusionModel(tensor_map, batch_size, widths, block_depth, conv_x)
         #self.diffusion_model.load_weights(base_model_path)
         self.input_map = tensor_map
         self.batch_size = batch_size
