@@ -160,9 +160,9 @@ def train_diffusion_model(args):
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     if args.inspect_model:
         if model.tensor_map.axes() == 2:
-            model.plot_ecgs(num_rows=4, prefix=os.path.dirname(checkpoint_path) + '/generations')
+            model.plot_ecgs(num_rows=4, prefix=os.path.dirname(checkpoint_path))
         else:
-            model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path)+'/generations')
+            model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path))
     return model
 
 
