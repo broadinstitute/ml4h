@@ -15,8 +15,9 @@ jobs:
           credentials_json: '${{ secrets.B64_GCLOUD_SERVICE_ACCOUNT_JSON }}'
       - name: Building and pushing the image
         run: |
-          docker login ghcr.io -u abaumann -p ${github_token}
+          docker login ghcr.io -u ${github_username} -p ${github_token}
           ./docker/vm_boot_images/build.sh -P
           ./docker/vm_boot_images/build.sh -c -P
         env:
           github_token: ${{ secrets.GHCR_TOKEN }}
+          github_username: ${{ secrets.GHCR_USERNAME }}
