@@ -4,6 +4,7 @@ on:
     tags:        
       - '*'           # Push events to every tag not containing / 
 
+
 jobs:
   build-and-push-to-gcr-service-account:
     name: Build & push to GCR/GHCR
