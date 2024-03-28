@@ -19,6 +19,7 @@ jobs:
       - name: Building and pushing the image
         run: |
           docker login ghcr.io -u ${github_username} -p ${github_token}
+          yes | gcloud auth configure-docker gcr.io
           ./docker/vm_boot_images/build.sh -P
           ./docker/vm_boot_images/build.sh -c -P
         env:
