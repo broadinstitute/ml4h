@@ -2,7 +2,7 @@ name: Push to GCR/GHCR GitHub Action
 on: 
   push:
     tags:        
-      - '*'           # Push events to every tag not containing /
+      - '*'           # Push events to every tag not containing / 
 
 jobs:
   build-and-push-to-gcr-service-account:

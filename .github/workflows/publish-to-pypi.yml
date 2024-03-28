@@ -3,7 +3,7 @@ name: Publish Python 🐍 distribution 📦 to PyPI
 on: 
   push:
     tags:        
-      - '*'           # Push events to every tag not containing /
+      - '*'           # Push events to every tag not containing / 
 
 jobs:
   build:
