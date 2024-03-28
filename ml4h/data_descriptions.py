@@ -211,7 +211,7 @@ class ECGDataDescription(DataDescription):
             sites = [
                 decompress_data(
                     data_compressed=hd5[f'{self.hd5_path_to_ecg}/{date}/sitename'][()],
-                    dtype='str'
+                    dtype='str',
                 )
                 for date in dates
             ]
@@ -369,6 +369,15 @@ class DataFrameDataDescription(DataDescription):
 def one_hot_sex(x):
     return np.array([1, 0], dtype=np.float32) if x in [0, "Female"] else np.array([0, 1], dtype=np.float32)
 
+def one_hot_n(n):
+    def one_hot(x):
+        if x in ["Female", "Male"]:
+            return one_hot_sex(x)
+        else:
+            a = np.zeros((n), dtype=np.float32)
+            a[int(x)] = 1
+            return a
+    return one_hot
 
 def make_zscore(mu, std):
     def zscore(x):
@@ -380,6 +389,7 @@ def dataframe_data_description_from_tensor_map(
         tensor_map: TensorMap,
         dataframe: pd.DataFrame,
         is_input: bool = False,
+        do_zscore: bool = True,
 ) -> DataDescription:
     if tensor_map.is_survival_curve():
         if tensor_map.name == 'survival_curve_af':
@@ -396,9 +406,11 @@ def dataframe_data_description_from_tensor_map(
             event_column=event_column,
         )
     if tensor_map.is_categorical():
-        process_col = one_hot_sex
-    else:
+        process_col = one_hot_n(len(tensor_map.channel_map))
+    elif do_zscore:
         process_col = make_zscore(dataframe[tensor_map.name].mean(), dataframe[tensor_map.name].std())
+    else:
+        process_col = lambda x:x
     return DataFrameDataDescription(
         dataframe,
         col=tensor_map.name,
@@ -440,7 +452,8 @@ class SurvivalWideFile(DataDescription):
         row = self.wide_df.loc[sample_id]
         ecg_date = pd.to_datetime(row[DATE_OPTION_KEY])
         start_date = ecg_date + (
-                    pd.to_timedelta(row[self.start_age_column]) - pd.to_timedelta(row[self.ecg_age_column]))
+                    pd.to_timedelta(row[self.start_age_column]) - pd.to_timedelta(row[self.ecg_age_column])
+        )
         return [{
             DATE_OPTION_KEY: ecg_date,
             'start_date': start_date,
@@ -478,7 +491,8 @@ class SurvivalWideFile(DataDescription):
             cur_date = ecg_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[self.intervals + i] = has_disease * float(
-                censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval),
+            )
         # Handle prevalent diseases
         if has_disease and pd.to_timedelta(row[self.event_age]) <= pd.to_timedelta(ecg_age):
             survival_then_censor[self.intervals] = has_disease

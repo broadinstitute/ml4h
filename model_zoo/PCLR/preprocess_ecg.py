@@ -7,7 +7,6 @@ LEADS = [
     'V1', 'V2', 'V3', 'V4', 'V5', 'V6',
 ]
 
-
 def process_ecg(ecg: Dict[str, np.ndarray], ecg_samples: int = 4096) -> np.ndarray:
     """
     Prepares an ECG for use in a tensorflow model

@@ -46,7 +46,7 @@ def CLOCS_model() -> Model:
         activation="relu",
         num_channels=12,
     )
-    optimizer = tf.keras.optimizers.Adam(1e-2)
+    optimizer = tf.keras.optimizers.Adam(1e-1)
     model.compile(
         loss=[simclr_loss],
         metrics=[simclr_accuracy],
