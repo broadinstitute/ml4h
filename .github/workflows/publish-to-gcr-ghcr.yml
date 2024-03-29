@@ -20,7 +20,9 @@ jobs:
         run: |
           docker login ghcr.io -u ${github_username} -p ${github_token}
           yes | gcloud auth configure-docker gcr.io
+          docker system prune -a
           ./docker/vm_boot_images/build.sh -P
+          docker system prune -a
           ./docker/vm_boot_images/build.sh -c -P
         env:
           github_token: ${{ secrets.GHCR_TOKEN }}
