@@ -393,7 +393,7 @@ class DiffusionModel(keras.Model):
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}.{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}{IMAGE_EXT}')
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
@@ -414,7 +414,7 @@ class DiffusionModel(keras.Model):
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'diffusion_ecg_generations_{now_string}.{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'diffusion_ecg_generations_{now_string}{IMAGE_EXT}')
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
@@ -706,7 +706,7 @@ class DiffusionController(keras.Model):
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}.{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}{IMAGE_EXT}')
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
@@ -815,7 +815,7 @@ class DiffusionController(keras.Model):
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}.{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}{IMAGE_EXT}')
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
