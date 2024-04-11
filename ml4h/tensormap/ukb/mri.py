@@ -414,6 +414,11 @@ lax_4ch_diastole_slice0_224_224_3d = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
+lax_4ch_diastole_slice0_256_256_3d = TensorMap(
+    'lax_4ch_diastole_slice0_256_256_3d', Interpretation.CONTINUOUS, shape=(256, 256, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
+)
 
 lax_4ch_random_slice_3d = TensorMap(
     'lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
