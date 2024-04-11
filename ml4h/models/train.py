@@ -140,6 +140,7 @@ def train_diffusion_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
+        model.network.summary(print_fn=logging.info, expand_nested=True)
 
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
@@ -209,6 +210,7 @@ def train_diffusion_control_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
+        model.network.summary(print_fn=logging.info, expand_nested=True)
 
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
