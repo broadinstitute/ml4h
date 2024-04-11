@@ -127,7 +127,7 @@ def get_network(input_shape, widths, block_depth, kernel_size):
 
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
     # e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
-    e = upsample(size=input_shape[-2])(e)
+    e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
     print(f'e shape: {e.shape}')
     x = conv(widths[0], kernel_size=1)(noisy_images)
     x = layers.Concatenate()([x, e])
