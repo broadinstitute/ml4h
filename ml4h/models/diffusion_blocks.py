@@ -35,7 +35,7 @@ weight_decay = 1e-4
 plot_diffusion_steps = 20
 
 
-def sinusoidal_embedding(x, dims=1):
+def sinusoidal_embedding(x, dims=2):
     embedding_min_frequency = 1.0
     frequencies = tf.exp(
         tf.linspace(
@@ -128,7 +128,7 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
     # e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
     e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
-    print(f'e shape: {e.shape}')
+    logging.info(f'Up-sampled e shape: {e.shape}')
     x = conv(widths[0], kernel_size=1)(noisy_images)
     x = layers.Concatenate()([x, e])
 
