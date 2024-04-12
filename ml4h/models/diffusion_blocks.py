@@ -22,10 +22,6 @@ Tensor = tf.Tensor
 min_signal_rate = 0.02
 max_signal_rate = 0.95
 
-# architecture
-embedding_dims = 256
-embedding_max_frequency = 1000.0
-
 # optimization
 ema = 0.999
 learning_rate = 5e-4
@@ -35,25 +31,28 @@ weight_decay = 1e-4
 plot_diffusion_steps = 20
 
 
-def sinusoidal_embedding(x, dims=2):
-    embedding_min_frequency = 1.0
-    frequencies = tf.exp(
-        tf.linspace(
-            tf.math.log(embedding_min_frequency),
-            tf.math.log(embedding_max_frequency),
-            embedding_dims // 2,
+def make_sinusoidal_embedding_fxn(dims, embedding_dims, embedding_max_frequency = 1000.0):
+    def sinusoidal_embedding(x):
+        embedding_min_frequency = 1.0
+        frequencies = tf.exp(
+            tf.linspace(
+                tf.math.log(embedding_min_frequency),
+                tf.math.log(embedding_max_frequency),
+                embedding_dims // 2,
+            )
         )
-    )
-    angular_speeds = 2.0 * math.pi * frequencies
-    if dims == 1:
-        embeddings = tf.concat([tf.sin(angular_speeds * x)], axis=2)
-    elif dims == 2:
-        embeddings = tf.concat([tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3)
-    elif dims == 3:
-        embeddings = tf.concat([tf.sin(angular_speeds * x), tf.cos(angular_speeds * x), -tf.sin(angular_speeds * x)],
-                               axis=4)
+        angular_speeds = 2.0 * math.pi * frequencies
+        if dims == 1:
+            embeddings = tf.concat([tf.sin(angular_speeds * x)], axis=2)
+        elif dims == 2:
+            embeddings = tf.concat([tf.sin(angular_speeds * x), tf.cos(angular_speeds * x)], axis=3)
+        elif dims == 3:
+            embeddings = tf.concat(
+                [tf.sin(angular_speeds * x), tf.cos(angular_speeds * x), -tf.sin(angular_speeds * x)],
+                axis=4)
 
-    return embeddings
+        return embeddings
+    return sinusoidal_embedding
 
 
 def ResidualBlock(width, conv, kernel_size):
@@ -120,12 +119,13 @@ def layers_from_shape(input_shape):
         return layers.Conv3D, layers.UpSampling3D, layers.AveragePooling3D
 
 
-def get_network(input_shape, widths, block_depth, kernel_size):
+def get_network(input_shape, widths, block_depth, kernel_size, embedding_dims):
     noisy_images = keras.Input(shape=input_shape)
     conv, upsample, pool = layers_from_shape(input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
-    e = layers.Lambda(sinusoidal_embedding)(noise_variances)
+    sinusoidal_embedding_fxn = make_sinusoidal_embedding_fxn(len(input_shape)-1, embedding_dims)
+    e = layers.Lambda(sinusoidal_embedding_fxn)(noise_variances)
     # e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
     e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
     logging.info(f'Up-sampled e shape: {e.shape}')
@@ -159,7 +159,7 @@ def layers_from_shape_control(input_shape):
             [slice(None), np.newaxis, np.newaxis, np.newaxis, slice(None)])
 
 
-def get_control_network(input_shape, widths, block_depth, kernel_size, control_size):
+def get_control_network(input_shape, widths, block_depth, kernel_size, control_size, embedding_dims):
     noisy_images = keras.Input(shape=input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
@@ -167,7 +167,8 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
     control = keras.Input(shape=(control_size,))
 
     x = conv(widths[0], kernel_size=1)(noisy_images)
-    e = layers.Lambda(sinusoidal_embedding)(noise_variances)
+    sinusoidal_embedding_fxn = make_sinusoidal_embedding_fxn(len(input_shape)-1, embedding_dims)
+    e = layers.Lambda(sinusoidal_embedding_fxn)(noise_variances)
 
     if len(input_shape) == 2:  # 1D Signal
         up_size = input_shape[0]
@@ -204,13 +205,13 @@ def get_control_embed_model(output_maps, control_size):
 
 
 class DiffusionModel(keras.Model):
-    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size):
+    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, embedding_dims):
         super().__init__()
 
         self.tensor_map = tensor_map
         self.batch_size = batch_size
         self.normalizer = layers.Normalization()
-        self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
+        self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size, embedding_dims)
         self.ema_network = keras.models.clone_model(self.network)
 
     def can_apply(self):
@@ -503,7 +504,7 @@ class DiffusionController(keras.Model):
         self.output_maps = output_maps
         self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
-        self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size)
+        self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size, control_size)
         self.ema_network = keras.models.clone_model(self.network)
 
     def compile(self, **kwargs):
@@ -839,7 +840,7 @@ class DiffusionBlock(Block):
         if not self.can_apply():
             return
 
-        self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size, conv_x)
+        self.diffusion_model = DiffusionModel(tensor_map, dense_blocks, block_size, conv_x, dense_layers[0])
         import tensorflow_addons as tfa
         self.diffusion_model.compile(
             optimizer=tfa.optimizers.AdamW(
