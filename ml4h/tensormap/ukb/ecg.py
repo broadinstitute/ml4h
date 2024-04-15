@@ -127,7 +127,7 @@ def _warp_ecg(ecg):
 
 
 def _make_ecg_rest(
-        instance: int = 0, downsample_steps: int = 0,
+        instance: int = 2, downsample_steps: int = 0,
         short_time_nperseg: int = 0, short_time_noverlap: int = 0,
         skip_poor: bool = False, random_offset: int = 0,
 ):
