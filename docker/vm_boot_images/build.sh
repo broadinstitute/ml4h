@@ -19,11 +19,11 @@ CPU_ONLY="false"
 PUSH_TO_GCR="false"
 PUSH_TO_LATEST="false"
 
-BASE_IMAGE_GPU="tensorflow/tensorflow:2.9.1-gpu"
-BASE_IMAGE_CPU="tensorflow/tensorflow:2.9.1"
+BASE_IMAGE_GPU="tensorflow/tensorflow:2.16.1-gpu"
+BASE_IMAGE_CPU="tensorflow/tensorflow:2.16.1"
 
-LATEST_TAG_GPU="tf2.9-latest-gpu"
-LATEST_TAG_CPU="tf2.9-latest-cpu"
+LATEST_TAG_GPU="tf2.16-latest-gpu"
+LATEST_TAG_CPU="tf2.16-latest-cpu"
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
