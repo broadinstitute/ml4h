@@ -8,7 +8,7 @@ from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 
 import tensorflow as tf
-from tensorflow import keras
+import keras
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
 from tensorflow_hub import KerasLayer
