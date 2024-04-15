@@ -34,7 +34,7 @@ WORKDIR /app
 # RUN pip3 uninstall -y fastai
 # RUN ./fastai.sh
 
-RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
+#RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
 
 # Requirements for the tensorflow project
 RUN pip3 install --upgrade pip
