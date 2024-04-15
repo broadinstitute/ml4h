@@ -1,12 +1,12 @@
 pydot
 nibabel==4.0.2
 pydicom==1.2.2
-# hyperopt==0.1.2
-seaborn==0.11.2
+#hyperopt
+seaborn
 scikit-image
 biosppy
-vtk==9.2.6
-imageio==2.6.1
+#vtk==9.2.6
+imageio
 ipywidgets>=7.5.1
 bokeh
 pillow
