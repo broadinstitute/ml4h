@@ -13,7 +13,7 @@ pillow
 notebook
 pytest
 pysam
-tensorflow==2.16.1-gpu
+tensorflow==2.16.1
 tensorflow-addons
 tensorflow_hub
 tensorflow_probability
