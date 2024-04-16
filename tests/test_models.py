@@ -467,7 +467,7 @@ class TestModelPerformance:
             activation='relu',
             learning_rate=1e-3,
             bottleneck_type=BottleneckType.GlobalAveragePoolStructured,
-            optimizer='radam',
+            optimizer='adam',
             dense_layers=[16, 64],
             conv_layers=[32],
             dense_blocks=[32, 24, 16],
