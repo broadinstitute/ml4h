@@ -134,7 +134,8 @@ def make_multimodal_multitask_model(
     full_model.compile(
         optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    full_model.summary(print_fn=logging.info, expand_nested=True)
+    full_model.summary()
+    #full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
         full_model.load_weights(kwargs['model_layers'], by_name=True)
         logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
@@ -308,7 +309,8 @@ def _load_model_encoders_and_decoders(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    m.summary(print_fn=logging.info, expand_nested=True)
+    m.summary()
+    #m.summary(print_fn=logging.info, expand_nested=True)
     logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
