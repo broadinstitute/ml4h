@@ -35,8 +35,9 @@ WORKDIR /app
 # RUN ./fastai.sh
 
 RUN apt-get update
-RUN apt-get install python3-tk libgl1-mesa-glx libxt-dev -y
-RUN apt-get install -y wget unzip curl python3-pydot python3-pydot-ng graphviz git pip ffmpeg
+RUN apt-get upgrade
+RUN apt-get install python3 python3-pip python3-tk libgl1-mesa-glx libxt-dev -y
+RUN apt-get install -y wget unzip curl python3-pydot python3-pydot-ng graphviz git ffmpeg
 
 # Requirements for the tensorflow project
 RUN pip3 install --upgrade pip
