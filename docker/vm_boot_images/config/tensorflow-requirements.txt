@@ -3,7 +3,7 @@ nibabel==4.0.2
 pydicom==1.2.2
 #hyperopt
 seaborn
-scikit-image
+#scikit-image
 biosppy
 #vtk==9.2.6
 imageio
