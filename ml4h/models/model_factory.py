@@ -17,7 +17,7 @@ from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
 from ml4h.models.diffusion_blocks import DiffusionBlock
-from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
+from ml4h.optimizers import get_optimizer
 from ml4h.models.perceiver_blocks import PerceiverEncoder, PerceiverLatentLayer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
@@ -317,7 +317,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     custom_objects = {
         obj.__name__: obj
         for obj in chain(
-            NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
+            ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
                 VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss,
