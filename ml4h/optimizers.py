@@ -47,9 +47,9 @@ def _get_learning_rate_schedule(learning_rate: float, learning_rate_schedule: st
         raise ValueError(f'Learning rate schedule "{learning_rate_schedule}" unknown.')
 
 
-NON_KERAS_OPTIMIZERS = {
-    'radam': RectifiedAdam,
-}
+# NON_KERAS_OPTIMIZERS = {
+#     'radam': RectifiedAdam,
+# }
 
 
 def find_learning_rate(model: Model, generate_train: TensorGenerator, steps: int, output_folder: str = None) -> Optional[float]:
