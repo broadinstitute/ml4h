@@ -15,7 +15,6 @@ from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, 
 
 # Keras imports
 import tensorflow as tf
-import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
@@ -60,15 +59,14 @@ ACTIVATION_CLASSES = {
 }
 ACTIVATION_FUNCTIONS = {
     'swish': tf.nn.swish,
-    'gelu': tfa.activations.gelu,
-    'lisht': tfa.activations.lisht,
-    'mish': tfa.activations.mish,
+    'gelu': tf.keras.activations.gelu,
+    'mish': tf.keras.activations.mish,
 }
 NORMALIZATION_CLASSES = {
     'batch_norm': BatchNormalization,
     'layer_norm': LayerNormalization,
-    'instance_norm': tfa.layers.InstanceNormalization,
-    'poincare_norm': tfa.layers.PoincareNormalize,
+    #'instance_norm': tfa.layers.InstanceNormalization,
+    #'poincare_norm': tfa.layers.PoincareNormalize,
 }
 # PREPROCESS_CLASSES = {
 #     'zoom': RandomZoom,
