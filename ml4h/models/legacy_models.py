@@ -4,44 +4,35 @@
 
 # Imports
 import os
-import time
 import logging
 import numpy as np
 from enum import Enum, auto
-from itertools import chain
-from abc import ABC, abstractmethod
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
+from typing import Dict, List, Tuple, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
 
 # Keras imports
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
 from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 from tensorflow.keras.regularizers import L1, L2
-import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
 from ml4h.models.model_factory import get_custom_objects
-from ml4h.plots import plot_metric_history
 from ml4h.TensorMap import TensorMap, Interpretation
-from ml4h.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
-from ml4h.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+from ml4h.optimizers import get_optimizer
+from ml4h.defines import IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
-tfd = tfp.distributions
 
 
 class BottleneckType(Enum):
