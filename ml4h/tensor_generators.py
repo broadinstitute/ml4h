@@ -823,7 +823,7 @@ def test_train_valid_tensor_generators(
     rotation_factor: float = 0,
     zoom_factor: float = 0,
     translation_factor: float = 0,
-    wrap_with_tf_dataset: bool = False,
+    wrap_with_tf_dataset: bool = True,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
