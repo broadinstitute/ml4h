@@ -6,7 +6,7 @@ from typing import List, Tuple, Iterable, Union
 
 import tensorflow as tf
 import keras
-import tensorflow_addons as tfa
+#import tensorflow_addons as tfa
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
