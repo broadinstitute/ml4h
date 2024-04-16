@@ -4,7 +4,6 @@ pydicom==1.2.2
 #hyperopt
 seaborn
 #scikit-image
-tkinter
 biosppy
 #vtk==9.2.6
 imageio
