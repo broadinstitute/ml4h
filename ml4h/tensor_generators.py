@@ -471,7 +471,8 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = True):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int,
+                                       batch_size: int = 16, keep_paths: bool = True):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -483,9 +484,9 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    first_batch = next(generator)
+    #first_batch = next(generator)
+    first_batch = generator.take(batch_size)
     saved_tensors = {}
-    batch_size = None
     for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
         shape = (batch_array.shape[0] * minibatches,) + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
@@ -498,7 +499,8 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
         logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
-        next_batch = next(generator)
+        #next_batch = next(generator)
+        next_batch = generator.take(batch_size)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
             saved_tensors[key][s:t] = next_batch[BATCH_INPUT_INDEX][key]
