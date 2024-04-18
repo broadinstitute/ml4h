@@ -217,11 +217,11 @@ def train_multimodal_multitask(args):
         save_last_model=args.save_last_model,
     )
     for tm in encoders:
-        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}{MODEL_EXT}')
     for tm in decoders:
-        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}{MODEL_EXT}')
     if merger:
-        merger.save(f'{args.output_folder}{args.id}/merger.h5')
+        merger.save(f'{args.output_folder}{args.id}/merger{MODEL_EXT}')
 
     performance_metrics = {}
     if args.test_steps > 0:
