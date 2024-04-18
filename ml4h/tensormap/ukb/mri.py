@@ -446,7 +446,7 @@ lax_2ch_diastole_slice0_3d = TensorMap(
     'lax_2ch_diastole_slice0_3d',
     Interpretation.CONTINUOUS,
     shape=(200, 160, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
@@ -456,7 +456,7 @@ lax_2ch_diastole_slice_224_160_3d = TensorMap(
     'lax_2ch_diastole_slice_224_160_3d',
     Interpretation.CONTINUOUS,
     shape=(224, 160, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
@@ -466,7 +466,7 @@ lax_2ch_diastole_slice_224_192_3d = TensorMap(
     'lax_2ch_diastole_slice_224_192_3d',
     Interpretation.CONTINUOUS,
     shape=(224, 192, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
@@ -476,7 +476,7 @@ lax_2ch_diastole_slice_224_224_3d = TensorMap(
     'lax_2ch_diastole_slice_224_224_3d',
     Interpretation.CONTINUOUS,
     shape=(224, 224, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
@@ -486,7 +486,7 @@ lax_3ch_diastole_slice0_3d = TensorMap(
     'lax_3ch_diastole_slice0_3d',
     Interpretation.CONTINUOUS,
     shape=(200, 160, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_3ch/2/instance_0', 0,
@@ -496,7 +496,7 @@ lax_3ch_diastole_slice_224_160_3d = TensorMap(
     'lax_3ch_diastole_slice_224_160_3d',
     Interpretation.CONTINUOUS,
     shape=(224, 160, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_3ch/2/instance_0', 0,
@@ -506,7 +506,7 @@ cine_segmented_ao_dist_slice0_3d = TensorMap(
     'cine_segmented_ao_dist_slice0_3d',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 1),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0,
@@ -516,7 +516,7 @@ lax_4ch_diastole_slice0 = TensorMap(
     'lax_4ch_diastole_slice0',
     Interpretation.CONTINUOUS,
     shape=(256, 256),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0,
@@ -526,7 +526,7 @@ cine_segmented_ao_dist_slice0 = TensorMap(
     'cine_segmented_ao_dist_slice0',
     Interpretation.CONTINUOUS,
     shape=(256, 256),
-    loss='logcosh',
+    loss='log_cosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
         'ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0,
@@ -1598,11 +1598,11 @@ heart_mask_lax_4ch_50frame = TensorMap(
     tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, mask=True),
 )
 lax_4ch_heart_center_prediction = TensorMap(
-    'lax_4ch_heart_center_prediction', Interpretation.CONTINUOUS, shape=(96, 96, 50), loss='logcosh', activation='linear',
+    'lax_4ch_heart_center_prediction', Interpretation.CONTINUOUS, shape=(96, 96, 50), loss='log_cosh', activation='linear',
     tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'],
 )
 lax_4ch_heart_center_truth = TensorMap(
-    'lax_4ch_heart_center_truth', Interpretation.CONTINUOUS, shape=(96, 96, 50), loss='logcosh', activation='linear',
+    'lax_4ch_heart_center_truth', Interpretation.CONTINUOUS, shape=(96, 96, 50), loss='log_cosh', activation='linear',
     tensor_from_file=tensor_from_hd5, metrics=['mse', 'mae'],
 )
 
@@ -1817,12 +1817,12 @@ def _make_fallback_tensor_from_file(tensor_keys):
 
 
 lv_mass_dubois_index = TensorMap(
-    'lv_mass_dubois_index', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=1.0,
+    'lv_mass_dubois_index', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=1.0,
     tensor_from_file=_make_index_tensor_from_file('bsa_dubois'),
     channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 lv_mass_mosteller_index = TensorMap(
-    'lv_mass_mosteller_index', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=1.0,
+    'lv_mass_mosteller_index', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=1.0,
     tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
     channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
@@ -1838,22 +1838,22 @@ lv_mass_mosteller_index_sentinel = TensorMap(
 )
 
 lvm_dubois_index = TensorMap(
-    'lvm_dubois_index', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=1.0,
+    'lvm_dubois_index', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=1.0,
     tensor_from_file=_make_index_tensor_from_file('bsa_dubois'),
     channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 lvm_mosteller_index = TensorMap(
-    'lvm_mosteller_index', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=1.0,
+    'lvm_mosteller_index', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=1.0,
     tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
     channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 lvm_dubois_index_w4 = TensorMap(
-    'lvm_dubois_index', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=4.0,
+    'lvm_dubois_index', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=4.0,
     tensor_from_file=_make_index_tensor_from_file('bsa_dubois'),
     channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 lvm_mosteller_index_w4 = TensorMap(
-    'lvm_mosteller_index', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=4.0,
+    'lvm_mosteller_index', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=4.0,
     tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
     channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
@@ -1868,12 +1868,12 @@ lvm_mosteller_index_sentinel = TensorMap(
     channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 myocardial_mass_noheritable_men_only = TensorMap(
-    'inferred_myocardial_mass_noheritable', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'inferred_myocardial_mass_noheritable', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     tensor_from_file=_select_tensor_from_file(is_genetic_man),
     channel_map={'inferred_myocardial_mass_noheritable': 0}, normalization={'mean': 100.0, 'std': 18.0},
 )
 myocardial_mass_noheritable_women_only = TensorMap(
-    'inferred_myocardial_mass_noheritable', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'inferred_myocardial_mass_noheritable', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     tensor_from_file=_select_tensor_from_file(is_genetic_woman),
     channel_map={'inferred_myocardial_mass_noheritable': 0}, normalization={'mean': 78.0, 'std': 16.0},
 )
@@ -1903,11 +1903,11 @@ big_rvedv = TensorMap(
 
 adjusted_myocardium_mass = TensorMap(
     'adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-    loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
+    loss='log_cosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
 )
 adjusted_myocardium_mass_indexed = TensorMap(
     'adjusted_myocardium_mass_indexed', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400),
-    loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, path_prefix='continuous',
+    loss='log_cosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, path_prefix='continuous',
     normalization={'mean': 89.70, 'std': 24.80},
 )
 lvh_from_indexed_lvm_parented = TensorMap(
@@ -2017,7 +2017,7 @@ cine_segmented_ao_ascending_aorta_bbox = TensorMap(
 
 ###
 lv_mass = TensorMap(
-    'lv_mass', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', validator=make_range_validator(0, 500),
+    'lv_mass', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', validator=make_range_validator(0, 500),
     channel_map={'lv_mass': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 
@@ -2035,17 +2035,17 @@ LVM_sentinel = TensorMap(
     validator=make_range_validator(-1, 300), channel_map={'LVM': 0},
 )
 lv_mass_prediction = TensorMap(
-    'lv_mass_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh', loss_weight=10.0,
+    'lv_mass_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh', loss_weight=10.0,
     validator=make_range_validator(0, 300), channel_map={'lv_mass_sentinel_prediction': 0},
     normalization={'mean': 89.7, 'std': 24.8},
 )
 lv_mass_dubois_index_prediction = TensorMap(
-    'lv_mass_dubois_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'lv_mass_dubois_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     validator=make_range_validator(0, 300), loss_weight=10.0,
     channel_map={'lv_mass_dubois_index_sentinel_prediction': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
 lv_mass_mosteller_index_prediction = TensorMap(
-    'lv_mass_mosteller_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'lv_mass_mosteller_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     validator=make_range_validator(0, 300), loss_weight=10.0,
     channel_map={'lv_mass_mosteller_index_sentinel_prediction': 0},
     normalization={'mean': 89.7, 'std': 24.8},
@@ -2057,12 +2057,12 @@ LVM_prediction = TensorMap(
 )
 
 lvm_dubois_index_prediction = TensorMap(
-    'lvm_dubois_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'lvm_dubois_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     validator=make_range_validator(0, 300), channel_map={'lvm_dubois_index_sentinel_prediction': 0},
     normalization={'mean': 42.0, 'std': 8.0},
 )
 lvm_mosteller_index_prediction = TensorMap(
-    'lvm_mosteller_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'lvm_mosteller_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     validator=make_range_validator(0, 300), channel_map={'lvm_mosteller_index_sentinel_prediction': 0},
     normalization={'mean': 42.0, 'std': 8.0},
 )
@@ -2072,12 +2072,12 @@ LVM_prediction_sentinel = TensorMap(
     normalization={'mean': 89.70372484725051, 'std': 24.803669503436304},
 )
 lvm_dubois_index_prediction_sentinel = TensorMap(
-    'lvm_dubois_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'lvm_dubois_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     sentinel=0, channel_map={'lvm_dubois_index_sentinel_prediction': 0},
     normalization={'mean': 89.7, 'std': 24.8},
 )
 lvm_mosteller_index_prediction_sentinel = TensorMap(
-    'lvm_mosteller_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
+    'lvm_mosteller_index_sentinel_prediction', Interpretation.CONTINUOUS, activation='linear', loss='log_cosh',
     sentinel=0, channel_map={'lvm_mosteller_index_sentinel_prediction': 0},
     normalization={'mean': 89.7, 'std': 24.8},
 )
@@ -2086,35 +2086,35 @@ lvm_mosteller_index_prediction_sentinel = TensorMap(
 
 end_systole_volume = TensorMap(
     'end_systole_volume', Interpretation.CONTINUOUS, activation='linear', validator=make_range_validator(0, 300),
-    loss='logcosh', channel_map={'end_systole_volume': 0},
+    loss='log_cosh', channel_map={'end_systole_volume': 0},
     normalization={'mean': 47.0, 'std': 10.0},
 )
 end_diastole_volume = TensorMap(
     'end_diastole_volume', Interpretation.CONTINUOUS, activation='linear', validator=make_range_validator(0, 400),
-    loss='logcosh', channel_map={'end_diastole_volume': 0},
+    loss='log_cosh', channel_map={'end_diastole_volume': 0},
     normalization={'mean': 142.0, 'std': 21.0},
 )
 ejection_fraction = TensorMap(
     'ejection_fraction', Interpretation.CONTINUOUS, activation='linear', validator=make_range_validator(0.2, 0.9),
     normalization={'mean': 0.50, 'std': 0.046},
-    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
+    loss='log_cosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
 )
 
 
 # Apply correction from Sanghvi et al.Journal of Cardiovascular Magnetic Resonance 2016
 corrected_extracted_lvedv = TensorMap(
     'corrected_extracted_lvedv', Interpretation.CONTINUOUS, activation='linear', validator=make_range_validator(0, 400),
-    loss='logcosh', channel_map={'corrected_extracted_lvedv': 0},
+    loss='log_cosh', channel_map={'corrected_extracted_lvedv': 0},
     normalization={'mean': 142.0, 'std': 21.0},
 )
 corrected_extracted_lvef = TensorMap(
     'corrected_extracted_lvef', Interpretation.CONTINUOUS, activation='linear', validator=make_range_validator(0.2, 0.9),
     normalization={'mean': 0.50, 'std': 0.046},
-    loss='logcosh', channel_map={'corrected_extracted_lvef': 0},
+    loss='log_cosh', channel_map={'corrected_extracted_lvef': 0},
 )
 corrected_extracted_lvesv = TensorMap(
     'corrected_extracted_lvesv', Interpretation.CONTINUOUS, activation='linear', validator=make_range_validator(0, 300),
-    loss='logcosh', channel_map={'corrected_extracted_lvesv': 0},
+    loss='log_cosh', channel_map={'corrected_extracted_lvesv': 0},
     normalization={'mean': 47.0, 'std': 10.0},
 )
 
@@ -2137,117 +2137,117 @@ corrected_extracted_lvef_sentinel = TensorMap(
 
 LA_2Ch_vol_max = TensorMap(
     'LA_2Ch_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 63.45582391534391, 'std': 22.548034481265972},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_2Ch_vol_max': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 400), loss='log_cosh', channel_map={'LA_2Ch_vol_max': 0}, path_prefix='continuous',
 )
 LA_2Ch_vol_min = TensorMap(
     'LA_2Ch_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 28.308681904761904, 'std': 15.842444310837582},
-    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_2Ch_vol_min': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 200), loss='log_cosh', channel_map={'LA_2Ch_vol_min': 0}, path_prefix='continuous',
 )
 LA_4Ch_vol_max = TensorMap(
     'LA_4Ch_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 74.53903305263158, 'std': 25.448756860639776},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_4Ch_vol_max': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 400), loss='log_cosh', channel_map={'LA_4Ch_vol_max': 0}, path_prefix='continuous',
 )
 LA_4Ch_vol_min = TensorMap(
     'LA_4Ch_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 31.014961894736846, 'std': 17.146722819760804},
-    validator=make_range_validator(0, 200), loss='logcosh', channel_map={'LA_4Ch_vol_min': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 200), loss='log_cosh', channel_map={'LA_4Ch_vol_min': 0}, path_prefix='continuous',
 )
 LA_Biplan_vol_max = TensorMap(
     'LA_Biplan_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 67.86355108225109, 'std': 21.793845470012105},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'LA_Biplan_vol_max': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 400), loss='log_cosh', channel_map={'LA_Biplan_vol_max': 0}, path_prefix='continuous',
 )
 LA_Biplan_vol_min = TensorMap(
     'LA_Biplan_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 28.79685670995671, 'std': 15.43219634139272},
-    validator=make_range_validator(0, 300), loss='logcosh', channel_map={'LA_Biplan_vol_min': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 300), loss='log_cosh', channel_map={'LA_Biplan_vol_min': 0}, path_prefix='continuous',
 )
 LVEDV = TensorMap(
-    'LVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 144.1479505192425, 'std': 34.39409859908663}, loss='logcosh',
+    'LVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 144.1479505192425, 'std': 34.39409859908663}, loss='log_cosh',
     validator=make_range_validator(0, 500), channel_map={'LVEDV': 0}, path_prefix='continuous',
 )
 LVEF = TensorMap(
-    'LVEF',  Interpretation.CONTINUOUS, normalization={'mean': 47.0, 'std': 10.0}, loss='logcosh', path_prefix='continuous',
+    'LVEF',  Interpretation.CONTINUOUS, normalization={'mean': 47.0, 'std': 10.0}, loss='log_cosh', path_prefix='continuous',
     validator=make_range_validator(0, 500), channel_map={'LVEF': 0},
 )
 LVESV = TensorMap(
-    'LVESV',  Interpretation.CONTINUOUS, normalization={'mean': 59.58324862553452, 'std': 21.186976544044025}, loss='logcosh',
+    'LVESV',  Interpretation.CONTINUOUS, normalization={'mean': 59.58324862553452, 'std': 21.186976544044025}, loss='log_cosh',
     validator=make_range_validator(0, 400), channel_map={'LVESV': 0}, path_prefix='continuous',
 )
 LVM = TensorMap(
-    'LVM',  Interpretation.CONTINUOUS, normalization=Standardize(mean=89.70372484725051, std=24.803669503436304), loss='logcosh',
+    'LVM',  Interpretation.CONTINUOUS, normalization=Standardize(mean=89.70372484725051, std=24.803669503436304), loss='log_cosh',
     validator=make_range_validator(0, 400), channel_map={'LVM': 0}, path_prefix='continuous',
 )
 LVSV = TensorMap(
-    'LVSV',  Interpretation.CONTINUOUS, normalization={'mean': 84.85198120147119, 'std': 19.2700091046526}, loss='logcosh',
+    'LVSV',  Interpretation.CONTINUOUS, normalization={'mean': 84.85198120147119, 'std': 19.2700091046526}, loss='log_cosh',
     validator=make_range_validator(0, 400), channel_map={'LVSV': 0}, path_prefix='continuous',
 )
 RA_4Ch_vol_max = TensorMap(
     'RA_4Ch_vol_max',  Interpretation.CONTINUOUS, normalization={'mean': 79.22289586811351, 'std': 26.504015552539048},
-    validator=make_range_validator(0, 500), loss='logcosh', channel_map={'RA_4Ch_vol_max': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 500), loss='log_cosh', channel_map={'RA_4Ch_vol_max': 0}, path_prefix='continuous',
 )
 RA_4Ch_vol_min = TensorMap(
     'RA_4Ch_vol_min',  Interpretation.CONTINUOUS, normalization={'mean': 46.25831176961603, 'std': 20.002160080524803},
-    validator=make_range_validator(0, 400), loss='logcosh', channel_map={'RA_4Ch_vol_min': 0}, path_prefix='continuous',
+    validator=make_range_validator(0, 400), loss='log_cosh', channel_map={'RA_4Ch_vol_min': 0}, path_prefix='continuous',
 )
 RVEDV = TensorMap(
-    'RVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 152.41239853151131, 'std': 37.15198900632509}, loss='logcosh',
+    'RVEDV',  Interpretation.CONTINUOUS, normalization={'mean': 152.41239853151131, 'std': 37.15198900632509}, loss='log_cosh',
     validator=make_range_validator(0, 500), channel_map={'RVEDV': 0}, path_prefix='continuous',
 )
 RVEF = TensorMap(
-    'RVEF',  Interpretation.CONTINUOUS, normalization={'mean': 56.404863078182565, 'std': 6.526231365539632}, loss='logcosh',
+    'RVEF',  Interpretation.CONTINUOUS, normalization={'mean': 56.404863078182565, 'std': 6.526231365539632}, loss='log_cosh',
     validator=make_range_validator(10, 200), channel_map={'RVEF': 0}, path_prefix='continuous',
 )
 RVESV = TensorMap(
-    'RVESV',  Interpretation.CONTINUOUS, normalization={'mean': 67.61379869467673, 'std': 22.853189258914284}, loss='logcosh',
+    'RVESV',  Interpretation.CONTINUOUS, normalization={'mean': 67.61379869467673, 'std': 22.853189258914284}, loss='log_cosh',
     validator=make_range_validator(0, 300), channel_map={'RVESV': 0}, path_prefix='continuous',
 )
 RVSV = TensorMap(
-    'RVSV',  Interpretation.CONTINUOUS, normalization={'mean': 85.0908258288989, 'std': 19.30893645374548}, loss='logcosh',
+    'RVSV',  Interpretation.CONTINUOUS, normalization={'mean': 85.0908258288989, 'std': 19.30893645374548}, loss='log_cosh',
     validator=make_range_validator(0, 200), channel_map={'RVSV': 0}, path_prefix='continuous',
 )
 LAQC = TensorMap(
-    'LAQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.2657977883096367, 'std': 0.5561369836438385}, loss='logcosh',
+    'LAQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.2657977883096367, 'std': 0.5561369836438385}, loss='log_cosh',
     validator=make_range_validator(0, 200), channel_map={'LAQC': 0}, path_prefix='continuous',
 )
 LVQC = TensorMap(
-    'LVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.1737756714060033, 'std': 0.4620420984104567}, loss='logcosh',
+    'LVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.1737756714060033, 'std': 0.4620420984104567}, loss='log_cosh',
     validator=make_range_validator(0, 200), channel_map={'LVQC': 0}, path_prefix='continuous',
 )
 RAQC = TensorMap(
-    'RAQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.1860189573459716, 'std': 0.4791815490882246}, loss='logcosh',
+    'RAQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.1860189573459716, 'std': 0.4791815490882246}, loss='log_cosh',
     validator=make_range_validator(0, 200), channel_map={'RAQC': 0}, path_prefix='continuous',
 )
 RVQC = TensorMap(
-    'RVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='logcosh',
+    'RVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='log_cosh',
     validator=make_range_validator(0, 200), channel_map={'RVQC': 0}, path_prefix='continuous',
 )
 LVM_as_prediction = TensorMap(
-    'LVM_prediction',  Interpretation.CONTINUOUS, loss='logcosh',
+    'LVM_prediction',  Interpretation.CONTINUOUS, loss='log_cosh',
     validator=make_range_validator(0, 400), channel_map={'LVM': 0}, path_prefix='continuous',
 )
 
 myocardial_mass = TensorMap(
-    'myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', path_prefix='continuous',
+    'myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='log_cosh', path_prefix='continuous',
     channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
 )
 myocardial_mass_noheritable = TensorMap(
     'inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, path_prefix='continuous',
-    loss='logcosh', validator=make_range_validator(0, 400), normalization={'mean': 89.70, 'std': 24.80},
+    loss='log_cosh', validator=make_range_validator(0, 400), normalization={'mean': 89.70, 'std': 24.80},
     channel_map={'inferred_myocardial_mass_noheritable': 0},
 )
 myocardial_mass_noheritable_sentinel = TensorMap(
-    'inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, sentinel=0, loss='logcosh',
+    'inferred_myocardial_mass_noheritable',  Interpretation.CONTINUOUS, sentinel=0, loss='log_cosh',
     normalization={'mean': 89.70, 'std': 24.80}, path_prefix='continuous',
     channel_map={'inferred_myocardial_mass_noheritable': 0},
 )
 
 myocardial_mass = TensorMap(
-    'myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', path_prefix='continuous',
+    'myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='log_cosh', path_prefix='continuous',
     channel_map={'myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
 )
 
 
 adjusted_myocardium_mass_sentinel = TensorMap(
     'adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-    loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
+    loss='log_cosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
     sentinel=0.0,
 )
 
@@ -2281,12 +2281,12 @@ adjusted_myocardium_mass_mse = TensorMap(
 
 proton_fat = TensorMap(
     '22402_Proton-density-fat-fraction-PDFF_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Proton-density-fat-fraction-PDFF_2_0': 0},
-    activation='linear', loss='logcosh',  annotation_units=1, path_prefix='continuous',
+    activation='linear', loss='log_cosh',  annotation_units=1, path_prefix='continuous',
     validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437},
 )
 liver_fat = TensorMap(
     '22402_Liver-fat-percentage_2_0', Interpretation.CONTINUOUS, channel_map={'22402_Liver-fat-percentage_2_0': 0},
-    activation='linear', loss='logcosh',  annotation_units=1, path_prefix='continuous',
+    activation='linear', loss='log_cosh',  annotation_units=1, path_prefix='continuous',
     validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437},
 )
 liver_fat_sentinel = TensorMap(
@@ -2295,7 +2295,7 @@ liver_fat_sentinel = TensorMap(
 )
 liver_fat_echo_predicted = TensorMap(
     'liver_fat_sentinel_prediction', Interpretation.CONTINUOUS, channel_map={'liver_fat_sentinel_prediction': 0},
-    validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437}, path_prefix='continuous', activation='linear', loss='logcosh',
+    validator=make_range_validator(0, 100), normalization={'mean': 3.91012, 'std': 4.64437}, path_prefix='continuous', activation='linear', loss='log_cosh',
 )
 liver_fat_echo_predicted_sentinel = TensorMap(
     'liver_fat_sentinel_prediction', Interpretation.CONTINUOUS, channel_map={'liver_fat_sentinel_prediction': 0},
@@ -2304,23 +2304,23 @@ liver_fat_echo_predicted_sentinel = TensorMap(
 
 gre_mullti_echo_10_te_liver = TensorMap(
     'gre_mullti_echo_10_te_liver', shape=(160, 160, 10), path_prefix='ukb_liver_mri',
-    tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_pad_crop_tensor, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 gre_mullti_echo_10_te_liver_12bit = TensorMap(
     'gre_mullti_echo_10_te_liver_12bit', shape=(160, 160, 10),
-    tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_pad_crop_tensor, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 lms_ideal_optimised_low_flip_6dyn = TensorMap(
     'lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
-    tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_pad_crop_tensor, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 lms_ideal_optimised_low_flip_6dyn_12bit = TensorMap(
     'lms_ideal_optimised_low_flip_6dyn_12bit', shape=(232, 256, 36),
-    tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_pad_crop_tensor, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 lms_ideal_optimised_low_flip_6dyn_4slice = TensorMap(
     'lms_ideal_optimised_low_flip_6dyn_4slice', shape=(232, 256, 4),
-    tensor_from_file=_pad_crop_tensor, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_pad_crop_tensor, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 
 
@@ -2332,12 +2332,12 @@ def _liver_instance_2(tm, hd5, dependents={}):
 liver_ideal_instance2 = TensorMap(
     'lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36),
     path_prefix='ukb_liver_mri',
-    tensor_from_file=_liver_instance_2, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_liver_instance_2, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 
 liver_shmolli_instance2 = TensorMap(
     'shmolli_192i_liver', shape=(288, 384, 7), path_prefix='ukb_liver_mri',
-    tensor_from_file=_liver_instance_2, loss='logcosh',
+    tensor_from_file=_liver_instance_2, loss='log_cosh',
     normalization=ZeroMeanStd1(),
 )
 
@@ -2349,12 +2349,12 @@ def _liver_instance_3(tm, hd5, dependents={}):
 
 liver_ideal_instance3 = TensorMap(
     'lms_ideal_optimised_low_flip_6dyn', shape=(232, 256, 36), path_prefix='ukb_liver_mri',
-    tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_liver_instance_3, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 
 liver_shmolli_instance3 = TensorMap(
     'shmolli_192i_liver', shape=(288, 384, 7), path_prefix='ukb_liver_mri',
-    tensor_from_file=_liver_instance_3, loss='logcosh', normalization=ZeroMeanStd1(),
+    tensor_from_file=_liver_instance_3, loss='log_cosh', normalization=ZeroMeanStd1(),
 )
 
 shmolli_192i = TensorMap('shmolli_192i', shape=(288, 384, 7), normalization=ZeroMeanStd1())
@@ -2378,7 +2378,7 @@ sax_pixel_height = TensorMap(
 ejection_fractionp = TensorMap(
     'ejection_fraction', Interpretation.CONTINUOUS, activation='linear',
     normalization={'mean': 0.50, 'std': 0.046},
-    loss='logcosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
+    loss='log_cosh', loss_weight=1.0, channel_map={'ejection_fraction': 0},
     parents=[end_systole_volume, end_diastole_volume],
 )
 

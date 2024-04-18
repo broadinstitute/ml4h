@@ -155,7 +155,7 @@ def _weekly_alcohol(instance):
 
 log_25781_2 = TensorMap(
     '25781_Total-volume-of-white-matter-hyperintensities-from-T1-and-T2FLAIR-images_2_0',
-    loss='logcosh',
+    loss='log_cosh',
     path_prefix='continuous',
     normalization={
         'mean': 7,
@@ -172,7 +172,7 @@ weight_lbs_2 = TensorMap(
         'mean': 168.74,
         'std': 34.1,
     },
-    loss='logcosh',
+    loss='log_cosh',
     channel_map={'weight_lbs': 0},
     tensor_from_file=preprocess_with_function(
         lambda x: x * 2.20462,
@@ -182,30 +182,30 @@ weight_lbs_2 = TensorMap(
 
 weekly_alcohol_0 = TensorMap(
     'weekly_alcohol_0',
-    loss='logcosh',
+    loss='log_cosh',
     path_prefix='continuous',
     channel_map={'weekly_alcohol_0': 0},
     tensor_from_file=_weekly_alcohol(0),
 )
 weekly_alcohol_1 = TensorMap(
     'weekly_alcohol_1',
-    loss='logcosh',
+    loss='log_cosh',
     path_prefix='continuous',
     channel_map={'weekly_alcohol_1': 0},
     tensor_from_file=_weekly_alcohol(1),
 )
 weekly_alcohol_2 = TensorMap(
     'weekly_alcohol_2',
-    loss='logcosh',
+    loss='log_cosh',
     path_prefix='continuous',
     channel_map={'weekly_alcohol_2': 0},
     tensor_from_file=_weekly_alcohol(2),
 )
 
 ###
-weight_kg = TensorMap('weight_kg',  Interpretation.CONTINUOUS, normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='logcosh', channel_map={'weight_kg': 0})
-height_cm = TensorMap('height_cm',  Interpretation.CONTINUOUS, normalization={'mean': 169.18064748408653, 'std': 9.265265197273026}, loss='logcosh', channel_map={'height_cm': 0})
-bmi_bsa = TensorMap('bmi',  Interpretation.CONTINUOUS, normalization={'mean': 26.65499238706321, 'std': 4.512077188749083}, loss='logcosh', channel_map={'bmi': 0})
+weight_kg = TensorMap('weight_kg',  Interpretation.CONTINUOUS, normalization={'mean': 76.54286701805927, 'std': 15.467605416933122}, loss='log_cosh', channel_map={'weight_kg': 0})
+height_cm = TensorMap('height_cm',  Interpretation.CONTINUOUS, normalization={'mean': 169.18064748408653, 'std': 9.265265197273026}, loss='log_cosh', channel_map={'height_cm': 0})
+bmi_bsa = TensorMap('bmi',  Interpretation.CONTINUOUS, normalization={'mean': 26.65499238706321, 'std': 4.512077188749083}, loss='log_cosh', channel_map={'bmi': 0})
 
 mothers_age = TensorMap(
     'mothers_age_0', Interpretation.CONTINUOUS, path_prefix='continuous',
@@ -233,7 +233,7 @@ genetic_sex_partition = TensorMap(
 )
 age_2_partition = TensorMap(
     '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS, days_window=partition_i,
-    annotation_units=a_units, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    annotation_units=a_units, path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.358, std=7.555),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
@@ -254,19 +254,19 @@ is_male_mgb = TensorMap(
 
 age_in_days = TensorMap(
     'age_in_days', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh',
+    path_prefix='continuous', loss='log_cosh',
     #normalization=Standardize(mean=65, std=(1/365.0)),
     normalization=ZeroMeanStd1(),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 bmi = TensorMap(
-    '23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '23104_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'23104_Body-mass-index-BMI_0_0': 0}, validator=make_range_validator(0, 100),
     normalization={'mean': 27.432, 'std': 4.785},
 )
 bmi_ukb = TensorMap(
     'bmi', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'23104_Body-mass-index-BMI_0_0': 0}, annotation_units=1,
-    validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='logcosh',
+    validator=make_range_validator(0, 300), normalization={'mean': 27.432061533712652, 'std': 4.785244772462738}, loss='log_cosh',
 )
 bmi_2 = TensorMap(
     '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='log_cosh',
@@ -274,60 +274,60 @@ bmi_2 = TensorMap(
     normalization=Standardize(mean=27.3397, std=4.7721),
 )
 bmi_2_partition = TensorMap(
-    '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='logcosh',
+    '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='log_cosh',
     channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
     normalization=Standardize(mean=27.3397, std=4.7721), days_window=partition_i, annotation_units=a_units,
 )
 bmi_21_0 = TensorMap(
-    '21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '21001_Body-mass-index-BMI_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'21001_Body-mass-index-BMI_0_0': 0}, validator=make_range_validator(0, 300),
     normalization=Standardize(mean=27.3397, std=4.7721),
 )
 birth_year = TensorMap(
-    '22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
+    '22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='log_cosh',
     validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739},
 )
 birth_year_34 = TensorMap(
-    '34_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
+    '34_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'34_Year-of-birth_0_0': 0}, annotation_units=1, loss='log_cosh',
     validator=make_range_validator(1901, 2025), normalization = {'mean': 1952.0639129359386, 'std': 7.656326148519739},
 )
 age_0 = TensorMap(
-    '21003_Age-when-attended-assessment-centre_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    '21003_Age-when-attended-assessment-centre_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization={'mean': 56.52847159208494, 'std': 8.095287610193827}, channel_map={'21003_Age-when-attended-assessment-centre_0_0': 0},
 )
 age_1 = TensorMap(
-    '21003_Age-when-attended-assessment-centre_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    '21003_Age-when-attended-assessment-centre_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization={'mean': 61.4476555588322, 'std': 7.3992113757847005}, channel_map={'21003_Age-when-attended-assessment-centre_1_0': 0},
 )
 age_2 = TensorMap(
     '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 
 age_2_wide = TensorMap(
     'age_from_wide_csv', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 age_2_patientage = TensorMap(
     'patientage', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 
 age_2_wide = TensorMap(
     'age_from_wide_csv', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 age_2_patientage = TensorMap(
     'patientage', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
@@ -362,24 +362,24 @@ sex_dummy3 = TensorMap(
 )
 brain_volume = TensorMap(
     '25010_Volume-of-brain-greywhite-matter_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': 1165940.0, 'std': 111511.0},
-    channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='logcosh', loss_weight=0.1,
+    channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='log_cosh', loss_weight=0.1,
 )
 
 sodium = TensorMap(
     '30530_Sodium-in-urine_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30530_Sodium-in-urine_0_0': 0},
-    normalization={'mean': 77.45323967267045, 'std': 44.441236848463774}, annotation_units=1, loss='logcosh',
+    normalization={'mean': 77.45323967267045, 'std': 44.441236848463774}, annotation_units=1, loss='log_cosh',
 )
 potassium = TensorMap(
     '30520_Potassium-in-urine_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30520_Potassium-in-urine_0_0': 0},
-    normalization={'mean': 63.06182700345117, 'std': 33.84208704773539}, annotation_units=1, loss='logcosh',
+    normalization={'mean': 63.06182700345117, 'std': 33.84208704773539}, annotation_units=1, loss='log_cosh',
 )
 cholesterol_hdl = TensorMap(
     '30760_HDL-cholesterol_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30760_HDL-cholesterol_0_0': 0},
-    normalization={'mean': 1.4480129055069355, 'std': 0.3823115953478376}, annotation_units=1, loss='logcosh',
+    normalization={'mean': 1.4480129055069355, 'std': 0.3823115953478376}, annotation_units=1, loss='log_cosh',
 )
 cholesterol = TensorMap(
     '30690_Cholesterol_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'30690_Cholesterol_0_0': 0},
-    normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=1, loss='logcosh',
+    normalization={'mean': 5.692381214399044, 'std': 1.1449409331668705}, annotation_units=1, loss='log_cosh',
 )
 
 cigarettes = TensorMap('2887_Number-of-cigarettes-previously-smoked-daily_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'2887_Number-of-cigarettes-previously-smoked-daily_0_0': 0}, normalization = {'mean': 18.92662147068755, 'std':10.590930376362259}, annotation_units=1)
@@ -495,34 +495,34 @@ winter = TensorMap(
 )
 
 systolic_blood_pressure_0 = TensorMap(
-    '4080_Systolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '4080_Systolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'4080_Systolic-blood-pressure-automated-reading_0_0': 0}, validator=make_range_validator(40, 400),
     normalization={'mean': 137.79964191990328, 'std': 19.292863700283757},
 )
 diastolic_blood_pressure_0 = TensorMap(
-    '4079_Diastolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '4079_Diastolic-blood-pressure-automated-reading_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'4079_Diastolic-blood-pressure-automated-reading_0_0': 0}, validator=make_range_validator(20, 300),
     normalization={'mean': 82.20657551284782, 'std': 10.496040770224475},
 )
 
 systolic_blood_pressure_1 = TensorMap(
-    '4080_Systolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '4080_Systolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'4080_Systolic-blood-pressure-automated-reading_1_0': 0}, validator=make_range_validator(40, 400),
     normalization={'mean': 137.79964191990328, 'std': 19.292863700283757},
 )
 diastolic_blood_pressure_1 = TensorMap(
-    '4079_Diastolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '4079_Diastolic-blood-pressure-automated-reading_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'4079_Diastolic-blood-pressure-automated-reading_1_0': 0}, validator=make_range_validator(20, 300),
     normalization={'mean': 82.20657551284782, 'std': 10.496040770224475},
 )
 
 systolic_blood_pressure_2 = TensorMap(
-    '4080_Systolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '4080_Systolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'4080_Systolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(40, 400),
     normalization={'mean': 137.79964191990328, 'std': 19.292863700283757},
 )
 diastolic_blood_pressure_2 = TensorMap(
-    '4079_Diastolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+    '4079_Diastolic-blood-pressure-automated-reading_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh',
     channel_map={'4079_Diastolic-blood-pressure-automated-reading_2_0': 0}, validator=make_range_validator(20, 300),
     normalization={'mean': 82.20657551284782, 'std': 10.496040770224475},
 )

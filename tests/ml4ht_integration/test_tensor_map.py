@@ -23,7 +23,7 @@ def test_tensor_map_from_data_description():
     )
     tmap_out = tensor_map_from_data_description(
         DD2_OUTPUT, Interpretation.CONTINUOUS, (1,), name='dd2',
-        loss='logcosh',
+        loss='log_cosh',
         metrics=['mae', 'mse'],
     )
     model, _, _, _ = make_multimodal_multitask_model(

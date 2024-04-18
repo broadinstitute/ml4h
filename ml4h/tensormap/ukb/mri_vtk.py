@@ -263,7 +263,7 @@ cine_segmented_lax_2ch_proj_from_sax = TensorMap(
     'cine_segmented_lax_2ch_proj_from_sax',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 50),
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=_make_mri_projected_segmentation_from_file(
         'cine_segmented_lax_2ch', MRI_SEGMENTED,
     ),
@@ -272,7 +272,7 @@ cine_segmented_lax_3ch_proj_from_sax = TensorMap(
     'cine_segmented_lax_3ch_proj_from_sax',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 50),
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=_make_mri_projected_segmentation_from_file(
         'cine_segmented_lax_3ch', MRI_SEGMENTED,
     ),
@@ -281,7 +281,7 @@ cine_segmented_lax_4ch_proj_from_sax = TensorMap(
     'cine_segmented_lax_4ch_proj_from_sax',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 50),
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=_make_mri_projected_segmentation_from_file(
         'cine_segmented_lax_4ch', MRI_SEGMENTED,
     ),
@@ -290,7 +290,7 @@ cine_segmented_lax_2ch_proj_from_lax = TensorMap(
     'cine_segmented_lax_2ch_proj_from_lax',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 50),
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=_make_mri_projected_segmentation_from_file(
         'cine_segmented_lax_2ch', MRI_LAX_SEGMENTED,
     ),
@@ -299,7 +299,7 @@ cine_segmented_lax_3ch_proj_from_lax = TensorMap(
     'cine_segmented_lax_3ch_proj_from_lax',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 50),
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=_make_mri_projected_segmentation_from_file(
         'cine_segmented_lax_3ch', MRI_LAX_SEGMENTED,
     ),
@@ -308,7 +308,7 @@ cine_segmented_lax_4ch_proj_from_lax = TensorMap(
     'cine_segmented_lax_4ch_proj_from_lax',
     Interpretation.CONTINUOUS,
     shape=(256, 256, 50),
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=_make_mri_projected_segmentation_from_file(
         'cine_segmented_lax_4ch', MRI_LAX_SEGMENTED,
     ),
