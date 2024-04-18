@@ -773,8 +773,8 @@ def plot_scatter(
     ax1.set_title(f'{title} N = {len(prediction)}' )
     ax1.legend(loc="lower right")
 
-    sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
-    sns.distplot(truth, label="Truth", color="b", ax=ax2)
+    sns.histplot(prediction, label="Predicted", color="r", ax=ax2)
+    sns.histplot(truth, label="Truth", color="b", ax=ax2)
     ax2.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, "scatter_" + title + IMAGE_EXT)
@@ -3485,7 +3485,7 @@ def regplot(
     )
     axes[1].axhline(0, ls="--", color="k")
 
-    sns.distplot(res.resid, ax=axes[2], bins=bins)
+    sns.histplot(res.resid, ax=axes[2], bins=bins)
 
     if destination is not None:
         fig.savefig(destination)
