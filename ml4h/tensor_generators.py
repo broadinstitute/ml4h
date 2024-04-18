@@ -472,7 +472,7 @@ class _MultiModalMultiTaskWorker:
 
 
 def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int,
-                                       batch_size: int = 16, keep_paths: bool = True):
+                                       batch_size: int = 16, keep_paths: bool = False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -813,7 +813,7 @@ def test_train_valid_tensor_generators(
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
-    keep_paths_test: bool = True,
+    keep_paths_test: bool = False,
     mixup_alpha: float = -1.0,
     sample_csv: str = None,
     valid_ratio: float = None,
