@@ -226,7 +226,8 @@ def train_multimodal_multitask(args):
     performance_metrics = {}
     if args.test_steps > 0:
         iter_generate_test = iter(generate_test)
-        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(iter_generate_test, args.test_steps)
+        test_data, test_labels = big_batch_from_minibatch_generator(iter_generate_test, args.test_steps)
+        test_paths = []
         performance_metrics = _predict_and_evaluate(
             model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
             args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
