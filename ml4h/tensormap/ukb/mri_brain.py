@@ -190,6 +190,42 @@ t2_flair_orig_defaced_slices_96_128 = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
+t2_flair_orig_defaced_slices_32_64 = TensorMap(
+    't2_flair_axial_32_64',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_64_96 = TensorMap(
+    't2_flair_axial_64_96',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_96_128 = TensorMap(
+    't2_flair_axial_96_128',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_128_160 = TensorMap(
+    't2_flair_axial_128_160',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_160_192 = TensorMap(
+    't2_flair_axial_160_192',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+
 
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide
