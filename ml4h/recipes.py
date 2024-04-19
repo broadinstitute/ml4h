@@ -209,8 +209,6 @@ def train_legacy(args):
 
 
 def train_multimodal_multitask(args):
-    from tensorflow.python.framework.ops import disable_eager_execution
-    disable_eager_execution()
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
