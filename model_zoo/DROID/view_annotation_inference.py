@@ -79,7 +79,7 @@ def main(
     for task in view_annotation_tasks:
         df[f'{task}_prediction'] = np.argmax(model_predictions[f'{task}_prediction'], axis=1)
         df[f'{task}_prediction_probability'] = np.max(model_predictions[f'{task}_prediction'], axis=1)
-    df.to_csv(output_file)
+    df.to_csv(output_file, index=False, sep='\t')
 
 
 if __name__ == "__main__":
