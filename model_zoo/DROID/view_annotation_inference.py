@@ -35,7 +35,7 @@ def main(
 
     # Load the IDs
     log_df = pd.read_csv(
-        "/data/ewok/bwh_lmdbs/00003665_EVS0399897.lmdb/log_00003665_EVS0399897.tsv",
+        "work/data/bwh_lmdbs/00003665_EVS0399897.lmdb/log_00003665_EVS0399897.tsv",
         sep="\t",
     )
     log_df = log_df[log_df["stored"]]
