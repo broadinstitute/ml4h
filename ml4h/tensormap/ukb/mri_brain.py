@@ -189,7 +189,13 @@ t1_mni_slices_10_73 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
-
+t2_flair_orig_defaced_slices_0_32 = TensorMap(
+    't2_flair_axial_0_32',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 t2_flair_orig_defaced_slices_32_64 = TensorMap(
     't2_flair_axial_32_64',
     shape=(192, 256, 32),
