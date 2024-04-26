@@ -102,7 +102,27 @@ t1_slices_68_100 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
-
+t1_slices_32_64 = TensorMap(
+    't1_axial_32_64',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_slices_64_96 = TensorMap(
+    't1_axial_64_96',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_slices_96_128 = TensorMap(
+    't1_axial_96_128',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 t1_mni_slices_16_48 = TensorMap(
     'axial_16_48',
     shape=(176, 216, 32),
