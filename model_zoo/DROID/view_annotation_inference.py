@@ -127,6 +127,6 @@ if __name__ == "__main__":
         args.output_file,
         args.pretrained_ckpt_dir,
         args.skip_modulo,
-        pd.read_csv(args.study_df),
+        pd.read_csv(args.study_df, sep='\t'),
         args.view_annotation_tasks,
     )
