@@ -36,7 +36,7 @@ def main(
 
     # Load the IDs
     df_list = []
-    for row in study_df.iterrows():
+    for _, row in study_df.iterrows():
         study_id = f"{row['MRN']}_{row['study_id']}"
         log_df = pd.read_csv(
             f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.tsv",
