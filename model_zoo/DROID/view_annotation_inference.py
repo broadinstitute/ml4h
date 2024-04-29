@@ -23,6 +23,7 @@ def main(
     output_file,
     pretrained_ckpt_dir,
     skip_modulo,
+    study_df,
     view_annotation_tasks,
 ):
     input_dd = LmdbEchoStudyVideoDataDescriptionBWH(
@@ -34,12 +35,17 @@ def main(
     )
 
     # Load the IDs
-    log_df = pd.read_csv(
-        "work/data/bwh_lmdbs/00003665_EVS0399897.lmdb/log_00003665_EVS0399897.tsv",
-        sep="\t",
-    )
-    log_df = log_df[log_df["stored"]]
-    log_df["sample_id"] = log_df["view"].apply(lambda x: f"00003665_EVS0399897_{x}")
+    df_list = []
+    for row in study_df.iterrows():
+        study_id = f"{row['MRN']}_{row['study_id']}"
+        log_df = pd.read_csv(
+            f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.tsv",
+            sep="\t",
+        )
+        log_df = log_df[log_df["stored"]]
+        log_df["sample_id"] = log_df["view"].apply(lambda x: f"{study_id}_{x}")
+        df_list.append(log_df)
+    log_df = pd.concat(df_list)
     working_ids = sorted(log_df["sample_id"].values.tolist())
     body_inference_ids = tf.data.Dataset.from_tensor_slices(working_ids).batch(
         batch_size, drop_remainder=False
@@ -102,6 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--pretrained_ckpt_dir", type=str)
     parser.add_argument("--skip_modulo", type=int, default=1)
+    parser.add_argument("--study_df", type=str)
     parser.add_argument(
         "-v",
         "--view_annotation_tasks",
@@ -120,5 +127,6 @@ if __name__ == "__main__":
         args.output_file,
         args.pretrained_ckpt_dir,
         args.skip_modulo,
+        pd.read_csv(args.study_df),
         args.view_annotation_tasks,
     )
