@@ -71,7 +71,7 @@ MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimi
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
 DICOM_MRI_FIELDS = [
-    '20209', '20208', '20210', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
+    '20209', '20208', '20210', '20211', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
     '20227', '20225', '20217', '20158', '20259',
 ]
 
@@ -135,12 +135,12 @@ def write_tensors(
 
         if os.path.exists(tp):
                 raise Exception(f"File already exists: {tp} - please use merge_hd5s.sh to merge data from two hd5 files.")
-        
+
         if not os.path.exists(os.path.dirname(tp)):
             os.makedirs(os.path.dirname(tp))
         if _prune_sample(sample_id, min_sample_id, max_sample_id, mri_field_ids, xml_field_ids, zip_folder, xml_folder):
             continue
-        
+
         try:
             with h5py.File(tp, 'w') as hd5:
                 _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
