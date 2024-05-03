@@ -54,7 +54,7 @@ def run(args):
         if 'tensorize' == args.mode:
             write_tensors(
                 args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values,
+                args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values, args.do_not_tensorize_cardiac_overlays,
             )
         elif 'tensorize_pngs' == args.mode:
             write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id, args.x, args.y)
@@ -140,7 +140,7 @@ def run(args):
 
     except Exception as e:
         logging.exception(e)
-        
+
     if args.gcs_cloud_bucket is not None:
         save_to_google_cloud(args)
 
@@ -348,10 +348,14 @@ def train_xdl(args):
     valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
     test_ids = list(mrn_df[mrn_df.split == 'test'].index)
 
-    train_dataset = SampleGetterIterableDataset(sample_ids=list(train_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
-    valid_dataset = SampleGetterIterableDataset(sample_ids=list(valid_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
+    train_dataset = SampleGetterIterableDataset(
+        sample_ids=list(train_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+    valid_dataset = SampleGetterIterableDataset(
+        sample_ids=list(valid_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
 
     num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
     num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
@@ -447,10 +451,14 @@ def train_xdl_af(args):
     valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
     test_ids = list(mrn_df[mrn_df.split == 'test'].index)
 
-    train_dataset = SampleGetterIterableDataset(sample_ids=list(train_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
-    valid_dataset = SampleGetterIterableDataset(sample_ids=list(valid_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
+    train_dataset = SampleGetterIterableDataset(
+        sample_ids=list(train_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+    valid_dataset = SampleGetterIterableDataset(
+        sample_ids=list(valid_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
 
     num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
     num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
@@ -483,14 +491,16 @@ def train_xdl_af(args):
         output_data_descriptions=output_dds,  # what we want a model to predict from the input data
         option_picker=option_picker,
     )
-    test_dataset = SampleGetterIterableDataset(sample_ids=list(test_ids), sample_getter=test_sg,
-                                               get_epoch=shuffle_get_epoch)
+    test_dataset = SampleGetterIterableDataset(
+        sample_ids=list(test_ids), sample_getter=test_sg,
+        get_epoch=shuffle_get_epoch,
+    )
 
     generate_test = TensorMapDataLoader2(
         batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
         dataset=test_dataset,
         num_workers=num_train_workers,
-        )
+    )
 
     y_trues = defaultdict(list)
     y_preds = defaultdict(list)
@@ -518,8 +528,10 @@ def train_xdl_af(args):
             plot_survival(y_preds[otm.name], y_trues[otm.name], f'{otm.name.upper()} Model:{args.id}', otm.days_window)
         elif otm.is_categorical():
             plot_roc(y_preds[otm.name], y_trues[otm.name], otm.channel_map, f'{otm.name} ROC')
-            plot_precision_recall_per_class(y_preds[otm.name], y_trues[otm.name], otm.channel_map,
-                                            f'{otm.name} Precision Recall')
+            plot_precision_recall_per_class(
+                y_preds[otm.name], y_trues[otm.name], otm.channel_map,
+                f'{otm.name} Precision Recall',
+            )
         elif otm.is_continuous():
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
 
@@ -561,7 +573,7 @@ def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000
                         space_dict[f'{otm.name}_event'].append(str(sick[0]))
                         space_dict[f'{otm.name}_follow_up'].append(str(follow_up[0]))
                 for k in target:
-                    if k in ['MRN', 'linker_id', 'is_c3po', 'output_age_in_days_continuous' ]:
+                    if k in ['MRN', 'linker_id', 'is_c3po', 'output_age_in_days_continuous']:
                         space_dict[f'{k}'].append(target[k][b].numpy())
                     elif k in ['datetime']:
                         space_dict[f'{k}'].append(float_to_datetime(int(target[k][b].numpy())))
@@ -749,13 +761,17 @@ def infer_multimodal_multitask(args):
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
-                        hd5.create_dataset(f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]),
-                                           compression='gzip')
+                        hd5.create_dataset(
+                            f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]),
+                            compression='gzip',
+                        )
                         if otm.path_prefix == 'ukb_ecg_rest':
                             for lead in otm.channel_map:
-                                hd5.create_dataset(f'/ukb_ecg_rest/{lead}/instance_0',
-                                                   data=otm.rescale(y[0, otm.channel_map[lead]]),
-                                                   compression='gzip')
+                                hd5.create_dataset(
+                                    f'/ukb_ecg_rest/{lead}/instance_0',
+                                    data=otm.rescale(y[0, otm.channel_map[lead]]),
+                                    compression='gzip',
+                                )
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
             stats['count'] += 1
