@@ -474,12 +474,11 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
-        if (not do_not_tensorize_cardiac_overlays) and v == MRI_TO_SEGMENT:
+        if v == MRI_TO_SEGMENT and (not do_not_tensorize_cardiac_overlays):
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
-
-        else:
+        elif v != MRI_TO_SEGMENT:
 
             # TODO take me out
             print('----')
