@@ -481,6 +481,12 @@ def _write_tensors_from_dicoms(
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
 
         else:
+
+            # TODO take me out
+            print('----')
+            print(v, views[v][0].Rows, views[v][0].Columns, len(views[v]))
+            print('----')
+
             mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
                 _save_pixel_dimensions_if_missing(slicer, v, hd5)
