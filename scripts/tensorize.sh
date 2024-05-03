@@ -12,6 +12,7 @@ XML_FIELD=  # exclude ecg data
 MRI_FIELD=  # exclude mri data
 RECIPES_ARGS=
 TENSORIZE_MODE="tensorize"
+ENV=""
 
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
@@ -30,6 +31,7 @@ usage()
                           [-e <sample_id_end>]
                           [-a <RECIPES_ARGS>]
                           [-m <tensorize mode>]
+                          [-v <environment variables>]
                           [-h]
 
     Example: ./${SCRIPT_NAME} -t /mnt/disks/data/generated/tensors/test/2019-02-05/ -n 96 -s 1000000 -e 6030000 -a "--xml_field_ids 20205 6025 --mri_field_ids 20208 20209"
@@ -45,6 +47,8 @@ usage()
         -a      <ids>       Argument string to pass directly to recipes.py
 
         -m      <mode>      Mode argument for recipes.py
+
+        -v                  Run Docker with the specified environment variables set.
 
         -h                  Print this help text
 
@@ -72,7 +76,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":t:a:n:m:s:e:h" opt ; do
+while getopts ":t:a:n:m:s:e:v:h" opt ; do
     case ${opt} in
         h)
             usage
@@ -95,6 +99,9 @@ while getopts ":t:a:n:m:s:e:h" opt ; do
             ;;
         m)
             TENSORIZE_MODE=$OPTARG
+            ;;
+        v)
+            ENV="-e $OPTARG"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -163,7 +170,7 @@ chmod +x /tmp/ml4h/tensorize_single_sample.sh
 # NOTE: the < " --version;  > below is very much a hack - it's a way to escape tf.sh's running "python" followed by 
 #       whatever you pass with -c.  This causes it to run "python --version; " and then whatever you have after the semicolon.
 read -r -d '' TF_COMMAND <<LAUNCH_CMDLINE_MESSAGE
-    $HOME/ml4h/scripts/tf.sh -m "/tmp/ml4h/" -c " --version; \
+    $HOME/ml4h/scripts/tf.sh -m "/tmp/ml4h/" ${ENV} -c " --version; \
         cat /tmp/ml4h/sample_ids_trimmed.txt | \
                 xargs -P $NUM_JOBS -I {} /tmp/ml4h/tensorize_single_sample.sh $HOME $TENSORIZE_MODE $TENSOR_PATH {} $PYTHON_ARGS"
 LAUNCH_CMDLINE_MESSAGE
