@@ -103,6 +103,7 @@ def write_tensors(
     min_sample_id: int,
     max_sample_id: int,
     min_values_to_print: int,
+    do_not_tensorize_cardiac_overlays: bool = False,
 ) -> None:
     """Write tensors as HD5 files containing any kind of data from UK BioBank
 
@@ -122,7 +123,7 @@ def write_tensors(
     :param max_sample_id: Maximum sample id to generate, for parallelization
     :param min_values_to_print: Minimum number of samples that have responded to question for it to be included in the
             categorical or continuous dictionaries printed after tensor generation
-
+    :param do_not_tensorize_cardiac_overlays: Do not tensorize the masks and systole/diastole for cardiac
     :return: None
     """
     stats = Counter()
@@ -143,7 +144,7 @@ def write_tensors(
 
         try:
             with h5py.File(tp, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats, do_not_tensorize_cardiac_overlays)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
@@ -384,6 +385,7 @@ def _write_tensors_from_zipped_dicoms(
     hd5: h5py.File,
     sample_id: int,
     stats: Dict[str, int],
+    do_not_tensorize_cardiac_overlays: bool = False,
 ) -> None:
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
@@ -398,7 +400,7 @@ def _write_tensors_from_zipped_dicoms(
                 zip_ref.extractall(dicom_folder)
                 _write_tensors_from_dicoms(
                     write_pngs, tensors, dicom_folder,
-                    hd5, instance, stats,
+                    hd5, instance, stats, do_not_tensorize_cardiac_overlays,
                 )
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
@@ -418,6 +420,7 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
 def _write_tensors_from_dicoms(
     write_pngs: bool, tensors: str,
     dicom_folder: str, hd5: h5py.File, instance: str, stats: Dict[str, int],
+    do_not_tensorize_cardiac_overlays: bool = False,
 ) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -430,6 +433,7 @@ def _write_tensors_from_dicoms(
         :param hd5: Tensor file in which to create datasets for each series and each segmented slice
         :param instance: The current instance index as a string
         :param stats: Counter to keep track of summary statistics
+        :param do_not_tensorize_cardiac_overlays: Do not tensorize the masks and systole/diastole for cardiac
 
     """
     views = defaultdict(list)
@@ -471,7 +475,7 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
-        if v == MRI_TO_SEGMENT:
+        if (not do_not_tensorize_cardiac_overlays) and v == MRI_TO_SEGMENT:
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
