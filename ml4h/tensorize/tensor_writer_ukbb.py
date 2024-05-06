@@ -54,12 +54,13 @@ MRI_CARDIAC_SERIES = [
     'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
     'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
     'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist',
-    'cine_segmented_lvot', 'cine_tagging_3sl_sax_b3s', 'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag',
+    'cine_segmented_lvot', 'cine_tagging_3sl_sax_b1s', 'cine_tagging_3sl_sax_b2s', 'cine_tagging_3sl_sax_b3s', 'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag',
     'shmolli_192i_b1_sax_b1s_sax_b1s_sax_b1s_t1map', 'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
     'shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map',
     'shmolli_192i_b3_sax_b3s_sax_b3s_sax_b3s_t1map', 'shmolli_192i_b4_sax_b4s_sax_b4s_sax_b4s_t1map',
     'shmolli_192i_b5_sax_b5s_sax_b5s_sax_b5s_t1map', 'shmolli_192i_b6_sax_b6s_sax_b6s_sax_b6s_t1map',
     'shmolli_192i_b7_sax_b7s_sax_b7s_sax_b7s_t1map',
+    'shmolli_192i_sax_b2s', 'shmolli_192i_sax_b2s_sax_b2s_fitparams',
 ]
 MRI_PANCREAS_SERIES = ['shmolli_192i_pancreas_t1map']
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
