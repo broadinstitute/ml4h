@@ -123,30 +123,42 @@ MAX_SAMPLE_ID=$SAMPLE_IDS_END
 mkdir -p /tmp/ml4h
 
 
-# We want to get the zip folder that was passes to recipes.py - look for the --zip_folder argument and extract the value passed after that
-# Or, if tensorizing pngs, we can look for sample_ids as the first column of the manifest file
-ZIP_FOLDER=$(echo ${PYTHON_ARGS} | sed -n 's/.*--zip_folder \([^ ]*\).*/\1/p')
-MANIFEST=$(echo ${PYTHON_ARGS} | sed -n 's/.*--app_csv \([^ ]*\).*/\1/p')
+if [[ "$TENSORIZE_MODE" == "tensorize" ]]; then
+  # We want to get the zip folder that was passes to recipes.py - look for the --zip_folder argument and extract the value passed after that
+  ZIP_FOLDER=$(echo ${PYTHON_ARGS} | sed -n 's/.*--zip_folder \([^ ]*\).*/\1/p')
 
-# Write out a file with the ids of every sample in the input folder (or csv manifest if tensorizing pngs)
-if [ -e "$ZIP_FOLDER" ]; then
-  echo "Gathering list of input zips to process between $MIN_SAMPLE_ID and $MAX_SAMPLE_ID, this takes several seconds..."
-  find $ZIP_FOLDER -name '*.zip' | xargs -I {} basename {} | cut -d '_' -f 1 \
-                                 | awk -v min="$MIN_SAMPLE_ID" -v max="$MAX_SAMPLE_ID" '$1 > min && $1 < max' \
-                                 | sort | uniq > /tmp/ml4h/sample_ids_trimmed.txt
-elif [ -e "$MANIFEST" ]; then
-  echo "Gathering list of sample ids to process between $MIN_SAMPLE_ID and $MAX_SAMPLE_ID, this takes several seconds..."
-  cat $MANIFEST | awk '{print $1}' | grep -v sample \
+  # Write out a file with the ids of every sample in the input folder
+  if [ -e "$ZIP_FOLDER" ]; then
+    echo "Gathering list of input zips to process between $MIN_SAMPLE_ID and $MAX_SAMPLE_ID, this takes several seconds..."
+    find $ZIP_FOLDER -name '*.zip' | xargs -I {} basename {} | cut -d '_' -f 1 \
                                    | awk -v min="$MIN_SAMPLE_ID" -v max="$MAX_SAMPLE_ID" '$1 > min && $1 < max' \
                                    | sort | uniq > /tmp/ml4h/sample_ids_trimmed.txt
+  else
+    echo "ERROR: Invalid zip folder, found zip folder $ZIP_FOLDER"
+    exit 1
+  fi
+
+elif [[ "$TENSORIZE_MODE" == "tensorize_pngs" ]]; then
+  # If tensorizing pngs, we can look for sample_ids as the first column of the manifest file in the --app_csv argument
+  MANIFEST=$(echo ${PYTHON_ARGS} | sed -n 's/.*--app_csv \([^ ]*\).*/\1/p')
+
+  # Write out a file with the ids of every sample in the manifest file
+  if [ -e "$MANIFEST" ]; then
+    echo "Gathering list of sample ids to process between $MIN_SAMPLE_ID and $MAX_SAMPLE_ID, this takes several seconds..."
+    cat $MANIFEST | awk '{print $1}' | grep -v sample \
+                                     | awk -v min="$MIN_SAMPLE_ID" -v max="$MAX_SAMPLE_ID" '$1 > min && $1 < max' \
+                                     | sort | uniq > /tmp/ml4h/sample_ids_trimmed.txt
+  else
+    echo "ERROR: Invalid manifest, found manifest $MANIFEST"
+    exit 1
+  fi
 else
-  echo "ERROR: Could not find zip folder or manifest, found zip folder $ZIP_FOLDER and manifest $MANIFEST"
+  echo "ERROR: The tensorize mode $TENSORIZE_MODE is not supported"
   exit 1
 fi
 
 NUM_SAMPLES_TO_PROCESS=$(cat /tmp/ml4h/sample_ids_trimmed.txt | wc -l)
 echo "Including $NUM_SAMPLES_TO_PROCESS samples in this tensorization job."
-
 
 echo -e "\nLaunching job for sample IDs starting with $MIN_SAMPLE_ID and ending with $MAX_SAMPLE_ID via:"
 
