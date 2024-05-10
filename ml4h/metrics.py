@@ -10,7 +10,7 @@ from sklearn.metrics import roc_curve, auc, average_precision_score
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
 from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
-#from neurite.tf.losses import Dice
+from neurite.tf.losses import Dice
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
