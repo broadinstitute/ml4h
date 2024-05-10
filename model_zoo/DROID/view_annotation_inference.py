@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 import tensorflow as tf
 
@@ -41,14 +42,14 @@ def main(
         if is_mgh:
             study_id = row["study_id"]
             log_df = pd.read_parquet(
-                f"work/data/{lmdb_folder}/{study_id}.lmdb/log_{study_id}.pq",
+                os.path.join('work/data', lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.tsv"),
             )
             log_df = log_df[log_df["stored"]]
             log_df["sample_id"] = log_df["view"]
         else:
             study_id = f"{row['MRN']}_{row['study_id']}"
             log_df = pd.read_csv(
-                f"work/data/{lmdb_folder}/{study_id}.lmdb/log_{study_id}.tsv",
+                os.path.join('work/data', lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.tsv"),
                 sep="\t",
             )
             log_df = log_df[log_df["stored"]]
