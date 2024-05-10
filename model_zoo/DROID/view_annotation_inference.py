@@ -42,7 +42,7 @@ def main(
         if is_mgh:
             study_id = row["study_id"]
             log_df = pd.read_parquet(
-                os.path.join('work/data', lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.tsv"),
+                os.path.join('work/data', lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.pq"),
             )
             log_df = log_df[log_df["stored"]]
             log_df["sample_id"] = log_df["view"]
