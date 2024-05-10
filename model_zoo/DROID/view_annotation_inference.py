@@ -53,7 +53,7 @@ def main(
                 os.path.join(lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.pq"),
             )
             log_df = log_df[log_df["stored"]]
-            log_df["sample_id"] = log_df["view"]
+            log_df["sample_id"] = log_df["view"].apply(lambda x: f"mrn_{study_id}_{x}")
         else:
             study_id = f"{row['MRN']}_{row['study_id']}"
             log_df = pd.read_csv(
