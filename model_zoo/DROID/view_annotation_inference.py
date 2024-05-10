@@ -41,14 +41,14 @@ def main(
         if is_mgh:
             study_id = row["study_id"]
             log_df = pd.read_parquet(
-                f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.pq",
+                f"work/data/{lmdb_folder}/{study_id}.lmdb/log_{study_id}.pq",
             )
             log_df = log_df[log_df["stored"]]
             log_df["sample_id"] = log_df["view"]
         else:
             study_id = f"{row['MRN']}_{row['study_id']}"
             log_df = pd.read_csv(
-                f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.tsv",
+                f"work/data/{lmdb_folder}/{study_id}.lmdb/log_{study_id}.tsv",
                 sep="\t",
             )
             log_df = log_df[log_df["stored"]]
