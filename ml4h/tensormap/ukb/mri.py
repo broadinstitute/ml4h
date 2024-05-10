@@ -2815,7 +2815,7 @@ def _segmented_t1map_pancreas(tm, hd5, dependents={}):
     return tensor
 
 t1map_b2_segmentation = TensorMap(
-    'b2s_t1map_kassir_annotated',
+    'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map_vnauffal_annotated',
     interpretation=Interpretation.CATEGORICAL,
     shape=(384, 384, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
     channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
