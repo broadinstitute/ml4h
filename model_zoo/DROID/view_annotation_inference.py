@@ -5,7 +5,10 @@ import os
 import tensorflow as tf
 
 from echo_defines import category_dictionaries
-from data_descriptions.echo import LmdbEchoStudyVideoDataDescriptionBWH
+from data_descriptions.echo import (
+    LmdbEchoStudyVideoDataDescription,
+    LmdbEchoStudyVideoDataDescriptionBWH,
+)
 from model_descriptions.echo import DDGenerator, create_movinet_classifier
 from model_descriptions.models import create_classifier, create_video_encoder
 import numpy as np
@@ -28,7 +31,12 @@ def main(
     study_df,
     view_annotation_tasks,
 ):
-    input_dd = LmdbEchoStudyVideoDataDescriptionBWH(
+    input_dd_class = (
+        LmdbEchoStudyVideoDataDescription
+        if is_mgh
+        else LmdbEchoStudyVideoDataDescriptionBWH
+    )
+    input_dd = input_dd_class(
         lmdb_folder,
         "image",
         [],
@@ -139,6 +147,6 @@ if __name__ == "__main__":
         args.output_file,
         args.pretrained_ckpt_dir,
         args.skip_modulo,
-        pd.read_csv(args.study_df, sep='\t', dtype={'MRN': 'str'}),
+        pd.read_csv(args.study_df, sep="\t", dtype={"MRN": "str"}),
         args.view_annotation_tasks,
     )
