@@ -18,6 +18,7 @@ tf.get_logger().setLevel(logging.ERROR)
 def main(
     batch_size,
     lmdb_folder,
+    is_mgh,
     movinet_ckpt_dir,
     n_input_frames,
     output_file,
@@ -37,13 +38,21 @@ def main(
     # Load the IDs
     df_list = []
     for _, row in study_df.iterrows():
-        study_id = f"{row['MRN']}_{row['study_id']}"
-        log_df = pd.read_csv(
-            f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.tsv",
-            sep="\t",
-        )
-        log_df = log_df[log_df["stored"]]
-        log_df["sample_id"] = log_df["view"].apply(lambda x: f"{study_id}_{x}")
+        if is_mgh:
+            study_id = row["study_id"]
+            log_df = pd.read_parquet(
+                f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.pq",
+            )
+            log_df = log_df[log_df["stored"]]
+            log_df["sample_id"] = log_df["view"]
+        else:
+            study_id = f"{row['MRN']}_{row['study_id']}"
+            log_df = pd.read_csv(
+                f"work/data/bwh_lmdbs/{study_id}.lmdb/log_{study_id}.tsv",
+                sep="\t",
+            )
+            log_df = log_df[log_df["stored"]]
+            log_df["sample_id"] = log_df["view"].apply(lambda x: f"{study_id}_{x}")
         df_list.append(log_df)
     log_df = pd.concat(df_list)
     working_ids = sorted(log_df["sample_id"].values.tolist())
@@ -103,6 +112,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lmdb_folder", type=str)
+    parser.add_argument("--is_mgh", action="store_true")
     parser.add_argument("--movinet_ckpt_dir", type=str)
     parser.add_argument("--n_input_frames", type=int, default=1)
     parser.add_argument("--output_file", type=str)
@@ -122,6 +132,7 @@ if __name__ == "__main__":
     main(
         args.batch_size,
         args.lmdb_folder,
+        args.is_mgh,
         args.movinet_ckpt_dir,
         args.n_input_frames,
         args.output_file,
