@@ -759,9 +759,9 @@ def _scatter_plots_from_segmented_region_stats(
                 true_outliers = plot_data[plot_data.true == 0]
                 pred_outliers = plot_data[plot_data.pred == 0]
                 logging.info(f'sample_ids where {col} is zero in the manual segmentation:')
-                logging.info(true_outliers['sample_id'].to_list())
+                logging.info(sorted(true_outliers['sample_id'].to_list()))
                 logging.info(f'sample_ids where {col} is zero in the model segmentation:')
-                logging.info(pred_outliers['sample_id'].to_list())
+                logging.info(sorted(pred_outliers['sample_id'].to_list()))
             elif i == 'filter_outliers':
                 plot_data = plot_data[plot_data.true != 0]
                 plot_data = plot_data[plot_data.pred != 0]
