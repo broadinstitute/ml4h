@@ -846,6 +846,12 @@ def infer_stats_from_segmented_regions(args):
     stats_counter = Counter()
     tensor_paths_inferred = set()
 
+    if args.analyze_ground_truth:
+        all_predictions = []
+        all_data = {}
+        all_labels = {}
+        all_paths = []
+
     with open(inference_tsv_true, mode='w') as inference_file_true, open(inference_tsv_pred, mode='w') as inference_file_pred:
         inference_writer_true = csv.writer(inference_file_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         inference_writer_pred = csv.writer(inference_file_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -861,12 +867,24 @@ def infer_stats_from_segmented_regions(args):
         while True:
             batch = next(generate_test)
             data, labels, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+
             if tensor_paths[0] in tensor_paths_inferred:
                 next(generate_test)  # this print end of epoch info
                 logging.info(
                     f"Inference on {stats_counter['count']} tensors finished. Inference TSV files at: {inference_tsv_true}, {inference_tsv_pred}",
                 )
                 break
+
+            if args.analyze_ground_truth:
+                for k in data.keys():
+                    if k not in all_data.keys():
+                        all_data[k] = []
+                    all_data[k].append(data[k])
+                assert(len(labels.keys()) == 1)
+                label_key = list(labels.keys())[0]
+                if label_key not in all_labels.keys():
+                    all_labels[label_key] = []
+                all_paths += tensor_paths
 
             img = data[tm_in.input_name()]
             rescaled_img = tm_in.rescale(img)
@@ -887,6 +905,9 @@ def infer_stats_from_segmented_regions(args):
                     y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
                 if args.intensity_thresh_k_means:
                     y_true = _intensity_thresh_k_means(y_true, img, args.intensity_thresh_k_means)
+                assert (len(labels.keys()) == 1)
+                all_labels[label_key].append(y_true)
+
                 means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
                 csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
                 inference_writer_true.writerow(csv_row_true)
@@ -898,6 +919,9 @@ def infer_stats_from_segmented_regions(args):
                 y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
             if args.intensity_thresh_k_means:
                 y_pred = _intensity_thresh_k_means(y_pred, img, args.intensity_thresh_k_means)
+            if args.analyze_ground_truth:
+                all_predictions.append(y_pred)
+
             means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
             csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
@@ -913,6 +937,16 @@ def infer_stats_from_segmented_regions(args):
             inference_tsv_true, inference_tsv_pred, args.structures_to_analyze,
             args.output_folder, args.id, tm_in.input_name(), tm_out.output_name(),
         )
+
+    # pngs
+    if args.analyze_ground_truth:
+        folder = os.path.join(args.output_folder, args.id, 'postprocessing_pngs/')
+        all_predictions = np.concatenate(all_predictions, axis=0)
+        for k in all_data.keys():
+            all_data[k]= np.concatenate(all_data[k], axis=0)
+        for k in all_labels.keys():
+            all_labels[k] = np.concatenate(all_labels[k], axis=0)
+        predictions_to_pngs(all_predictions, args.tensor_maps_in, args.tensor_maps_out, all_data, all_labels, all_paths, folder)
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
