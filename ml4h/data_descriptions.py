@@ -1,5 +1,3 @@
-from ml4ht.data.defines import SampleID
-
 import os
 import glob
 from typing import Callable, List, Union, Optional, Tuple, Dict, Any
@@ -12,7 +10,7 @@ import pandas as pd
 
 from ml4ht.data.data_description import DataDescription
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
-from ml4ht.data.defines import LoadingOption, Tensor
+from ml4ht.data.defines import LoadingOption, SampleID, Tensor
 
 from ml4h.TensorMap import TensorMap
 from ml4h.defines import PARTNERS_DATETIME_FORMAT, ECG_REST_AMP_LEADS
@@ -211,7 +209,7 @@ class ECGDataDescription(DataDescription):
             sites = [
                 decompress_data(
                     data_compressed=hd5[f'{self.hd5_path_to_ecg}/{date}/sitename'][()],
-                    dtype='str'
+                    dtype='str',
                 )
                 for date in dates
             ]
@@ -329,17 +327,23 @@ class DataFrameDataDescription(DataDescription):
             col: str,
             process_col: Callable[[Any], Tensor] = None,
             name: str = None,
+            loading_options_col: str = 'start_fu_datetime',
+            restrict_to_loading_option: bool = False,
     ):
         """
         Gets data from a column of the provided DataFrame.
         :param col: The column name to get data from
         :param process_col: Function to turn the column value into Tensor
         :param name: Optional overwrite of the df column name
+        :param loading_options_col: Which column to use when getting loading options
+        :param restrict_to_loading_option: Whether to use the loading_option when getting raw data
         """
         self.process_col = process_col or self._default_process_call
         self.df = df
         self.col = col
         self._name = name or col
+        self.loading_options_col = loading_options_col
+        self.restrict_to_loading_option = restrict_to_loading_option
 
     @staticmethod
     def _default_process_call(x: Any) -> Tensor:
@@ -352,7 +356,7 @@ class DataFrameDataDescription(DataDescription):
     def get_loading_options(self, sample_id):
         row = self.df.loc[sample_id]
         return [{
-            'start_fu_datetime': pd.to_datetime(row['start_fu_datetime']),
+            self.loading_options_col: pd.to_datetime(row[self.loading_options_col]),
         }]
 
     def get_raw_data(
@@ -360,26 +364,39 @@ class DataFrameDataDescription(DataDescription):
             sample_id: SampleID,
             loading_option: LoadingOption,
     ) -> Tensor:
-        col_val = self.df.loc[sample_id][self.col]
+        if not self.restrict_to_loading_option:
+            col_val = self.df.loc[sample_id][self.col]
+        else:
+            col_val = self.df.loc[self.df[self.loading_options_col] == loading_option[self.loading_options_col]].loc[sample_id][self.col]
         if self.col == 'age_in_days' and 'day_delta' in loading_option:
             col_val -= loading_option['day_delta']
         return self.process_col(col_val)
 
-
 def one_hot_sex(x):
     return np.array([1, 0], dtype=np.float32) if x in [0, "Female"] else np.array([0, 1], dtype=np.float32)
 
+def one_hot_n(n):
+    def one_hot(x):
+        if isinstance(x, str) and x in ["Female", "Male"]:
+            return one_hot_sex(x)
+        else:
+            a = np.zeros((n), dtype=np.float32)
+            a[int(x)] = 1
+            return a
+    return one_hot
 
 def make_zscore(mu, std):
     def zscore(x):
         return (x-mu) / (1e-8+std)
     return zscore
 
-
 def dataframe_data_description_from_tensor_map(
         tensor_map: TensorMap,
         dataframe: pd.DataFrame,
         is_input: bool = False,
+        loading_options_col = 'start_fu_datetime',
+        restrict_to_loading_option = False,
+        do_zscore: bool = True,
 ) -> DataDescription:
     if tensor_map.is_survival_curve():
         if tensor_map.name == 'survival_curve_af':
@@ -396,14 +413,18 @@ def dataframe_data_description_from_tensor_map(
             event_column=event_column,
         )
     if tensor_map.is_categorical():
-        process_col = one_hot_sex
-    else:
+        process_col = one_hot_n(len(tensor_map.channel_map))
+    elif do_zscore:
         process_col = make_zscore(dataframe[tensor_map.name].mean(), dataframe[tensor_map.name].std())
+    else:
+        process_col = lambda x:x
     return DataFrameDataDescription(
         dataframe,
         col=tensor_map.name,
         process_col=process_col,
         name=tensor_map.input_name() if is_input else tensor_map.output_name(),
+        loading_options_col=loading_options_col,
+        restrict_to_loading_option=restrict_to_loading_option,
     )
 
 
@@ -440,7 +461,8 @@ class SurvivalWideFile(DataDescription):
         row = self.wide_df.loc[sample_id]
         ecg_date = pd.to_datetime(row[DATE_OPTION_KEY])
         start_date = ecg_date + (
-                    pd.to_timedelta(row[self.start_age_column]) - pd.to_timedelta(row[self.ecg_age_column]))
+                    pd.to_timedelta(row[self.start_age_column]) - pd.to_timedelta(row[self.ecg_age_column])
+        )
         return [{
             DATE_OPTION_KEY: ecg_date,
             'start_date': start_date,
@@ -478,7 +500,8 @@ class SurvivalWideFile(DataDescription):
             cur_date = ecg_date + datetime.timedelta(days=day_delta)
             survival_then_censor[i] = float(cur_date < censor_date)
             survival_then_censor[self.intervals + i] = has_disease * float(
-                censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval))
+                censor_date <= cur_date < censor_date + datetime.timedelta(days=days_per_interval),
+            )
         # Handle prevalent diseases
         if has_disease and pd.to_timedelta(row[self.event_age]) <= pd.to_timedelta(ecg_age):
             survival_then_censor[self.intervals] = has_disease
