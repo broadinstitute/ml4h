@@ -728,8 +728,9 @@ def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig
     y = _to_categorical(y, nb_orig_channels)
     return y
 
-def _intensity_thresh_auto(seg, img, intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel):
-    seg = np.argmax(y, axis=-1)[..., np.newaxis]
+def _intensity_thresh_auto(y, img, intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel):
+    img = img[0, ..., 0]
+    seg = np.argmax(y, axis=-1)[0, ...]
 
     paps_seg = np.isin(seg, intensity_thresh_in_channels)
     lv_seg = (seg == intensity_thresh_out_channel)
@@ -861,6 +862,11 @@ def infer_stats_from_segmented_regions(args):
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
     if do_intensity_thresh:
         assert(args.intensity_thresh or args.intensity_thresh_auto)
+    if args.intensity_thresh or args.intensity_thresh_auto:
+        assert(do_intensity_thresh)
+    if args.intensity_thresh_auto:
+        assert (args.intensity_thresh_auto in ['image_hist', 'image_kmeans', 'region_hist', 'region_kmeans'])
+    if do_intensity_thresh:
         intensity_thresh_in_channels = [tm_out.channel_map[k] for k in args.intensity_thresh_in_structures]
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
         if args.intensity_thresh_auto:
@@ -931,11 +937,11 @@ def infer_stats_from_segmented_regions(args):
 
             if do_intensity_thresh:
                 if args.intensity_thresh_auto:
-                    assert(args.intensity_thresh_auto in ['image_hist', 'image_kmeans', 'region_hist', 'region_kmeans'])
                     this_intensity_thresh = _intensity_thresh_auto(y_pred, img, args.intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel)
-                    threshes.append(this_intensity_thresh)
-            else:
-                this_intensity_thresh = args.intensity_thresh
+                    if this_intensity_thresh is not None:
+                        threshes.append(this_intensity_thresh)
+                else:
+                    this_intensity_thresh = args.intensity_thresh
 
             if args.analyze_ground_truth:
                 if do_intensity_thresh and (this_intensity_thresh is not None):
