@@ -706,18 +706,30 @@ def _compute_masked_stats(img, y, nb_classes):
     melt_shape = (img.shape[0], img.shape[1] * img.shape[2], img.shape[3])
     img = img.reshape(melt_shape)
     y = y.reshape(melt_shape)
-
     masked_img = np.ma.array(img, mask=np.logical_not(y))
+
     means = masked_img.mean(axis=1).data
     medians = np.ma.median(masked_img, axis=1).data
     stds = masked_img.std(axis=1).data
-    return means, medians, stds
+
+    assert(masked_img.shape[0] == 1)
+    nb_labels = masked_img.shape[-1]
+    iqrs = np.zeros((1, nb_labels))
+    for i in range(nb_labels):
+        data = masked_img[...,i].compressed()
+        if data.size == 0:
+            iqrs[0, i] = 0
+        else:
+            q75s, q25s = np.percentile(data, [75, 25])
+            iqrs[0, i] = q75s - q25s
+
+    return means, medians, stds, iqrs
 
 def _to_categorical(y, nb_classes):
     return np.eye(nb_classes)[y]
 
-def _get_csv_row(sample_id, means, medians, stds, date):
-    res = np.concatenate([means, medians, stds], axis=-1)
+def _get_csv_row(sample_id, means, medians, stds, iqrs, date):
+    res = np.concatenate([means, medians, stds, iqrs], axis=-1)
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
@@ -898,6 +910,7 @@ def infer_stats_from_segmented_regions(args):
         header += [f'{k}_mean' for k in good_structures]
         header += [f'{k}_median' for k in good_structures]
         header += [f'{k}_std' for k in good_structures]
+        header += [f'{k}_iqr' for k in good_structures]
         header += ['mri_date']
         inference_writer_true.writerow(header)
         inference_writer_pred.writerow(header)
@@ -952,8 +965,8 @@ def infer_stats_from_segmented_regions(args):
                 assert (len(labels.keys()) == 1)
                 all_labels[label_key].append(y_true)
 
-                means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
-                csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
+                means_true, medians_true, stds_true, iqrs_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
+                csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, iqrs_true, date)
                 inference_writer_true.writerow(csv_row_true)
 
             if do_intensity_thresh and (this_intensity_thresh is not None):
@@ -964,8 +977,8 @@ def infer_stats_from_segmented_regions(args):
             if args.analyze_ground_truth:
                 all_predictions.append(y_pred)
 
-            means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
-            csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
+            means_pred, medians_pred, stds_pred, iqrs_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
+            csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, iqrs_pred, date)
             inference_writer_pred.writerow(csv_row_pred)
 
             tensor_paths_inferred.add(tensor_paths[0])
