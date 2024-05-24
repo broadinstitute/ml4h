@@ -701,7 +701,8 @@ def infer_with_pixels(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
-def _compute_masked_stats(img, y, nb_classes):
+def _compute_masked_stats(img, y):
+    nb_classes = y.shape[-1]
     img = np.tile(img, nb_classes)
     melt_shape = (img.shape[0], img.shape[1] * img.shape[2], img.shape[3])
     img = img.reshape(melt_shape)
@@ -859,12 +860,27 @@ def infer_stats_from_segmented_regions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
 
+    # the user can use '+' to create a new channel that merges other channels
+    # those channels must be included alone in structures_to_analyze as well, and must be at the end of the list
+    merged_locs = [k for k in range(len(args.structures_to_analyze)) if '+' in args.structures_to_analyze[k]]
+    uni_locs = [k for k in range(len(args.structures_to_analyze)) if '+' not in args.structures_to_analyze[k]]
+    assert((len(merged_locs) == 0) or (merged_locs[0] > uni_locs[-1]))
+    merged_structures = [args.structures_to_analyze[k] for k in merged_locs]
+    uni_structures = [args.structures_to_analyze[k] for k in uni_locs]
+    merged_channels = [k.split('+') for k in merged_structures]
+    for i in range(len(merged_channels)):
+        for j in range(len(merged_channels[i])):
+            merged_channels[i][j] = tm_out.channel_map[merged_channels[i][j]]
+
     # good_structures has to be sorted by channel idx
-    good_channels = sorted([tm_out.channel_map[k] for k in args.structures_to_analyze])
-    good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels]
+    good_channels = sorted([tm_out.channel_map[k] for k in uni_structures])
+    good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels] + merged_structures
     nb_orig_channels = len(tm_out.channel_map)
-    nb_good_channels = len(good_channels)
+    nb_out_channels = len(good_channels) + len(merged_structures)
     bad_channels = [k for k in range(nb_orig_channels) if k not in good_channels]
+    for m in merged_channels:
+        for c in m:
+            assert(c in good_channels)
 
     # Structuring element used for the erosion
     if args.erosion_radius > 0:
@@ -956,30 +972,29 @@ def infer_stats_from_segmented_regions(args):
                 else:
                     this_intensity_thresh = args.intensity_thresh
 
-            if args.analyze_ground_truth:
+            def postprocess_seg_and_write_stats(y, inference_writer):
                 if do_intensity_thresh and (this_intensity_thresh is not None):
-                    y_true = _thresh_labels_above(y_true, img, this_intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
-                y_true = np.delete(y_true, bad_channels, axis=-1)
+                    y = _thresh_labels_above(y, img, this_intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
+                for m in merged_channels:
+                    y = np.concatenate([y, np.sum(y[...,m], axis=-1, keepdims=True)], axis=-1)
+                y = np.delete(y, bad_channels, axis=-1)
                 if args.erosion_radius > 0:
-                    y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
-                assert (len(labels.keys()) == 1)
-                all_labels[label_key].append(y_true)
+                    y = binary_erosion(y, structure).astype(y.dtype)
 
-                means_true, medians_true, stds_true, iqrs_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
-                csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, iqrs_true, date)
-                inference_writer_true.writerow(csv_row_true)
+                assert(y.shape[-1] == nb_out_channels)
+                means, medians, stds, iqrs = _compute_masked_stats(rescaled_img, y)
+                csv_row = _get_csv_row(sample_id, means, medians, stds, iqrs, date)
+                inference_writer.writerow(csv_row)
+                return y
 
-            if do_intensity_thresh and (this_intensity_thresh is not None):
-                y_pred = _thresh_labels_above(y_pred, img, this_intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
-            y_pred = np.delete(y_pred, bad_channels, axis=-1)
-            if args.erosion_radius > 0:
-                y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
             if args.analyze_ground_truth:
-                all_predictions.append(y_pred)
+                y_true = postprocess_seg_and_write_stats(y_true, inference_writer_true)
+            y_pred = postprocess_seg_and_write_stats(y_pred, inference_writer_pred)
 
-            means_pred, medians_pred, stds_pred, iqrs_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
-            csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, iqrs_pred, date)
-            inference_writer_pred.writerow(csv_row_pred)
+            if args.analyze_ground_truth:
+                assert(len(labels.keys()) == 1)
+                all_labels[label_key].append(y_true)
+                all_predictions.append(y_pred)
 
             tensor_paths_inferred.add(tensor_paths[0])
             stats_counter['count'] += 1
@@ -1000,10 +1015,12 @@ def infer_stats_from_segmented_regions(args):
     if args.analyze_ground_truth:
         folder = os.path.join(args.output_folder, args.id, 'postprocessing_pngs/')
         all_predictions = np.concatenate(all_predictions, axis=0)
+        all_predictions = all_predictions[..., :len(uni_structures)] # remove any merged structures
         for k in all_data.keys():
             all_data[k]= np.concatenate(all_data[k], axis=0)
         for k in all_labels.keys():
             all_labels[k] = np.concatenate(all_labels[k], axis=0)
+            all_labels[k] = all_labels[k][..., :len(uni_structures)] # remove any merged structures
         predictions_to_pngs(all_predictions, args.tensor_maps_in, args.tensor_maps_out, all_data, all_labels, all_paths, folder)
 
 def _softmax(x):
