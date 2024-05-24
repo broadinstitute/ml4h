@@ -31,6 +31,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        pip cache purge
         python -m pip install --upgrade pip
         # Install the ml4h Python package.
         pip install .
