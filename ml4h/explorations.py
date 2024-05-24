@@ -741,14 +741,17 @@ def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig
     y = _to_categorical(y, nb_orig_channels)
     return y
 
-def _intensity_thresh_auto(y, img, intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel):
+def _intensity_thresh_auto(
+    y, img, intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel,
+    intensity_thresh_auto_region_radius, intensity_thresh_auto_clip_low, intensity_thresh_auto_clip_high,
+):
     img = img[0, ..., 0]
     seg = np.argmax(y, axis=-1)[0, ...]
 
     paps_seg = np.isin(seg, intensity_thresh_in_channels)
     lv_seg = (seg == intensity_thresh_out_channel)
     if intensity_thresh_auto in ['region_hist', 'region_kmeans']:
-        structure = unit_disk(5) # TODO don't hard code this
+        structure = unit_disk(intensity_thresh_auto_region_radius)
         lv_seg = np.logical_and(binary_dilation(paps_seg, structure), lv_seg)
 
     paps_intensities = list(np.ma.masked_where(np.invert(paps_seg), img).compressed())
@@ -756,15 +759,11 @@ def _intensity_thresh_auto(y, img, intensity_thresh_auto, intensity_thresh_in_ch
     if len(paps_intensities) == 0:
         return None
 
-    # TODO don't hard code these
-    thresh_low = 0.6580063104629517
-    thresh_high = 2.018092155456543
-
     # clip ends
     lv_cavity_intensities = np.array(lv_cavity_intensities)
     paps_intensities = np.array(paps_intensities)
-    lv_cavity_intensities = lv_cavity_intensities[(lv_cavity_intensities >= thresh_low) & (lv_cavity_intensities <= thresh_high)]
-    paps_intensities = paps_intensities[(paps_intensities >= thresh_low) & (paps_intensities <= thresh_high)]
+    lv_cavity_intensities = lv_cavity_intensities[(lv_cavity_intensities >= intensity_thresh_auto_clip_low) & (lv_cavity_intensities <= intensity_thresh_auto_clip_high)]
+    paps_intensities = paps_intensities[(paps_intensities >= intensity_thresh_auto_clip_low) & (paps_intensities <= intensity_thresh_auto_clip_high)]
 
     bins = np.linspace(np.min(paps_intensities), np.max(lv_cavity_intensities), 100)
 
@@ -966,7 +965,10 @@ def infer_stats_from_segmented_regions(args):
 
             if do_intensity_thresh:
                 if args.intensity_thresh_auto:
-                    this_intensity_thresh = _intensity_thresh_auto(y_pred, img, args.intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel)
+                    this_intensity_thresh = _intensity_thresh_auto(
+                        y_pred, img, args.intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel,
+                        args.intensity_thresh_auto_region_radius, args.intensity_thresh_auto_clip_low, args.intensity_thresh_auto_clip_high,
+                    )
                     if this_intensity_thresh is not None:
                         threshes.append(this_intensity_thresh)
                 else:
