@@ -764,6 +764,8 @@ def _intensity_thresh_auto(
     paps_intensities = np.array(paps_intensities)
     lv_cavity_intensities = lv_cavity_intensities[(lv_cavity_intensities >= intensity_thresh_auto_clip_low) & (lv_cavity_intensities <= intensity_thresh_auto_clip_high)]
     paps_intensities = paps_intensities[(paps_intensities >= intensity_thresh_auto_clip_low) & (paps_intensities <= intensity_thresh_auto_clip_high)]
+    if paps_intensities.size == 0 or lv_cavity_intensities.size == 0:
+        return None
 
     bins = np.linspace(np.min(paps_intensities), np.max(lv_cavity_intensities), 100)
 
@@ -871,8 +873,9 @@ def infer_stats_from_segmented_regions(args):
         for j in range(len(merged_channels[i])):
             merged_channels[i][j] = tm_out.channel_map[merged_channels[i][j]]
 
-    # good_structures has to be sorted by channel idx
-    good_channels = sorted([tm_out.channel_map[k] for k in uni_structures])
+    # structures have to be in the same order as the channel map
+    good_channels = [tm_out.channel_map[k] for k in uni_structures]
+    assert (good_channels == sorted(good_channels))
     good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels] + merged_structures
     nb_orig_channels = len(tm_out.channel_map)
     nb_out_channels = len(good_channels) + len(merged_structures)
@@ -882,8 +885,13 @@ def infer_stats_from_segmented_regions(args):
             assert(c in good_channels)
 
     # Structuring element used for the erosion
-    if args.erosion_radius > 0:
-        structure = unit_disk(args.erosion_radius)[np.newaxis, ..., np.newaxis]
+    if len(args.erosion_radius) > 0:
+        do_erosion = True
+        if len(args.erosion_radius) == 1:
+            structure = unit_disk(args.erosion_radius[0])[np.newaxis, ..., np.newaxis]
+        else:
+            assert(len(args.erosion_radius) == nb_out_channels)
+            structures = [unit_disk(r)[np.newaxis, ...] for r in args.erosion_radius]
 
     # Setup for intensity thresholding
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
@@ -980,8 +988,12 @@ def infer_stats_from_segmented_regions(args):
                 for m in merged_channels:
                     y = np.concatenate([y, np.sum(y[...,m], axis=-1, keepdims=True)], axis=-1)
                 y = np.delete(y, bad_channels, axis=-1)
-                if args.erosion_radius > 0:
-                    y = binary_erosion(y, structure).astype(y.dtype)
+                if do_erosion:
+                    if len(args.erosion_radius) == 1:
+                        y = binary_erosion(y, structure).astype(y.dtype)
+                    else:
+                        for i in range(nb_out_channels):
+                            y[...,i] = binary_erosion(y[...,i], structures[i]).astype(y.dtype)
 
                 assert(y.shape[-1] == nb_out_channels)
                 means, medians, stds, iqrs = _compute_masked_stats(rescaled_img, y)
@@ -1016,13 +1028,21 @@ def infer_stats_from_segmented_regions(args):
     # pngs
     if args.analyze_ground_truth:
         folder = os.path.join(args.output_folder, args.id, 'postprocessing_pngs/')
-        all_predictions = np.concatenate(all_predictions, axis=0)
-        all_predictions = all_predictions[..., :len(uni_structures)] # remove any merged structures
+
         for k in all_data.keys():
             all_data[k]= np.concatenate(all_data[k], axis=0)
+
+        # combine into one batch, remove any merged structures, and put the background back
+        all_predictions = np.concatenate(all_predictions, axis=0)
+        all_predictions = all_predictions[..., :len(uni_structures)]
+        all_predictions = np.concatenate([1-np.sum(all_predictions, axis=-1, keepdims=True), all_predictions], axis=-1)
+
+        # combine into one batch, remove any merged structures, and put the background back
         for k in all_labels.keys():
             all_labels[k] = np.concatenate(all_labels[k], axis=0)
-            all_labels[k] = all_labels[k][..., :len(uni_structures)] # remove any merged structures
+            all_labels[k] = all_labels[k][..., :len(uni_structures)]
+            all_labels[k] = np.concatenate([1 - np.sum(all_labels[k], axis=-1, keepdims=True), all_labels[k]], axis=-1)
+
         predictions_to_pngs(all_predictions, args.tensor_maps_in, args.tensor_maps_out, all_data, all_labels, all_paths, folder)
 
 def _softmax(x):
