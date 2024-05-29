@@ -12,6 +12,9 @@ from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from echo_defines import category_dictionaries
 from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor, create_regressor_classifier
 
+import wandb
+from wandb.integration.keras import WandbMetricsLogger
+
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
 
@@ -64,7 +67,7 @@ def main(
         # output_labels that include all saved classification output names - if not, the classification output names
         # are added next anyway):
         output_labels = ([i for i in output_labels if i not in cls_category_map_dicts['cls_output_order']] +
-                         cls_category_map_dicts['cls_output_order'])
+                        cls_category_map_dicts['cls_output_order'])
         logging.info(f'Loaded model contains classification heads. Updated output_label_order: {output_labels}, with classification heads for: {cls_category_map_dicts["cls_output_order"]}')
         output_reg_len = len(output_labels) - len(cls_category_map_dicts['cls_output_order'])
         add_separate_dense_reg = cls_category_map_dicts['add_separate_dense_reg']
@@ -173,10 +176,10 @@ def main(
     # ---------- Adaptation for regression + classification ---------- #
     # Organize regressor/classifier inputs:
     func_args = {'input_shape': (n_input_frames, 224, 224, 3),
-                 'n_output_features': output_reg_len,
-                 'categories': cls_category_len_dict,
-                 'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
-                 'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls}}
+                'n_output_features': output_reg_len,
+                'categories': cls_category_len_dict,
+                'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
+                'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls}}
 
     model_plus_head = create_regressor_classifier(encoder, **func_args)
     # ---------------------------------------------------------------- #
@@ -186,14 +189,14 @@ def main(
     ufm = 'conv7'
     if extract_embeddings:
         output_folder = os.path.join(output_dir,
-                                     f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
+                                    f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
     else:
         output_folder = os.path.join(output_dir,
-                                     f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
+                                    f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
     os.makedirs(output_folder, exist_ok=True)
 
-    wide_df_selected.to_parquet(f'{output_folder}/wide_df_selected.pq')
-
+    wide_df_selected.to_csv(f'{output_folder}/wide_df_selected.csv')
+    
     def save_model_pred_as_df(pred, fname_suffix='', pred_col_names=[]):
         save_df = pd.DataFrame()
         save_df['sample_id'] = inference_ids_split
@@ -209,8 +212,12 @@ def main(
 
         save_df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq'))
 
+    run = wandb.init(
+        project = "echo_mvp"
+    )
+
     if extract_embeddings:
-        embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
+        embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
         df = pd.DataFrame()
         df['sample_id'] = inference_ids_split
         for j, _ in enumerate(range(embeddings.shape[1])):
@@ -218,7 +225,7 @@ def main(
 
         df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
     else:
-        predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
+        predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
         # predictions is a list of length = number of outputs in list, where all regression variables are in a single
         # list element and each classification task has a separate list element.
         # Each list element is of size:
@@ -253,7 +260,7 @@ def main(
         else:
             # Case: regression only
             save_model_pred_as_df(predictions)
-
+    run.finish()
 
 if __name__ == "__main__":
 
