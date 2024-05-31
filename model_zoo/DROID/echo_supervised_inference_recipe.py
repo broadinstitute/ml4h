@@ -99,7 +99,7 @@ def main(
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
         ]
-
+    
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
         wide_df_selected.loc[wide_df_selected[olabel].isna(), olabel] = -1
@@ -142,7 +142,7 @@ def main(
         [],
         n_input_frames,
         skip_modulo,
-        start_beat=start_beat
+        start_frame=start_beat
     )
 
     inference_ids_split = np.array_split(inference_ids, n_splits)[split_idx]
