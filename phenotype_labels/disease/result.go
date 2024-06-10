@@ -165,7 +165,7 @@ func NA(input interface{}) interface{} {
 	return input
 }
 
-func BuildQuery(BQ *WrappedBigQuery, tabs *TabFile, displayQuery bool) (*bigquery.Query, error) {
+func BuildQuery(BQ *WrappedBigQuery, tabs *TabFile, displayQuery bool, useGPData bool) (*bigquery.Query, error) {
 	query := rawQuery(BQ)
 
 	params := []bigquery.QueryParameter{}
@@ -245,6 +245,10 @@ func BuildQuery(BQ *WrappedBigQuery, tabs *TabFile, displayQuery bool) (*bigquer
 // TODO: Resolve age_censor vs enroll_age. Choose one or the other (likely the
 // latter, so you end up with enroll_age, censor_age, death_censor_age).
 func rawQuery(BQ *WrappedBigQuery) string {
+	var useGPDataString = ""
+	if useGPData {
+		useGPDataString = fmt.Sprintf("\n\t\t\tUNION DISTINCT\n\t\t\tSELECT * FROM `%s.materialized_gp_dates`", materializedDB)
+	}
 	return fmt.Sprintf(`
 	WITH undated_fields AS (
 		SELECT p.sample_id, p.FieldID, p.value, MIN(SAFE.PARSE_DATE("%%%%E4Y-%%%%m-%%%%d", denroll.value)) first_date
@@ -287,7 +291,7 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		LEFT OUTER JOIN (
 			SELECT * FROM `+"`%s.materialized_hesin_dates`"+`
 			UNION DISTINCT
-			SELECT * FROM `+"`%s.materialized_special_dates`"+`
+			SELECT * FROM `+"`%s.materialized_special_dates`%s"+`
 			UNION DISTINCT
 			SELECT * FROM undated_fields
 		  ) hd ON c.sample_id=hd.sample_id
@@ -331,7 +335,7 @@ func rawQuery(BQ *WrappedBigQuery) string {
 		  LEFT OUTER JOIN (
 			  SELECT * FROM `+"`%s.materialized_hesin_dates`"+`
 			  UNION DISTINCT
-			  SELECT * FROM `+"`%s.materialized_special_dates`"+`
+			  SELECT * FROM `+"`%s.materialized_special_dates`%s"+`
 			  UNION DISTINCT
 			  SELECT * FROM undated_fields
 			) excl ON c.sample_id=excl.sample_id
@@ -435,5 +439,5 @@ func rawQuery(BQ *WrappedBigQuery) string {
 	  LEFT JOIN excluded_only eo ON eo.sample_id=c.sample_id
 	  ORDER BY has_disease DESC, incident_disease DESC, age_censor ASC
 	  `,
-		BQ.Database, BQ.Database, BQ.Database, materializedDB, materializedDB, BQ.Database, materializedDB, materializedDB, BQ.Database)
+		BQ.Database, BQ.Database, BQ.Database, materializedDB, materializedDB, useGPDataString, BQ.Database, materializedDB, materializedDB, useGPDataString, BQ.Database)
 }
