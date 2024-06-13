@@ -49,6 +49,10 @@ def main(
     selected_doppler = model_params['selected_doppler'] if not selected_doppler else selected_doppler
     selected_quality = model_params['selected_quality'] if not selected_quality else selected_quality
     selected_canonical = model_params['selected_canonical'] if not selected_canonical else selected_canonical
+    hf_task = model_params['hf_task'] if 'hf_task' in model_params.keys() else None
+    hf_diag_type = model_params['hf_diag_type'] if 'hf_task' in model_params.keys() else None
+    save_tag = model_params['save_tag'] if 'save_tag' in model_params.keys() else None
+    
     logging.info(f'Loaded model with output labels: {output_labels}, views: {selected_views}, doppler: {selected_doppler}, quality: {selected_quality}, canonical: {selected_canonical}')
 
     # ---------- Adaptation for regression + classification ---------- #
@@ -90,12 +94,30 @@ def main(
     selected_doppler_idx = [category_dictionaries['doppler'][v] for v in selected_doppler]
     selected_quality_idx = [category_dictionaries['quality'][v] for v in selected_quality]
     selected_canonical_idx = [category_dictionaries['canonical'][v] for v in selected_canonical]
-    wide_df_selected = wide_df[
-        (wide_df['view_prediction'].isin(selected_views_idx)) &
-        (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
-        (wide_df['quality_prediction'].isin(selected_quality_idx)) &
-        (wide_df['canonical_prediction'].isin(selected_canonical_idx))
-        ]
+    selected_hf_task_idx = category_dictionaries['hf_task'][hf_task] if hf_task else [0, 1, 2, 3]
+    
+    print(selected_hf_task_idx)
+    
+    if hf_task:
+        wide_df_selected = wide_df[
+            (wide_df['view_prediction'].isin(selected_views_idx)) &
+            (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
+            (wide_df['quality_prediction'].isin(selected_quality_idx)) &
+            (wide_df['canonical_prediction'].isin(selected_canonical_idx)) &
+            (wide_df[category_dictionaries['hf_diag_type'][hf_diag_type]].isin(selected_hf_task_idx))
+            ]
+        
+        print(category_dictionaries['hf_diag_type'][hf_diag_type])
+        print(set(wide_df_selected[category_dictionaries['hf_diag_type'][hf_diag_type]]))
+    else:
+        wide_df_selected = wide_df[
+            (wide_df['view_prediction'].isin(selected_views_idx)) &
+            (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
+            (wide_df['quality_prediction'].isin(selected_quality_idx)) &
+            (wide_df['canonical_prediction'].isin(selected_canonical_idx))
+            ]
+    
+    
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -114,9 +136,10 @@ def main(
         patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
 
     if 'trainvalid' in lmdb_folder:
-        patient_inference = patient_train + patient_valid
-        if 'patient_internal_test' in splits:
-            patient_inference = patient_inference + splits['patient_internal_test']
+        patient_inference = patient_valid
+        # patient_inference = patient_train + patient_valid
+        # if 'patient_internal_test' in splits:
+        #     patient_inference = patient_inference + splits['patient_internal_test']
     else:
         patient_inference = splits['patient_test']
 
@@ -183,13 +206,13 @@ def main(
     model_plus_head.load_weights(pretrained_chkp_dir)
 
     vois = '_'.join(selected_views)
-    ufm = 'conv7'
+    ufm = 'echo2hf'
     if extract_embeddings:
         output_folder = os.path.join(output_dir,
-                                     f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
+                                     f'inference_embeddings_{save_tag}_{os.path.split(wide_file)[-1][:-3]}_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}_validdata_{os.path.split(os.path.dirname(pretrained_chkp_dir))[0].split("/")[-1]}')
     else:
         output_folder = os.path.join(output_dir,
-                                     f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
+                                     f'inference_{save_tag}_{os.path.split(wide_file)[-1][:-3]}_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}_validdata_{os.path.split(os.path.dirname(pretrained_chkp_dir))[0].split("/")[-1]}')
     os.makedirs(output_folder, exist_ok=True)
 
     def save_model_pred_as_df(pred, fname_suffix='', pred_col_names=[]):
@@ -231,7 +254,7 @@ def main(
             else:
                 reg_pred = np.zeros((0, 0))
                 cls_pred = predictions     
-                if len(cls_pred.shape) < 3:
+                if len(cls_category_len_dict) == 1:
                     cls_pred = [predictions]
             df = pd.DataFrame()
             df['sample_id'] = inference_ids_split
@@ -241,11 +264,15 @@ def main(
                 curr_cls_name = cls_category_map_dicts['cls_output_order'][i]
                 if SAVE_ONEHOT_DF_FOR_EACH_CLASS:
                     save_model_pred_as_df(cls_pred[i], fname_suffix='_one_hot_' + curr_cls_name)
-                cls_pred_vals_curr = cls_pred[i].argmax(axis=1)
-                cls_map_inv = {v: k for k, v in zip(cls_category_map_dicts[curr_cls_name].keys(),
-                                                    cls_category_map_dicts[curr_cls_name].values())}
-                df[cls_category_map_dicts['cls_output_order'][i]] = cls_pred_vals_curr
-                df.replace({curr_cls_name: cls_map_inv}, inplace=True)
+                if cls_category_len_dict[curr_cls_name] > 2:
+                    cls_pred_vals_curr = cls_pred[i].argmax(axis=1)
+                    cls_map_inv = {v: k for k, v in zip(cls_category_map_dicts[curr_cls_name].keys(),
+                                                        cls_category_map_dicts[curr_cls_name].values())}
+                    df[cls_category_map_dicts['cls_output_order'][i]] = cls_pred_vals_curr
+                    df.replace({curr_cls_name: cls_map_inv}, inplace=True)
+                else:
+                    cls_pred_vals_curr = cls_pred[i]
+                    df[cls_category_map_dicts['cls_output_order'][i]] = cls_pred_vals_curr
 
             df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
         else:

@@ -101,5 +101,16 @@ category_dictionaries = {
             'index': 3,
             'weight': 8.256629946960423
         }
+    },
+    'hf_task': {
+        'PvN': [0, 1],
+        'IvN': [0, 2],
+        'I10y': [0, 2],
+        'survival': [0, 1, 2, 3]
+    },
+    'hf_diag_type': {
+        'hf_nlp': 'echo2hf_nlp_cls',
+        'primary': 'echo2hf_primary_cls',
+        'both': 'echo2hf_both_cls'
     }
 }
