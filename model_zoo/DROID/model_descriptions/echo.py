@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.keras.backend as K
 
 # from official.common import flags as tfm_flags
 from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
@@ -9,6 +10,7 @@ hidden_units = 256
 dropout_rate = 0.5
 temperature = 0.05
 
+ONE_HOT_2CLS = False
 
 class DDGenerator:
     def __init__(self, input_dd, output_dd, fill_empty=False):
@@ -27,15 +29,17 @@ class DDGenerator:
                 ret_output.append(
                     self.output_dd.get_raw_data(sample_id)
                 )
+                # print(len(ret_output))
             if self.fill_empty:
                 ret_output.append(np.NaN)
 
-        if self.output_dd is not None and isinstance(ret_output[0], list):
+        if (self.output_dd is not None) and isinstance(ret_output[0], list):
+            # print(f'Ouput is a list: {len(ret_output[0])}, {ret_ouput[0][0].shape}')
             ret_output = [np.vstack([ret_output[i][j] for i in range(len(sample_ids))])
                           for j in range(len(ret_output[0]))]
             ret_output = tuple(ret_output)
 
-        if self.output_dd is None and self.fill_empty == False:
+        if (self.output_dd is None) and self.fill_empty == False:
             yielded = (ret_input,)
         else:
             yielded = (ret_input, ret_output)
@@ -87,9 +91,9 @@ def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_outpu
     return model
 
 
-# ---------- Adaptation for regression + classification ---------- #
+# ---------- Adaptation for regression + classification + Adaptation for survival loss ---------- #
 def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 3), n_output_features=0, categories={},
-                                category_order=None, add_dense={'regressor': False, 'classifier': False}):
+                                category_order=None, add_dense={'regressor': False, 'classifier': False}, survival_shapes={}):
     for layer in encoder.layers:
         layer.trainable = trainable
 
@@ -100,6 +104,9 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
     features = tf.keras.layers.Dropout(dropout_rate)(features)
 
     outputs = []
+    if survival_shapes:
+        for s_name in survival_shapes:
+            outputs.append(tf.keras.layers.Dense(survival_shapes[s_name], activation='sigmoid', name='survival_'+s_name)(features))
     if n_output_features > 0:
         if add_dense['regressor']:
             features_reg = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
@@ -114,9 +121,13 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
         for category in category_order:
             # added a variable - category_order to make sure the ordering is correct
             # (dictionary items ordering is not necessarily consistent)
-            activation = 'softmax'
-            n_classes = categories[category]
-            outputs.append(tf.keras.layers.Dense(n_classes, name='cls_'+category, activation=activation)(features))
+            if ONE_HOT_2CLS:
+                n_classes = categories[category]
+                activation = 'softmax'
+            else:
+                n_classes = categories[category] if categories[category] > 2 else 1
+                activation = 'softmax' if n_classes > 2 else 'sigmoid'
+            outputs.append(tf.keras.layers.Dense(n_classes, name='cls_' + category, activation=activation)(features))
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name="regressor_classifier")
 
@@ -163,3 +174,39 @@ def train_model(
     )
 
     return model
+
+
+def survival_likelihood_loss(n_intervals):
+    """Create custom Keras loss function for neural network survival model.
+
+    This function is tightly coupled with the function _survival_tensor defined in tensor_from_file.py which builds the y_true tensor.
+
+    Arguments
+        n_intervals: the number of survival time intervals
+    Returns
+        Custom loss function that can be used with Keras
+    """
+
+    def loss(y_true, y_pred):
+        """
+        To play nicely with the Keras framework y_pred is the same shape as y_true.
+        However, we only consider the first half (n_intervals) of y_pred.
+        Arguments
+            y_true: Tensor.
+              First half of the values are 1 if individual survived that interval, 0 if not.
+              Second half of the values are for individuals who failed, and are 1 for time interval during which failure occurred, 0 for other intervals.
+              For example given n_intervals = 3 a sample with prevalent disease will have y_true [0, 0, 0, 1, 0, 0]
+              a sample with incident disease occurring in the last time bin will have y_true [1, 1, 0, 0, 0, 1]
+              a sample who is lost to follow up (censored) in middle time bin will have y_true [1, 0, 0, 0, 0, 0]
+            y_pred: Tensor, predicted survival probability (1-hazard probability) for each time interval.
+        Returns
+            Vector of losses for this minibatch.
+        """
+        # print(y_true.shape)
+        # print(y_pred.shape)
+        failure_likelihood = 1. - (y_true[:, n_intervals:] * y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
+        survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss for intervals that were survived
+        survival_likelihood += 1. - y_true[:, 0:n_intervals]  # No survival loss if interval was censored or failed
+        return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
+
+    return loss
