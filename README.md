@@ -114,8 +114,7 @@ If you get a public key error run: `gcloud compute config-ssh`
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
 
-### Attach a disk with tensorized data
-## Attach the disk to a VM
+### Attach a disk with tensorized data to a VM
 Running
 
 ```
@@ -126,7 +125,7 @@ will attach `my-disk` to `my-vm`. You can also do this by clicking edit on VM in
 
 Now we can mount the disk.   
 
-## Mount the disk
+### Mount the disk
 SSH into your VM and run:
 ```
 ls -l /dev/disk/by-id
@@ -138,12 +137,8 @@ That will output something like
 total 0
 lrwxrwxrwx 1 root root  9 Feb 11 19:13 google-mri-october -> ../../sdb
 lrwxrwxrwx 1 root root  9 Feb 15 21:42 google-my-disk -> ../../sdd
-lrwxrwxrwx 1 root root  9 Feb 11 19:13 google-persistent-disk-0 -> ../../sda
-lrwxrwxrwx 1 root root 10 Feb 11 19:13 google-persistent-disk-0-part1 -> ../../sda1
 lrwxrwxrwx 1 root root  9 Feb 11 19:13 scsi-0Google_PersistentDisk_mri-october -> ../../sdb
 lrwxrwxrwx 1 root root  9 Feb 15 21:42 scsi-0Google_PersistentDisk_my-disk -> ../../sdd
-lrwxrwxrwx 1 root root  9 Feb 11 19:13 scsi-0Google_PersistentDisk_persistent-disk-0 -> ../../sda
-lrwxrwxrwx 1 root root 10 Feb 11 19:13 scsi-0Google_PersistentDisk_persistent-disk-0-part1 -> ../../sda1
 ``` 
 
 The line that contains the name of our disk (`my-disk`) 
