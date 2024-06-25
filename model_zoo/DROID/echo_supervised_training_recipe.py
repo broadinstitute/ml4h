@@ -143,6 +143,8 @@ def main(
     mvp_working_ids = wide_df_selected[wide_df_selected['mvp_label_1_0'] == 'mvp']['sample_id'].values.tolist()
     normal_working_ids = wide_df_selected[wide_df_selected['mvp_label_1_0'] == 'not_mvp']['sample_id'].values.tolist()
 
+    wide_df_selected.to_parquet(f'/data/ewok/alalusim/echo_mvp/wide_df_selected_2024_06_25.pq')
+
     # Read splits and partition dataset
     with open(splits_file, 'r') as json_file:
         splits = json.load(json_file)
