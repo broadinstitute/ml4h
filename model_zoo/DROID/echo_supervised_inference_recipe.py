@@ -37,7 +37,8 @@ def main(
         movinet_chkp_dir,
         output_dir,
         extract_embeddings,
-        start_beat
+        start_beat,
+        inf_type
 ):
     # Loading information on saved model:
     model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0], 'model_params.json')
@@ -128,14 +129,20 @@ def main(
     with open(splits_file, 'r') as json_file:
         splits = json.load(json_file)
 
-    patient_train = splits['patient_train']
-    patient_valid = splits['patient_valid']
+    if 'patient_train' in splits.keys():
+        patient_train = splits['patient_train']
+        patient_valid = splits['patient_valid']
+    elif 'patient_train' in splits[list(splits.keys())[0]].keys():
+        patient_train = splits['ewoc_mgh']['patient_train'] + splits['c3po_mgh']['patient_train']
+        patient_valid = splits['ewoc_mgh']['patient_valid'] + splits['c3po_mgh']['patient_valid']
+    else:
+        print('Splits file is of wrong structure!')
 
     if n_train_patients != 'all':
         patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
         patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
 
-    if 'trainvalid' in lmdb_folder:
+    if inf_type == 'validation':
         patient_inference = patient_valid
         # patient_inference = patient_train + patient_valid
         # if 'patient_internal_test' in splits:
@@ -209,10 +216,10 @@ def main(
     ufm = 'echo2hf'
     if extract_embeddings:
         output_folder = os.path.join(output_dir,
-                                     f'inference_embeddings_{save_tag}_{os.path.split(wide_file)[-1][:-3]}_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}_validdata_{os.path.split(os.path.dirname(pretrained_chkp_dir))[0].split("/")[-1]}')
+                                     f'inference_embeddings_{save_tag}_{os.path.split(wide_file)[-1][:-3]}_{vois}_{ufm}_{inf_type}_{splits_file.split("/")[-1]}_{start_beat}_validdata_{os.path.split(os.path.dirname(pretrained_chkp_dir))[0].split("/")[-1]}')
     else:
         output_folder = os.path.join(output_dir,
-                                     f'inference_{save_tag}_{os.path.split(wide_file)[-1][:-3]}_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}_validdata_{os.path.split(os.path.dirname(pretrained_chkp_dir))[0].split("/")[-1]}')
+                                     f'inference_{os.path.split(wide_file)[-1][:-3]}_{vois}_{ufm}_{inf_type}_{splits_file.split("/")[-1].split(".")[0]}_{start_beat}_validdata_{os.path.split(os.path.dirname(pretrained_chkp_dir))[0].split("/")[-1]}')
     os.makedirs(output_folder, exist_ok=True)
 
     def save_model_pred_as_df(pred, fname_suffix='', pred_col_names=[]):
@@ -300,12 +307,13 @@ if __name__ == "__main__":
     parser.add_argument('--n_splits', type=int, default=4)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--skip_modulo', type=int, default=1)
-    parser.add_argument('--lmdb_folder', type=str)
+    parser.add_argument('--lmdb_folder', action='append', type=str)
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)
     parser.add_argument('--output_dir', type=str)
     parser.add_argument('--extract_embeddings', action='store_true')
     parser.add_argument('--start_beat', type=int, default=0)
+    parser.add_argument('--inf_type', type=str, default='validation')
 
     args = parser.parse_args()
     root = logging.getLogger()
@@ -334,4 +342,5 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
         start_beat=args.start_beat,
+        inf_type=args.inf_type
     )

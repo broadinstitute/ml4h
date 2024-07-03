@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
 
 USER = os.getenv('USER')
-
+BALANCED_SAMPLING_HF = False
 
 def main(
         n_input_frames,
@@ -51,6 +51,8 @@ def main(
         loss_weights,
         hf_task,
         hf_diag_type,
+        save_tag,
+        class_weights,
         survival_var_names,
         survival_intervals,
         survival_days_window
@@ -149,7 +151,11 @@ def main(
         (wide_df['canonical_prediction'].isin(selected_canonical_idx)) &
         (wide_df[category_dictionaries['hf_diag_type'][hf_diag_type]].isin(selected_hf_task_idx))
         ]
-
+    
+    if 'SexDSC' in output_labels:
+        wide_df_selected['SexDSC'].loc[np.logical_or(wide_df_selected['SexDSC'] == 'Male', wide_df_selected['SexDSC'] == 'M')] = 'M'
+        wide_df_selected['SexDSC'].loc[np.logical_or(wide_df_selected['SexDSC'] == 'Female', wide_df_selected['SexDSC'] == 'F')] = 'F'
+        
     # Drop entries without echolab measurements and get all sample_ids
     wide_df_selected = wide_df_selected.dropna(subset=output_labels)
     working_ids = wide_df_selected['sample_id'].values.tolist()
@@ -158,8 +164,14 @@ def main(
     with open(splits_file, 'r') as json_file:
         splits = json.load(json_file)
 
-    patient_train = splits['patient_train']
-    patient_valid = splits['patient_valid']
+    if 'patient_train' in splits.keys():
+        patient_train = splits['patient_train']
+        patient_valid = splits['patient_valid']
+    elif 'patient_train' in splits[list(splits.keys())[0]].keys():
+        patient_train = splits['ewoc_mgh']['patient_train'] + splits['c3po_mgh']['patient_train']
+        patient_valid = splits['ewoc_mgh']['patient_valid'] + splits['c3po_mgh']['patient_valid']
+    else:
+        print('Splits file is of wrong structure!')
 
     if n_train_patients != 'all':
         patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
@@ -236,15 +248,30 @@ def main(
         # ---------------------------------------------------------------- #
     )
 
-    body_train_ids = tf.data.Dataset.from_tensor_slices(train_ids).shuffle(len(train_ids),
-                                                                           reshuffle_each_iteration=True).batch(
-        batch_size, drop_remainder=True)
+    if BALANCED_SAMPLING_HF:
+        selected_hf_task_idx
+        wide_df_train0 = wide_df_selected.loc[np.logical_and(wide_df_selected['sample_id'].isin(train_ids), wide_df_selected[category_dictionaries['hf_diag_type'][hf_diag_type]] == selected_hf_task_idx[0])]
+        train_ids0 = list(wide_df_train0['sample_id'])
+        wide_df_train1 = wide_df_selected.loc[np.logical_and(wide_df_selected['sample_id'].isin(train_ids), wide_df_selected[category_dictionaries['hf_diag_type'][hf_diag_type]] == selected_hf_task_idx[1])]
+        train_ids1 = list(wide_df_train1['sample_id'])
+        print(train_ids1)
+        
+        dataset_cls0 = tf.data.Dataset.from_tensor_slices(train_ids0)
+        dataset_cls1 = tf.data.Dataset.from_tensor_slices(train_ids1)
+        
+        body_train_ids = tf.data.experimental.sample_from_datasets([dataset_cls0, dataset_cls1], weights=[0.5, 0.5]).shuffle(min(len(dataset_cls0),len(dataset_cls1)),
+                                                                               reshuffle_each_iteration=True).batch(
+            batch_size, drop_remainder=True)
+    else:
+        body_train_ids = tf.data.Dataset.from_tensor_slices(train_ids).shuffle(len(train_ids),
+                                                                               reshuffle_each_iteration=True).batch(
+            batch_size, drop_remainder=True)
     body_valid_ids = tf.data.Dataset.from_tensor_slices(valid_ids).shuffle(len(valid_ids),
                                                                            reshuffle_each_iteration=True).batch(
         batch_size, drop_remainder=True)
 
-    n_train_steps = len(train_ids) // batch_size
-    n_valid_steps = len(valid_ids) // batch_size
+    n_train_steps = min(10000, len(train_ids) // batch_size)
+    n_valid_steps = min(500, len(valid_ids) // batch_size)
 
     # ---------- Adaptation for regression + classification ---------- #
     # Adapting tensor output sizes for classification heads
@@ -384,8 +411,13 @@ def main(
             )
         # -------------------------------------------------------------------------------------
 
-        loss = {'cls_' + k: tf.keras.losses.CategoricalCrossentropy() for k in cls_category_len_dict.keys()}
-        metrics = {'cls_' + k: tf.keras.metrics.CategoricalAccuracy() for k in cls_category_len_dict.keys()}
+        loss = {'cls_' + k: tf.keras.losses.CategoricalCrossentropy() if cls_category_len_dict[k]>2 else tf.keras.losses.BinaryCrossentropy() for k in cls_category_len_dict.keys()}
+        metrics = {'cls_' + k: tf.keras.metrics.CategoricalAccuracy() if cls_category_len_dict[k]>2 else [tf.keras.metrics.BinaryAccuracy(), 
+                                tf.keras.metrics.TruePositives(name='tp'),
+                                tf.keras.metrics.FalsePositives(name='fp'),
+                                tf.keras.metrics.TrueNegatives(name='tn'),
+                                tf.keras.metrics.FalseNegatives(name='fn'),
+                                tf.keras.metrics.AUC(name='prc', curve='PR')] for k in cls_category_len_dict.keys()}
         if output_reg_len > 0:
             loss['echolab'] = tf.keras.losses.MeanSquaredError()
             metrics['echolab'] = tf.keras.metrics.MeanAbsoluteError()
@@ -431,10 +463,21 @@ def main(
     if cls_output_names:
         cls_category_map_dicts['add_separate_dense_cls'] = add_separate_dense_cls
         cls_category_map_dicts['add_separate_dense_reg'] = add_separate_dense_reg
+        
+        cls_category_map_dicts_tmp = cls_category_map_dicts.copy()
+        for el in cls_category_map_dicts_tmp.keys():
+            if isinstance(cls_category_map_dicts_tmp[el], dict):
+                cls_category_map_dicts_tmp[el] = {str(k):v for k,v in cls_category_map_dicts_tmp[el].items()}
+        
         with open(f'{output_folder}/classification_class_label_mapping_per_output.json', 'w') as json_file:
-            json.dump(cls_category_map_dicts, json_file)
+            json.dump(cls_category_map_dicts_tmp, json_file)
     # ---------------------------------------------------------------- #
-
+    
+    if class_weights:
+        class_weight = {0: class_weights[0], 1: class_weights[1]}
+    else:
+        class_weight = None
+    
     es_flags = {'es_patience': es_patience, 'es_loss2monitor': es_loss2monitor}
 
     logging.info(model.summary())
@@ -447,6 +490,7 @@ def main(
         n_valid_steps,
         output_folder,
         es_flags
+        class_weight=class_weight
     )
 
 
@@ -493,6 +537,8 @@ if __name__ == "__main__":
     # ---------------------- Echo 2 HF related ----------------------- #
     parser.add_argument('-hct', '--hf_task', type=str, default=None, choices=category_dictionaries['hf_task'].keys())
     parser.add_argument('-hdt', '--hf_diag_type', type=str, default='hf_nlp', choices=category_dictionaries['hf_diag_type'].keys())
+    parser.add_argument('--save_tag', type=str, default=None)
+    parser.add_argument('-cw', '--class_weights', action='append', type=float, default=None)  # Currently for binary classification only!
     # ---------------------------------------------------------------- #
     # ---------------------- Survival curve related ----------------------- #
     parser.add_argument('--survival_var_names', action='append', type=str)
@@ -541,6 +587,8 @@ if __name__ == "__main__":
         # ---------------------- Echo 2 HF related ----------------------- #
         hf_task=args.hf_task,
         hf_diag_type=args.hf_diag_type,
+        ave_tag=args.save_tag,
+        class_weights=args.class_weights,
         # ---------------------------------------------------------------- #
         # ---------------------- Survival curve related ----------------------- #
         survival_var_names=args.survival_var_names,
