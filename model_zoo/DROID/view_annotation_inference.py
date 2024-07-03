@@ -83,8 +83,11 @@ def main(
     ).prefetch(2)
 
     encoder = create_video_encoder(
-        path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
+        input_shape=(n_input_frames, 224, 224, 3)
     )
+    # encoder = create_video_encoder(
+    #     path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
+    # )
     model = create_classifier(
         encoder,
         trainable=False,
