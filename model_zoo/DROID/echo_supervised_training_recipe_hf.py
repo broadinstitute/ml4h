@@ -157,9 +157,15 @@ def main(
     # Read splits and partition dataset
     with open(splits_file, 'r') as json_file:
         splits = json.load(json_file)
-
-    patient_train = splits['patient_train']
-    patient_valid = splits['patient_valid']
+    
+    if 'patient_train' in splits.keys():
+        patient_train = splits['patient_train']
+        patient_valid = splits['patient_valid']
+    elif 'patient_train' in splits[list(splits.keys())[0]].keys():
+        patient_train = splits['ewoc_mgh']['patient_train'] + splits['c3po_mgh']['patient_train']
+        patient_valid = splits['ewoc_mgh']['patient_valid'] + splits['c3po_mgh']['patient_valid']
+    else:
+        print('Splits file is of wrong structure!')
 
     if n_train_patients != 'all':
         patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
@@ -249,7 +255,7 @@ def main(
                                                                            reshuffle_each_iteration=True).batch(
         batch_size, drop_remainder=True)
 
-    n_train_steps = min(500, len(train_ids) // batch_size)
+    n_train_steps = min(10000, len(train_ids) // batch_size)
     n_valid_steps = min(500, len(valid_ids) // batch_size)
 
     # ---------- Adaptation for regression + classification ---------- #
@@ -421,8 +427,14 @@ def main(
         cls_category_map_dicts['add_separate_dense_cls'] = add_separate_dense_cls
         cls_category_map_dicts['add_separate_dense_reg'] = add_separate_dense_reg
         print(cls_category_map_dicts)
+        
+        cls_category_map_dicts_tmp = cls_category_map_dicts.copy()
+        for el in cls_category_map_dicts_tmp.keys():
+            if isinstance(cls_category_map_dicts_tmp[el], dict):
+                cls_category_map_dicts_tmp[el] = {str(k):v for k,v in cls_category_map_dicts_tmp[el].items()}
+        
         with open(f'{output_folder}/classification_class_label_mapping_per_output.json', 'w') as json_file:
-            json.dump(cls_category_map_dicts, json_file)
+            json.dump(cls_category_map_dicts_tmp, json_file)
     # ---------------------------------------------------------------- #
     
     if class_weights:
@@ -465,7 +477,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--epochs', default=50, type=int)
     parser.add_argument('--skip_modulo', type=int, default=2)
-    parser.add_argument('--lmdb_folder', type=str)
+    parser.add_argument('--lmdb_folder', action='append', type=str)
     parser.add_argument('--fine_tune', action='store_true')
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)

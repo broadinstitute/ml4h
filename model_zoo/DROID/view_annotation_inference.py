@@ -5,11 +5,11 @@ import os
 import tensorflow as tf
 
 from echo_defines import category_dictionaries
-from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
-# from data_descriptions.echo import (
-    # LmdbEchoStudyVideoDataDescription,
-    # LmdbEchoStudyVideoDataDescriptionBWH,
-# )
+# from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from data_descriptions.echo import (
+    LmdbEchoStudyVideoDataDescription,
+    LmdbEchoStudyVideoDataDescriptionBWH,
+)
 from model_descriptions.echo import DDGenerator, create_movinet_classifier
 from model_descriptions.models_view_cls import create_classifier, create_video_encoder
 import numpy as np
@@ -109,11 +109,23 @@ def main(
     df = pd.DataFrame()
     df["sample_id"] = working_ids[: len(model_predictions[f"{task}_prediction"])]
     for task in view_annotation_tasks:
+        # print(model_predictions[f"{task}_prediction"])
         df[f"{task}_prediction"] = np.argmax(
             model_predictions[f"{task}_prediction"], axis=1
         )
         df[f"{task}_prediction_probability"] = np.max(
             model_predictions[f"{task}_prediction"], axis=1
+        )
+        
+        tmp = model_predictions[f"{task}_prediction"].copy()
+        for r_ind, max_ind in enumerate(df[f"{task}_prediction"]):
+            tmp[r_ind,max_ind] = -1
+        
+        df[f"{task}_prediction_2nd"] = np.argmax(
+            tmp, axis=1
+        )
+        df[f"{task}_prediction_probability_2nd"] = np.max(
+            tmp, axis=1
         )
     df.to_csv(output_file, index=False, sep="\t")
 
