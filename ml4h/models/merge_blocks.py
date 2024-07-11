@@ -85,12 +85,13 @@ class KroneckerBlock(Block):
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
-        eshape = tf.shape(intermediates.items()[0][-1])
+        first_val = next(iter(intermediates.values()))
+        ein_shape = tf.shape(first_val[-1])
         if len(y) == 2:
-            logging.info(f'********\n\n\n*********** Trying KRONECKER {self.encoding_size}\n*******************\n\n')
+            logging.info(f'********\n\n\n*********** Trying {ein_shape} KRONECKER {self.encoding_size}***********\n\n')
             kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', y[0], y[1]))
             kron = kron_layer(y)
-            y = tf.reshape(kron, [eshape[0], self.encoding_size * self.encoding_size])
+            y = tf.reshape(kron, [ein_shape[0], self.encoding_size * self.encoding_size])
 
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
