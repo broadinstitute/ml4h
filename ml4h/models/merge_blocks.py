@@ -61,6 +61,41 @@ class FlatConcatDenseBlock(Block):
         return y
 
 
+class KroneckerBlock(Block):
+    """
+    Outerproduct of all inputs, applies a dense layer
+    """
+    def __init__(
+            self,
+            activation: str = 'swish',
+            dense_layers: List[int] = [32],
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
+            **kwargs,
+    ):
+        self.fully_connected = DenseBlock(
+            widths=dense_layers,
+            activation=activation,
+            normalization=dense_normalize,
+            regularization=dense_regularize,
+            regularization_rate=dense_regularize_rate,
+            name='embed',
+        ) if dense_layers else None
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
+        eshape = tf.shape(intermediates.items()[0][-1])
+        if len(y) == 2:
+            logging.info(f'********\n\n\n*********** Trying KRONECKER {self.encoding_size}\n*******************\n\n')
+            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', y[0], y[1]))
+            kron = kron_layer(y)
+            y = tf.reshape(kron, [eshape[0], self.encoding_size * self.encoding_size])
+
+        y = self.fully_connected(y, intermediates) if self.fully_connected else y
+        return y
+
+
 class GlobalAveragePoolBlock(Block):
     """
     GAPs then concatenates all inputs, applies a dense layer
