@@ -72,8 +72,10 @@ class KroneckerBlock(Block):
             dense_normalize: str = None,
             dense_regularize: str = None,
             dense_regularize_rate: float = 0.0,
+            pairs: List[Tuple[TensorMap, TensorMap]] = None,
             **kwargs,
     ):
+        self.pairs = pairs
         self.encoding_size = dense_layers[-1]
         self.fully_connected = DenseBlock(
             widths=dense_layers,
@@ -85,15 +87,11 @@ class KroneckerBlock(Block):
         ) if dense_layers else None
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
-        first_val = next(iter(intermediates.values()))
-        ein_shape = tf.shape(first_val[-1])
-        if len(y) == 2:
-            logging.info(f'********\n\n\n*********** Trying {ein_shape} KRONECKER {self.encoding_size}***********\n\n')
-            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', y[0], y[1]))
-            kron = kron_layer(y)
+        for left, right in self.pairs:
+            ein_shape = tf.shape(intermediates[left][-1])
+            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
+            kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
             y = tf.reshape(kron, [ein_shape[0], self.encoding_size * self.encoding_size])
-
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
 
