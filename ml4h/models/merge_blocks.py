@@ -74,6 +74,7 @@ class KroneckerBlock(Block):
             dense_regularize_rate: float = 0.0,
             **kwargs,
     ):
+        self.encoding_size = dense_layers[-1]
         self.fully_connected = DenseBlock(
             widths=dense_layers,
             activation=activation,
