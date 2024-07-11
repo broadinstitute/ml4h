@@ -99,7 +99,7 @@ def main(
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
         ]
-    wide_df_selected.to_csv(f'/data/ewok/alalusim/echo_mvp/wide_df_selected_2024_06_025.csv')
+    wide_df_selected.to_csv(f'/data/ewok/alalusim/echo_mvp/wide_df_selected_2024_07_11.csv')
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -161,8 +161,9 @@ def main(
             ),
             args=(sample_ids,)
         ),
-        num_parallel_calls=tf.data.AUTOTUNE
-    ).prefetch(tf.data.AUTOTUNE)
+        cycle_length = 2,
+        num_parallel_calls = 2
+    ).prefetch(8)
 
     model, backbone = create_movinet_classifier(
         n_input_frames,
