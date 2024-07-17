@@ -54,6 +54,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
     def get_loading_options(self, sample_id):
         _, study, view = sample_id.split('_')
         if isinstance(self.local_lmdb_dir, list):
+            lmdb_folder = os.path.join(self.local_lmdb_dir[0], f"{study}.lmdb")
             for lmdb_dir in self.local_lmdb_dir:
                 if os.path.exists(os.path.join(lmdb_dir, f"{study}.lmdb")):
                     lmdb_folder = os.path.join(lmdb_dir, f"{study}.lmdb")
@@ -78,6 +79,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
         
         if isinstance(self.local_lmdb_dir, list):
             for lmdb_dir in self.local_lmdb_dir:
+                lmdb_folder = os.path.join(self.local_lmdb_dir[0], f"{study}.lmdb")
                 if os.path.exists(os.path.join(lmdb_dir, f"{study}.lmdb")):
                     lmdb_folder = os.path.join(lmdb_dir, f"{study}.lmdb")
         else:

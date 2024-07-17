@@ -501,7 +501,7 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------- #
     # ---------------------- Echo 2 HF related ----------------------- #
     parser.add_argument('-hct', '--hf_task', type=str, default=None, choices=category_dictionaries['hf_task'].keys())
-    parser.add_argument('-hdt', '--hf_diag_type', type=str, default='nlp', choices=category_dictionaries['hf_diag_type'].keys())
+    parser.add_argument('-hdt', '--hf_diag_type', type=str, default='hf_nlp', choices=category_dictionaries['hf_diag_type'].keys())
     parser.add_argument('--save_tag', type=str, default=None)
     parser.add_argument('-cw', '--class_weights', action='append', type=float, default=None)  # Currently for binary classification only!
     # ---------------------------------------------------------------- #
