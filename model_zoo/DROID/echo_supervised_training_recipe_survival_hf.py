@@ -14,7 +14,7 @@ from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
 from model_descriptions.echo import create_movinet_classifier, create_regressor, create_regressor_classifier, train_model, DDGenerator
 from model_descriptions.echo import survival_likelihood_loss
-from metrics import concordance_index  # , concordance_index_censored
+# from metrics import concordance_index  # , concordance_index_censored
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
@@ -60,6 +60,9 @@ def main(
     lmdb_vois = '_'.join(selected_views)
     olabels = '_'.join(output_labels)
 
+    if not survival_var_names:
+        survival_var_names = []
+    
     if hf_task:
         if hf_task != 'survival':
             output_labels += [category_dictionaries['hf_diag_type'][hf_diag_type]]
@@ -153,8 +156,8 @@ def main(
         ]
     
     if 'SexDSC' in output_labels:
-        wide_df_selected['SexDSC'].loc[np.logical_or(wide_df_selected['SexDSC'] == 'Male', wide_df_selected['SexDSC'] == 'M')] = 'M'
-        wide_df_selected['SexDSC'].loc[np.logical_or(wide_df_selected['SexDSC'] == 'Female', wide_df_selected['SexDSC'] == 'F')] = 'F'
+        wide_df_selected.loc[np.logical_or(wide_df_selected['SexDSC'] == 'Male', wide_df_selected['SexDSC'] == 'M'), 'SexDSC'] = 'M'
+        wide_df_selected.loc[np.logical_or(wide_df_selected['SexDSC'] == 'Female', wide_df_selected['SexDSC'] == 'F'), 'SexDSC'] = 'F'
         
     # Drop entries without echolab measurements and get all sample_ids
     wide_df_selected = wide_df_selected.dropna(subset=output_labels)
@@ -219,6 +222,9 @@ def main(
                 elif not set(
                         cls_category_map_dicts[c].keys()).issubset(set(cls_category_signature_map_dicts[c].keys())):
                     define_new_heads = True
+        else:
+            cls_category_signature_map_dicts = {}
+            define_new_heads = True
     # ---------------------------------------------------------------- #
 
     INPUT_DD = LmdbEchoStudyVideoDataDescription(
@@ -254,7 +260,7 @@ def main(
         train_ids0 = list(wide_df_train0['sample_id'])
         wide_df_train1 = wide_df_selected.loc[np.logical_and(wide_df_selected['sample_id'].isin(train_ids), wide_df_selected[category_dictionaries['hf_diag_type'][hf_diag_type]] == selected_hf_task_idx[1])]
         train_ids1 = list(wide_df_train1['sample_id'])
-        print(train_ids1)
+        # print(train_ids1)
         
         dataset_cls0 = tf.data.Dataset.from_tensor_slices(train_ids0)
         dataset_cls1 = tf.data.Dataset.from_tensor_slices(train_ids1)
@@ -276,8 +282,8 @@ def main(
     # ---------- Adaptation for regression + classification ---------- #
     # Adapting tensor output sizes for classification heads
     num_classes = ([survival_intervals*2]*len(survival_var_names) + [output_reg_len] +
-                   [cls_category_len_dict[c] for c in cls_category_map_dicts['cls_output_order']]) if (
-            output_reg_len > 0) else ([survival_intervals*2]*len(survival_var_names) + [cls_category_len_dict[c] for c in cls_category_map_dicts['cls_output_order']])
+                   [cls_category_len_dict[c] if cls_category_len_dict[c]>2 else 1 for c in cls_category_map_dicts['cls_output_order']]) if (
+            output_reg_len > 0) else ([survival_intervals*2]*len(survival_var_names) + [cls_category_len_dict[c] if cls_category_len_dict[c]>2 else 1 for c in cls_category_map_dicts['cls_output_order']])
     
     # print(num_classes)
     
@@ -345,15 +351,20 @@ def main(
         if pretrained_chkp_dir:
             signature_model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
                                                       'model_params.json')
-            f = open(signature_model_param_path)
-            signature_model_params = json.load(f)
+            if os.path.isfile(signature_model_param_path):
+                f = open(signature_model_param_path)
+                signature_model_params = json.load(f)
+            else:
+                signature_model_params = {}
+                
             sig_add_separate_dense_reg = signature_model_params[
                 'add_separate_dense_reg'] if 'add_separate_dense_reg' in signature_model_params.keys() else False
             sig_add_separate_dense_cls = signature_model_params[
                 'add_separate_dense_cls'] if 'add_separate_dense_cls' in signature_model_params.keys() else False
             output_signature_labels_types = signature_model_params[
                 'output_labels_types'] if 'output_labels_types' in signature_model_params.keys() else 'r'
-            output_signature_labels = signature_model_params['output_labels']
+            output_signature_labels = signature_model_params[
+                'output_labels'] if 'output_labels' in signature_model_params.keys() else ['no_info']
             logging.info(f'output_labels of loaded model: {output_signature_labels}')
 
             output_signature_labels, output_signature_reg_len, cls_output_signature_names = process_labels_types(
@@ -371,6 +382,7 @@ def main(
                     cls_category_signature_len_dict[c_lbl] = len(cls_category_signature_map_dicts[c_lbl])
             else:
                 cls_category_signature_len_dict = {}
+                
 
             model = create_regressor_classifier(
                 encoder,
@@ -447,7 +459,7 @@ def main(
 
     fine_tune_string = f'_fine_tune' if fine_tune else ''
     output_folder = os.path.join(output_dir,
-                                 f'{datetime.datetime.now().strftime("%Y%m%d%H%M")}_{lmdb_vois}_{olabels}_{n_input_frames}frames{fine_tune_string}_{n_train_patients}')
+                                 f'{save_tag}_{datetime.datetime.now().strftime("%Y%m%d%H%M")}_{lmdb_vois}_{olabels}_{n_input_frames}frames{fine_tune_string}_{n_train_patients}')
 
     os.makedirs(output_folder, exist_ok=True)
     with open(f'{output_folder}/model_params.json', 'w') as json_file:
@@ -489,7 +501,7 @@ def main(
         n_train_steps,
         n_valid_steps,
         output_folder,
-        es_flags
+        es_flags,
         class_weight=class_weight
     )
 
@@ -512,7 +524,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--epochs', default=50, type=int)
     parser.add_argument('--skip_modulo', type=int, default=2)
-    parser.add_argument('--lmdb_folder', type=str)
+    parser.add_argument('--lmdb_folder',  action='append', type=str)
     parser.add_argument('--fine_tune', action='store_true')
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)
@@ -587,7 +599,7 @@ if __name__ == "__main__":
         # ---------------------- Echo 2 HF related ----------------------- #
         hf_task=args.hf_task,
         hf_diag_type=args.hf_diag_type,
-        ave_tag=args.save_tag,
+        save_tag=args.save_tag,
         class_weights=args.class_weights,
         # ---------------------------------------------------------------- #
         # ---------------------- Survival curve related ----------------------- #
