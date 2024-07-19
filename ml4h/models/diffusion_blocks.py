@@ -131,7 +131,7 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     else:
         e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
 
-    print(f'e shape: {e.shape}')
+    print(f'e shape: {e.shape} len {len(input_shape)}')
     x = conv(widths[0], kernel_size=1)(noisy_images)
     x = layers.Concatenate()([x, e])
 
