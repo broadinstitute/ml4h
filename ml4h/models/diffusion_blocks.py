@@ -126,7 +126,7 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
-    if len(input_shape) == 3:
+    if len(input_shape) == 2:
         e = upsample(size=input_shape[-2])(e)
     else:
         e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
@@ -172,7 +172,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
     x = conv(widths[0], kernel_size=1)(noisy_images)
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
 
-    if len(input_shape) == 3:  # 1D Signals
+    if len(input_shape) == 2:  # 1D Signals
         e = upsample(size=input_shape[-2])(e)
         c = upsample(size=input_shape[-2])(control[control_idxs])
     else:
