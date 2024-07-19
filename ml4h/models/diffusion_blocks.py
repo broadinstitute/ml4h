@@ -126,8 +126,11 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
-    # e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
-    e = upsample(size=input_shape[-2])(e)
+    if len(input_shape) == 3:
+        e = upsample(size=input_shape[-2])(e)
+    else:
+        e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
+
     print(f'e shape: {e.shape}')
     x = conv(widths[0], kernel_size=1)(noisy_images)
     x = layers.Concatenate()([x, e])
