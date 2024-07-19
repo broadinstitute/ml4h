@@ -172,13 +172,14 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
     x = conv(widths[0], kernel_size=1)(noisy_images)
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
 
-    if len(input_shape) == 2:  # 1D Signal
-        up_size = input_shape[0]
+    if len(input_shape) == 3:  # 1D Signals
+        e = upsample(size=input_shape[-2])(e)
+        c = upsample(size=input_shape[-2])(control[control_idxs])
     else:
-        up_size = input_shape[:-1]
-    e = upsample(size=up_size)(e)
-    c = upsample(size=up_size)(control[control_idxs])
-    print(f'Control upsampled shape shape: {c.shape}')
+        e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
+        c = upsample(size=input_shape[:-1])(control[control_idxs])
+
+    print(f'Control up-sampled shape shape: {c.shape} e shape {e.shape}')
     x = layers.Concatenate()([x, e, c])
 
     skips = []
