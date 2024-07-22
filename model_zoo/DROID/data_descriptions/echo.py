@@ -81,13 +81,11 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             lmdb_folder = os.path.join(self.local_lmdb_dir[0], f"{study}.lmdb")
             for lmdb_dir in self.local_lmdb_dir:
                 if os.path.exists(os.path.join(lmdb_dir, f"{study}.lmdb")):
-                    print(f'Checking dir {os.path.join(lmdb_dir, f"{study}.lmdb")}')
                     lmdb_folder = os.path.join(lmdb_dir, f"{study}.lmdb")
         else:
             lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
         # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
         
-        print(f'Opening from dir: {lmdb_folder}')
         env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         nframes = self.nframes
 
