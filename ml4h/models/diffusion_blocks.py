@@ -23,7 +23,7 @@ min_signal_rate = 0.02
 max_signal_rate = 0.95
 
 # architecture
-embedding_dims = 256
+embedding_dims = 1024
 embedding_max_frequency = 1000.0
 
 # optimization
