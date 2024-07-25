@@ -281,9 +281,9 @@ def main(
 
     # ---------- Adaptation for regression + classification ---------- #
     # Adapting tensor output sizes for classification heads
-    num_classes = ([survival_intervals*2]*len(survival_var_names) + [output_reg_len] +
+    num_classes = ([survival_intervals]*len(survival_var_names) + [output_reg_len] +
                    [cls_category_len_dict[c] if cls_category_len_dict[c]>2 else 1 for c in cls_category_map_dicts['cls_output_order']]) if (
-            output_reg_len > 0) else ([survival_intervals*2]*len(survival_var_names) + [cls_category_len_dict[c] if cls_category_len_dict[c]>2 else 1 for c in cls_category_map_dicts['cls_output_order']])
+            output_reg_len > 0) else ([survival_intervals]*len(survival_var_names) + [cls_category_len_dict[c] if cls_category_len_dict[c]>2 else 1 for c in cls_category_map_dicts['cls_output_order']])
     
     # print(num_classes)
     
@@ -342,7 +342,7 @@ def main(
                      'categories': cls_category_len_dict,
                      'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
                      'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls},
-                     'survival_shapes': {s_name: survival_intervals*2 for s_name in survival_var_names} if survival_var_names else {}
+                     'survival_shapes': {s_name: survival_intervals for s_name in survival_var_names} if survival_var_names else {}
                      }
 
         model = create_regressor_classifier(encoder, **func_args)
@@ -393,7 +393,7 @@ def main(
                 category_order=cls_category_signature_map_dicts[
                     'cls_output_order'] if cls_category_signature_len_dict else None,
                 add_dense={'regressor': sig_add_separate_dense_reg, 'classifier': sig_add_separate_dense_cls},
-                survival_shapes={s_name: sig_survival_intervals * 2 for s_name in
+                survival_shapes={s_name: sig_survival_intervals for s_name in
                                  sig_survival_var_names} if sig_survival_var_names else {}
             )
             model.load_weights(pretrained_chkp_dir)
