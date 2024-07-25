@@ -87,6 +87,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
         # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
         
         env = lmdb.open(lmdb_folder, readonly=True, lock=False)
+        # print(study, end =" ")
         nframes = self.nframes
 
         frames = []
