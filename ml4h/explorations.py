@@ -724,13 +724,16 @@ def _compute_masked_stats(img, y):
             q75s, q25s = np.percentile(data, [75, 25])
             iqrs[0, i] = q75s - q25s
 
-    return means, medians, stds, iqrs
+    assert(y.shape[0] == 1)
+    counts = np.count_nonzero(y, axis=1)
+
+    return means, medians, stds, iqrs, counts
 
 def _to_categorical(y, nb_classes):
     return np.eye(nb_classes)[y]
 
-def _get_csv_row(sample_id, means, medians, stds, iqrs, date):
-    res = np.concatenate([means, medians, stds, iqrs], axis=-1)
+def _get_csv_row(sample_id, means, medians, stds, iqrs, counts, date):
+    res = np.concatenate([means, medians, stds, iqrs, counts], axis=-1)
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
@@ -934,6 +937,7 @@ def infer_stats_from_segmented_regions(args):
         header += [f'{k}_median' for k in good_structures]
         header += [f'{k}_std' for k in good_structures]
         header += [f'{k}_iqr' for k in good_structures]
+        header += [f'{k}_count' for k in good_structures]
         header += ['mri_date']
         inference_writer_true.writerow(header)
         inference_writer_pred.writerow(header)
@@ -994,10 +998,10 @@ def infer_stats_from_segmented_regions(args):
                     else:
                         for i in range(nb_out_channels):
                             y[...,i] = binary_erosion(y[...,i], structures[i]).astype(y.dtype)
-
                 assert(y.shape[-1] == nb_out_channels)
-                means, medians, stds, iqrs = _compute_masked_stats(rescaled_img, y)
-                csv_row = _get_csv_row(sample_id, means, medians, stds, iqrs, date)
+
+                means, medians, stds, iqrs, counts = _compute_masked_stats(rescaled_img, y)
+                csv_row = _get_csv_row(sample_id, means, medians, stds, iqrs, counts, date)
                 inference_writer.writerow(csv_row)
                 return y
 
