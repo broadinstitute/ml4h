@@ -393,7 +393,10 @@ class DiffusionModel(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if len(generated_images[index].shape) == 3 and generated_images[index].shape[-1] > 1:
+                    plt.imshow(generated_images[index, ..., 0], cmap='gray')  # just plot first frame
+                else:
+                    plt.imshow(generated_images[index], cmap='gray')
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
