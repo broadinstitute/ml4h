@@ -915,6 +915,7 @@ ecg_rest_lvh_cornell = TensorMap(
     loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'),
 )
 
+
 ecg_segmented = TensorMap(
     'ecg_segmented', Interpretation.CATEGORICAL, shape=(1224, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
     cacheable=False, channel_map=ECG_SEGMENTED_CHANNEL_MAP,
