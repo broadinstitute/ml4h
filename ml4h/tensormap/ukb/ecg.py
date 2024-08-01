@@ -915,11 +915,6 @@ ecg_rest_lvh_cornell = TensorMap(
     loss=weighted_crossentropy([0.003, 1.0], 'cornell_lvh'),
 )
 
-ecg_rest_physnet_ecg2af = TensorMap(
-    'ecg_rest_physnet_ecg2af', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_AMP_LEADS_UKB, normalization=ZeroMeanStd1(),
-)
-
 ecg_segmented = TensorMap(
     'ecg_segmented', Interpretation.CATEGORICAL, shape=(1224, len(ECG_SEGMENTED_CHANNEL_MAP)), path_prefix='ecg_rest',
     cacheable=False, channel_map=ECG_SEGMENTED_CHANNEL_MAP,
