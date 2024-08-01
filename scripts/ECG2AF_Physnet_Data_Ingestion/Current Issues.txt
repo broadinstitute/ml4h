@@ -1,0 +1,16 @@
+Convert to HTML: 
+
+Diagnostics file may actually be required. 
+
+I do not know a more universal place where the date would be located. For now being able to specify where in the filename it's located might be a better solution. 
+
+The missing ukb_ecg_rest/ecg_rest_text/ should probably be programmed in if possible.
+
+The fact that the truth values are not present is something that I'd like to fix to remove the need for a seperate script for it. 
+
+AddTruthValues: 
+
+User should be able to specify where each important variable is located in the document. 
+But making it so that inference adds those values by default would make this script unnessasary. 
+
+GraphInference:
