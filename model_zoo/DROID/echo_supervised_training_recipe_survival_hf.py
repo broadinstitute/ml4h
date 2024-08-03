@@ -342,7 +342,7 @@ def main(
                      'categories': cls_category_len_dict,
                      'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
                      'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls},
-                     'survival_shapes': {s_name: survival_intervals*2 for s_name in survival_var_names} if survival_var_names else {}
+                     'survival_shapes': {s_name: survival_intervals for s_name in survival_var_names} if survival_var_names else {}
                      }
 
         model = create_regressor_classifier(encoder, **func_args)
@@ -393,7 +393,7 @@ def main(
                 category_order=cls_category_signature_map_dicts[
                     'cls_output_order'] if cls_category_signature_len_dict else None,
                 add_dense={'regressor': sig_add_separate_dense_reg, 'classifier': sig_add_separate_dense_cls},
-                survival_shapes={s_name: sig_survival_intervals * 2 for s_name in
+                survival_shapes={s_name: sig_survival_intervals for s_name in
                                  sig_survival_var_names} if sig_survival_var_names else {}
             )
             model.load_weights(pretrained_chkp_dir)
@@ -425,10 +425,10 @@ def main(
 
         loss = {'cls_' + k: tf.keras.losses.CategoricalCrossentropy() if cls_category_len_dict[k]>2 else tf.keras.losses.BinaryCrossentropy() for k in cls_category_len_dict.keys()}
         metrics = {'cls_' + k: tf.keras.metrics.CategoricalAccuracy() if cls_category_len_dict[k]>2 else [tf.keras.metrics.BinaryAccuracy(), 
-                                tf.keras.metrics.TruePositives(name='tp'),
-                                tf.keras.metrics.FalsePositives(name='fp'),
-                                tf.keras.metrics.TrueNegatives(name='tn'),
-                                tf.keras.metrics.FalseNegatives(name='fn'),
+                                # tf.keras.metrics.TruePositives(name='tp'),
+                                # tf.keras.metrics.FalsePositives(name='fp'),
+                                # tf.keras.metrics.TrueNegatives(name='tn'),
+                                # tf.keras.metrics.FalseNegatives(name='fn'),
                                 tf.keras.metrics.AUC(name='prc', curve='PR')] for k in cls_category_len_dict.keys()}
         if output_reg_len > 0:
             loss['echolab'] = tf.keras.losses.MeanSquaredError()
@@ -437,11 +437,22 @@ def main(
         # def c_index_metric(y_true, y_pred):
         #     c_index, concordant, discordant, tied_risk, tied_time = concordance_index(y_pred, y_true)
         #     return c_index
-
+        def auprc_survival_metric_param(intervals):
+            def auprc_survival(y_true, y_pred):
+                y_pred_val = 1 - tf.math.cumprod(y_pred[:, :intervals], axis=1)[:, -1]
+                y_true_val = tf.math.cumsum(y_true[:, intervals:], axis=1)[:, -1]
+                true_positives = K.sum(K.round(K.clip(y_true_val * y_pred_val, 0, 1)))
+                predicted_positives = K.sum(K.round(K.clip(y_pred_val, 0, 1)))
+                precision = true_positives / (predicted_positives + K.epsilon())
+                return precision    
+            return auprc_survival
+            
         if survival_var_names:
             # TODO: got to here with survival curve updates
             for s_name in survival_var_names:
+                # print(survival_intervals)
                 loss['survival_'+s_name] = survival_likelihood_loss(survival_intervals)
+                metrics['survival_'+s_name] = auprc_survival_metric_param(survival_intervals)
                 # metrics['survival_'+s_name] = c_index_metric
 
         model.compile(
