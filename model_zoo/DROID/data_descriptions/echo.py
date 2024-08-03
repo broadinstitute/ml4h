@@ -1,9 +1,11 @@
+
 import os
 import io
 import av
 import itertools
 
 import lmdb
+import glob
 
 import numpy as np
 import pandas as pd
@@ -139,9 +141,10 @@ class LmdbEchoStudyVideoDataDescriptionBWH(DataDescription):
 
     def get_loading_options(self, sample_id):
         mrn, study, view = sample_id.split('_')
-        lmdb_folder = os.path.join(self.local_lmdb_dir, f"{mrn}_{study}.lmdb")
-        lmdb_log = pd.read_csv(os.path.join(lmdb_folder, f'log_{mrn}_{study}.tsv'),
-                               sep='\t').set_index('view')
+        # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{mrn}_{study}.lmdb")
+        # lmdb_log = pd.read_csv(os.path.join(lmdb_folder, f'log_{mrn}_{study}.tsv'),
+        #                        sep='\t').set_index('view')
+        lmdb_log = pd.read_csv(glob.glob(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*",f"log_*_{study}*.tsv"))[0],sep='\t').set_index('view')
         lmdb_log = lmdb_log[lmdb_log['stored']]
 
         if view not in lmdb_log.index:
@@ -158,8 +161,13 @@ class LmdbEchoStudyVideoDataDescriptionBWH(DataDescription):
             pass
         mrn, study, view = sample_id.split('_')
 
-        lmdb_folder = os.path.join(self.local_lmdb_dir, f"{mrn}_{study}.lmdb")
-
+        # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{mrn}_{study}.lmdb")
+        try:
+            lmdb_folder = glob.glob(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*.lmdb"))[0]
+        except:
+            print(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*.lmdb"))
+            lmdb_folder = glob.glob(os.path.join(self.local_lmdb_dir,f"*{study}*.lmdb"))[0]
+        
         env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         nframes = self.nframes
 

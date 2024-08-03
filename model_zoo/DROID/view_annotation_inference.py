@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import glob
 
 import tensorflow as tf
 
@@ -56,16 +57,24 @@ def main(
             log_df = log_df[log_df["stored"]]
             log_df["sample_id"] = log_df["view"].apply(lambda x: f"mrn_{study_id}_{x}")
         else:
-            study_id = f"{row['MRN']}_{row['study_id']}"
-            log_df = pd.read_csv(
-                os.path.join(lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.tsv"),
-                sep="\t",
-            )
-            log_df = log_df[log_df["stored"]]
-            log_df["sample_id"] = log_df["view"].apply(lambda x: f"{study_id}_{x}")
+            log_df = row['sample_id']
+#             study_id = f"{row['MRN']}_{row['study_id']}"
+#             log_df = pd.read_csv(
+#             glob.glob(os.path.join(lmdb_folder,f"*{row['MRN']}_{row['study_id']}*",f"log_*_{row['study_id']}*.tsv"))[0],
+#             sep="\t")
+            
+#             # log_df = pd.read_csv(
+#             #     os.path.join(lmdb_folder, f"{study_id}.lmdb", f"log_{study_id}.tsv"),
+#             #     sep="\t",
+#             # )
+#             log_df = log_df[log_df["stored"]]
+#             log_df["sample_id"] = log_df["view"].apply(lambda x: f"{row['MRN']}_{row['study_id']}_{x}")
         df_list.append(log_df)
-    log_df = pd.concat(df_list)
-    working_ids = sorted(log_df["sample_id"].values.tolist())
+    if is_mgh:
+        log_df = pd.concat(df_list)
+        working_ids = sorted(log_df["sample_id"].values.tolist())
+    else:
+        working_ids = sorted(df_list)
     body_inference_ids = tf.data.Dataset.from_tensor_slices(working_ids).batch(
         batch_size, drop_remainder=False
     )
@@ -83,7 +92,7 @@ def main(
     ).prefetch(2)
 
     encoder = create_video_encoder(
-        input_shape=(n_input_frames, 224, 224, 3)
+        path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
     )
     # encoder = create_video_encoder(
     #     path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
@@ -163,6 +172,7 @@ if __name__ == "__main__":
         args.output_file,
         args.pretrained_ckpt_dir,
         args.skip_modulo,
-        pd.read_csv(args.study_df, sep="\t", dtype={"MRN": "str"}),
+        pd.read_parquet(args.study_df),
+        # pd.read_csv(args.study_df, sep="\t", dtype={"MRN": "str"}),
         args.view_annotation_tasks,
     )
