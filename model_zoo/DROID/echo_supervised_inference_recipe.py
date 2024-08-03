@@ -53,6 +53,8 @@ def main(
     hf_task = model_params['hf_task'] if 'hf_task' in model_params.keys() else None
     hf_diag_type = model_params['hf_diag_type'] if 'hf_task' in model_params.keys() else None
     save_tag = model_params['save_tag'] if 'save_tag' in model_params.keys() else None
+    survival_intervals = model_params['survival_intervals'] if 'survival_intervals' in model_params.keys() else 0
+    survival_var_names = model_params['survival_var_names'] if 'survival_var_names' in model_params.keys() else []
     
     logging.info(f'Loaded model with output labels: {output_labels}, views: {selected_views}, doppler: {selected_doppler}, quality: {selected_quality}, canonical: {selected_canonical}')
 
@@ -100,6 +102,8 @@ def main(
     print(selected_hf_task_idx)
     
     if hf_task:
+        if survival_var_names:
+            selected_hf_task_idx = [0,2]
         wide_df_selected = wide_df[
             (wide_df['view_prediction'].isin(selected_views_idx)) &
             (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
@@ -148,7 +152,10 @@ def main(
         # if 'patient_internal_test' in splits:
         #     patient_inference = patient_inference + splits['patient_internal_test']
     else:
-        patient_inference = splits['patient_test']
+        if 'patient_test' in splits.keys():
+            patient_inference = splits['patient_test']
+        elif 'patient_test' in splits[list(splits.keys())[0]].keys():
+            patient_inference = splits['ewoc_mgh']['patient_test'] + splits['c3po_mgh']['patient_test']
 
     # Testing a random subset of IDs (for speed) to see if there are matching ids in working_ids and chosen split
     random_ids_for_test = np.random.permutation(len(working_ids))[:min(len(working_ids), 500)]
@@ -206,7 +213,9 @@ def main(
                  'n_output_features': output_reg_len,
                  'categories': cls_category_len_dict,
                  'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
-                 'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls}}
+                 'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls},
+                 'survival_shapes': {s_name: survival_intervals for s_name in survival_var_names} if survival_var_names else {}
+                }
 
     model_plus_head = create_regressor_classifier(encoder, **func_args)
     # ---------------------------------------------------------------- #
@@ -255,16 +264,23 @@ def main(
             # Case: regression + classification or classification only
             # Currently saving actual class predictions jointly with the regression variables if exist
             # and for each class one-hot predictions are saved in a separate pq file (flag dependent)
+            pred_ind = 0
+            if survival_var_names:
+                survival_pred = predictions[0]
+                pred_ind = 1
+            
             if output_reg_len > 0:
-                reg_pred = predictions[0]
-                cls_pred = predictions[1:]
+                reg_pred = predictions[pred_ind]
+                cls_pred = predictions[(pred_ind+1):]
             else:
                 reg_pred = np.zeros((0, 0))
-                cls_pred = predictions     
+                cls_pred = predictions[pred_ind:]     
                 if len(cls_category_len_dict) == 1:
-                    cls_pred = [predictions]
+                    cls_pred = [predictions[pred_ind:]]
             df = pd.DataFrame()
             df['sample_id'] = inference_ids_split
+            for i_s in range(survival_pred.shape[1]):
+                df[f'survival_interval_{i_s}'] = survival_pred[:, i_s]
             for i_p in range(reg_pred.shape[1]):
                 df[f'prediction_{i_p}'] = reg_pred[:, i_p]
             for i in range(len(cls_pred)):
@@ -283,8 +299,15 @@ def main(
 
             df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
         else:
-            # Case: regression only
-            save_model_pred_as_df(predictions)
+            # Case: regression and possibly survival
+            # TODO: add saving of survival 
+            if (output_reg_len > 0) and survival_var_names:
+                survival_pred = predictions[0]
+                reg_pred = predictions[1]
+                save_model_pred_as_df(survival_pred, fname_suffix='_survival_')
+                save_model_pred_as_df(reg_pred, fname_suffix='_regression_')
+            else:
+                save_model_pred_as_df(predictions)
 
 
 if __name__ == "__main__":

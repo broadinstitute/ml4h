@@ -277,7 +277,7 @@ def main(
         batch_size, drop_remainder=True)
 
     n_train_steps = min(10000, len(train_ids) // batch_size)
-    n_valid_steps = min(500, len(valid_ids) // batch_size)
+    n_valid_steps = min(5000, len(valid_ids) // batch_size)
 
     # ---------- Adaptation for regression + classification ---------- #
     # Adapting tensor output sizes for classification heads
