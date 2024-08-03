@@ -75,71 +75,75 @@ def main(
         working_ids = sorted(log_df["sample_id"].values.tolist())
     else:
         working_ids = sorted(df_list)
-    body_inference_ids = tf.data.Dataset.from_tensor_slices(working_ids).batch(
-        batch_size, drop_remainder=False
-    )
+    n = int(len(working_ids)/150)
+    working_ids_split = [working_ids[i:i+n] for i in range(0, len(working_ids), n)]
+    for working_ids_ind, working_ids_cur in enumerate(working_ids_split):
+        print(f'Group no. {working_ids_ind} out of {len(working_ids_split)}')
+        body_inference_ids = tf.data.Dataset.from_tensor_slices(working_ids_cur).batch(
+            batch_size, drop_remainder=False
+        )
 
-    io_inference_ds = body_inference_ids.interleave(
-        lambda sample_ids: tf.data.Dataset.from_generator(
-            DDGenerator(input_dd, None),
-            output_signature=(
-                tf.TensorSpec(
-                    shape=(None, n_input_frames, 224, 224, 3), dtype=tf.float32
+        io_inference_ds = body_inference_ids.interleave(
+            lambda sample_ids: tf.data.Dataset.from_generator(
+                DDGenerator(input_dd, None),
+                output_signature=(
+                    tf.TensorSpec(
+                        shape=(None, n_input_frames, 224, 224, 3), dtype=tf.float32
+                    ),
                 ),
-            ),
-            args=(sample_ids,),
-        )
-    ).prefetch(2)
+                args=(sample_ids,),
+            )
+        ).prefetch(2)
 
-    encoder = create_video_encoder(
-        path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
-    )
-    # encoder = create_video_encoder(
-    #     path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
-    # )
-    model = create_classifier(
-        encoder,
-        trainable=False,
-        input_shape=(n_input_frames, 224, 224, 3),
-        categories={
-            f"annotation_{task}": len(category_dictionaries[task])
-            for task in view_annotation_tasks
-        },
-    )
-
-    model.load_weights(pretrained_ckpt_dir)
-
-    model_predictions = {}
-    inference_steps = len(working_ids) // batch_size + int(
-        (len(working_ids) % batch_size) > 0.5
-    )
-
-    predictions = model.predict(io_inference_ds, steps=inference_steps, verbose=1)
-    for i, task in enumerate(view_annotation_tasks):
-        model_predictions[f"{task}_prediction"] = predictions[i]
-
-    df = pd.DataFrame()
-    df["sample_id"] = working_ids[: len(model_predictions[f"{task}_prediction"])]
-    for task in view_annotation_tasks:
-        # print(model_predictions[f"{task}_prediction"])
-        df[f"{task}_prediction"] = np.argmax(
-            model_predictions[f"{task}_prediction"], axis=1
+        encoder = create_video_encoder(
+            path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
         )
-        df[f"{task}_prediction_probability"] = np.max(
-            model_predictions[f"{task}_prediction"], axis=1
+        # encoder = create_video_encoder(
+        #     path=movinet_ckpt_dir, input_shape=(n_input_frames, 224, 224, 3)
+        # )
+        model = create_classifier(
+            encoder,
+            trainable=False,
+            input_shape=(n_input_frames, 224, 224, 3),
+            categories={
+                f"annotation_{task}": len(category_dictionaries[task])
+                for task in view_annotation_tasks
+            },
         )
-        
-        tmp = model_predictions[f"{task}_prediction"].copy()
-        for r_ind, max_ind in enumerate(df[f"{task}_prediction"]):
-            tmp[r_ind,max_ind] = -1
-        
-        df[f"{task}_prediction_2nd"] = np.argmax(
-            tmp, axis=1
+
+        model.load_weights(pretrained_ckpt_dir)
+
+        model_predictions = {}
+        inference_steps = len(working_ids_cur) // batch_size + int(
+            (len(working_ids_cur) % batch_size) > 0.5
         )
-        df[f"{task}_prediction_probability_2nd"] = np.max(
-            tmp, axis=1
-        )
-    df.to_csv(output_file, index=False, sep="\t")
+
+        predictions = model.predict(io_inference_ds, steps=inference_steps, verbose=1)
+        for i, task in enumerate(view_annotation_tasks):
+            model_predictions[f"{task}_prediction"] = predictions[i]
+
+        df = pd.DataFrame()
+        df["sample_id"] = working_ids_cur[: len(model_predictions[f"{task}_prediction"])]
+        for task in view_annotation_tasks:
+            # print(model_predictions[f"{task}_prediction"])
+            df[f"{task}_prediction"] = np.argmax(
+                model_predictions[f"{task}_prediction"], axis=1
+            )
+            df[f"{task}_prediction_probability"] = np.max(
+                model_predictions[f"{task}_prediction"], axis=1
+            )
+
+            tmp = model_predictions[f"{task}_prediction"].copy()
+            for r_ind, max_ind in enumerate(df[f"{task}_prediction"]):
+                tmp[r_ind,max_ind] = -1
+
+            df[f"{task}_prediction_2nd"] = np.argmax(
+                tmp, axis=1
+            )
+            df[f"{task}_prediction_probability_2nd"] = np.max(
+                tmp, axis=1
+            )
+        df.to_csv(output_file+'_fnum_'+str(working_ids_ind), index=False, sep="\t")
 
 
 if __name__ == "__main__":
