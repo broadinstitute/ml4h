@@ -80,15 +80,16 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
         _, study, view = sample_id.split('_')
         
         if isinstance(self.local_lmdb_dir, list):
+            lmdb_folder = os.path.join(self.local_lmdb_dir[0], f"{study}.lmdb")
             for lmdb_dir in self.local_lmdb_dir:
-                lmdb_folder = os.path.join(self.local_lmdb_dir[0], f"{study}.lmdb")
                 if os.path.exists(os.path.join(lmdb_dir, f"{study}.lmdb")):
                     lmdb_folder = os.path.join(lmdb_dir, f"{study}.lmdb")
         else:
             lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
         # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
-
+        
         env = lmdb.open(lmdb_folder, readonly=True, lock=False)
+        # print(study, end =" ")
         nframes = self.nframes
 
         frames = []
