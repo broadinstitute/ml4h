@@ -6,10 +6,10 @@ def load_requirements(filename):
     with open(filename, 'r') as file:
         return file.read().splitlines()
 
-    
+
 setup(
     name='ml4h',
-    version='0.0.15rc3',
+    version='0.0.16',
     description='Machine Learning for Health python package',
     #long_description= 'README.md'.read_text(encoding='utf-8'),  # Optional
     long_description_content_type='text/markdown',
