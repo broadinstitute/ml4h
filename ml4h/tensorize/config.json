@@ -1,0 +1,65 @@
+{
+  "dataframes": {
+    "avg_heart_rate_df": {
+      "file_pattern": "fitbit_heart_rate_level_avg",
+      "columns": ["avg_rate"],
+      "date_columns": ["date"],
+      "is_array": false
+    },
+    "heart_rate_raw_df": {
+      "file_pattern": "heart_rate_level",
+      "columns": ["heart_rate_array"],
+      "date_columns": ["date"],
+      "is_array": true
+    },
+    "sleep_summary_df": {
+      "file_pattern": "sleep_daily_summary",
+      "columns": ["is_main_sleep", "minute_in_bed", "minute_asleep", "minute_after_wakeup", "minute_awake", "minute_restless", "minute_deep", "minute_light", "minute_rem", "minute_wake"],
+      "date_columns": ["sleep_date"],
+      "is_array": false
+    },
+    "diagnosis_df": {
+      "file_pattern": "condition",
+      "columns": ["condition_concept_id", "standard_concept_name", "standard_concept_code", "standard_vocabulary", "condition_start_datetime", "condition_end_datetime", "condition_type_concept_id", "condition_type_concept_name", "stop_reason", "visit_occurrence_id", "visit_occurrence_concept_name", "condition_source_value", "condition_source_concept_id", "source_concept_name", "source_concept_code", "source_vocabulary", "condition_status_source_value", "condition_status_concept_id", "condition_status_concept_name"],
+      "date_columns": ["condition_start_datetime", "condition_end_datetime"],
+      "is_array": false
+    },
+    "labs_vitals_df": {
+      "file_pattern": "measurement",
+      "columns": ["measurement_concept_id", "standard_concept_name", "standard_concept_code", "standard_vocabulary", "value_as_number", "unit_concept_id", "unit_source_value", "unit_concept_name", "visit_occurrence_id", "visit_occurrence_concept_name", "measurement_source_value", "measurement_source_concept_id", "source_concept_name", "source_concept_code", "source_vocabulary"],
+      "date_columns": ["measurement_datetime"],
+      "is_array": false
+    },
+    "intraday_steps_df": {
+      "file_pattern": "intraday_steps",
+      "columns": ["sum_steps"],
+      "date_columns": ["date"],
+      "is_array": false
+    },
+    "sleep_level_df": {
+      "file_pattern": "sleep_level",
+      "columns": ["is_main_sleep", "level", "date", "duration_in_min"],
+      "date_columns": ["sleep_date"],
+      "is_array": false
+    },
+    "procedure_df": {
+      "file_pattern": "procedure",
+      "columns": ["procedure_concept_id", "standard_concept_name", "standard_concept_code", "standard_vocabulary", "procedure_type_concept_id", "procedure_type_concept_name", "modifier_concept_id", "modifier_concept_name", "quantity", "visit_occurrence_id", "visit_occurrence_concept_name", "procedure_source_value", "procedure_source_concept_id", "source_concept_name", "source_concept_code", "source_vocabulary", "modifier_source_value"],
+      "date_columns": ["procedure_datetime"],
+      "is_array": false
+    },
+    "heart_rate_summary_df": {
+      "file_pattern": "heart_rate_summary",
+      "columns": ["zone_name", "min_heart_rate", "max_heart_rate", "minute_in_zone", "calorie_count"],
+      "date_columns": ["date"],
+      "is_array": false
+    },
+    "fitbit_activity_df": {
+      "file_pattern": "fitbit_activity",
+      "columns": ["activity_calories", "calories_bmr", "calories_out", "elevation", "fairly_active_minutes", "floors", "lightly_active_minutes", "marginal_calories", "sedentary_minutes", "steps", "very_active_minutes"],
+      "date_columns": ["date"],
+      "is_array": false
+    }
+  }
+}
+
