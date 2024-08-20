@@ -19,8 +19,6 @@ import h5py
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
 from tensorflow.keras.models import Model
 
 
@@ -40,11 +38,14 @@ from ml4h.defines import JOIN_CHAR, MRI_SEGMENTED_CHANNEL_MAP, CODING_VALUES_MIS
 from ml4h.defines import TENSOR_EXT, IMAGE_EXT, ECG_CHAR_2_IDX, ECG_IDX_2_CHAR, PARTNERS_CHAR_2_IDX, PARTNERS_IDX_2_CHAR, PARTNERS_READ_TEXT
 from ml4h.tensorize.tensor_writer_ukbb import unit_disk
 
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge, Lasso
+from sklearn.neighbors import KernelDensity
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression, LinearRegression, ElasticNet, Ridge, Lasso
 
-from scipy.ndimage import binary_erosion
+from scipy.ndimage import binary_erosion, binary_dilation
 
 CSV_EXT = '.tsv'
 
@@ -700,54 +701,105 @@ def infer_with_pixels(args):
                 logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
 
-def _compute_masked_stats(img, y, nb_classes):
+def _compute_masked_stats(img, y, merged_after_channels):
+    for m in merged_after_channels:
+        y = np.concatenate([y, np.sum(y[..., m], axis=-1, keepdims=True)], axis=-1)
+
+    nb_classes = y.shape[-1]
     img = np.tile(img, nb_classes)
     melt_shape = (img.shape[0], img.shape[1] * img.shape[2], img.shape[3])
     img = img.reshape(melt_shape)
     y = y.reshape(melt_shape)
 
     masked_img = np.ma.array(img, mask=np.logical_not(y))
+
     means = masked_img.mean(axis=1).data
     medians = np.ma.median(masked_img, axis=1).data
     stds = masked_img.std(axis=1).data
-    return means, medians, stds
+
+    assert(masked_img.shape[0] == 1)
+    nb_labels = masked_img.shape[-1]
+    iqrs = np.zeros((1, nb_labels))
+    for i in range(nb_labels):
+        data = masked_img[...,i].compressed()
+        if data.size == 0:
+            iqrs[0, i] = 0
+        else:
+            q75s, q25s = np.percentile(data, [75, 25])
+            iqrs[0, i] = q75s - q25s
+
+    assert(y.shape[0] == 1)
+    counts = np.count_nonzero(y, axis=1)
+
+    return means, medians, stds, iqrs, counts
 
 def _to_categorical(y, nb_classes):
     return np.eye(nb_classes)[y]
 
-def _get_csv_row(sample_id, means, medians, stds, date):
-    res = np.concatenate([means, medians, stds], axis=-1)
+def _get_csv_row(sample_id, means, medians, stds, iqrs, counts, date):
+    res = np.concatenate([means, medians, stds, iqrs, counts], axis=-1)
     csv_row = [sample_id] + res[0].astype('str').tolist() + [date]
     return csv_row
 
-def _thresh_labels_above(y, img, intensity_thresh, intensity_thresh_percentile, in_labels, out_label, nb_orig_channels):
+def _thresh_labels_above(y, img, intensity_thresh, in_labels, out_label, nb_orig_channels):
     y = np.argmax(y, axis=-1)[..., np.newaxis]
-    if intensity_thresh:
-        img_intensity_thresh = intensity_thresh
-    elif intensity_thresh_percentile:
-        img_intensity_thresh = np.percentile(img, intensity_thresh_percentile)
-    y[np.logical_and(img >= img_intensity_thresh, np.isin(y, in_labels))] = out_label
+    y[np.logical_and(img >= intensity_thresh, np.isin(y, in_labels))] = out_label
     y = y[..., 0]
     y = _to_categorical(y, nb_orig_channels)
     return y
 
-def _intensity_thresh_k_means(y, img, intensity_thresh_k_means):
-    X = img[y==1][...,np.newaxis]
-    if X.size > 1:
-        kmeans = KMeans(n_clusters=intensity_thresh_k_means[0], random_state=0, n_init="auto").fit(X)
-        labels = kmeans.predict(img.flatten()[...,np.newaxis])
-        labels = np.reshape(labels, img.shape)
-        y[np.logical_and(labels==intensity_thresh_k_means[1], y==1)] = 0
-    return y
+def _intensity_thresh_auto(
+    y, img, intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel,
+    intensity_thresh_auto_region_radius, intensity_thresh_auto_clip_low, intensity_thresh_auto_clip_high,
+):
+    img = img[0, ..., 0]
+    seg = np.argmax(y, axis=-1)[0, ...]
+
+    paps_seg = np.isin(seg, intensity_thresh_in_channels)
+    lv_seg = (seg == intensity_thresh_out_channel)
+    if intensity_thresh_auto in ['region_hist', 'region_kmeans']:
+        structure = unit_disk(intensity_thresh_auto_region_radius)
+        lv_seg = np.logical_and(binary_dilation(paps_seg, structure), lv_seg)
+
+    paps_intensities = list(np.ma.masked_where(np.invert(paps_seg), img).compressed())
+    lv_cavity_intensities = list(np.ma.masked_where(np.invert(lv_seg), img).compressed())
+    if len(paps_intensities) == 0:
+        return None
+
+    # clip ends
+    lv_cavity_intensities = np.array(lv_cavity_intensities)
+    paps_intensities = np.array(paps_intensities)
+    lv_cavity_intensities = lv_cavity_intensities[(lv_cavity_intensities >= intensity_thresh_auto_clip_low) & (lv_cavity_intensities <= intensity_thresh_auto_clip_high)]
+    paps_intensities = paps_intensities[(paps_intensities >= intensity_thresh_auto_clip_low) & (paps_intensities <= intensity_thresh_auto_clip_high)]
+    if paps_intensities.size == 0 or lv_cavity_intensities.size == 0:
+        return None
+
+    bins = np.linspace(np.min(paps_intensities), np.max(lv_cavity_intensities), 100)
+
+    # Kernel density estimation and histogram-based thresh
+    if intensity_thresh_auto in ['image_hist', 'region_hist']:
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(lv_cavity_intensities[:, np.newaxis])
+        dens_lv_cavity = np.exp(kde.score_samples(np.array(bins)[:, np.newaxis]))
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(paps_intensities[:, np.newaxis])
+        dens_paps = np.exp(kde.score_samples(np.array(bins)[:, np.newaxis]))
+        return bins[np.argmin(np.abs(dens_lv_cavity - dens_paps))]
+
+    # kmeans
+    elif intensity_thresh_auto in ['image_kmeans', 'region_kmeans']:
+        X = np.concatenate([lv_cavity_intensities, paps_intensities])
+        X = X.reshape(-1, 1).astype('float')
+        kmeans = KMeans(n_clusters=2, random_state=0, n_init="auto").fit(X)
+        bins = bins.reshape(-1, 1).astype('float')
+        pred = kmeans.predict(bins)
+        return (bins[np.where(pred == 1)[0][-1]][0] + bins[np.where(pred == 0)[0][0]][0]) / 2
 
 def _scatter_plots_from_segmented_region_stats(
-    inference_tsv_true, inference_tsv_pred, structures_to_analyze,
-    output_folder, id, input_name, output_name,
+    inference_tsv_true, inference_tsv_pred, output_folder, id, input_name, output_name,
 ):
     df_true = pd.read_csv(inference_tsv_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     df_pred = pd.read_csv(inference_tsv_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-    results_to_plot = [f'{s}_median' for s in structures_to_analyze]
+    results_to_plot = [c for c in df_pred.columns if 'median' in c]
     for col in results_to_plot:
         for i in ['all', 'filter_outliers']: # Two types of plots
             plot_data = pd.concat(
@@ -759,9 +811,9 @@ def _scatter_plots_from_segmented_region_stats(
                 true_outliers = plot_data[plot_data.true == 0]
                 pred_outliers = plot_data[plot_data.pred == 0]
                 logging.info(f'sample_ids where {col} is zero in the manual segmentation:')
-                logging.info(true_outliers['sample_id'].to_list())
+                logging.info(sorted(true_outliers['sample_id'].to_list()))
                 logging.info(f'sample_ids where {col} is zero in the model segmentation:')
-                logging.info(pred_outliers['sample_id'].to_list())
+                logging.info(sorted(pred_outliers['sample_id'].to_list()))
             elif i == 'filter_outliers':
                 plot_data = plot_data[plot_data.true != 0]
                 plot_data = plot_data[plot_data.pred != 0]
@@ -815,24 +867,73 @@ def infer_stats_from_segmented_regions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
 
-    # good_structures has to be sorted by channel idx
-    good_channels = sorted([tm_out.channel_map[k] for k in args.structures_to_analyze])
-    good_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels]
+    # the user can use '+' to create a new channel that merges other channels before postprocessing
+    # the user can use '++' to create a new channel that merges other channels after postprocessing
+    # those channels must be included alone in structures_to_analyze as well, then '+', then '++'
+    merged_locs = [
+        k for k in range(len(args.structures_to_analyze))
+        if '+' in args.structures_to_analyze[k] and '++' not in args.structures_to_analyze[k]
+    ]
+    merged_after_locs = [
+        k for k in range(len(args.structures_to_analyze))
+        if '++' in args.structures_to_analyze[k]
+    ]
+    uni_locs = [k for k in range(len(args.structures_to_analyze)) if '+' not in args.structures_to_analyze[k]]
+    assert((len(merged_locs) == 0) or (merged_locs[0] > uni_locs[-1]), 'structures to merge before postprocessing must be listed after individual structures')
+    assert((len(merged_after_locs) == 0) or (merged_after_locs[0] > uni_locs[-1]), 'structures to merge after postprocessing must be listed after individual structures')
+    merged_structures = [args.structures_to_analyze[k] for k in merged_locs]
+    merged_after_structures = [args.structures_to_analyze[k] for k in merged_after_locs]
+    uni_structures = [args.structures_to_analyze[k] for k in uni_locs]
+    merged_channels = [k.split('+') for k in merged_structures]
+    merged_after_channels = [k.split('++') for k in merged_after_structures]
+    for i in range(len(merged_channels)):
+        for j in range(len(merged_channels[i])):
+            merged_channels[i][j] = tm_out.channel_map[merged_channels[i][j]]
+    for i in range(len(merged_after_channels)):
+        for j in range(len(merged_after_channels[i])):
+            merged_after_channels[i][j] = tm_out.channel_map[merged_after_channels[i][j]]
+
+    # structures have to be in the same order as the channel map
+    good_channels = [tm_out.channel_map[k] for k in uni_structures]
+    assert(good_channels == sorted(good_channels), 'structures must be given in the same order as in the channel map')
+    title_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels] \
+                       + merged_structures + merged_after_structures
     nb_orig_channels = len(tm_out.channel_map)
-    nb_good_channels = len(good_channels)
+    nb_out_channels = len(good_channels) + len(merged_structures)
     bad_channels = [k for k in range(nb_orig_channels) if k not in good_channels]
+    for m in merged_channels:
+        for c in m:
+            assert(c in good_channels, 'structures to merge before postprocessing must also be listed as individual structures')
+    for m in merged_after_channels:
+        for c in m:
+            assert(c in good_channels, 'structures to merge after postprocessing must also be listed as individual structures')
+    # Get the channels after postprocessing
+    for i in range(len(merged_after_channels)):
+        for j in range(len(merged_after_channels[i])):
+            merged_after_channels[i][j] = good_channels.index(merged_after_channels[i][j])
 
     # Structuring element used for the erosion
-    if args.erosion_radius > 0:
-        structure = unit_disk(args.erosion_radius)[np.newaxis, ..., np.newaxis]
+    if len(args.erosion_radius) > 0:
+        do_erosion = True
+        if len(args.erosion_radius) == 1:
+            structure = unit_disk(args.erosion_radius[0])[np.newaxis, ..., np.newaxis]
+        else:
+            assert(len(args.erosion_radius) == nb_out_channels, 'must provide an erosion radius for each individual structure and for structures to merge before postprocessing')
+            structures = [unit_disk(r)[np.newaxis, ...] for r in args.erosion_radius]
 
     # Setup for intensity thresholding
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
     if do_intensity_thresh:
-        assert (not (args.intensity_thresh and args.intensity_thresh_percentile))
-        assert (not (args.intensity_thresh_k_means and len(args.intensity_thresh_in_structures) > 1))
+        assert(args.intensity_thresh or args.intensity_thresh_auto, 'must specify intensity threshold type if providing structures for intensity thresholding')
+    if args.intensity_thresh or args.intensity_thresh_auto:
+        assert(do_intensity_thresh, 'must specify structures for intensity thresholding if providing an intensity threshold type')
+    if args.intensity_thresh_auto:
+        assert(args.intensity_thresh_auto in ['image_hist', 'image_kmeans', 'region_hist', 'region_kmeans'], 'intensity_thresh_auto must be image_hist, image_kmeans, region_list or region_kmeans')
+    if do_intensity_thresh:
         intensity_thresh_in_channels = [tm_out.channel_map[k] for k in args.intensity_thresh_in_structures]
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
+        if args.intensity_thresh_auto:
+            threshes = []
 
     # Get the dates
     with open(args.app_csv, mode='r') as dates_file:
@@ -846,14 +947,22 @@ def infer_stats_from_segmented_regions(args):
     stats_counter = Counter()
     tensor_paths_inferred = set()
 
+    if args.analyze_ground_truth:
+        all_predictions = []
+        all_data = {}
+        all_labels = {}
+        all_paths = []
+
     with open(inference_tsv_true, mode='w') as inference_file_true, open(inference_tsv_pred, mode='w') as inference_file_pred:
         inference_writer_true = csv.writer(inference_file_true, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         inference_writer_pred = csv.writer(inference_file_pred, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
         header = ['sample_id']
-        header += [f'{k}_mean' for k in good_structures]
-        header += [f'{k}_median' for k in good_structures]
-        header += [f'{k}_std' for k in good_structures]
+        header += [f'{k}_mean' for k in title_structures]
+        header += [f'{k}_median' for k in title_structures]
+        header += [f'{k}_std' for k in title_structures]
+        header += [f'{k}_iqr' for k in title_structures]
+        header += [f'{k}_count' for k in title_structures]
         header += ['mri_date']
         inference_writer_true.writerow(header)
         inference_writer_pred.writerow(header)
@@ -861,12 +970,24 @@ def infer_stats_from_segmented_regions(args):
         while True:
             batch = next(generate_test)
             data, labels, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+
             if tensor_paths[0] in tensor_paths_inferred:
                 next(generate_test)  # this print end of epoch info
                 logging.info(
                     f"Inference on {stats_counter['count']} tensors finished. Inference TSV files at: {inference_tsv_true}, {inference_tsv_pred}",
                 )
                 break
+
+            if args.analyze_ground_truth:
+                for k in data.keys():
+                    if k not in all_data.keys():
+                        all_data[k] = []
+                    all_data[k].append(data[k])
+                assert(len(labels.keys()) == 1)
+                label_key = list(labels.keys())[0]
+                if label_key not in all_labels.keys():
+                    all_labels[label_key] = []
+                all_paths += tensor_paths
 
             img = data[tm_in.input_name()]
             rescaled_img = tm_in.rescale(img)
@@ -879,40 +1000,78 @@ def infer_stats_from_segmented_regions(args):
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             date = dates_dict[sample_id]
 
-            if args.analyze_ground_truth:
-                if do_intensity_thresh:
-                    y_true = _thresh_labels_above(y_true, img, args.intensity_thresh, args.intensity_thresh_percentile, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
-                y_true = np.delete(y_true, bad_channels, axis=-1)
-                if args.erosion_radius > 0:
-                    y_true = binary_erosion(y_true, structure).astype(y_true.dtype)
-                if args.intensity_thresh_k_means:
-                    y_true = _intensity_thresh_k_means(y_true, img, args.intensity_thresh_k_means)
-                means_true, medians_true, stds_true = _compute_masked_stats(rescaled_img, y_true, nb_good_channels)
-                csv_row_true = _get_csv_row(sample_id, means_true, medians_true, stds_true, date)
-                inference_writer_true.writerow(csv_row_true)
-
             if do_intensity_thresh:
-                y_pred = _thresh_labels_above(y_pred, img, args.intensity_thresh, args.intensity_thresh_percentile, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
-            y_pred = np.delete(y_pred, bad_channels, axis=-1)
-            if args.erosion_radius > 0:
-                y_pred = binary_erosion(y_pred, structure).astype(y_pred.dtype)
-            if args.intensity_thresh_k_means:
-                y_pred = _intensity_thresh_k_means(y_pred, img, args.intensity_thresh_k_means)
-            means_pred, medians_pred, stds_pred = _compute_masked_stats(rescaled_img, y_pred, nb_good_channels)
-            csv_row_pred = _get_csv_row(sample_id, means_pred, medians_pred, stds_pred, date)
-            inference_writer_pred.writerow(csv_row_pred)
+                if args.intensity_thresh_auto:
+                    this_intensity_thresh = _intensity_thresh_auto(
+                        y_pred, img, args.intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel,
+                        args.intensity_thresh_auto_region_radius, args.intensity_thresh_auto_clip_low, args.intensity_thresh_auto_clip_high,
+                    )
+                    if this_intensity_thresh is not None:
+                        threshes.append(this_intensity_thresh)
+                else:
+                    this_intensity_thresh = args.intensity_thresh
+
+            def postprocess_seg_and_write_stats(y, inference_writer):
+                if do_intensity_thresh and (this_intensity_thresh is not None):
+                    y = _thresh_labels_above(y, img, this_intensity_thresh, intensity_thresh_in_channels, intensity_thresh_out_channel, nb_orig_channels)
+                for m in merged_channels:
+                    y = np.concatenate([y, np.sum(y[...,m], axis=-1, keepdims=True)], axis=-1)
+                y = np.delete(y, bad_channels, axis=-1)
+                if do_erosion:
+                    if len(args.erosion_radius) == 1:
+                        y = binary_erosion(y, structure).astype(y.dtype)
+                    else:
+                        for i in range(nb_out_channels):
+                            y[...,i] = binary_erosion(y[...,i], structures[i]).astype(y.dtype)
+                assert(y.shape[-1] == nb_out_channels)
+
+                means, medians, stds, iqrs, counts = _compute_masked_stats(rescaled_img, y, merged_after_channels)
+                csv_row = _get_csv_row(sample_id, means, medians, stds, iqrs, counts, date)
+                inference_writer.writerow(csv_row)
+                return y
+
+            if args.analyze_ground_truth:
+                y_true = postprocess_seg_and_write_stats(y_true, inference_writer_true)
+            y_pred = postprocess_seg_and_write_stats(y_pred, inference_writer_pred)
+
+            if args.analyze_ground_truth:
+                assert(len(labels.keys()) == 1)
+                all_labels[label_key].append(y_true)
+                all_predictions.append(y_pred)
 
             tensor_paths_inferred.add(tensor_paths[0])
             stats_counter['count'] += 1
             if stats_counter['count'] % 250 == 0:
                 logging.info(f"Wrote:{stats_counter['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
 
+    if args.intensity_thresh_auto:
+        logging.info(f"Average post-processing threshold was {np.mean(threshes)}")
+
     # Scatter plots
     if args.analyze_ground_truth:
         _scatter_plots_from_segmented_region_stats(
-            inference_tsv_true, inference_tsv_pred, args.structures_to_analyze,
-            args.output_folder, args.id, tm_in.input_name(), tm_out.output_name(),
+            inference_tsv_true, inference_tsv_pred, args.output_folder, args.id, tm_in.input_name(), tm_out.output_name(),
         )
+
+    # pngs
+    if args.analyze_ground_truth:
+        folder = os.path.join(args.output_folder, args.id, 'postprocessing_pngs/')
+
+        for k in all_data.keys():
+            all_data[k]= np.concatenate(all_data[k], axis=0)
+
+        # combine into one batch, remove any merged structures, and put the background back
+        all_predictions = np.concatenate(all_predictions, axis=0)
+        all_predictions = all_predictions[..., :len(uni_structures)]
+        all_predictions = np.concatenate([1-np.sum(all_predictions, axis=-1, keepdims=True), all_predictions], axis=-1)
+
+        # combine into one batch, remove any merged structures, and put the background back
+        for k in all_labels.keys():
+            all_labels[k] = np.concatenate(all_labels[k], axis=0)
+            all_labels[k] = all_labels[k][..., :len(uni_structures)]
+            all_labels[k] = np.concatenate([1 - np.sum(all_labels[k], axis=-1, keepdims=True), all_labels[k]], axis=-1)
+
+        predictions_to_pngs(all_predictions, args.tensor_maps_in, args.tensor_maps_out, all_data, all_labels, all_paths, folder)
 
 def _softmax(x):
     """Compute softmax values for each sets of scores in x."""
