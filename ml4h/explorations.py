@@ -879,8 +879,8 @@ def infer_stats_from_segmented_regions(args):
         if '++' in args.structures_to_analyze[k]
     ]
     uni_locs = [k for k in range(len(args.structures_to_analyze)) if '+' not in args.structures_to_analyze[k]]
-    assert((len(merged_locs) == 0) or (merged_locs[0] > uni_locs[-1]))
-    assert((len(merged_after_locs) == 0) or (merged_after_locs[0] > uni_locs[-1]))
+    assert((len(merged_locs) == 0) or (merged_locs[0] > uni_locs[-1]), 'structures to merge before postprocessing must be listed after individual structures')
+    assert((len(merged_after_locs) == 0) or (merged_after_locs[0] > uni_locs[-1]), 'structures to merge after postprocessing must be listed after individual structures')
     merged_structures = [args.structures_to_analyze[k] for k in merged_locs]
     merged_after_structures = [args.structures_to_analyze[k] for k in merged_after_locs]
     uni_structures = [args.structures_to_analyze[k] for k in uni_locs]
@@ -895,7 +895,7 @@ def infer_stats_from_segmented_regions(args):
 
     # structures have to be in the same order as the channel map
     good_channels = [tm_out.channel_map[k] for k in uni_structures]
-    assert (good_channels == sorted(good_channels))
+    assert(good_channels == sorted(good_channels), 'structures must be given in the same order as in the channel map')
     title_structures = [[k for k in tm_out.channel_map.keys() if tm_out.channel_map[k] == v][0] for v in good_channels] \
                        + merged_structures + merged_after_structures
     nb_orig_channels = len(tm_out.channel_map)
@@ -903,10 +903,10 @@ def infer_stats_from_segmented_regions(args):
     bad_channels = [k for k in range(nb_orig_channels) if k not in good_channels]
     for m in merged_channels:
         for c in m:
-            assert(c in good_channels)
+            assert(c in good_channels, 'structures to merge before postprocessing must also be listed as individual structures')
     for m in merged_after_channels:
         for c in m:
-            assert(c in good_channels)
+            assert(c in good_channels, 'structures to merge after postprocessing must also be listed as individual structures')
     # Get the channels after postprocessing
     for i in range(len(merged_after_channels)):
         for j in range(len(merged_after_channels[i])):
@@ -918,17 +918,17 @@ def infer_stats_from_segmented_regions(args):
         if len(args.erosion_radius) == 1:
             structure = unit_disk(args.erosion_radius[0])[np.newaxis, ..., np.newaxis]
         else:
-            assert(len(args.erosion_radius) == nb_out_channels)
+            assert(len(args.erosion_radius) == nb_out_channels, 'must provide an erosion radius for each individual structure and for structures to merge before postprocessing')
             structures = [unit_disk(r)[np.newaxis, ...] for r in args.erosion_radius]
 
     # Setup for intensity thresholding
     do_intensity_thresh = args.intensity_thresh_in_structures and args.intensity_thresh_out_structure
     if do_intensity_thresh:
-        assert(args.intensity_thresh or args.intensity_thresh_auto)
+        assert(args.intensity_thresh or args.intensity_thresh_auto, 'must specify intensity threshold type if providing structures for intensity thresholding')
     if args.intensity_thresh or args.intensity_thresh_auto:
-        assert(do_intensity_thresh)
+        assert(do_intensity_thresh, 'must specify structures for intensity thresholding if providing an intensity threshold type')
     if args.intensity_thresh_auto:
-        assert (args.intensity_thresh_auto in ['image_hist', 'image_kmeans', 'region_hist', 'region_kmeans'])
+        assert(args.intensity_thresh_auto in ['image_hist', 'image_kmeans', 'region_hist', 'region_kmeans'], 'intensity_thresh_auto must be image_hist, image_kmeans, region_list or region_kmeans')
     if do_intensity_thresh:
         intensity_thresh_in_channels = [tm_out.channel_map[k] for k in args.intensity_thresh_in_structures]
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
