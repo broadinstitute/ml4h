@@ -386,13 +386,16 @@ def parse_args():
 
     # Arguments for explorations/infer_stats_from_segmented_regions
     parser.add_argument('--analyze_ground_truth', default=False, action='store_true', help='Whether or not to filter by images with ground truth segmentations, for comparison')
-    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots')
-    parser.add_argument('--erosion_radius', default=1, type=int, help='Radius of the unit disk structuring element for erosion preprocessing')
+    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots. Must be in the same order as the output channel map. Use + to merge structures before postprocessing, and ++ to merge structures after postprocessing. E.g., --structures_to_analyze interventricular_septum LV_free_wall anterolateral_pap posteromedial_pap interventricular_septum+LV_free_wall anterolateral_pap++posteromedial_pap')
+    parser.add_argument('--erosion_radius', nargs='*', default=[], type=int, help='Radius of the unit disk structuring element for erosion preprocessing, optionally as a list per structure to analyze')
     parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
-    parser.add_argument('--intensity_thresh_percentile', type=float, help='Threshold percentile for preprocessing, between 0 and 100 inclusive')
-    parser.add_argument('--intensity_thresh_k_means', nargs='*', default=[], type=int, help='Preprocessing using k-means specified as two numbers, the first is the number of clusters and the second is the cluster index to keep')
     parser.add_argument('--intensity_thresh_in_structures', nargs='*', default=[], help='Structure names whose pixels should be replaced if the images has intensity above the threshold')
     parser.add_argument('--intensity_thresh_out_structure', help='Replacement structure name')
+    parser.add_argument('--intensity_thresh_auto', default=None, type=str, help='Preprocessing using histograms or k-means into two clusters, using the image or a region')
+    parser.add_argument('--intensity_thresh_auto_region_radius', default=5, type=int, help='Radius of the unit disk structuring element for auto-thresholidng in a region')
+    parser.add_argument('--intensity_thresh_auto_clip_low', default=0.65, type=float, help='Lower clip value before auto thresholding')
+    parser.add_argument('--intensity_thresh_auto_clip_high', default=2, type=float, help='Higher clip value before auto thresholding')
+
 
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")

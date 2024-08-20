@@ -165,8 +165,14 @@ def save_to_google_cloud(args):
 
     bucket = client.get_bucket(bucket_name)
 
+    # get the output folder
+    if args.mode in ['train', 'compare', 'plot_predictions', 'infer_stats_from_segmented_regions']:
+        output_folder = os.path.join(args.output_folder, args.id)
+    else:
+        output_folder = args.output_folder
+
     # uploading all files from local to server
-    for root,_,files in os.walk(args.output_folder):
+    for root,_,files in os.walk(output_folder):
         for filename in files:
             local_file_path = os.path.join(root,filename)
             blob = bucket.blob(blob_path+filename)
