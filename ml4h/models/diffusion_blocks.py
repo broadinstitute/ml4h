@@ -854,6 +854,7 @@ class DiffusionBlock(Block):
             ),
             loss=keras.losses.mean_absolute_error,
         )
+
     def can_apply(self):
         return self.tensor_map.axes() > 1
 

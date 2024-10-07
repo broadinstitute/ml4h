@@ -223,6 +223,9 @@ def parse_args():
     parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
+    parser.add_argument('--attention_window', default=4, type=int,
+                        help='For diffusion models, when U-Net representation size is smaller than attention_window '
+                             'Cross-Attention is applied')
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '

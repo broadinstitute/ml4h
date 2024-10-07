@@ -169,7 +169,7 @@ def train_diffusion_model(args):
 def train_diffusion_control_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
 
-    base_model_path = f"{args.output_folder}diffusion_{args.tensor_maps_in[0].name}/diffusion_{args.tensor_maps_in[0].name}"
+    base_model_path = f"{args.output_folder}diffusion_{args.tensor_maps_in[0].name}/{args.id}_{args.tensor_maps_in[0].name}"
     model = DiffusionController(args.tensor_maps_in[0], args.tensor_maps_out, base_model_path,
                                 args.batch_size, args.dense_blocks, args.block_size, args.conv_x[0], args.dense_layers[0])
 
@@ -199,7 +199,7 @@ def train_diffusion_control_model(args):
     if args.inspect_model:
         tf.keras.utils.plot_model(
             model.network,
-            to_file=f"{args.output_folder}/{args.id}/architecture_diffusion_unet.png",
+            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}_unet.png",
             show_shapes=True,
             show_dtype=False,
             show_layer_names=True,
