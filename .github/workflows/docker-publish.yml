@@ -6,17 +6,17 @@ on:
     # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
     # GitHub blog demo: https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/.
 
-## For now, disable the Docker deployment step.
-#  push:
-#    # Publish `master` as Docker `ml4h_terra:YYMMDD_hhmmss` image.
-#    branches: [ master ]
-#
-#    # Publish `v1.2.3` tags as releases.
-#    tags:
-#      - v*
+# For now, disable the Docker deployment step.
+  push:
+    # Publish `master` as Docker `ml4h_terra:YYMMDD_hhmmss` image.
+    branches: [ master ]
 
-  # Run tests for any PRs.
-  # pull_request:
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+
+   #Run tests for any PRs.
+   #pull_request:
 
 env:
   IMAGE_NAME: ml4h_terra
@@ -32,8 +32,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cd docker/terra_image
-          docker build . --file Dockerfile
+          ./docker/vm_boot_images/build.sh -P
 
   # Push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
