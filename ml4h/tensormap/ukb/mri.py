@@ -2754,13 +2754,21 @@ def _pad_crop_single_channel(tm, hd5, dependents={}, key_prefix=None):
         img,
     )
 
-def _pad_crop_single_channel_t1map_b2(tm, hd5, dependents={}):
-    if f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2' in hd5:
-        key_prefix = f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2'
-    elif f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2' in hd5:
-        key_prefix = f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_2'
+def _pad_crop_single_channel_t1map_b2_instance(tm, hd5, instance):
+    if f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}'
+    elif f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}'
     else:
         raise ValueError(f'Could not find T1 Map image for tensormap: {tm.name}')
+    return key_prefix
+
+def _pad_crop_single_channel_t1map_b2(tm, hd5, dependents={}):
+    key_prefix = _pad_crop_single_channel_t1map_b2_instance(tm, hd5, 2)
+    return _pad_crop_single_channel(tm, hd5, dependents, key_prefix)
+
+def _pad_crop_single_channel_t1map_b2_instance_3(tm, hd5, dependents={}):
+    key_prefix = _pad_crop_single_channel_t1map_b2_instance(tm, hd5, 3)
     return _pad_crop_single_channel(tm, hd5, dependents, key_prefix)
 
 t1map_b2 = TensorMap(
@@ -2769,6 +2777,14 @@ t1map_b2 = TensorMap(
     path_prefix='ukb_cardiac_mri',
     normalization=Standardize(mean=455.81, std=609.50),
     tensor_from_file=_pad_crop_single_channel_t1map_b2,
+)
+
+t1map_b2_instance3 = TensorMap(
+    'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
+    shape=(384, 384, 1),
+    path_prefix='ukb_cardiac_mri',
+    normalization=Standardize(mean=455.81, std=609.50),
+    tensor_from_file=_pad_crop_single_channel_t1map_b2_instance_3,
 )
 
 t1map_pancreas = TensorMap(
@@ -2821,7 +2837,7 @@ def _segmented_t1map_pancreas(tm, hd5, dependents={}):
     return tensor
 
 t1map_b2_segmentation = TensorMap(
-    'b2s_t1map_kassir_annotated',
+    'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map_vnauffal_annotated',
     interpretation=Interpretation.CATEGORICAL,
     shape=(384, 384, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
     channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
