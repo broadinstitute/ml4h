@@ -3,30 +3,44 @@ name: Increment version
 on:
   workflow_dispatch:
     # Allows manually triggering workflow in GitHub UI on selected branch.
-  ## in the future Id like this to be triggered by a release
-  #release:
-    #types: [published]
+
+  release:
+    types: [published]
+
 
 jobs:
-  build:
+  update_version:
+    if: ${{ github.event.release.tag_name != '' }}
     name: Update version
     runs-on: ubuntu-latest
     steps:
       - name: Check out source code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
-          token: ${{ secrets.YOUR_PERSONAL_ACCESS_TOKEN }}
+
+      - name: Testing--dump env
+        run: env | sort
+      - name: Testing--dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "$GITHUB_CONTEXT"
+
       - name: Replace string in file
-        uses: MathieuSoysal/replace-string-in-file@v1.1.0
-        with:
-          file: setup.py
-          old-string: "version='[0-9.]*',"
-          new-string: version='${{ github.event.release.tag_name }}',
+        run: |
+          echo hello
+          grep "version" setup.py
+          sed  -i "s/version='[0-9.]*',/version='${{ github.event.release.tag_name }}',/g" setup.py
 
+      - name: Check for swap
+        run: cat setup.py
 
-
-
-
+      - uses: actions/checkout@v4
+      - run: |
+          # Note: the following account information will not work on GHES
+          git config user.name "github-actions[bot]"
+          git config user.email {user.id}+{user.login}@users.noreply.github.com
+          git add setup.py
+          git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
+          git push
 
 
