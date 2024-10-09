@@ -2,6 +2,8 @@ import os
 import csv
 import logging
 import operator
+
+import h5py
 import numpy as np
 import pandas as pd
 from typing.io import TextIO
@@ -262,6 +264,31 @@ def generate_categorical_tensor_map_from_file(
             f'{tensor_map_name}', Interpretation.CATEGORICAL, channel_map=channel_map,
             tensor_from_file=build_categorical_tensor_from_file(file_name, column_name),
     )
+
+
+def _space_tensor_from_file(df: pd.DataFrame, dimensions: int, sample_column: str = 'sample_id'):
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        sample_id = int(os.path.basename(hd5.filename).replace('.hd5', ''))
+        row = df[df[sample_column] == sample_id]
+        if len(row) == 0:
+            raise KeyError(f'Sample id not in dataframe.')
+        values = row.iloc[0].tolist()[1:dimensions+1]
+        return np.array(values, dtype=np.float32)
+    return tensor_from_file
+
+
+def generate_latent_tensor_map_from_file(
+    file_name: str,
+    tensor_map_name: str,
+) -> TensorMap:
+    delimiter = ',' if file_name.split('.')[1].lower() == 'csv' else '\t'
+    df = pd.read_csv(file_name, delimiter=delimiter)
+    dimensions = len(df.columns)-1
+    return TensorMap(
+            f'{tensor_map_name}', Interpretation.CONTINUOUS, shape=(dimensions,),
+            tensor_from_file=_space_tensor_from_file(df, dimensions),
+    )
+
 
 def generate_random_text_tensor_maps(text_file: str, window_size: int) -> Tuple[TensorMap, TensorMap]:
     name = os.path.basename(text_file).split('.')[0]

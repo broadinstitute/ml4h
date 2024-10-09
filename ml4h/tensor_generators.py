@@ -905,7 +905,8 @@ def test_train_valid_tensor_generators(
     )
 
     do_augmentation = bool(rotation_factor or zoom_factor or translation_factor)
-    logging.info(f'doing_augmentation {do_augmentation} with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
+    if do_augmentation:
+        logging.info(f'Augment with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
 
     if do_augmentation:
         assert(len(tensor_maps_in) == 1, 'no support for multiple input tensors')
