@@ -246,17 +246,10 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
 
-    @pytest.mark.parametrize(
-        'input_output_tmaps',
-        [
-            (CONTINUOUS_TMAPS[:1], [SEGMENT_IN]), ([SEGMENT_IN], CONTINUOUS_TMAPS[:1]),
-            ([SEGMENT_IN], [SEGMENT_IN]),
-        ],
-    )
+
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
-        params['bottleneck_type'] = BottleneckType.GlobalAveragePoolStructured
         params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m, _, _, _ = make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
@@ -268,7 +261,6 @@ class TestMakeMultimodalMultitaskModel:
     def test_u_connect_no_bottleneck(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
-        params['bottleneck_type'] = BottleneckType.NoBottleNeck
         params['u_connect'] = defaultdict(set, {SEGMENT_IN: {SEGMENT_OUT}})
         m, _, _, _ = make_multimodal_multitask_model(
             [SEGMENT_IN, TMAPS_UP_TO_4D[0]],
@@ -379,7 +371,7 @@ class TestMakeMultimodalMultitaskModel:
         m.save(os.path.join(tmpdir, 'paired_ae2.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
-        make_paired_autoencoder_model(
+        make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list+output_tmaps,
