@@ -21,7 +21,7 @@ jobs:
         uses: MathieuSoysal/replace-string-in-file@v1.1.0
         with:
           file: setup.py
-          old-string: "version='*',"
+          old-string: "version='[0-9.]*',"
           new-string: version='${{ github.event.release.tag_name }}',
 
 
