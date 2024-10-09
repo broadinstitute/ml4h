@@ -42,7 +42,7 @@ class DenseEncoder(Block):
             self,
             *,
             tensor_map: TensorMap,
-            dense_layers: List[int] = [32],
+            dense_layers: List[int] = [256],
             activation: str = 'swish',
             dense_normalize: str = None,
             dense_regularize: str = None,
@@ -62,9 +62,9 @@ class DenseEncoder(Block):
         )
 
     def can_apply(self):
-        return self.tensor_map.axes() == 1 and not self.tensor_map.is_embedding()
+        return self.tensor_map.axes() == 1# and not self.tensor_map.is_embedding()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         y = self.fully_connected(x, intermediates)
@@ -156,6 +156,7 @@ class PartitionedLinearDecoder(Block):
         intermediates[self.tensor_map].append(x)
         return x
 
+
 class ModelAsBlock(Block):
     """Takes a serialized model and applies it, can be used to encode or decode Tensors"""
     def __init__(
@@ -231,7 +232,6 @@ class LanguagePredictionBlock(Block):
         self.dense = Dense(units, activation=activation)
         self.final_layer = Dense(units=tensor_map.shape[0], name=tensor_map.output_name(), activation=tensor_map.activation)
 
-
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         x = self.dense(self.drop(x))
         if self.tensor_map.is_continuous():
@@ -259,3 +259,34 @@ class RandomGauss(tf.keras.layers.Layer):
             "scalar": self.scalar,
         })
         return config
+
+
+class IdentityEncoderBlock(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+
+    def can_apply(self):
+        return True
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        intermediates[self.tensor_map].append(x)
+        return x
+
+
+class IdentityDecoderBlock(Block):
+    def __init__(
+            self,
+            tensor_map: TensorMap,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+
+    def can_apply(self):
+        return True
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        return intermediates[self.tensor_map][-1]

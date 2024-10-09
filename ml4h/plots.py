@@ -770,7 +770,7 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(f'{title} N = {len(prediction)}' )
+    ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
@@ -2253,7 +2253,7 @@ def plot_ecg_rest(
     tensor_paths: List[str],
     rows: List[int],
     out_folder: str,
-    is_blind: bool
+    is_blind: bool,
 ) -> None:
     """Plots resting ECGs including annotations and LVH criteria
 

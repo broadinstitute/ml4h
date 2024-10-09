@@ -1,9 +1,9 @@
 name: Publish Python 🐍 distribution 📦 to PyPI
 
-on: 
+on:
   push:
-    tags:        
-      - '*'           # Push events to every tag not containing / 
+    tags:
+      - '*'           # Push events to every tag not containing /
 
 jobs:
   build:

@@ -8,6 +8,7 @@ from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer
 from tensorflow_hub import KerasLayer
@@ -15,17 +16,20 @@ from tensorflow_hub import KerasLayer
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
+from ml4h.models.diffusion_blocks import DiffusionBlock
 from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
+from ml4h.models.perceiver_blocks import PerceiverEncoder, PerceiverLatentLayer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
-from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
 from ml4h.models.transformer_blocks_embedding import TransformerEncoderEmbedding,MultiHeadAttention
-from ml4h.models.perceiver_blocks import PerceiverEncoder,PerceiverLatentLayer
-from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, VariationalDiagNormal
-from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
+from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncoder, PositionalEncoding
+from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss, \
+    IdentityEncoderBlock, IdentityDecoderBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
-from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss
+from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, CosineLossLayer
+from ml4h.models.merge_blocks import L2LossLayer, VariationalDiagNormal, KroneckerBlock, DropoutBlock
+from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
+from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 
 
 BLOCK_CLASSES = {
@@ -38,6 +42,8 @@ BLOCK_CLASSES = {
     'residual': ResidualBlock,
     'pool': PoolBlock,
     'concat': FlatConcatDenseBlock,
+    'kronecker': KroneckerBlock,
+    'dropout': DropoutBlock,
     'flat': FlatConcatBlock,
     'average': AverageBlock,
     'mean': ReduceMean,
@@ -58,6 +64,9 @@ BLOCK_CLASSES = {
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
     'bert_encoder': BertEncoder,
+    'diffusion': DiffusionBlock,
+    'identity_decode': IdentityDecoderBlock,
+    'identity_encode': IdentityEncoderBlock,
 }
 
 
@@ -120,9 +129,13 @@ def make_multimodal_multitask_model(
         encoder_blocks, decoder_blocks, merge_blocks,
         custom_dict, u_connect, **kwargs
     )
+    losses = [tm.loss for tm in tensor_maps_out]
+    if len(losses) == 0:
+        logging.info(f"No losses found adding MAE")
+        losses = [keras.losses.mean_absolute_error]
+        full_model.add_loss(keras.losses.mean_absolute_error)
     full_model.compile(
-        optimizer=opt, loss=[tm.loss for tm in tensor_maps_out],
-        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
     full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
@@ -162,7 +175,7 @@ def multimodal_multitask_model(
     """
     encoder_block_functions = {tm: identity for tm in tensor_maps_in}  # Dict[TensorMap, Block]
     for tm in tensor_maps_in:
-        print("***tm",tm,len(tensor_maps_in))
+        logging.info(f"*** Building Encoder of Tensor Map {tm} of {len(tensor_maps_in)} input TensorMaps.")
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
             if isinstance(encode_block, Block):
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))
@@ -273,7 +286,8 @@ def make_multimodal_multitask_model_block(
             decoder_outputs.append(decoders[tm](multimodal_activation))
     if len(decoder_outputs) == 0:
         decoder_outputs = [multimodal_activation]
-    return Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model'), encoders, decoders, merge_model
+    full_model = Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model')
+    return full_model, encoders, decoders, merge_model
 
 
 def _load_model_encoders_and_decoders(
@@ -308,9 +322,8 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
-                MultiHeadAttention, RandomGauss,
-                KerasLayer, PerceiverLatentLayer,
+                VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
             ],
         )
     }
