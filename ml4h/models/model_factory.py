@@ -26,8 +26,8 @@ from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncode
 from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss, \
     IdentityEncoderBlock, IdentityDecoderBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
-from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, \
-    VariationalDiagNormal, KroneckerBlock, DropoutBlock
+from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, CosineLossLayer
+from ml4h.models.merge_blocks import L2LossLayer, VariationalDiagNormal, KroneckerBlock, DropoutBlock
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 
@@ -175,7 +175,7 @@ def multimodal_multitask_model(
     """
     encoder_block_functions = {tm: identity for tm in tensor_maps_in}  # Dict[TensorMap, Block]
     for tm in tensor_maps_in:
-        print("***tm", tm, len(tensor_maps_in))
+        logging.info(f"*** Building Encoder of Tensor Map {tm} of {len(tensor_maps_in)} input TensorMaps.")
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
             if isinstance(encode_block, Block):
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))
@@ -322,9 +322,8 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         for obj in chain(
             NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, L2LossLayer, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
-                MultiHeadAttention, RandomGauss,
-                KerasLayer, PerceiverLatentLayer,
+                VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
             ],
         )
     }
