@@ -168,10 +168,9 @@ def train_diffusion_model(args):
 
 def train_diffusion_control_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-
-    base_model_path = f"{args.output_folder}diffusion_{args.tensor_maps_in[0].name}/{args.id}_{args.tensor_maps_in[0].name}"
-    model = DiffusionController(args.tensor_maps_in[0], args.tensor_maps_out, base_model_path,
-                                args.batch_size, args.dense_blocks, args.block_size, args.conv_x[0], args.dense_layers[0])
+    model = DiffusionController(args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size,
+                                args.dense_blocks, args.block_size, args.conv_x, args.dense_layers[0],
+                                args.attention_window, args.attention_heads)
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(
@@ -225,7 +224,7 @@ def train_diffusion_control_model(args):
         callbacks=[checkpoint_callback],
     )
     model.load_weights(checkpoint_path)
-    #diffusion_model.compile(optimizer='adam', loss='mse')
+
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     if args.inspect_model:
         if model.input_map.axes() == 2:

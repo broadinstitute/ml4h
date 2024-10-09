@@ -165,7 +165,7 @@ def get_control_embed_model(output_maps, control_size):
 
 
 class DiffusionController(keras.Model):
-    def __init__(self, tensor_map, output_maps, base_model_path, batch_size, widths, block_depth, conv_x, control_size,
+    def __init__(self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
                  attention_start, attention_heads):
         super().__init__()
 
