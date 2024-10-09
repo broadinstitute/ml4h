@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Tuple, Iterator
 from ml4h.TensorMap import TensorMap
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.models.train import train_model_from_generators
-from ml4h.models.legacy_models import legacy_multimodal_multitask_model, parent_sort, BottleneckType
+from ml4h.models.legacy_models import legacy_multimodal_multitask_model, parent_sort
 from ml4h.models.legacy_models import ACTIVATION_FUNCTIONS, MODEL_EXT, check_no_bottleneck
 from ml4h.test_utils import TMAPS_UP_TO_4D, MULTIMODAL_UP_TO_4D, CATEGORICAL_TMAPS, CONTINUOUS_TMAPS, SEGMENT_IN, SEGMENT_OUT, PARENT_TMAPS, CYCLE_PARENTS
 from ml4h.test_utils import LANGUAGE_TMAP_1HOT_WINDOW, LANGUAGE_TMAP_1HOT_SOFTMAX
@@ -45,8 +45,7 @@ DEFAULT_PARAMS = {
     'dense_regularize': 'dropout',
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
-    'bottleneck_type': BottleneckType.FlattenRestructure,
-    'pair_loss': 'contrastive',
+    'pair_loss': 'cosine',
     'pair_loss_weight': 0.1,
     'pair_merge': 'dropout',
     'training_steps': 12,
@@ -435,7 +434,6 @@ class TestModelPerformance:
             tensor_maps_in=tmaps_in, tensor_maps_out=tmaps_out,
             activation='relu',
             learning_rate=1e-3,
-            bottleneck_type=BottleneckType.GlobalAveragePoolStructured,
             optimizer='radam',
             dense_layers=[16, 64],
             conv_layers=[32],
