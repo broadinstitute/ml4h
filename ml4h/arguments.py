@@ -21,25 +21,18 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
+from typing import Set, Dict, List, Optional, Tuple
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
-from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file
-from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
-
-BOTTLENECK_STR_TO_ENUM = {
-    'flatten_restructure': BottleneckType.FlattenRestructure,
-    'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
-    'variational': BottleneckType.Variational,
-    'no_bottleneck': BottleneckType.NoBottleNeck,
-}
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, generate_latent_tensor_map_from_file
 
 
 def parse_args():
@@ -104,7 +97,18 @@ def parse_args():
         '--categorical_file_columns', nargs='*', default=[],
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
-
+    parser.add_argument(
+        '--latent_input_file', default=None, help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first input_tensors'
+        'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--latent_output_file', default=None, help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first output_tensors'
+        'argument to the TensorMap made from this file.',
+    )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -212,13 +216,17 @@ def parse_args():
         '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
-    parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
     parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
+    parser.add_argument(
+        '--attention_window', default=4, type=int,
+        help='For diffusion models, when U-Net representation size is smaller than attention_window '
+             'Cross-Attention is applied',
+    )
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
@@ -506,6 +514,10 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
+    if args.latent_input_file is not None:
+        args.tensor_maps_in.append(
+            generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0)),
+        )
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
@@ -530,13 +542,15 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                 ),
             )
+    if args.latent_output_file is not None:
+        args.tensor_maps_out.append(
+            generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0)),
+        )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
 
-    args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
-    if args.bottleneck_type == BottleneckType.NoBottleNeck:
-        check_no_bottleneck(args.u_connect, args.tensor_maps_out)
+    check_no_bottleneck(args.u_connect, args.tensor_maps_out)
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')

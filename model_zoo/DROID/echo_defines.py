@@ -14,12 +14,12 @@ category_dictionaries = {
         'A3C': 11,
         'A2C': 12,
         'Suprasternal': 13,
-        'Subcostal': 14
+        'Subcostal': 14,
     },
     'doppler': {
         'standard': 0,
         'doppler': 1,
-        '3-D': 2
+        '3-D': 2,
     },
 
     'quality': {
@@ -28,7 +28,7 @@ category_dictionaries = {
     },
     'canonical': {
         'on_axis': 0,
-        'off_axis': 1
+        'off_axis': 1,
     },
     'LV_EjectionFraction': {
         'N': {
@@ -50,7 +50,7 @@ category_dictionaries = {
         'H': {
             'index': 0,
             'weight': 0.981351,
-        }
+        },
     },
     'LV_FunctionDescription': {
         '4.0': {
@@ -64,7 +64,7 @@ category_dictionaries = {
         '3.0': {
             'index': 2,
             'weight': 0.817028,
-        }
+        },
     },
     'LV_CavitySize': {
         'N': {
@@ -81,8 +81,8 @@ category_dictionaries = {
         },
         'P': {
             'index': 3,
-            'weight': 1.0
-        }
+            'weight': 1.0,
+        },
     },
     'RV_SystolicFunction': {
         'N': {
@@ -99,7 +99,7 @@ category_dictionaries = {
         },
         'L': {
             'index': 3,
-            'weight': 8.256629946960423
-        }
-    }
+            'weight': 8.256629946960423,
+        },
+    },
 }

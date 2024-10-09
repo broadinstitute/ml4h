@@ -77,8 +77,10 @@ def write_tensor_from_sql(sampleid_to_rows, output_path, tensor_type):
                     hd5.create_dataset('icd', (1,), data=JOIN_CHAR.join(icds), dtype=h5py.special_dtype(vlen=str))
                 elif tensor_type == 'categorical':
                     for row in rows:
-                        fields = [str(row['fieldid']), row['field'], row['meaning'],
-                                  str(row['instance']), str(row['array_idx'])]
+                        fields = [
+                            str(row['fieldid']), row['field'], row['meaning'],
+                            str(row['instance']), str(row['array_idx']),
+                        ]
                         hd5_dataset_name = dataset_name_from_meaning('categorical', fields)
                         _write_float_or_warn(sample_id, row, hd5_dataset_name, hd5)
                 elif tensor_type == 'continuous':

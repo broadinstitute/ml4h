@@ -34,7 +34,7 @@ def main(
         movinet_ckpt_dir,
         output_dir,
         extract_embeddings,
-        start_beat
+        start_beat,
 ):
     # Hide devices based on split
     physical_devices = tf.config.list_physical_devices('GPU')
@@ -52,7 +52,7 @@ def main(
         (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
-        ]
+    ]
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -85,7 +85,7 @@ def main(
         [],
         n_input_frames,
         skip_modulo,
-        start_beat=start_beat
+        start_beat=start_beat,
     )
 
     inference_ids_split = np.array_split(inference_ids, n_splits)[split_idx]
@@ -96,13 +96,13 @@ def main(
         lambda sample_ids: tf.data.Dataset.from_generator(
             DDGenerator(
                 INPUT_DD,
-                None
+                None,
             ),
             output_signature=(
                 tf.TensorSpec(shape=(None, n_input_frames, 224, 224, 3), dtype=tf.float32),
             ),
-            args=(sample_ids,)
-        )
+            args=(sample_ids,),
+        ),
     )
 
     model, backbone = create_movinet_classifier(
@@ -118,18 +118,22 @@ def main(
     model_plus_head = create_regressor(
         encoder,
         input_shape=(n_input_frames, 224, 224, 3),
-        n_output_features=len(output_labels)
+        n_output_features=len(output_labels),
     )
     model_plus_head.load_weights(pretrained_ckpt_dir)
 
     vois = '_'.join(selected_views)
     ufm = 'conv7'
     if extract_embeddings:
-        output_folder = os.path.join(output_dir,
-                                     f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file}_{start_beat}')
+        output_folder = os.path.join(
+            output_dir,
+            f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file}_{start_beat}',
+        )
     else:
-        output_folder = os.path.join(output_dir,
-                                     f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file}_{start_beat}')
+        output_folder = os.path.join(
+            output_dir,
+            f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file}_{start_beat}',
+        )
     os.makedirs(output_folder, exist_ok=True)
 
     if extract_embeddings:
@@ -157,14 +161,22 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output_labels', action='append')
     parser.add_argument('--wide_file', type=str)
     parser.add_argument('--splits_file')
-    parser.add_argument('-v', '--selected_views', action='append', choices=category_dictionaries['view'].keys(),
-                        required=True)
-    parser.add_argument('-d', '--selected_doppler', action='append', choices=category_dictionaries['doppler'].keys(),
-                        required=True)
-    parser.add_argument('-q', '--selected_quality', action='append', choices=category_dictionaries['quality'].keys(),
-                        required=True)
-    parser.add_argument('-c', '--selected_canonical', action='append',
-                        choices=category_dictionaries['canonical'].keys(), required=True)
+    parser.add_argument(
+        '-v', '--selected_views', action='append', choices=category_dictionaries['view'].keys(),
+        required=True,
+    )
+    parser.add_argument(
+        '-d', '--selected_doppler', action='append', choices=category_dictionaries['doppler'].keys(),
+        required=True,
+    )
+    parser.add_argument(
+        '-q', '--selected_quality', action='append', choices=category_dictionaries['quality'].keys(),
+        required=True,
+    )
+    parser.add_argument(
+        '-c', '--selected_canonical', action='append',
+        choices=category_dictionaries['canonical'].keys(), required=True,
+    )
     parser.add_argument('-n', '--n_train_patients', default='all')
     parser.add_argument('--split_idx', type=int, choices=range(4))
     parser.add_argument('--n_splits', type=int, default=4)
@@ -203,5 +215,5 @@ if __name__ == "__main__":
         movinet_ckpt_dir=args.movinet_ckpt_dir,
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
-        start_beat=args.start_beat
+        start_beat=args.start_beat,
     )

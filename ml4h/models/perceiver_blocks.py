@@ -190,9 +190,11 @@ class PerceiverLatentLayer(tf.keras.layers.Layer):
         self.dropout = dropout
         self.num_heads = num_heads
 
-        self.latents = self.add_weight(shape=(1, latent_dim, d_model),
-                                       initializer='random_normal',
-                                       trainable=True)
+        self.latents = self.add_weight(
+            shape=(1, latent_dim, d_model),
+            initializer='random_normal',
+            trainable=True,
+        )
 
         self.att = MultiHeadAttention(
             d_model, num_heads, name="cross_attention",
@@ -228,12 +230,14 @@ class PerceiverLatentLayer(tf.keras.layers.Layer):
         return self.latents + cross_attention
 
 
-def perceiver_encoder_layer(units, d_model, num_heads, dropout,
-                            latent_dim=8, name="perceiver_layer", input_name="inputs"):
+def perceiver_encoder_layer(
+    units, d_model, num_heads, dropout,
+    latent_dim=8, name="perceiver_layer", input_name="inputs",
+):
     inputs = tf.keras.Input(shape=(None, d_model), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
 
-  
+
     latents = PerceiverLatentLayer(latent_dim, d_model, num_heads, dropout)(inputs)
 
     latents=tf.keras.layers.LayerNormalization(
@@ -258,7 +262,7 @@ def encoder(
 ):
     inputs = tf.keras.Input(shape=(None,3), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-   
+
     embeddings = tf.keras.layers.Dense(units=d_model, activation='relu')(inputs)
     embeddings = PositionalEncoding(window_size, d_model)(embeddings)
 
