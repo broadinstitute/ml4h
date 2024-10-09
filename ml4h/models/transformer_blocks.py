@@ -45,7 +45,7 @@ class TransformerEncoder(Block):
             return x
         padded = self.padding_mask_layer(x)
         y = self.encoder_layers(inputs=[x, padded])
-  
+
         intermediates[self.tensor_map.dependent_map].extend([x, y])
         return y
 

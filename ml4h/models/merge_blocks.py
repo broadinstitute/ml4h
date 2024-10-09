@@ -124,8 +124,10 @@ class DropoutBlock(Block):
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         for left, right in self.pairs:
-            random_index = tf.random.uniform(shape=[intermediates[left][-1].shape[-1]],
-                                             maxval=len(intermediates), dtype=tf.int32)
+            random_index = tf.random.uniform(
+                shape=[intermediates[left][-1].shape[-1]],
+                maxval=len(intermediates), dtype=tf.int32,
+            )
             ranger = tf.range(intermediates[left][-1].shape[-1])
             indices = tf.stack([random_index, ranger], axis=-1)
             tf_y = tf.convert_to_tensor([intermediates[left][-1], intermediates[right][-1]])

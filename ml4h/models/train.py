@@ -96,7 +96,7 @@ def _get_callbacks(
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
     ]
-    
+
     return callbacks
 
 
@@ -106,7 +106,7 @@ def train_diffusion_model(args):
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(
-            learning_rate=args.learning_rate, weight_decay=1e-4
+            learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
         loss=keras.losses.mean_absolute_error,
     )
@@ -168,13 +168,15 @@ def train_diffusion_model(args):
 
 def train_diffusion_control_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = DiffusionController(args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size,
-                                args.dense_blocks, args.block_size, args.conv_x, args.dense_layers[0],
-                                args.attention_window, args.attention_heads)
+    model = DiffusionController(
+        args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size,
+        args.dense_blocks, args.block_size, args.conv_x, args.dense_layers[0],
+        args.attention_window, args.attention_heads,
+    )
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(
-            learning_rate=args.learning_rate, weight_decay=1e-4
+            learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
         loss=keras.losses.mean_absolute_error,
     )

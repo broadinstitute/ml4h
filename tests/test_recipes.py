@@ -52,11 +52,11 @@ class TestRecipes:
 
     def test_find_learning_rate(self, default_arguments):
         _find_learning_rate(default_arguments)
-    
+
     @pytest.mark.slow
     def test_save_to_google_cloud(self,default_arguments):
         save_to_google_cloud(default_arguments)
-        
+
 
     def test_explore(self, default_arguments, tmpdir_factory):
         temp_dir = tmpdir_factory.mktemp('explore_tensors2')

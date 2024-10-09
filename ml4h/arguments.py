@@ -21,19 +21,18 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
+from typing import Set, Dict, List, Optional, Tuple
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
-from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
-    generate_latent_tensor_map_from_file
 from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, generate_latent_tensor_map_from_file
 
 
 def parse_args():
@@ -223,9 +222,11 @@ def parse_args():
     parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
-    parser.add_argument('--attention_window', default=4, type=int,
-                        help='For diffusion models, when U-Net representation size is smaller than attention_window '
-                             'Cross-Attention is applied')
+    parser.add_argument(
+        '--attention_window', default=4, type=int,
+        help='For diffusion models, when U-Net representation size is smaller than attention_window '
+             'Cross-Attention is applied',
+    )
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
@@ -515,7 +516,7 @@ def _process_args(args):
 
     if args.latent_input_file is not None:
         args.tensor_maps_in.append(
-            generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0))
+            generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0)),
         )
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
@@ -543,7 +544,7 @@ def _process_args(args):
             )
     if args.latent_output_file is not None:
         args.tensor_maps_out.append(
-            generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0))
+            generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0)),
         )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
