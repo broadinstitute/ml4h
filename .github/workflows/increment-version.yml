@@ -1,12 +1,11 @@
 name: Increment version
 
 on:
-  workflow_dispatch:
-    # Allows manually triggering workflow in GitHub UI on selected branch.
-
   release:
     types: [published]
 
+permissions:
+  contents: write
 
 jobs:
   update_version:
@@ -15,32 +14,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Testing--dump env
-        run: env | sort
-      - name: Testing--dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
+      - name: Checkout main for version edit
         run: |
-          echo "$GITHUB_CONTEXT"
+          # Note: the following account information will not work on GHES
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email {user.id}+{user.login}@users.noreply.github.com
+          git fetch
+          git checkout main
 
       - name: Replace string in file
         run: |
-          echo hello
           grep "version" setup.py
-          sed  -i "s/version='[0-9.]*',/version='${{ github.event.release.tag_name }}',/g" setup.py
+          if [[ ${{ github.event.release.tag_name }} =~ [v0-9.]* ]]; then
+              sed  -i "s/version='[v0-9.]*',/version='${{ github.event.release.tag_name }}',/g" setup.py
+          else
+              echo "Tag is an unexpected value and no version uodate will occur"
+          fi
 
-      - name: Check for swap
+      - name: Check for version update
         run: cat setup.py
 
-      - uses: actions/checkout@v4
-      - run: |
-          # Note: the following account information will not work on GHES
-          git config user.name "github-actions[bot]"
-          git config user.email {user.id}+{user.login}@users.noreply.github.com
-          git add setup.py
+      - name: Push to git
+        run: |
+          git add setup.py 
           git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
           git push
-
-
