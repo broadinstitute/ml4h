@@ -1,0 +1,43 @@
+name: Increment version
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update_version:
+    if: ${{ github.event.release.tag_name != '' }}
+    name: Update version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v4
+
+      - name: Checkout main for version edit
+        run: |
+          # Note: the following account information will not work on GHES
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email {user.id}+{user.login}@users.noreply.github.com
+          git fetch
+          git checkout main
+
+      - name: Replace string in file
+        run: |
+          grep "version" setup.py
+          if [[ ${{ github.event.release.tag_name }} =~ [v0-9.]* ]]; then
+              sed  -i "s/version='[v0-9.]*',/version='${{ github.event.release.tag_name }}',/g" setup.py
+          else
+              echo "Tag is an unexpected value and no version uodate will occur"
+          fi
+
+      - name: Check for version update
+        run: cat setup.py
+
+      - name: Push to git
+        run: |
+          git add setup.py 
+          git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
+          git push
