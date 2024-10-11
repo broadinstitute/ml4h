@@ -210,6 +210,18 @@ def train_diffusion_control_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
+        tf.keras.utils.plot_model(
+            model.control_embed_model,
+            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}_control_embed.png",
+            show_shapes=True,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
+            expand_nested=True,
+            dpi=args.dpi,
+            layer_range=None,
+            show_layer_activations=True,
+        )
 
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
@@ -230,7 +242,7 @@ def train_diffusion_control_model(args):
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     if args.inspect_model:
         if model.input_map.axes() == 2:
-            model.plot_ecgs(num_rows=4, prefix=os.path.dirname(checkpoint_path))
+            model.plot_ecgs(num_rows=args.test_steps, prefix=os.path.dirname(checkpoint_path))
         else:
-            model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path))
+            model.plot_images(num_rows=args.test_steps, prefix=os.path.dirname(checkpoint_path))
     return model
