@@ -128,6 +128,7 @@ def train_diffusion_model(args):
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
     if args.inspect_model:
+        model.network.summary(print_fn=logging.info, expand_nested=True)
         tf.keras.utils.plot_model(
             model.network,
             to_file=f"{args.output_folder}/{args.id}/architecture_diffusion_unet.png",
@@ -198,6 +199,7 @@ def train_diffusion_control_model(args):
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
     if args.inspect_model:
+        model.network.summary(print_fn=logging.info, expand_nested=True)
         tf.keras.utils.plot_model(
             model.network,
             to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}_unet.png",
