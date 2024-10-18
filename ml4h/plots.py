@@ -478,6 +478,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
             f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}',
         )
     logging.info(f"Saved learning curves at:{figure_path}")
+    plt.close()
 
 
 def plot_rocs(
