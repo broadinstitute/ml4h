@@ -179,8 +179,7 @@ def get_eval_model(args, model_file, output_tmap):
 
 
 def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
-    control_batch = {}
-    control_batch[tm_out.output_name()] = controls
+    control_batch = {tm_out.output_name(): controls}
 
     control_embed = diffuser.control_embed_model(control_batch)
     generated_images = diffuser.generate(
@@ -188,9 +187,7 @@ def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
         num_images=batch_size,
         diffusion_steps=50,
     )
-    logging.info(f'generated_images control_batch was {generated_images.shape}')
     control_predictions = regressor.predict(generated_images)
-    logging.info(f'Control zip preds was {list(zip(controls, control_predictions))} ')
     return control_predictions[:, 0]
 
 
@@ -199,10 +196,13 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
     all_controls = []
     # controls = np.arange(-8, 8, 1)
 
-    for _ in range(batches):
+    for i in range(batches):
         controls = np.random.normal(0, std, size=batch_size)
         preds.append(regress_on_batch(diffuser, regressor, controls, tm_out, batch_size))
         all_controls.append(controls)
+        if i % 4 == 0:
+            logging.info(f'Inferred on {i+1} synthetic diffusion batches of {batches}')
+
 
     preds = np.array(preds).flatten()
     all_controls = np.array(all_controls).flatten()
