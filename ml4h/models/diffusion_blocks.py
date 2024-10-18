@@ -426,7 +426,6 @@ class DiffusionController(keras.Model):
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
-        plt.show()
 
     def plot_reconstructions(
         self, batch, diffusion_amount=0,
