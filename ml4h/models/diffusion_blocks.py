@@ -568,7 +568,6 @@ class DiffusionController(keras.Model):
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
-        plt.show()
 
 
 def get_network(input_shape, widths, block_depth, kernel_size):

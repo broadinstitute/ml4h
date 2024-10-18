@@ -217,15 +217,15 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
         plt.scatter(preds, all_controls)
         plt.title(f'''Diffusion Phenotype: {tm_out.name} Control vs Predictions
         Pearson correlation {pearson:0.3f}, $R^2$ {coefficient_of_determination(preds, all_controls):0.3f}, N = {len(preds)}''')
+        now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
+        figure_path = os.path.join(prefix, f'scatter_{tm_out.name}_{now_string}{IMAGE_EXT}')
+        os.makedirs(os.path.dirname(figure_path), exist_ok=True)
+        plt.savefig(figure_path)
     elif tm_out.is_categorical():
         plot_roc(preds, all_controls, tm_out.channel_map,
                  f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
 
-    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    figure_path = os.path.join(prefix, f'metrics_{tm_out.name}_{now_string}{IMAGE_EXT}')
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
-    plt.savefig(figure_path)
+
 
 
 def train_diffusion_control_model(args):

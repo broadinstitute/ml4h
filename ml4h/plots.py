@@ -2574,8 +2574,7 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
     figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
+    os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")
     return labels_to_areas
