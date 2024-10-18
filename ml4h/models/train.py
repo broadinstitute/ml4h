@@ -206,11 +206,12 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
         if i % 4 == 0:
             logging.info(f'Inferred on {i+1} synthetic diffusion batches of {batches}')
 
-
-    preds = np.array(preds).flatten()
-    all_controls = np.array(all_controls).flatten()
-    print(f'Control Predictions was {np.array(preds).shape} Control true was {np.array(all_controls).shape}')
+    preds = np.array(preds)
+    all_controls = np.array(all_controls)
+    print(f'Control Predictions was {preds.shape} Control true was {all_controls.shape}')
     if tm_out.is_continuous():
+        preds = preds.flatten()
+        all_controls = all_controls.flatten()
         pearson = np.corrcoef(preds, all_controls)[1, 0]
         print(f'Pearson correlation {pearson:0.3f} ')
         plt.scatter(preds, all_controls)
