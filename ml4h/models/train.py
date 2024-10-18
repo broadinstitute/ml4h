@@ -187,7 +187,7 @@ def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
         num_images=batch_size,
         diffusion_steps=50,
     )
-    control_predictions = regressor.predict(generated_images)
+    control_predictions = regressor.predict(generated_images, verbose=0)
     return control_predictions[:, 0]
 
 
