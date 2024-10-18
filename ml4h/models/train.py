@@ -4,9 +4,9 @@ import os
 import logging
 from typing import List, Tuple, Iterable, Union
 
-import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 import tensorflow as tf
 from tensorflow import keras
