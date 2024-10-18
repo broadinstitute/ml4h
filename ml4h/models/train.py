@@ -197,7 +197,10 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
     # controls = np.arange(-8, 8, 1)
 
     for i in range(batches):
-        controls = np.random.normal(0, std, size=batch_size)
+        if tm_out.is_continuous():
+            controls = np.random.normal(0, std, size=batch_size)
+        elif tm_out.is_categorical():
+            controls = np.eye(tm_out.shape[-1])[np.random.choice(tm_out.shape[-1], batch_size)]
         preds.append(regress_on_batch(diffuser, regressor, controls, tm_out, batch_size))
         all_controls.append(controls)
         if i % 4 == 0:
