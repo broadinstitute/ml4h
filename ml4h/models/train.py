@@ -4,6 +4,10 @@ import os
 import logging
 from typing import List, Tuple, Iterable, Union
 
+import datetime
+import numpy as np
+import matplotlib.pyplot as plt
+
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_addons as tfa
@@ -12,11 +16,12 @@ from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 
 from ml4h.TensorMap import TensorMap
+from ml4h.metrics import coefficient_of_determination
 from ml4h.models.diffusion_blocks import DiffusionModel, DiffusionController
 from ml4h.plots import plot_metric_history
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
-from ml4h.models.model_factory import get_custom_objects
+from ml4h.models.model_factory import get_custom_objects, make_multimodal_multitask_model
 from ml4h.tensor_generators import test_train_valid_tensor_generators
 
 
@@ -167,6 +172,53 @@ def train_diffusion_model(args):
     return model
 
 
+def get_eval_model(args, model_file, output_tmap):
+    args.tensor_maps_out = [output_tmap]
+    eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+    return eval_model
+
+
+def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
+    control_batch = {}
+    control_batch[tm_out.output_name()] = controls
+
+    control_embed = diffuser.control_embed_model(control_batch)
+    generated_images = diffuser.generate(
+        control_embed,
+        num_images=batch_size,
+        diffusion_steps=50,
+    )
+    logging.info(f'generated_images control_batch was {generated_images.shape}')
+    control_predictions = regressor.predict(generated_images)
+    logging.info(f'Control zip preds was {list(zip(controls, control_predictions))} ')
+    return control_predictions[:, 0]
+
+
+def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batch_size, std, prefix):
+    preds = []
+    all_controls = []
+    # controls = np.arange(-8, 8, 1)
+
+    for _ in range(batches):
+        controls = np.random.normal(0, std, size=batch_size)
+        preds.append(regress_on_batch(diffuser, regressor, controls, tm_out, batch_size))
+        all_controls.append(controls)
+
+    preds = np.array(preds).flatten()
+    all_controls = np.array(all_controls).flatten()
+    print(f'Control Predictions was {np.array(preds).shape} Control true was {np.array(all_controls).shape}')
+    pearson = np.corrcoef(preds, all_controls)[1, 0]
+    print(f'Pearson correlation {pearson:0.3f} ')
+    plt.scatter(preds, all_controls)
+    plt.title(f'''Diffusion Phenotype: {tm_out.name} Control vs Predictions
+    Pearson correlation {pearson:0.3f}, $R^2$ {coefficient_of_determination(preds, all_controls):0.3f}, N = {len(preds)}''')
+    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
+    figure_path = os.path.join(prefix, f'metrics_{tm_out.name}_{now_string}{IMAGE_EXT}')
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+
+
 def train_diffusion_control_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = DiffusionController(
@@ -239,12 +291,20 @@ def train_diffusion_control_model(args):
         validation_steps=args.validation_steps,
         callbacks=[checkpoint_callback],
     )
+    plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     model.load_weights(checkpoint_path)
 
-    plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     if args.inspect_model:
         if model.input_map.axes() == 2:
-            model.plot_ecgs(num_rows=args.test_steps, prefix=os.path.dirname(checkpoint_path))
+            model.plot_ecgs(num_rows=2, prefix=os.path.dirname(checkpoint_path))
         else:
-            model.plot_images(num_rows=args.test_steps, prefix=os.path.dirname(checkpoint_path))
+            model.plot_images(num_rows=2, prefix=os.path.dirname(checkpoint_path))
+
+        for tm_out, model_file in zip(args.tensor_maps_out, args.model_files):
+            args.tensor_maps_out = [tm_out]
+            args.model_file = model_file
+            eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+            regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size, 5,
+                                              f'{args.output_folder}/{args.id}/')
+
     return model
