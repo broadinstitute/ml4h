@@ -426,6 +426,7 @@ class DiffusionController(keras.Model):
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
+        plt.close()
 
     def plot_reconstructions(
         self, batch, diffusion_amount=0,
@@ -567,6 +568,7 @@ class DiffusionController(keras.Model):
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
+        plt.close()
 
 
 def get_network(input_shape, widths, block_depth, kernel_size):
