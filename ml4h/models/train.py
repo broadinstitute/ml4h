@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import coefficient_of_determination
 from ml4h.models.diffusion_blocks import DiffusionModel, DiffusionController
-from ml4h.plots import plot_metric_history
+from ml4h.plots import plot_metric_history, plot_roc
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
 from ml4h.models.model_factory import get_custom_objects, make_multimodal_multitask_model
@@ -210,11 +210,16 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
     preds = np.array(preds).flatten()
     all_controls = np.array(all_controls).flatten()
     print(f'Control Predictions was {np.array(preds).shape} Control true was {np.array(all_controls).shape}')
-    pearson = np.corrcoef(preds, all_controls)[1, 0]
-    print(f'Pearson correlation {pearson:0.3f} ')
-    plt.scatter(preds, all_controls)
-    plt.title(f'''Diffusion Phenotype: {tm_out.name} Control vs Predictions
-    Pearson correlation {pearson:0.3f}, $R^2$ {coefficient_of_determination(preds, all_controls):0.3f}, N = {len(preds)}''')
+    if tm_out.is_continuous():
+        pearson = np.corrcoef(preds, all_controls)[1, 0]
+        print(f'Pearson correlation {pearson:0.3f} ')
+        plt.scatter(preds, all_controls)
+        plt.title(f'''Diffusion Phenotype: {tm_out.name} Control vs Predictions
+        Pearson correlation {pearson:0.3f}, $R^2$ {coefficient_of_determination(preds, all_controls):0.3f}, N = {len(preds)}''')
+    elif tm_out.is_categorical():
+        plot_roc(preds, all_controls, tm_out.channel_map,
+                 f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
+
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
     figure_path = os.path.join(prefix, f'metrics_{tm_out.name}_{now_string}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
