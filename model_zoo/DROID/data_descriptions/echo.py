@@ -3,12 +3,14 @@ import os
 import io
 import av
 import itertools
+import cv2
 
 import lmdb
 import glob
 
 import numpy as np
 import pandas as pd
+import pydicom
 
 from PIL import ImageFile
 
@@ -118,7 +120,73 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
     def name(self):
         return self._name
 
-    
+class LmdbEchoStudyVideoDataDescriptionMIMIC(DataDescription):
+
+    def __init__(
+            self,
+            local_lmdb_dir: str,
+            name: str,
+            transforms=None,
+            nframes: int = None,
+            skip_modulo: int = 1,
+            start_beat=0,
+    ):
+
+        self.local_lmdb_dir = local_lmdb_dir[0] if isinstance(local_lmdb_dir, list) else local_lmdb_dir
+        self._name = name
+        self.nframes = (nframes + start_beat) * skip_modulo
+        self.start_beat = start_beat
+        # transformations
+        self.transforms = transforms or []
+        self.skip_modulo = skip_modulo
+
+    def get_loading_options(self, sample_path):
+        
+        return [
+            {VIEW_OPTION_KEY: sample_path.split('/')[-3] + '_s' + sample_path.split('/')[-1].split('.')[0]}
+        ]
+
+    def get_raw_data(self, sample_path, loading_option=None):
+        try:
+            sample_path = sample_path.decode('UTF-8')
+        except (UnicodeDecodeError, AttributeError):
+            pass
+            
+        dcm_path = os.path.join(self.local_lmdb_dir, sample_path)
+        dcm = pydicom.dcmread(dcm_path, force=True)
+        data = dcm.pixel_array
+        
+        nframes = self.nframes
+
+        frames = []
+        video_frames = itertools.cycle(data)
+        for i, frame in enumerate(video_frames):
+            if i == nframes:
+                break
+            if i < (self.start_beat * self.skip_modulo):
+                continue
+            if self.skip_modulo > 1:
+                if (i % self.skip_modulo) != 0:
+                    continue
+
+            frame = cv2.resize(frame,(224,224))
+            if len(frame.shape) == 2:
+                frame = np.repeat(frame[:, :, np.newaxis], 3, axis=2)
+
+            for transform in self.transforms:
+                frame = transform(frame, loading_option)
+            frames.append(frame)
+
+        del video_frames
+        
+        return np.squeeze(np.array(frames, dtype='float32') / 255.)
+
+
+    @property
+    def name(self):
+        return self._name
+
+
 class LmdbEchoStudyVideoDataDescriptionBWH(DataDescription):
 
     def __init__(
