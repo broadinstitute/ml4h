@@ -444,7 +444,7 @@ def random_mni_slice_tensor(tm, hd5, dependents={}):
     slice_index = np.random.randint(182)
     tensor = pad_or_crop_array_to_shape(
         (tm.shape[0], tm.shape[1], 1), np.array(
-            tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}/axial_{slice_index}'), dtype=np.float32,
+            tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}axial_{slice_index}/'), dtype=np.float32,
         ),
     )
     return tensor
