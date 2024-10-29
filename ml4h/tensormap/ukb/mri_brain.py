@@ -443,11 +443,15 @@ t1_mni_accumbens_65_76 = TensorMap(
 def random_mni_slice_tensor(tm, hd5, dependents={}):
     slice_index = np.random.randint(182)
     tensor = pad_or_crop_array_to_shape(
-        (tm.shape[0], tm.shape[1], 1), np.array(
+            tm.shape, np.array(
             tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}axial_{slice_index}/'), dtype=np.float32,
         ),
     )
-    dependents[tm.dependent_map] = np.array(slice_index)
+    dependents[tm.dependent_map] = np.zeros(
+        tm.dependent_map.shape,
+        dtype=np.float32,
+    )
+    dependents[tm.dependent_map][0] = slice_index
     return tensor
 
 axial_index_map = TensorMap('axial_index', Interpretation.CONTINUOUS, shape=(1,), channel_map={'axial_index':0})
