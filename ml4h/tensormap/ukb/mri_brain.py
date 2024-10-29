@@ -439,3 +439,23 @@ t1_mni_accumbens_65_76 = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_accumbens': 19, 'Right_accumbens': 70}),
     normalization=ZeroMeanStd1(),
 )
+
+def random_mni_slice_tensor(tm, hd5, dependents={}):
+    slice_index = np.random.randint(182)
+    tensor = pad_or_crop_array_to_shape(
+        (tm.shape[0], tm.shape[1], 1), np.array(
+            tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}/axial_{slice_index}'), dtype=np.float32,
+        ),
+    )
+    return tensor
+
+
+t1_mni_random_slice = TensorMap(
+    't1_mni_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 192, 1),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=random_mni_slice_tensor,
+    normalization=ZeroMeanStd1(),
+)
+
