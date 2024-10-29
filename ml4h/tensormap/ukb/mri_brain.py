@@ -447,8 +447,10 @@ def random_mni_slice_tensor(tm, hd5, dependents={}):
             tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}axial_{slice_index}/'), dtype=np.float32,
         ),
     )
+    dependents[tm.dependent_map] = np.array(slice_index)
     return tensor
 
+axial_index_map = TensorMap('axial_index', Interpretation.CONTINUOUS, shape=(1,), channel_map={'axial_index':0})
 
 t1_mni_random_slice = TensorMap(
     't1_mni_random_slice',
@@ -457,5 +459,13 @@ t1_mni_random_slice = TensorMap(
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
     tensor_from_file=random_mni_slice_tensor,
     normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
 )
 
+sax_random_slice_segmented = TensorMap(
+    'sax_random_slice_segmented', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SEGMENTED_CHANNEL_MAP)), channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+)
+sax_random_slice = TensorMap(
+    'sax_random_slice', shape=(224, 224, 1), tensor_from_file=sax_random_slice_tensor_maker('cine_segmented_sax_inlinevf/2', 'cine_segmented_sax_inlinevf_segmented/2'),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(), dependent_map=sax_random_slice_segmented,
+)
