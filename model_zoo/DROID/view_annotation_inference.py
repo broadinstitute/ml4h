@@ -10,6 +10,7 @@ from echo_defines import category_dictionaries
 from data_descriptions.echo import (
     LmdbEchoStudyVideoDataDescription,
     LmdbEchoStudyVideoDataDescriptionBWH,
+    LmdbEchoStudyVideoDataDescriptionMIMIC,
 )
 from model_descriptions.echo import DDGenerator, create_movinet_classifier
 from model_descriptions.models_view_cls import create_classifier, create_video_encoder
@@ -25,6 +26,7 @@ def main(
     batch_size,
     lmdb_folder,
     is_mgh,
+    is_mimic,
     movinet_ckpt_dir,
     n_input_frames,
     output_file,
@@ -36,11 +38,13 @@ def main(
     work_ids_from_file,
     view_annotation_tasks,
 ):
-    input_dd_class = (
-        LmdbEchoStudyVideoDataDescription
-        if is_mgh
-        else LmdbEchoStudyVideoDataDescriptionBWH
-    )
+    if is_mgh:
+        input_dd_class = LmdbEchoStudyVideoDataDescription
+    elif is_mimic:
+        input_dd_class = LmdbEchoStudyVideoDataDescriptionMIMIC
+    else:
+        input_dd_class =LmdbEchoStudyVideoDataDescriptionBWH
+    
     input_dd = input_dd_class(
         lmdb_folder,
         "image",
@@ -55,7 +59,8 @@ def main(
     else:
         # Load the IDs
         df_list = []
-        for _, row in study_df.drop_duplicates(subset=["study"]).iterrows():
+        column_name = "dicom_filepath" if is_mimic else "study"
+        for _, row in study_df.drop_duplicates(subset=[column_name]).iterrows():
             if is_mgh:
                 # study_id = row["study_id"]
                 study_id = row["study"]
@@ -88,6 +93,8 @@ def main(
 
                 log_df = log_df[log_df["stored"]]
                 log_df["sample_id"] = log_df["view"].apply(lambda x: f"mrn_{study_id}_{x}")
+            elif is_mimic:
+                log_df = '/'.join(row["dicom_filepath"].split('/')[1:])
             else:
                 log_df = row['sample_id']
     #             study_id = f"{row['MRN']}_{row['study_id']}"
@@ -198,6 +205,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lmdb_folder", action='append', type=str)
     parser.add_argument("--is_mgh", action="store_true")
+    parser.add_argument("--is_mimic", action="store_true")
     parser.add_argument("--movinet_ckpt_dir", type=str)
     parser.add_argument("--n_input_frames", type=int, default=1)
     parser.add_argument("--output_file", type=str)
@@ -221,6 +229,7 @@ if __name__ == "__main__":
         args.batch_size,
         args.lmdb_folder,
         args.is_mgh,
+        args.is_mimic,
         args.movinet_ckpt_dir,
         args.n_input_frames,
         args.output_file,
@@ -235,5 +244,5 @@ if __name__ == "__main__":
     )
 
     
-    
+# python view_annotation_inference.py --lmdb_folder /mnt/disks/mimic/echo/ --movinet_ckpt_dir /home/tshnitze/pretrained/movinet_a2_base_pb/ --n_input_frames 10 --output_file /home/tshnitze/outputs/mimic_view_class_sm6.tsv --pretrained_ckpt_dir /home/tshnitze/pretrained/202203201549_annotated_view_annotated_doppler_annotated_quality_annotated_canonical_10frames_72/model/chkp -v view -v doppler -v quality -v canonical --study_df /mnt/disks/mimic/echo/echo-record-list.csv --skip_modulo 6 --is_mimic --work_ids_from_file --n_partitions 5 --partition 0    
     
