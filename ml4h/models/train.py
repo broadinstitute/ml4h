@@ -215,6 +215,8 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
         pearson = np.corrcoef(preds, all_controls)[1, 0]
         print(f'Pearson correlation {pearson:0.3f} ')
         plt.scatter(preds, all_controls)
+        plt.xlabel(f'Predicted {tm_out.name}')
+        plt.ylabel(f'Control {tm_out.name}')
         plt.title(f'''Diffusion Phenotype: {tm_out.name} Control vs Predictions
         Pearson correlation {pearson:0.3f}, $R^2$ {coefficient_of_determination(preds, all_controls):0.3f}, N = {len(preds)}''')
         now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')

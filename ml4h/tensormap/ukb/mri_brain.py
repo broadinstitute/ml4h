@@ -451,7 +451,7 @@ def random_mni_slice_tensor(tm, hd5, dependents={}):
         tm.dependent_map.shape,
         dtype=np.float32,
     )
-    dependents[tm.dependent_map][0] = (slice_index / 182.0) - 0.5
+    dependents[tm.dependent_map][0] = float(slice_index) / 182.0
     return tensor
 
 axial_index_map = TensorMap('axial_index', Interpretation.CONTINUOUS, shape=(1,), channel_map={'axial_index':0})
