@@ -191,14 +191,14 @@ def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
     return control_predictions[:, 0] if tm_out.is_continuous() else control_predictions
 
 
-def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batch_size, std, prefix):
+def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batch_size, mean, std, prefix):
     preds = []
     all_controls = []
     # controls = np.arange(-8, 8, 1)
 
     for i in range(batches):
         if tm_out.is_continuous():
-            controls = np.random.normal(0, std, size=batch_size)
+            controls = np.random.normal(mean, std, size=batch_size)
         elif tm_out.is_categorical():
             controls = np.eye(tm_out.shape[-1])[np.random.choice(tm_out.shape[-1], batch_size)]
         preds.extend(regress_on_batch(diffuser, regressor, controls, tm_out, batch_size))
@@ -315,7 +315,7 @@ def train_diffusion_control_model(args):
             args.tensor_maps_out = [tm_out]
             args.model_file = model_file
             eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-            regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size, 5,
-                                              f'{args.output_folder}/{args.id}/')
+            regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size,
+                                              0.5,0.2,f'{args.output_folder}/{args.id}/')
 
     return model
