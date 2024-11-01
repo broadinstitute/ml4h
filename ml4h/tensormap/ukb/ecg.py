@@ -1266,3 +1266,14 @@ ppg_2 = TensorMap(
     'ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
     normalization=Standardize(mean=4824.6, std=3235.8),
 )
+
+def uw_ecg_from_hd5(tm, hd5, dependents={}):
+    tensor = 6+(30*np.array(hd5[tm.path_prefix], dtype=np.float32))
+    return tensor
+
+ecg_median_uw = TensorMap('ecg_rest_median_raw_10',
+                          Interpretation.CONTINUOUS,
+                          shape=(600, 12),
+                          path_prefix='ecg.ecg_rest_median_raw_10',
+                          channel_map=ECG_REST_MEDIAN_LEADS,
+                          tensor_from_file=uw_ecg_from_hd5)
