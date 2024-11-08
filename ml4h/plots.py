@@ -470,12 +470,15 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    if 'loss' in history.history:
-        logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:   {history.history["loss"][-1]:0.4f}')
-    if 'val_loss' in history.history:
+    for log_label in ['loss', 'val_loss', 'n_loss', 'val_n_loss']:
+        if log_label not in history.history:
+            continue
         logging.info(
-            f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}, '
-            f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}',
+            f'''
+            Starting {log_label.replace('val_', 'validation ')}: {history.history[log_label][0]:0.3f},
+            Final {log_label.replace('val_', 'validation ')}: {history.history[log_label][-1]:0.4f},
+            Minimum {log_label.replace('val_', 'validation ')}: {min(history.history[log_label]):0.4f}
+            '''
         )
     logging.info(f"Saved learning curves at:{figure_path}")
     plt.close()
@@ -2574,7 +2577,7 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
     plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
-    figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, f"per_class_roc_auc_{roc_auc[labels[key]]:0.3f}_{title}{IMAGE_EXT}")
     os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")

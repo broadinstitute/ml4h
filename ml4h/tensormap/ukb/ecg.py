@@ -1268,7 +1268,9 @@ ppg_2 = TensorMap(
 )
 
 def uw_ecg_from_hd5(tm, hd5, dependents={}):
-    tensor = 6+(30*np.array(hd5[tm.path_prefix], dtype=np.float32))
+    new_mean = 6
+    new_std = 30
+    tensor = new_mean+(new_std*np.array(hd5[tm.path_prefix], dtype=np.float32))
     return tensor
 
 ecg_median_uw = TensorMap('ecg_rest_median_raw_10',

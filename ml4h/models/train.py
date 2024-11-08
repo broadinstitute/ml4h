@@ -208,19 +208,19 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
 
     preds = np.array(preds)
     all_controls = np.array(all_controls)
-    print(f'Control Predictions was {preds.shape} Control true was {all_controls.shape}')
+    logging.info(f'Control Predictions was {preds.shape} Control true was {all_controls.shape}')
     if tm_out.is_continuous():
         preds = preds.flatten()
         all_controls = all_controls.flatten()
         pearson = np.corrcoef(preds, all_controls)[1, 0]
-        print(f'Pearson correlation {pearson:0.3f} ')
+        logging.info(f'Pearson correlation {pearson:0.3f} ')
         plt.scatter(preds, all_controls)
         plt.xlabel(f'Predicted {tm_out.name}')
         plt.ylabel(f'Control {tm_out.name}')
         plt.title(f'''Diffusion Phenotype: {tm_out.name} Control vs Predictions
         Pearson correlation {pearson:0.3f}, $R^2$ {coefficient_of_determination(preds, all_controls):0.3f}, N = {len(preds)}''')
         now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'scatter_{tm_out.name}_{now_string}{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'scatter_{tm_out.name}_r_{pearson:0.3f}_{now_string}{IMAGE_EXT}')
         os.makedirs(os.path.dirname(figure_path), exist_ok=True)
         plt.savefig(figure_path)
     elif tm_out.is_categorical():
