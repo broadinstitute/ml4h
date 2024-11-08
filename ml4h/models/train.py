@@ -228,6 +228,38 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
                  f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
 
 
+def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
+    control_batch = {}
+    samples = np.arange(-5, 6, 3)
+    num_rows = len(samples)
+    num_cols = 4
+    plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
+    for row, pheno_scale in enumerate(samples):
+        for cm in tensor_maps_out:
+            if cm == control_tm:
+                control_batch[cm.output_name()] = np.ones((batch_size,) + cm.shape) * pheno_scale
+            else:
+                control_batch[cm.output_name()] = np.zeros((batch_size,) + cm.shape)
+
+        control_embed = diffuser.control_embed_model(control_batch)
+        generated_images = diffuser.generate(
+            control_embed,
+            num_images=batch_size,
+            diffusion_steps=50,
+        )
+
+        for col in range(num_cols):
+            index = row * num_cols + col
+            plt.subplot(num_rows, num_cols, index + 1)
+            plt.imshow(generated_images[index], cmap='gray')
+            plt.gca().set_title(f'{control_tm.name}: {pheno_scale}')
+            plt.axis("off")
+
+    plt.tight_layout()
+    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
+    figure_path = os.path.join(prefix, f'interpolate_synthetic_{control_tm.name}_{now_string}{IMAGE_EXT}')
+    os.makedirs(os.path.dirname(figure_path), exist_ok=True)
+    plt.savefig(figure_path)
 
 
 def train_diffusion_control_model(args):
@@ -306,6 +338,8 @@ def train_diffusion_control_model(args):
     model.load_weights(checkpoint_path)
 
     if args.inspect_model:
+        interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
+                                           f'{args.output_folder}/{args.id}/')
         if model.input_map.axes() == 2:
             model.plot_ecgs(num_rows=2, prefix=os.path.dirname(checkpoint_path))
         else:

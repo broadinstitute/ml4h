@@ -405,7 +405,7 @@ class DiffusionController(keras.Model):
             if 'Sex' in cm.name:
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
-        print(f'\nControl batch keys: {list(control_batch.keys())}')
+        logging.info(f'\nControl batch keys: {list(control_batch.keys())}')
         control_embed = self.control_embed_model(control_batch)
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
