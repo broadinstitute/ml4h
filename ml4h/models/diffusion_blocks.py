@@ -266,8 +266,6 @@ class DiffusionController(keras.Model):
         # noise -> images -> denormalized images
 
         if reseed is not None:
-            if renoise is not None:
-                noiser = tf.random.normal(shape=(num_images,) + self.input_map.shape) * renoise
             tf.random.set_seed(reseed)
 
         initial_noise = tf.random.normal(shape=(num_images,) + self.input_map.shape)
