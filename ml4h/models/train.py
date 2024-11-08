@@ -246,6 +246,7 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
             control_embed,
             num_images=batch_size,
             diffusion_steps=50,
+            reseed=12345,  # hold everything constant except for control signal
         )
 
         for col in range(num_cols):
