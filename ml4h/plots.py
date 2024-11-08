@@ -476,8 +476,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
         logging.info(
             f'''
             Starting {log_label.replace('val_', 'validation ')}: {history.history[log_label][0]:0.4f},
-            Final {log_label.replace('val_', 'validation ')}: {history.history[log_label][-1]:0.4f},
-            Minimum {log_label.replace('val_', 'validation ')}: {min(history.history[log_label]):0.4f}
+            Final    {log_label.replace('val_', 'validation ')}: {history.history[log_label][-1]:0.4f},
+            Minimum  {log_label.replace('val_', 'validation ')}: {min(history.history[log_label]):0.4f}
             '''
         )
     logging.info(f"Saved learning curves at:{figure_path}")
