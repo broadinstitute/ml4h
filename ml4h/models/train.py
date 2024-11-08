@@ -253,7 +253,7 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
             index = row * num_cols + col
             plt.subplot(num_rows, num_cols, index + 1)
             plt.imshow(generated_images[index], cmap='gray')
-            plt.gca().set_title(f'{control_tm.name}: {pheno_scale}')
+            plt.gca().set_title(f'{control_tm.name[:10]}: {pheno_scale:0.1f}')
             plt.axis("off")
 
     plt.tight_layout()
