@@ -249,10 +249,10 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
             reseed=12345,  # hold everything constant except for control signal
         )
 
-        for col in range(num_cols):
+        for i_col, col in enumerate(range(num_cols)):
             index = row * num_cols + col
             plt.subplot(num_rows, num_cols, index + 1)
-            plt.imshow(generated_images[index], cmap='gray')
+            plt.imshow(generated_images[i_col], cmap='gray')
             plt.gca().set_title(f'{control_tm.name[:10]}: {pheno_scale:0.1f}')
             plt.axis("off")
 
