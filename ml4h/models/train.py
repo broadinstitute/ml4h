@@ -230,7 +230,7 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
 
 def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
     control_batch = {}
-    samples = np.arange(-5, 6, 3)
+    samples = np.arange(-5, 6, 1)
     num_rows = len(samples)
     num_cols = 4
     plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
