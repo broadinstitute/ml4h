@@ -781,7 +781,7 @@ def plot_scatter(
     sns.distplot(truth, label="Truth", color="b", ax=ax2)
     ax2.legend(loc="upper left")
 
-    figure_path = os.path.join(prefix, "scatter_" + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, f"scatter_{title}_r_{pearson:0.4f}{IMAGE_EXT}")
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save scatter plot at: {figure_path}")
