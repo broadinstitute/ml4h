@@ -223,6 +223,7 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
         figure_path = os.path.join(prefix, f'scatter_{tm_out.name}_r_{pearson:0.3f}_{now_string}{IMAGE_EXT}')
         os.makedirs(os.path.dirname(figure_path), exist_ok=True)
         plt.savefig(figure_path)
+        plt.close()
     elif tm_out.is_categorical():
         plot_roc(preds, all_controls, tm_out.channel_map,
                  f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
@@ -265,6 +266,7 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
     figure_path = os.path.join(prefix, f'interpolate_synthetic_{control_tm.name}_{now_string}{IMAGE_EXT}')
     os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
+    plt.close()
 
 
 def train_diffusion_control_model(args):
