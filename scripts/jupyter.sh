@@ -105,6 +105,7 @@ ${DOCKER_COMMAND} run -it \
 ${GPU_DEVICE} \
 --rm \
 --ipc=host \
+--cpus="32" \
 -v /home/${USER}/:/home/${USER}/ \
 -v /mnt/:/mnt/ \
 -p 0.0.0.0:${PORT}:${PORT} \
