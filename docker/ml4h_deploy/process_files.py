@@ -88,7 +88,7 @@ def main(directory):
         filepath = os.path.join(directory, filename)
         if os.path.isfile(filepath):
             process_file(filepath, space_dict)
-        if i > 1000:
+        if i > 10000:
             break
 
     df = pd.DataFrame.from_dict(space_dict)
