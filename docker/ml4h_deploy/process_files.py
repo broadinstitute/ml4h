@@ -62,7 +62,7 @@ def process_file(filepath, space_dict):
             space_dict['has_af'].append(1)
         else:
             space_dict['has_af'].append(0)
-        
+
         for otm in output_tensormaps.values():
             y = predictions_dict[otm.output_name()]
             if otm.is_categorical():
@@ -88,7 +88,7 @@ def main(directory):
         filepath = os.path.join(directory, filename)
         if os.path.isfile(filepath):
             process_file(filepath, space_dict)
-        if i > 100:
+        if i > 1000:
             break
 
     df = pd.DataFrame.from_dict(space_dict)
