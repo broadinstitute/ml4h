@@ -56,7 +56,8 @@ def process_file(filepath, space_dict):
             prediction = [prediction]
         predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
         #print(f"Got predictions: {predictions_dict}")
-
+        space_dict['sample_id'].append(os.path.basename(filepath).replace('.hd5', ''))
+        space_dict['ecg_path'].append(filepath)
         for otm in output_tensormaps.values():
             y = predictions_dict[otm.output_name()]
             if otm.is_categorical():
