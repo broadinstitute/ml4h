@@ -20,6 +20,7 @@ tf.get_logger().setLevel(logging.ERROR)
 
 USER = os.getenv('USER')
 BALANCED_SAMPLING_HF = False
+VIEW_PRED_PROB_THRESH = 0.99
 
 def main(
         n_input_frames,
@@ -140,6 +141,7 @@ def main(
     selected_hf_task_idx = category_dictionaries['hf_task'][hf_task] if hf_task else [0, 1, 2, 3]
     wide_df_selected = wide_df[
         (wide_df['view_prediction'].isin(selected_views_idx)) &
+        (wide_df['view_prediction_probability']>=VIEW_PRED_PROB_THRESH) &
         (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx)) &
@@ -149,10 +151,14 @@ def main(
     if 'SexDSC' in output_labels:
         wide_df_selected['SexDSC'].loc[np.logical_or(wide_df_selected['SexDSC'] == 'Male', wide_df_selected['SexDSC'] == 'M')] = 'M'
         wide_df_selected['SexDSC'].loc[np.logical_or(wide_df_selected['SexDSC'] == 'Female', wide_df_selected['SexDSC'] == 'F')] = 'F'
+    if 'gender' in output_labels:
+        wide_df_selected.loc[np.logical_or(wide_df_selected['gender'] == 'Male', wide_df_selected['gender'] == 'M'), 'gender'] = 'M'
+        wide_df_selected.loc[np.logical_or(wide_df_selected['gender'] == 'Female', wide_df_selected['gender'] == 'F'), 'gender'] = 'F'
     
     # Drop entries without echolab measurements and get all sample_ids
     wide_df_selected = wide_df_selected.dropna(subset=output_labels)
     working_ids = wide_df_selected['sample_id'].values.tolist()
+    working_mrns = wide_df_selected['MRN'].values.tolist()
 
     # Read splits and partition dataset
     with open(splits_file, 'r') as json_file:
@@ -170,9 +176,11 @@ def main(
     if n_train_patients != 'all':
         patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
         patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
-
-    train_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_train]
-    valid_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_valid]
+    
+    train_ids = [t for t,m in zip(working_ids,working_mrns) if int(m) in patient_train]
+    valid_ids = [t for t,m in zip(working_ids,working_mrns) if int(m) in patient_valid]
+    # train_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_train]
+    # valid_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_valid]
 
     # If scale_outputs, normalize by summary stats of training set
     if scale_outputs:
