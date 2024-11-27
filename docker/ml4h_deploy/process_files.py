@@ -1,11 +1,21 @@
 import os
 import sys
+
+import h5py
 import numpy as np
 from tensorflow.keras.models import load_model
 from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.defines import ECG_REST_AMP_LEADS
 from ml4h.models.model_factory import get_custom_objects
 
 n_intervals = 25
+
+ecg_tmap = TensorMap(
+    'ecg_5000_std',
+    Interpretation.CONTINUOUS,
+    shape=(5000, 12),
+    channel_map=ECG_REST_AMP_LEADS
+)
 
 af_tmap = TensorMap(
     'survival_curve_af',
@@ -30,6 +40,11 @@ model = load_model('ecg2af_quintuplet_v2024_01_13.h5', custom_objects=custom_dic
 def process_file(filepath):
     # Placeholder for file processing logic
     print(f"Processing file: {filepath}")
+    with h5py.File(filepath, 'r') as hd5:
+        tensor = np.zeros(ecg_tmap.shape, dtype=np.float32)
+        for lead in ecg_tmap.channel_map:
+            tensor[:, ecg_tmap.channel_map[lead]] = hd5[f'/ukb_ecg_rest/strip_{lead}/instance_0']
+        print(f"Got tensor: {tensor.mean():0.3f}")
     # Example: Use the model to make a prediction (add real processing logic here)
 
 def main(directory):
