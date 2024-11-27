@@ -48,7 +48,7 @@ def process_file(filepath):
         tensor -= tensor.mean()
         tensor /= (tensor.std() + 1e-6)
         print(f"Got tensor: {tensor.mean():0.3f}")
-        prediction = model.predict(tensor, verbose=0)
+        prediction = model.predict(np.expand_dims(tensor, axis=0), verbose=0)
         if len(model.output_names) == 1:
             prediction = [prediction]
         predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
