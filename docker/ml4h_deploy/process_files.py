@@ -58,6 +58,11 @@ def process_file(filepath, space_dict):
         #print(f"Got predictions: {predictions_dict}")
         space_dict['sample_id'].append(os.path.basename(filepath).replace('.hd5', ''))
         space_dict['ecg_path'].append(filepath)
+        if '/dates/atrial_fibrillation_or_flutter_date' in hd5:
+            space_dict['has_af'].append(1)
+        else:
+            space_dict['has_af'].append(0)
+        
         for otm in output_tensormaps.values():
             y = predictions_dict[otm.output_name()]
             if otm.is_categorical():
