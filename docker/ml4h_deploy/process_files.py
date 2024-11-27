@@ -44,7 +44,15 @@ def process_file(filepath):
         tensor = np.zeros(ecg_tmap.shape, dtype=np.float32)
         for lead in ecg_tmap.channel_map:
             tensor[:, ecg_tmap.channel_map[lead]] = hd5[f'/ukb_ecg_rest/strip_{lead}/instance_0']
+
+        tensor -= tensor.mean()
+        tensor /= (tensor.std() + 1e-6)
         print(f"Got tensor: {tensor.mean():0.3f}")
+        prediction = model.predict(tensor, verbose=0)
+        if len(model.output_names) == 1:
+            prediction = [prediction]
+        predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+        print(f"Got predictions: {predictions_dict}")
     # Example: Use the model to make a prediction (add real processing logic here)
 
 def main(directory):
