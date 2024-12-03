@@ -128,21 +128,21 @@ def process_ge_muse_xml(filepath, space_dict):
 
     """
     try:
-        pt_id = dic['RestingECG']['PatientDemographics']['PatientID']
+        patient_id = dic['RestingECG']['PatientDemographics']['PatientID']
     except:
         print("no PatientID")
-        pt_id = "none"
+        patient_id = "none"
     try:
-        PharmaUniqueECGID = dic['RestingECG']['PharmaData']['PharmaUniqueECGID']
+        pharma_unique_ecg_id = dic['RestingECG']['PharmaData']['PharmaUniqueECGID']
     except:
         print("no PharmaUniqueECGID")
-        PharmaUniqueECGID = "none"
+        pharma_unique_ecg_id = "none"
     try:
-        AcquisitionDateTime = dic['RestingECG']['TestDemographics']['AcquisitionDate'] + "_" + \
+        acquisition_date_time = dic['RestingECG']['TestDemographics']['AcquisitionDate'] + "_" + \
                               dic['RestingECG']['TestDemographics']['AcquisitionTime'].replace(":", "-")
     except:
         print("no AcquisitionDateTime")
-        AcquisitionDateTime = "none"
+        acquisition_date_time = "none"
 
         # try:
     #     requisition_number = dic['RestingECG']['Order']['RequisitionNumber']
@@ -199,10 +199,7 @@ def process_ge_muse_xml(filepath, space_dict):
     # transpose to be [time, leads, ]
     ecg_array = np.array(temp).T
 
-    # expand dims to [time, leads, 1]
-    ecg_array = np.expand_dims(ecg_array, axis=-1)
-    filename = '{}_{}_{}.npy'.format(pt_id, AcquisitionDateTime,PharmaUniqueECGID)
-    print(f'would write npy to {filename} len lead III {len(lead_data["III"])}')
+    print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
     ecg_array -= ecg_array.mean()
     ecg_array /= (ecg_array.std() + 1e-6)
     #print(f"Got tensor: {tensor.mean():0.3f}")
@@ -212,9 +209,9 @@ def process_ge_muse_xml(filepath, space_dict):
     predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
     #print(f"Got predictions: {predictions_dict}")
     space_dict['filepath'].append(os.path.basename(filepath))
-    space_dict['patient_id'].append(pt_id)
-    space_dict['acquisition_datetime'].append(AcquisitionDateTime)
-    space_dict['pharma_unique_ecg_id'].append(PharmaUniqueECGID)
+    space_dict['patient_id'].append(patient_id)
+    space_dict['acquisition_datetime'].append(acquisition_date_time)
+    space_dict['pharma_unique_ecg_id'].append(pharma_unique_ecg_id)
 
     for otm in output_tensormaps.values():
         y = predictions_dict[otm.output_name()]
