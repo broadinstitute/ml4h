@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
 
 SAVE_ONEHOT_DF_FOR_EACH_CLASS = True
+VIEW_PRED_PROB_THRESH = 0.99
 
 
 def main(
@@ -106,6 +107,7 @@ def main(
             selected_hf_task_idx = [0,2]
         wide_df_selected = wide_df[
             (wide_df['view_prediction'].isin(selected_views_idx)) &
+            (wide_df['view_prediction_probability']>=VIEW_PRED_PROB_THRESH) &
             (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
             (wide_df['quality_prediction'].isin(selected_quality_idx)) &
             (wide_df['canonical_prediction'].isin(selected_canonical_idx)) &
@@ -127,7 +129,9 @@ def main(
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
         wide_df_selected.loc[wide_df_selected[olabel].isna(), olabel] = -1
+    # working_ids = wide_df_selected['sample_id'].values.tolist()
     working_ids = wide_df_selected['sample_id'].values.tolist()
+    working_mrns = wide_df_selected['MRN'].values.tolist()
 
     # Read splits and partition dataset
     with open(splits_file, 'r') as json_file:
@@ -159,13 +163,16 @@ def main(
 
     # Testing a random subset of IDs (for speed) to see if there are matching ids in working_ids and chosen split
     random_ids_for_test = np.random.permutation(len(working_ids))[:min(len(working_ids), 500)]
-    working_ids_subset_test = [working_ids[i] for i in random_ids_for_test]
-    inference_ids_match_test = [t for t in working_ids_subset_test if int(t.split('_')[0]) in patient_inference]
+    # working_ids_subset_test = [working_ids[i] for i in random_ids_for_test]
+    # inference_ids_match_test = [t for t in working_ids_subset_test if int(t.split('_')[0]) in patient_inference]
+    working_ids_subset_test = [(working_ids[i], working_mrns[i]) for i in random_ids_for_test]
+    inference_ids_match_test = [t[0] for t in working_ids_subset_test if int(t[1]) in patient_inference]
     if len(inference_ids_match_test) == 0:
         logging.warning(
             f'A random test of indices showed no match between {wide_file} indices and {splits_file} indices. It is possible that there are still matches, but please verify file names. This process might take a long time to break if there are no matches, consider forcing it to stop.')
 
-    inference_ids = sorted([t for t in working_ids if int(t.split('_')[0]) in patient_inference])
+    # inference_ids = sorted([t for t in working_ids if int(t.split('_')[0]) in patient_inference])
+    inference_ids = sorted([t for t,m in zip(working_ids,working_mrns) if int(m) in patient_inference])
     if len(inference_ids) == 0:
         logging.error(f'No matches found between {wide_file} indices and the {splits_file} indices!')
         sys.exit()
