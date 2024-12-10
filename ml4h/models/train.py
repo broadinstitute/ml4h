@@ -2,6 +2,7 @@
 
 import os
 import logging
+from functools import partial
 from typing import List, Tuple, Iterable, Union
 
 import numpy as np
@@ -272,16 +273,17 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
 def train_diffusion_control_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = DiffusionController(
-        args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size,
-        args.dense_blocks, args.block_size, args.conv_x, args.dense_layers[0],
-        args.attention_window, args.attention_heads,
+        args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+        args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
+        args.sigmoid_beta,
     )
 
+    loss = keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error
     model.compile(
         optimizer=tfa.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
-        loss=keras.losses.mean_absolute_error,
+        loss=loss,
     )
     batch = next(generate_train)
     for k in batch[0]:
@@ -297,6 +299,7 @@ def train_diffusion_control_model(args):
         mode="min",
         save_best_only=True,
     )
+    callbacks = [checkpoint_callback]
 
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
@@ -326,6 +329,13 @@ def train_diffusion_control_model(args):
             layer_range=None,
             show_layer_activations=True,
         )
+        prefix_value = f'{args.output_folder}{args.id}/learning_generations/'
+        # Create a partial function with reseed and prefix pre-filled
+        if model.input_map.axes() == 2:
+            plot_partial = partial(model.plot_ecgs, reseed=args.random_seed, prefix=prefix_value)
+        else:
+            plot_partial = partial(model.plot_images, reseed=args.random_seed, prefix=prefix_value)
+        callbacks.append(keras.callbacks.LambdaCallback(on_epoch_end=plot_partial))
 
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
@@ -339,7 +349,7 @@ def train_diffusion_control_model(args):
         epochs=args.epochs,
         validation_data=generate_valid,
         validation_steps=args.validation_steps,
-        callbacks=[checkpoint_callback],
+        callbacks=callbacks,
     )
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     model.load_weights(checkpoint_path)

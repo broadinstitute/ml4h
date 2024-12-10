@@ -102,7 +102,53 @@ def up_block(width, block_depth, conv, upsample, kernel_size):
     return apply
 
 
-def get_control_network(input_shape, widths, block_depth, kernel_size, control_size, attention_start, attention_heads):
+def residual_block_control(width, conv, kernel_size, attention_heads):
+    def apply(x):
+        x, control = x
+        input_width = x.shape[-1]
+        if input_width == width:
+            residual = x
+        else:
+            residual = conv(width, kernel_size=1)(x)
+        x = layers.BatchNormalization(center=False, scale=False)(x)
+        x = conv(
+            width, kernel_size=kernel_size, padding="same", activation=keras.activations.swish
+        )(x)
+        x = keras.layers.MultiHeadAttention(num_heads = attention_heads, key_dim = width)(x, control)
+        x = conv(width, kernel_size=kernel_size, padding="same")(x)
+        x = layers.Add()([x, residual])
+        return x
+
+    return apply
+
+
+def down_block_control(width, block_depth, conv, pool, kernel_size, attention_heads):
+    def apply(x):
+        x, skips, control = x
+        for _ in range(block_depth):
+            x = residual_block_control(width, conv, kernel_size, attention_heads)([x, control])
+            skips.append(x)
+        x = pool(pool_size=2)(x)
+        return x
+
+    return apply
+
+
+def up_block_control(width, block_depth, conv, upsample, kernel_size, attention_heads):
+    def apply(x):
+        x, skips, control = x
+        # x = upsample(size=2, interpolation="bilinear")(x)
+        x = upsample(size=2)(x)
+        for _ in range(block_depth):
+            x = layers.Concatenate()([x, skips.pop()])
+            x = residual_block_control(width, conv, kernel_size, attention_heads)([x, control])
+        return x
+
+    return apply
+
+
+def get_control_network(input_shape, widths, block_depth, kernel_size, control_size,
+                        attention_start, attention_heads, attention_modulo):
     noisy_images = keras.Input(shape=input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
 
@@ -124,34 +170,35 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
     x = layers.Concatenate()([x, e])
 
     skips = []
-    for width in widths[:-1]:
-        if x.shape[1] < attention_start:
+    for i, width in enumerate(widths[:-1]):
+        if (i + 1) % attention_modulo == 0:
             if len(input_shape) > 2:
                 c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
             else:
                 c2 = upsample(size=x.shape[-2])(control[control_idxs])
-            x = keras.layers.MultiHeadAttention(num_heads=attention_heads, key_dim=width)(x, c2)
-        x = down_block(width, block_depth, conv, pool, kernel_size)([x, skips])
+            x = down_block_control(width, block_depth, conv, pool, kernel_size, attention_heads)([x, skips, c2])
+        else:
+            x = down_block(width, block_depth, conv, pool, kernel_size)([x, skips])
 
     if len(input_shape) > 2:
         c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
     else:
         c2 = upsample(size=x.shape[-2])(control[control_idxs])
 
-    for _ in range(block_depth):
-        x = keras.layers.MultiHeadAttention(num_heads=attention_heads, key_dim=widths[-1])(x, c2)
-        x = residual_block(widths[-1], conv, kernel_size)(x)
+    for i in range(block_depth):
+        x = residual_block_control(widths[-1], conv, kernel_size, attention_heads)([x, c2])
 
-    for width in reversed(widths[:-1]):
-        if x.shape[1] < attention_start:
+    for i, width in enumerate(reversed(widths[:-1])):
+        if i % attention_modulo == 0:
             if len(input_shape) > 2:
                 c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
             else:
                 c2 = upsample(size=x.shape[-2])(control[control_idxs])
-            x = keras.layers.MultiHeadAttention(num_heads=attention_heads, key_dim=width)(x, c2)
-        x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
+            x = up_block_control(width, block_depth, conv, upsample, kernel_size, attention_heads)([x, skips, c2])
+        else:
+            x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
-    x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
+    x = conv(input_shape[-1], kernel_size=1, activation="linear", kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances, control], x, name="control_unet")
 
@@ -169,7 +216,7 @@ def get_control_embed_model(output_maps, control_size):
 class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
-        attention_start, attention_heads,
+        attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta
     ):
         super().__init__()
 
@@ -178,11 +225,11 @@ class DiffusionController(keras.Model):
         self.output_maps = output_maps
         self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
-        self.network = get_control_network(
-            self.input_map.shape, widths, block_depth, conv_x, control_size,
-            attention_start, attention_heads,
-        )
+        self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size,
+                                           attention_start, attention_heads, attention_modulo)
         self.ema_network = keras.models.clone_model(self.network)
+        self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
+        self.beta = sigmoid_beta
 
 
     def compile(self, **kwargs):
@@ -306,6 +353,14 @@ class DiffusionController(keras.Model):
 
             noise_loss = self.loss(noises, pred_noises)  # used for training
             image_loss = self.loss(images, pred_images)  # only used as metric
+            if self.use_sigmoid_loss:
+                signal_rates_squared = tf.square(signal_rates)
+                noise_rates_squared = tf.square(noise_rates)
+
+                # Compute log-SNR (lambda_t)
+                lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
+                weight = tf.math.sigmoid(self.beta - lambda_t)
+                noise_loss = weight * noise_loss
 
         gradients = tape.gradient(noise_loss, self.network.trainable_weights)
         self.optimizer.apply_gradients(zip(gradients, self.network.trainable_weights))
@@ -562,7 +617,7 @@ class DiffusionController(keras.Model):
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'diffusion_ecg_generations_{now_string}{IMAGE_EXT}')
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
