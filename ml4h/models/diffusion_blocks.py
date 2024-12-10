@@ -451,20 +451,21 @@ class DiffusionController(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
-    def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, prefix='./figures/'):
+    def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         control_batch = {}
         for cm in self.output_maps:
             control_batch[cm.output_name()] = np.zeros((max(self.batch_size, num_rows * num_cols),) + cm.shape)
             if 'Sex' in cm.name:
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
-        logging.info(f'\nControl batch keys: {list(control_batch.keys())}')
+        print(f'\nControl batch keys: {list(control_batch.keys())}')
         control_embed = self.control_embed_model(control_batch)
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
             num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
+            reseed=reseed,
         )
         plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
         for row in range(num_rows):
