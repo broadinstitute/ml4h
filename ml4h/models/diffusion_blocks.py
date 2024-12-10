@@ -171,7 +171,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
 
     skips = []
     for i, width in enumerate(widths[:-1]):
-        if (i + 1) % attention_modulo == 0:
+        if attention_modulo > 1 and (i + 1) % attention_modulo == 0:
             if len(input_shape) > 2:
                 c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
             else:
@@ -189,7 +189,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
         x = residual_block_control(widths[-1], conv, kernel_size, attention_heads)([x, c2])
 
     for i, width in enumerate(reversed(widths[:-1])):
-        if i % attention_modulo == 0:
+        if attention_modulo > 1 and i % attention_modulo == 0:
             if len(input_shape) > 2:
                 c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
             else:
