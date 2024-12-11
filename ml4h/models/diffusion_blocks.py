@@ -209,7 +209,7 @@ def get_control_embed_model(output_maps, control_size):
     for cm in output_maps:
         control_ins.append(keras.Input(shape=cm.shape, name=cm.output_name()))
     c = layers.Concatenate()(control_ins)
-    c = layers.Dense(control_size, activation='linear')(c)
+    #c = layers.Dense(control_size, activation='linear')(c)
     return keras.Model(control_ins, c, name='control_embed')
 
 
