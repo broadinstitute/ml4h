@@ -110,11 +110,12 @@ def residual_block_control(width, conv, kernel_size, attention_heads):
             residual = x
         else:
             residual = conv(width, kernel_size=1)(x)
+        x = keras.layers.MultiHeadAttention(num_heads=attention_heads, key_dim=width)(x, control)
         x = layers.BatchNormalization(center=False, scale=False)(x)
         x = conv(
             width, kernel_size=kernel_size, padding="same", activation=keras.activations.swish
         )(x)
-        x = keras.layers.MultiHeadAttention(num_heads = attention_heads, key_dim = width)(x, control)
+
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
         x = layers.Add()([x, residual])
         return x
