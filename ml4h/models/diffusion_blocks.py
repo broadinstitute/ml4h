@@ -32,7 +32,7 @@ learning_rate = 5e-4
 weight_decay = 1e-4
 
 # plotting
-plot_diffusion_steps = 20
+plot_diffusion_steps = 50
 
 
 def sinusoidal_embedding(x, dims=1):
