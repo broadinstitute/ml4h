@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 # from official.common import flags as tfm_flags
-#from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
+from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
 
 learning_rate = 0.0001
 hidden_units = 256
@@ -90,8 +90,8 @@ def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_outpu
 # ---------- Adaptation for regression + classification ---------- #
 def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 3), n_output_features=0, categories={},
                                 category_order=None, add_dense={'regressor': False, 'classifier': False}):
-#     for layer in encoder.layers:
-#         layer.trainable = trainable
+    for layer in encoder.layers:
+        layer.trainable = trainable
 
     inputs = tf.keras.Input(shape=input_shape, name='image')
     features = encoder(inputs)
