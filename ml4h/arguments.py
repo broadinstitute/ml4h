@@ -233,6 +233,10 @@ def parse_args():
              '2 means every other residual block, 3 would mean every third.',
     )
     parser.add_argument(
+        '--diffusion_condition_strategy', default='concat', choices=['cross_attention', 'concat', 'film'],
+        help='For diffusion models, this controls conditional embeddings are integrated into the U-NET',
+    )
+    parser.add_argument(
         '--diffusion_loss', default='sigmoid',
         help='Loss function to use for diffusion models. Can be sigmoid, mean_absolute_error, or mean_squared_error',
     )
