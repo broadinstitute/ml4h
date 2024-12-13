@@ -123,7 +123,7 @@ def residual_block_control(width, conv, kernel_size, attention_heads, condition_
             residual = x
         else:
             residual = conv(width, kernel_size=1)(x)
-            
+
         if 'cross_attention' == condition_strategy:
             x = layers.MultiHeadAttention(num_heads=attention_heads, key_dim=width)(x, control)
         elif 'concat' == condition_strategy:
