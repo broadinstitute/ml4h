@@ -65,12 +65,12 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
 
     return model
 
-def rescale_droid_rv_outputs(droid_rv_output);
+def rescale_droid_rv_outputs(droid_rv_output):
     droid_rv_output[0][0] =  droid_rv_output[0][0] * 15.51761856 + 64.43979878
     droid_rv_output[0][1] =  droid_rv_output[0][1] * 6.88963822 + 42.52320993
 
 
-def rescale_droid_rvef_outputs(droid_rvef_output);
+def rescale_droid_rvef_outputs(droid_rvef_output):
     droid_rvef_output[0][0] =  droid_rvef_output[0][0] * 8.658711 + 53.40699
     droid_rvef_output[0][1] =  droid_rvef_output[0][1] * 46.5734 + 130.8913
     droid_rvef_output[0][2] =  droid_rvef_output[0][2] * 31.6643 + 62.87321
