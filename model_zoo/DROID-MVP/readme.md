@@ -1,19 +1,26 @@
-# DROID-MVP
+# DROID-MVP Inference Example
 
-1. Download docker image and pull github repo, including model checkpoints
+This is a simple example script demonstrated how to load and run the DROID-MVP model. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code.
 
-`docker pull`
+1. Download DROID docker image. Note: docker image is not compatible with Apple Silicon.
 
-`github clone`
+`docker pull alalusim/droid:latest`
 
-`git lfs pull`
+2.  Pull github repo, including DROID-MVP model checkpoints stored using git lfs.
 
-2. Run docker container while mounting git folder
+```
+github clone https://github.com/broadinstitute/ml4h.git
+git lfs pull --include ml4h/model_zoo/DROID-MVP/droid_mvp_checkpoint/*
+git lfs pull --include ml4h/model_zoo/DROID-MVP/movinet_a2_base/*
+```
 
-`docker run -it -v XXX:XXX droid:latest`
+3. Run docker image while mounting ml4h directory and run example inference script.
 
-3. Run example inference script
+`docker run -it -v {PATH TO CLONED ML4H DIRECTORY}:/ml4h/ alalusim/droid:latest`
 
-`python droid_inference.py`
+```
+cd /ml4h/model_zoo/DROID-MVP/
+python droid_mvp_inference.py
+```
 
-To use with your own data, format at 
+To use with your own data, format echocardiogram videos as tensors with shape (16, 224, 224, 3) before passing to the model. Code for data preprocessing, storage, loading, training, and inference can be found in the ml4h [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID).
