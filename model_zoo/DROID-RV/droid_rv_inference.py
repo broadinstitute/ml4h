@@ -31,9 +31,9 @@ droid_rv_func_args = {
 
 droid_rvef_func_args = {
     'input_shape': (16, 224, 224, 3),
-    'n_output_features': 0, # number of regression features
-    'categories': {"RV_size":2, "RV_function":2, "Sex":2},
-    'category_order': ["RV_size", "RV_function", "Sex"],
+    'n_output_features': 4, # number of regression features
+    'categories': {"Sex":2},
+    'category_order': ["Sex"],
 }
 
 droid_rv_model = create_regressor_classifier(encoder, **droid_rv_func_args)
