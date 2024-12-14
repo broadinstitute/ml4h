@@ -29,21 +29,17 @@ To use with your own data, format echocardiogram videos as tensors with shape (1
 Model outputs for DROID-RV take the form: 
 ```
 [
-    "Age", 
-    "RVEDD", 
-    {"RV Size": {"Dilated", "Not Dilated"}, 
-    "RV Systolic Function": {"Hypokinetic", "Not Hypokinetic"}, 
-    "Sex": {"Female", "Male"}
+    ["Age", "RVEDD"], 
+    ["Dilated", "Not Dilated"], 
+    ["Hypokinetic", "Not Hypokinetic"], 
+    ["Female", "Male"]
 ]
 ```
 
 Model outputs for DROID-RVEF take the form: 
 ```
 [
-    "RVEF", 
-    "RV End-Diastolic Volume,
-    "RV End-Systolic Volume",
-    "Age",
-    "Sex": {"Female", "Male"}
+    ["RVEF", "RV End-Diastolic Volume, "RV End-Systolic Volume", "Age"],
+    ["Female", "Male"]
 ]
 ```

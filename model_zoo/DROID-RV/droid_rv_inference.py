@@ -3,7 +3,7 @@
 
 import numpy as np
 import tensorflow as tf
-from droid_rv_model_description import create_movinet_classifier, create_regressor_classifier
+from droid_rv_model_description import create_movinet_classifier, create_regressor_classifier, rescale_droid_rv_outputs, rescale_droid_rvef_outputs
 import logging 
 tf.get_logger().setLevel(logging.ERROR)
 
@@ -44,12 +44,15 @@ droid_rvef_model.load_weights(droid_rvef_checkpoint)
 
 random_video = np.random.random((1, 16, 224, 224, 3))
 
+droid_rv_pred = droid_rv_model.predict(random_video)
+droid_rvef_pred = droid_rvef_model.predict(random_video)
+
 print(f"""
 
 DROID-RV Predictions:
-{droid_rv_model.predict(random_video)}
+{rescale_droid_rv_outputs(droid_rv_pred)}
 
 DROID-RVEF Predictions:
-{droid_rvef_model.predict(random_video)}
+{rescale_droid_rvef_outputs(droid_rvef_pred)}
 
 """)

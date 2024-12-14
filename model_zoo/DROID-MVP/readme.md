@@ -28,8 +28,8 @@ To use with your own data, format echocardiogram videos as tensors with shape (1
 Model outputs for DROID-MVP take the form: 
 ```
 [
-    {"MVP Status": {"MVP", "Not MVP"}, 
-    "Detailed MVP Status": {"Anterior ", "Bileaflet", "Not MVP", "Posterior", "Superior Displacement", "MVP not otherwise specified"}, 
+    ["MVP", "Not MVP"], 
+    ["Anterior ", "Bileaflet", "Not MVP", "Posterior", "Superior Displacement", "MVP not otherwise specified"], 
 ]
 ```
 

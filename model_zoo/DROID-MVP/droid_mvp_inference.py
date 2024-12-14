@@ -33,4 +33,8 @@ model_plus_head = create_regressor_classifier(encoder, **func_args)
 model_plus_head.load_weights(pretrained_chkp_dir)
 
 random_video = np.random.random((1, 16, 224, 224, 3))
-print(model_plus_head.predict(random_video))
+
+print(f"""
+DROID-MVP Predictions:
+{model_plus_head.predict(random_video)}
+""")
