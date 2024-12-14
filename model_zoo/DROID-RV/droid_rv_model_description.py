@@ -68,7 +68,7 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
 def rescale_droid_rv_outputs(droid_rv_output):
     droid_rv_output[0][0,0] =  droid_rv_output[0][0,0] * 15.51761856 + 64.43979878
     droid_rv_output[0][0,1] =  droid_rv_output[0][0,1] * 6.88963822 + 42.52320993
-
+    return droid_rv_output
 
 def rescale_droid_rvef_outputs(droid_rvef_output):
     droid_rvef_output[0][0,0] =  droid_rvef_output[0][0,0] * 8.658711 + 53.40699
