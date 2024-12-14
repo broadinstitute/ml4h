@@ -36,10 +36,10 @@ droid_rvef_func_args = {
     'category_order': ["RV_size", "RV_function", "Sex"],
 }
 
-droid_rv_model = create_regressor_classifier(encoder, **func_args)
+droid_rv_model = create_regressor_classifier(encoder, **droid_rv_func_args)
 droid_rv_model.load_weights(droid_rv_checkpoint)
 
-droid_rvef_model = create_regressor_classifier(encoder, **func_args)
+droid_rvef_model = create_regressor_classifier(encoder, **droid_rvef_func_args)
 droid_rvef_model.load_weights(droid_rvef_checkpoint)
 
 random_video = np.random.random((1, 16, 224, 224, 3))
