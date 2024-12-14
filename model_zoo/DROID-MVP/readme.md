@@ -24,3 +24,13 @@ python droid_mvp_inference.py
 ```
 
 To use with your own data, format echocardiogram videos as tensors with shape (16, 224, 224, 3) before passing to the model. Code for data preprocessing, storage, loading, training, and inference can be found in the ml4h [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID).
+
+Model outputs for DROID-MVP take the form: 
+```
+[
+    {"MVP Status": {"MVP", "Not MVP"}, 
+    "Detailed MVP Status": {"Anterior ", "Bileaflet", "Not MVP", "Posterior", "Superior Displacement", "MVP not otherwise specified"}, 
+]
+```
+
+Note that the model was optimized for predicting binary MVP status (the primary task) and that detailed MVP status was used as an auxiliary task to improve performance on the primary classification task.

@@ -14,3 +14,12 @@ model_zoo/DROID-MVP/movinet_a2_base/checkpoint filter=lfs diff=lfs merge=lfs -te
 model_zoo/DROID-MVP/droid_mvp_checkpoint/checkpoint filter=lfs diff=lfs merge=lfs -text
 model_zoo/DROID-MVP/droid_mvp_checkpoint/chkp.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
 model_zoo/DROID-MVP/droid_mvp_checkpoint/chkp.index filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/droid_rv_checkpoint/checkpoint filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/droid_rv_checkpoint/chkp.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/droid_rv_checkpoint/chkp.index filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/droid_rvef_checkpoint/checkpoint filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/droid_rvef_checkpoint/chkp.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/droid_rvef_checkpoint/chkp.index filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/movinet_a2_base/checkpoint filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/movinet_a2_base/ckpt-1.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/movinet_a2_base/ckpt-1.index filter=lfs diff=lfs merge=lfs -text
