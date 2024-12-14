@@ -3,7 +3,7 @@
 
 import numpy as np
 import tensorflow as tf
-from droid_mvp_model_description import create_movinet_classifier, create_regressor_classifier
+from droid_rv_model_description import create_movinet_classifier, create_regressor_classifier
 import logging 
 tf.get_logger().setLevel(logging.ERROR)
 
