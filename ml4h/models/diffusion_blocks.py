@@ -157,11 +157,12 @@ def up_block_control(width, block_depth, conv, upsample, kernel_size, attention_
     def apply(x):
         x, skips, control = x
         # x = upsample(size=2, interpolation="bilinear")(x)
-        x = upsample(size=2)(x)
-        control = upsample(size=2)(control)
+
+        #control = upsample(size=2)(control)
         for _ in range(block_depth):
             x = layers.Concatenate()([x, skips.pop()])
             x = residual_block_control(width, conv, kernel_size, attention_heads, condition_strategy)([x, control])
+        x = upsample(size=2)(x)
         return x
 
     return apply
