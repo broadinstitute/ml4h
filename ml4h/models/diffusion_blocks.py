@@ -106,12 +106,12 @@ def condition_layer_film(input_tensor, control_vector, filters):
     beta = layers.Dense(filters, activation="linear")(control_vector)
 
     # Reshape gamma and beta to match the spatial dimensions
-    if 4 == len(input_tensor.shape):
-        gamma = tf.reshape(gamma, (-1, 1, 1, filters))
-        beta = tf.reshape(beta, (-1, 1, 1, filters))
-    elif 3 == len(input_tensor.shape):
-        gamma = tf.reshape(gamma, (-1, 1, filters))
-        beta = tf.reshape(beta, (-1, 1, filters))
+    # if 4 == len(input_tensor.shape):
+    #     gamma = tf.reshape(gamma, (-1, 1, 1, filters))
+    #     beta = tf.reshape(beta, (-1, 1, 1, filters))
+    # elif 3 == len(input_tensor.shape):
+    #     gamma = tf.reshape(gamma, (-1, 1, filters))
+    #     beta = tf.reshape(beta, (-1, 1, filters))
     # Apply FiLM (Feature-wise Linear Modulation)
     return input_tensor * gamma + beta
 
@@ -194,9 +194,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
     skips = []
     for i, width in enumerate(widths[:-1]):
         if attention_modulo > 1 and (i + 1) % attention_modulo == 0:
-            if condition_strategy == 'film':
-                c2 = control
-            elif len(input_shape) > 2:
+            if len(input_shape) > 2:
                 c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
             else:
                 c2 = upsample(size=x.shape[-2])(control[control_idxs])
@@ -205,9 +203,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
         else:
             x = down_block(width, block_depth, conv, pool, kernel_size)([x, skips])
 
-    if condition_strategy == 'film':
-        c2 = control
-    elif len(input_shape) > 2:
+    if len(input_shape) > 2:
         c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
     else:
         c2 = upsample(size=x.shape[-2])(control[control_idxs])
@@ -217,9 +213,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
 
     for i, width in enumerate(reversed(widths[:-1])):
         if attention_modulo > 1 and i % attention_modulo == 0:
-            if condition_strategy == 'film':
-                c2 = control
-            elif len(input_shape) > 2:
+            if len(input_shape) > 2:
                 c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
             else:
                 c2 = upsample(size=x.shape[-2])(control[control_idxs])
