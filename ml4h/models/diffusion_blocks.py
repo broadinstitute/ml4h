@@ -106,8 +106,8 @@ def condition_layer_film(input_tensor, control_vector, filters):
     beta = layers.Dense(filters, activation="linear")(control_vector)
 
     # Reshape gamma and beta to match the spatial dimensions
-    gamma = tf.reshape(gamma, (-1,) + input_tensor.shape[1:-1] + (filters,))
-    beta = tf.reshape(beta, (-1,) + input_tensor.shape[1:-1] + (filters,))
+    #gamma = tf.reshape(gamma, (-1,) + input_tensor.shape[1:-1] + (filters,))
+    #beta = tf.reshape(beta, (-1,) + input_tensor.shape[1:-1] + (filters,))
     # Apply FiLM (Feature-wise Linear Modulation)
     return input_tensor * gamma + beta
 
