@@ -43,10 +43,9 @@ droid_rvef_model = create_regressor_classifier(encoder, **droid_rvef_func_args)
 droid_rvef_model.load_weights(droid_rvef_checkpoint)
 
 random_video = np.random.random((1, 16, 224, 224, 3))
-vid = np.load('vid.npy')
 
-droid_rv_pred = droid_rv_model.predict(vid)
-droid_rvef_pred = droid_rvef_model.predict(vid)
+droid_rv_pred = droid_rv_model.predict(random_video)
+droid_rvef_pred = droid_rvef_model.predict(random_video)
 
 print(f"""
 
