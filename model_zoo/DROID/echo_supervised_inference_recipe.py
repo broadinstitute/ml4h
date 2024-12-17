@@ -210,7 +210,6 @@ def main(
         save_df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq'))
 
     if extract_embeddings:
-        #embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
         embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
         df = pd.DataFrame()
         df['sample_id'] = inference_ids_split
