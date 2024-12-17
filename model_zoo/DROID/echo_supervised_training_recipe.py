@@ -143,8 +143,11 @@ def main(
     mvp_working_ids = wide_df_selected[wide_df_selected['mvp_label_1_0'] == 'mvp']['sample_id'].values.tolist()
     normal_working_ids = wide_df_selected[wide_df_selected['mvp_label_1_0'] == 'not_mvp']['sample_id'].values.tolist()
 
+<<<<<<< HEAD
     wide_df_selected.to_parquet(f'/data/ewok/alalusim/echo_mvp/wide_df_selected_2024_06_25.pq')
 
+=======
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
     # Read splits and partition dataset
     with open(splits_file, 'r') as json_file:
         splits = json.load(json_file)
@@ -284,8 +287,14 @@ def main(
             ),
             output_signature=output_signatures,
             args=(sample_ids,)
+<<<<<<< HEAD
         )
     ).repeat(epochs).prefetch(8)
+=======
+        ),
+	num_parallel_calls=tf.data.AUTOTUNE
+    ).repeat(epochs).prefetch(tf.data.AUTOTUNE)
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
 
     io_valid_ds = body_valid_ids.interleave(
         lambda sample_ids: tf.data.Dataset.from_generator(
@@ -295,8 +304,14 @@ def main(
             ),
             output_signature=output_signatures,
             args=(sample_ids,)
+<<<<<<< HEAD
         )
     ).repeat(epochs).prefetch(8)
+=======
+        ),
+	num_parallel_calls=tf.data.AUTOTUNE
+    ).repeat(epochs).prefetch(tf.data.AUTOTUNE)
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():

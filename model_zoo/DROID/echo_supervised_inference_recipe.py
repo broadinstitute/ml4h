@@ -12,8 +12,13 @@ from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from echo_defines import category_dictionaries
 from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor, create_regressor_classifier
 
+<<<<<<< HEAD
 # import wandb
 # from wandb.integration.keras import WandbMetricsLogger
+=======
+import wandb
+from wandb.integration.keras import WandbMetricsLogger
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
@@ -99,8 +104,13 @@ def main(
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
         ]
+<<<<<<< HEAD
     wide_df_selected.to_csv(f'/data/ewok/alalusim/echo_mvp/wide_df_selected_2024_07_11.csv')
 
+=======
+    wide_df_selected.to_csv(f'/home/wide_df_selected.csv')
+    
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
         wide_df_selected.loc[wide_df_selected[olabel].isna(), olabel] = -1
@@ -214,6 +224,7 @@ def main(
 
         save_df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq'))
 
+<<<<<<< HEAD
     # run = wandb.init(
     #     project = "echo_mvp"
     # )
@@ -221,6 +232,14 @@ def main(
     if extract_embeddings:
         #embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
         embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
+=======
+    run = wandb.init(
+        project = "echo_mvp"
+    )
+
+    if extract_embeddings:
+        embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
         df = pd.DataFrame()
         df['sample_id'] = inference_ids_split
         for j, _ in enumerate(range(embeddings.shape[1])):
@@ -228,8 +247,12 @@ def main(
 
         df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
     else:
+<<<<<<< HEAD
         #predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
         predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
+=======
+        predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1, callbacks=[WandbMetricsLogger(log_freq=10)])
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
         # predictions is a list of length = number of outputs in list, where all regression variables are in a single
         # list element and each classification task has a separate list element.
         # Each list element is of size:
@@ -264,7 +287,11 @@ def main(
         else:
             # Case: regression only
             save_model_pred_as_df(predictions)
+<<<<<<< HEAD
     #run.finish()
+=======
+    run.finish()
+>>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
 
 if __name__ == "__main__":
 
