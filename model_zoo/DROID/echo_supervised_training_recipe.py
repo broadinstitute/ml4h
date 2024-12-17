@@ -150,7 +150,9 @@ def main(
         patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
         patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
 
+    train_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_train]
     valid_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_valid]
+    print(f"train_ids: {len(train_ids)}") 
     print(f"valid_ids: {len(valid_ids)}") 
 
     # If scale_outputs, normalize by summary stats of training set
