@@ -18,7 +18,6 @@ tf.get_logger().setLevel(logging.ERROR)
 
 USER = os.getenv('USER')
 
-
 def main(
         n_input_frames,
         output_labels,
@@ -46,7 +45,6 @@ def main(
         add_separate_dense_reg,
         add_separate_dense_cls,
         loss_weights,
-        sampling_ratio,
         randomize_start_frame
 ):
     lmdb_vois = '_'.join(selected_views)
@@ -140,14 +138,7 @@ def main(
     # Drop entries without echolab measurements and get all sample_ids
     wide_df_selected = wide_df_selected.dropna(subset=output_labels)
     working_ids = wide_df_selected['sample_id'].values.tolist()
-    mvp_working_ids = wide_df_selected[wide_df_selected['mvp_label_1_0'] == 'mvp']['sample_id'].values.tolist()
-    normal_working_ids = wide_df_selected[wide_df_selected['mvp_label_1_0'] == 'not_mvp']['sample_id'].values.tolist()
 
-<<<<<<< HEAD
-    wide_df_selected.to_parquet(f'/data/ewok/alalusim/echo_mvp/wide_df_selected_2024_06_25.pq')
-
-=======
->>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
     # Read splits and partition dataset
     with open(splits_file, 'r') as json_file:
         splits = json.load(json_file)
@@ -159,11 +150,7 @@ def main(
         patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
         patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
 
-    mvp_train_ids = [t for t in mvp_working_ids if int(t.split('_')[0]) in patient_train]
-    normal_train_ids = [t for t in normal_working_ids if int(t.split('_')[0]) in patient_train]
     valid_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_valid]
-    print(f"mvp_train_ids: {len(mvp_train_ids)}")
-    print(f"normal_train_ids: {len(normal_train_ids)}")
     print(f"valid_ids: {len(valid_ids)}") 
 
     # If scale_outputs, normalize by summary stats of training set
@@ -181,11 +168,7 @@ def main(
         logging.info(mean_outputs)
         logging.info(std_outputs)
 
-    mvp_train_ids = list(set(mvp_train_ids).intersection(set(mvp_working_ids)))
-    normal_train_ids = list(set(normal_train_ids).intersection(set(normal_working_ids)))
     valid_ids = list(set(valid_ids).intersection(set(working_ids)))
-    print(f"mvp_train_ids: {len(mvp_train_ids)}")
-    print(f"normal_train_ids: {len(normal_train_ids)}")
     print(f"valid_ids: {len(valid_ids)}") 
 
     # ---------- Adaptation for regression + classification ---------- #
@@ -239,14 +222,7 @@ def main(
         # ---------------------------------------------------------------- #
     )
 
-    n_cases = len(mvp_train_ids)
-    print(f"n_cases: {n_cases}")
-    mvp_body_train_ids = tf.data.Dataset.from_tensor_slices(mvp_train_ids).shuffle(n_cases, reshuffle_each_iteration=True)
-    print(f"mvp_body_train_ids: {len(mvp_body_train_ids)}")
-    normal_body_train_ids = tf.data.Dataset.from_tensor_slices(normal_train_ids).shuffle(len(normal_train_ids), reshuffle_each_iteration=True).take(n_cases * sampling_ratio)
-    print(f"normal_body_train_ids: {len(normal_body_train_ids)}")
-
-    body_train_ids = mvp_body_train_ids.concatenate(normal_body_train_ids).shuffle(n_cases * (sampling_ratio + 1),
+    body_train_ids = tf.data.Dataset.from_tensor_slices(working_ids).shuffle(len(working_ids),
                                                                            reshuffle_each_iteration=True).batch(
         batch_size, drop_remainder=True)
     print(f"body_train_ids: {len(body_train_ids)}")
@@ -256,7 +232,7 @@ def main(
         batch_size, drop_remainder=True)
     print(f"body_valid_ids: {len(body_valid_ids)}")
 
-    n_train_steps = (n_cases * (sampling_ratio + 1)) // batch_size
+    n_train_steps = len(working_ids) // batch_size
     n_valid_steps = len(valid_ids) // batch_size
     print(f"n_train_steps: {n_train_steps}")
     print(f"n_valid_steps: {n_valid_steps}")
@@ -287,14 +263,9 @@ def main(
             ),
             output_signature=output_signatures,
             args=(sample_ids,)
-<<<<<<< HEAD
-        )
-    ).repeat(epochs).prefetch(8)
-=======
         ),
 	num_parallel_calls=tf.data.AUTOTUNE
     ).repeat(epochs).prefetch(tf.data.AUTOTUNE)
->>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
 
     io_valid_ds = body_valid_ids.interleave(
         lambda sample_ids: tf.data.Dataset.from_generator(
@@ -304,14 +275,9 @@ def main(
             ),
             output_signature=output_signatures,
             args=(sample_ids,)
-<<<<<<< HEAD
-        )
-    ).repeat(epochs).prefetch(8)
-=======
         ),
 	num_parallel_calls=tf.data.AUTOTUNE
     ).repeat(epochs).prefetch(tf.data.AUTOTUNE)
->>>>>>> 8c6470bd95b34eafb9c4ebaedd96c26680ca815b
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
