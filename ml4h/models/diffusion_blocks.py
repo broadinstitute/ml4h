@@ -374,8 +374,10 @@ class DiffusionModel(keras.Model):
 
         return pred_images
 
-    def generate(self, num_images, diffusion_steps):
+    def generate(self, num_images, diffusion_steps, reseed=None):
         # noise -> images -> denormalized images
+        if reseed is not None:
+            tf.random.set_seed(reseed)
         initial_noise = tf.random.normal(shape=(num_images,) + self.tensor_map.shape)
         generated_images = self.reverse_diffusion(initial_noise, diffusion_steps)
         generated_images = self.denormalize(generated_images)
@@ -474,11 +476,12 @@ class DiffusionModel(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
-    def plot_images(self, epoch=None, logs=None, num_rows=3, num_cols=6, prefix='./figures/'):
+    def plot_images(self, epoch=None, logs=None, num_rows=3, num_cols=6, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             num_images=num_rows * num_cols,
             diffusion_steps=plot_diffusion_steps,
+            reseed=reseed,
         )
 
         plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
@@ -497,12 +500,14 @@ class DiffusionModel(keras.Model):
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
+        plt.close()
 
     def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             num_images=max(self.batch_size, num_rows * num_cols),
             diffusion_steps=plot_diffusion_steps,
+            reseed=reseed,
         )
 
         plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
@@ -518,6 +523,7 @@ class DiffusionModel(keras.Model):
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
+        plt.close()
 
     def plot_reconstructions(
         self, images_original, diffusion_amount=0,

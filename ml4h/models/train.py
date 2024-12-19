@@ -124,6 +124,11 @@ def train_diffusion_model(args):
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
     checkpoint_path = f"{args.output_folder}{args.id}/{args.id}"
+    if os.path.exists(checkpoint_path+'.index'):
+        model.load_weights(checkpoint_path)
+        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+    else:
+        logging.info(f'No checkpoint at: {checkpoint_path}')
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=True,
@@ -132,8 +137,11 @@ def train_diffusion_model(args):
         save_best_only=True,
     )
 
+    callbacks = [checkpoint_callback]
+
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
+
     if args.inspect_model:
         model.network.summary(print_fn=logging.info, expand_nested=True)
         tf.keras.utils.plot_model(
@@ -148,12 +156,12 @@ def train_diffusion_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
-
-    if os.path.exists(checkpoint_path+'.index'):
-        model.load_weights(checkpoint_path)
-        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
-    else:
-        logging.info(f'No checkpoint at: {checkpoint_path}')
+        prefix_value = f'{args.output_folder}{args.id}/learning_generations/'
+        if model.tensor_map.axes() == 2:
+            plot_partial = partial(model.plot_ecgs, reseed=args.random_seed, prefix=prefix_value)
+        else:
+            plot_partial = partial(model.plot_images, reseed=args.random_seed, prefix=prefix_value)
+        callbacks.append(keras.callbacks.LambdaCallback(on_epoch_end=plot_partial))
 
     history = model.fit(
         generate_train,
@@ -161,7 +169,7 @@ def train_diffusion_model(args):
         epochs=args.epochs,
         validation_data=generate_valid,
         validation_steps=args.validation_steps,
-        callbacks=[checkpoint_callback],
+        callbacks=callbacks,
     )
     model.load_weights(checkpoint_path)
     #diffusion_model.compile(optimizer='adam', loss='mse')
