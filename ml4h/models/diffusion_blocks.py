@@ -476,7 +476,7 @@ class DiffusionModel(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
-    def plot_images(self, epoch=None, logs=None, num_rows=3, num_cols=6, reseed=None, prefix='./figures/'):
+    def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             num_images=num_rows * num_cols,
@@ -502,7 +502,7 @@ class DiffusionModel(keras.Model):
         plt.savefig(figure_path, bbox_inches="tight")
         plt.close()
 
-    def plot_ecgs(self, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None, prefix='./figures/'):
+    def plot_ecgs(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             num_images=max(self.batch_size, num_rows * num_cols),
@@ -515,8 +515,10 @@ class DiffusionModel(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.plot(generated_images[index, ..., 0])
+                for lead in range(generated_images.shape[-1]):
+                    plt.plot(generated_images[index, :, lead], label=lead)
                 plt.axis("off")
+                
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
         figure_path = os.path.join(prefix, f'diffusion_ecg_generations_{now_string}{IMAGE_EXT}')
