@@ -518,7 +518,7 @@ class DiffusionModel(keras.Model):
                 for lead in range(generated_images.shape[-1]):
                     plt.plot(generated_images[index, :, lead], label=lead)
                 plt.axis("off")
-                
+
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
         figure_path = os.path.join(prefix, f'diffusion_ecg_generations_{now_string}{IMAGE_EXT}')
