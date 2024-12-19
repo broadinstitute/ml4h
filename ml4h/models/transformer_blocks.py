@@ -35,14 +35,17 @@ class TransformerEncoder(Block):
             input_name=tensor_map.input_name(),
         )
 
+    # def can_apply(self):
+    #     return self.tensor_map.is_language()
     def can_apply(self):
-        return self.tensor_map.is_language()
+        return True
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
         padded = self.padding_mask_layer(x)
         y = self.encoder_layers(inputs=[x, padded])
+
         intermediates[self.tensor_map.dependent_map].extend([x, y])
         return y
 

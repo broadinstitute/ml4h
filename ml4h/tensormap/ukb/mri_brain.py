@@ -31,6 +31,14 @@ t1_mni_slice_80 = TensorMap(
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
 )
+t1_mni_slice_80_216 = TensorMap(
+    'axial_80',
+    shape=(216, 216, 1),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
+
 t1_slice_85 = TensorMap(
     'axial_85',
     shape=(216, 256, 1),
@@ -49,6 +57,13 @@ t1_slice_100 = TensorMap(
 t1_slice_100_224 = TensorMap(
     'axial_100',
     shape=(224, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=normalized_first_date,
+    normalization=ZeroMeanStd1(),
+)
+t1_slice_100_256 = TensorMap(
+    'axial_100',
+    shape=(256, 256, 1),
     path_prefix='ukb_brain_mri/T1/',
     tensor_from_file=normalized_first_date,
     normalization=ZeroMeanStd1(),
@@ -94,7 +109,27 @@ t1_slices_68_100 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
-
+t1_slices_32_64 = TensorMap(
+    't1_axial_32_64',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_slices_64_96 = TensorMap(
+    't1_axial_64_96',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t1_slices_96_128 = TensorMap(
+    't1_axial_96_128',
+    shape=(216, 256, 32),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 t1_mni_slices_16_48 = TensorMap(
     'axial_16_48',
     shape=(176, 216, 32),
@@ -159,6 +194,14 @@ t1_mni_slices_128_160 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
+
+t1_mni_slices_160_192 = TensorMap(
+    'axial_160_192',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
 t1_mni_slices_30_60 = TensorMap(
     'axial_30_60',
     shape=(176, 216, 30),
@@ -173,6 +216,49 @@ t1_mni_slices_10_73 = TensorMap(
     tensor_from_file=_brain_volume_from_file,
     normalization=ZeroMeanStd1(),
 )
+t2_flair_orig_defaced_slices_0_32 = TensorMap(
+    't2_flair_axial_0_32',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_32_64 = TensorMap(
+    't2_flair_axial_32_64',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_64_96 = TensorMap(
+    't2_flair_axial_64_96',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_96_128 = TensorMap(
+    't2_flair_axial_96_128',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_128_160 = TensorMap(
+    't2_flair_axial_128_160',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+t2_flair_orig_defaced_slices_160_192 = TensorMap(
+    't2_flair_axial_160_192',
+    shape=(192, 256, 32),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_brain_volume_from_file,
+    normalization=ZeroMeanStd1(),
+)
+
 
 def _segmented_brain_tensor_from_file(tm, hd5, dependents={}):
     # from mapping given in https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIRST/UserGuide

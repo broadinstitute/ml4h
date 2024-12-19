@@ -12,7 +12,7 @@ from scipy.ndimage.interpolation import rotate
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
-from ml4h.metrics import weighted_crossentropy
+from ml4h.metrics import weighted_crossentropy, dice, per_class_dice
 from ml4h.normalizer import ZeroMeanStd1, Standardize
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
@@ -20,7 +20,8 @@ from ml4h.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MA
     MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, LAX_4CH_HEART_LABELS, LAX_4CH_MYOCARDIUM_LABELS, StorageType, LAX_3CH_HEART_LABELS, \
     LAX_2CH_HEART_LABELS
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pad_or_crop_array_to_shape, tensor_from_hd5
-from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, SAX_HEART_LABELS
+from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP, \
+    MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP, SAX_HEART_LABELS, MRI_PANCREAS_SEGMENTED_CHANNEL_MAP
 
 
 def _slice_subset_tensor(
@@ -253,6 +254,25 @@ def _slice_tensor(tensor_key, slice_index):
     return _slice_tensor_from_file
 
 
+def _random_slice_tensor(tensor_key, max_random=50):
+    def _slice_tensor_from_file(tm, hd5, dependents={}):
+        slice_index = np.random.randint(max_random)
+        if tm.shape[-1] == 1:
+            t = pad_or_crop_array_to_shape(
+                tm.shape[:-1],
+                np.array(hd5[tensor_key][..., slice_index], dtype=np.float32),
+            )
+            tensor = np.expand_dims(t, axis=-1)
+        else:
+            tensor = pad_or_crop_array_to_shape(
+                tm.shape,
+                np.array(hd5[tensor_key][..., slice_index], dtype=np.float32),
+            )
+        return tensor
+
+    return _slice_tensor_from_file
+
+
 def _segmented_dicom_slices(dicom_key_prefix, path_prefix='ukb_cardiac_mri', step=1, total_slices=50):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -389,6 +409,18 @@ lax_4ch_diastole_slice0_224_3d = TensorMap(
     tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
 
+lax_4ch_diastole_slice0_224_224_3d = TensorMap(
+    'lax_4ch_diastole_slice0_224_224_3d', Interpretation.CONTINUOUS, shape=(224, 224, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
+)
+
+lax_4ch_random_slice_3d = TensorMap(
+    'lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0'),
+)
+
 lax_4ch_diastole_slice0_224_3d_augmented = TensorMap(
     'lax_4ch_diastole_slice0_224_3d_augmented', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise, _make_rotate(-15, 15)],
@@ -415,10 +447,50 @@ lax_2ch_diastole_slice0_3d = TensorMap(
         'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
     ),
 )
+lax_2ch_diastole_slice_224_160_3d = TensorMap(
+    'lax_2ch_diastole_slice_224_160_3d',
+    Interpretation.CONTINUOUS,
+    shape=(224, 160, 1),
+    loss='logcosh',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
+    ),
+)
+lax_2ch_diastole_slice_224_192_3d = TensorMap(
+    'lax_2ch_diastole_slice_224_192_3d',
+    Interpretation.CONTINUOUS,
+    shape=(224, 192, 1),
+    loss='logcosh',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
+    ),
+)
+lax_2ch_diastole_slice_224_224_3d = TensorMap(
+    'lax_2ch_diastole_slice_224_224_3d',
+    Interpretation.CONTINUOUS,
+    shape=(224, 224, 1),
+    loss='logcosh',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
+    ),
+)
 lax_3ch_diastole_slice0_3d = TensorMap(
     'lax_3ch_diastole_slice0_3d',
     Interpretation.CONTINUOUS,
     shape=(200, 160, 1),
+    loss='logcosh',
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor(
+        'ukb_cardiac_mri/cine_segmented_lax_3ch/2/instance_0', 0,
+    ),
+)
+lax_3ch_diastole_slice_224_160_3d = TensorMap(
+    'lax_3ch_diastole_slice_224_160_3d',
+    Interpretation.CONTINUOUS,
+    shape=(224, 160, 1),
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
@@ -2669,29 +2741,130 @@ mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
     tensor_from_file=None,
 )
 
+def _pad_crop_single_channel(tm, hd5, dependents={}, key_prefix=None):
+    if key_prefix is None:
+        key_prefix = tm.hd5_key_guess()
+    img = np.array(
+        tm.hd5_first_dataset_in_group(hd5, key_prefix),
+        dtype=np.float32,
+    )
+    img = img[...,[1]]
+    return pad_or_crop_array_to_shape(
+        tm.shape,
+        img,
+    )
+
+def _pad_crop_single_channel_t1map_b2_instance(tm, hd5, instance):
+    if f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}'
+    elif f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}' in hd5:
+        key_prefix = f'/{tm.path_prefix}/shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map/instance_{instance}'
+    else:
+        raise ValueError(f'Could not find T1 Map image for tensormap: {tm.name}')
+    return key_prefix
+
+def _pad_crop_single_channel_t1map_b2(tm, hd5, dependents={}):
+    key_prefix = _pad_crop_single_channel_t1map_b2_instance(tm, hd5, 2)
+    return _pad_crop_single_channel(tm, hd5, dependents, key_prefix)
+
+def _pad_crop_single_channel_t1map_b2_instance_3(tm, hd5, dependents={}):
+    key_prefix = _pad_crop_single_channel_t1map_b2_instance(tm, hd5, 3)
+    return _pad_crop_single_channel(tm, hd5, dependents, key_prefix)
 
 t1map_b2 = TensorMap(
     'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
-    shape=(384, 384, 2),
+    shape=(384, 384, 1),
     path_prefix='ukb_cardiac_mri',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_pad_crop_tensor,
+    normalization=Standardize(mean=455.81, std=609.50),
+    tensor_from_file=_pad_crop_single_channel_t1map_b2,
 )
 
+t1map_b2_instance3 = TensorMap(
+    'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
+    shape=(384, 384, 1),
+    path_prefix='ukb_cardiac_mri',
+    normalization=Standardize(mean=455.81, std=609.50),
+    tensor_from_file=_pad_crop_single_channel_t1map_b2_instance_3,
+)
 
-def _segmented_t1map(tm, hd5, dependents={}):
+t1map_pancreas = TensorMap(
+    'shmolli_192i_pancreas_t1map',
+    shape=(288, 384, 1),
+    path_prefix='ukb_pancreas_mri',
+    normalization=Standardize(mean=389.49, std=658.36),
+    tensor_from_file=_pad_crop_single_channel,
+)
+
+def _segmented_t1map_b2(tm, hd5, dependents={}):
+    if f'{tm.path_prefix}/{tm.name}_1' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}_1')
+    elif f'{tm.path_prefix}/{tm.name}_2' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}_2')
+    else:
+        raise ValueError(f'Could not find T1 Map segmentation for tensormap: {tm.name}')
+
+    # remove kidney label and merge body/background labels
+    orig_num_channels = len(tm.channel_map) + 2
+    categorical_one_hot = to_categorical(categorical_index_slice, orig_num_channels)
+    categorical_one_hot = np.delete(categorical_one_hot, 6, axis=-1)
+    categorical_one_hot[..., 0] += categorical_one_hot[..., 1]
+    categorical_one_hot = np.delete(categorical_one_hot, 1, axis=-1)
+
+    # padding/cropping
     tensor = np.zeros(tm.shape, dtype=np.float32)
-    categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, tm.name)
-    categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
     tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
     return tensor
 
+def _segmented_t1map_pancreas(tm, hd5, dependents={}):
+    if f'{tm.path_prefix}/{tm.name}' in hd5:
+        categorical_index_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{tm.name}')
+    else:
+        raise ValueError(f'Could not find T1 Map segmentation for tensormap: {tm.name}')
+
+    # remove kidney label and merge body/background labels
+    orig_num_channels = len(tm.channel_map) + 3
+    categorical_one_hot = to_categorical(categorical_index_slice, orig_num_channels)
+    categorical_one_hot[..., 6] += (
+        categorical_one_hot[..., 11] +
+        categorical_one_hot[..., 12] +
+        categorical_one_hot[..., 13]
+    )
+    categorical_one_hot = np.delete(categorical_one_hot, [11, 12, 13], axis=-1)
+
+    # padding/cropping
+    tensor = np.zeros(tm.shape, dtype=np.float32)
+    tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+    return tensor
 
 t1map_b2_segmentation = TensorMap(
-    'b2s_t1map_kassir_annotated_2',
+    'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map_vnauffal_annotated',
     interpretation=Interpretation.CATEGORICAL,
     shape=(384, 384, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
     channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
     path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_segmented_t1map,
+    tensor_from_file=_segmented_t1map_b2,
+    loss=dice,
+    metrics=['categorical_accuracy'] + per_class_dice(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP),
+)
+
+t1map_pancreas_segmentation_cce = TensorMap(
+    'shmolli_192i_pancreas_t1map_annotated_2',
+    interpretation=Interpretation.CATEGORICAL,
+    shape=(288, 384, len(MRI_PANCREAS_SEGMENTED_CHANNEL_MAP)),
+    channel_map=MRI_PANCREAS_SEGMENTED_CHANNEL_MAP,
+    path_prefix='ukb_pancreas_mri',
+    tensor_from_file=_segmented_t1map_pancreas,
+    loss='categorical_crossentropy',
+    metrics=['categorical_accuracy'] + per_class_dice(MRI_PANCREAS_SEGMENTED_CHANNEL_MAP),
+)
+
+t1map_pancreas_segmentation_dice = TensorMap(
+    'shmolli_192i_pancreas_t1map_annotated_2',
+    interpretation=Interpretation.CATEGORICAL,
+    shape=(288, 384, len(MRI_PANCREAS_SEGMENTED_CHANNEL_MAP)),
+    channel_map=MRI_PANCREAS_SEGMENTED_CHANNEL_MAP,
+    path_prefix='ukb_pancreas_mri',
+    tensor_from_file=_segmented_t1map_pancreas,
+    loss=dice,
+    metrics=['categorical_accuracy'] + per_class_dice(MRI_PANCREAS_SEGMENTED_CHANNEL_MAP),
 )

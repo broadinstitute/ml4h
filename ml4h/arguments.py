@@ -21,25 +21,18 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
+from typing import Set, Dict, List, Optional, Tuple
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
-from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file
-from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
-
-BOTTLENECK_STR_TO_ENUM = {
-    'flatten_restructure': BottleneckType.FlattenRestructure,
-    'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
-    'variational': BottleneckType.Variational,
-    'no_bottleneck': BottleneckType.NoBottleNeck,
-}
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, generate_latent_tensor_map_from_file
 
 
 def parse_args():
@@ -72,7 +65,7 @@ def parse_args():
     parser.add_argument('--dicoms', default='./dicoms/', help='Path to folder of dicoms.')
     parser.add_argument('--sample_csv', default=None, help='Path to CSV with Sample IDs to restrict tensor paths')
     parser.add_argument('--tsv_style', default='standard', choices=['standard', 'genetics'], help='Format choice for the TSV file produced in output by infer and explore modes.')
-    parser.add_argument('--app_csv', help='Path to file used to link sample IDs between UKBB applications 17488 and 7089')
+    parser.add_argument('--app_csv', help='Path to file used by the recipe')
     parser.add_argument('--tensors', help='Path to folder containing tensors, or where tensors will be written.')
     parser.add_argument('--output_folder', default='./recipes_output/', help='Path to output folder for recipes.py runs.')
     parser.add_argument('--model_file', help='Path to a saved model architecture and weights (hd5).')
@@ -85,6 +78,7 @@ def parse_args():
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
     )
+    parser.add_argument('--gcs_cloud_bucket', default=None, help='Path to google cloud buckets to be used as output folders for ml4h training and inference runs.')
 
     # Data selection parameters
 
@@ -103,7 +97,18 @@ def parse_args():
         '--categorical_file_columns', nargs='*', default=[],
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
-
+    parser.add_argument(
+        '--latent_input_file', default=None, help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first input_tensors'
+        'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--latent_output_file', default=None, help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first output_tensors'
+        'argument to the TensorMap made from this file.',
+    )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -154,7 +159,7 @@ def parse_args():
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
-    parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
+    parser.add_argument('--activation', default='swish',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
     parser.add_argument(
         '--conv_width', default=[71], nargs='*', type=int,
@@ -188,6 +193,9 @@ def parse_args():
     parser.add_argument('--pool_z', default=1, type=int, help='Pooling size in the z-axis, if 1 no pooling will be performed.')
     parser.add_argument('--padding', default='same', help='Valid or same border padding on the convolutional layers.')
     parser.add_argument('--dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional layers.')
+    parser.add_argument('--merge_dimension', default=3, type=int, help='Dimension of the merge layer.')
+    parser.add_argument('--merge_dense_blocks', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional merge layer.')
+    parser.add_argument('--decoder_dense_blocks', nargs='*', default=[32, 32, 32], type=int, help='List of number of kernels in convolutional decoder layers.')
     parser.add_argument('--encoder_blocks', nargs='*', default=['conv_encode'], help='List of encoding blocks.')
     parser.add_argument('--merge_blocks', nargs='*', default=['concat'], help='List of merge blocks.')
     parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode', 'dense_decode'], help='List of decoding blocks.')
@@ -208,7 +216,6 @@ def parse_args():
         '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
-    parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
@@ -216,20 +223,25 @@ def parse_args():
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
     parser.add_argument(
-         '--transformer_size', default=256, type=int,
+        '--attention_window', default=4, type=int,
+        help='For diffusion models, when U-Net representation size is smaller than attention_window '
+             'Cross-Attention is applied',
+    )
+    parser.add_argument(
+         '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
     )
     parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
 
     # Training and Hyper-Parameter Optimization Parameters
-    parser.add_argument('--epochs', default=12, type=int, help='Number of training epochs.')
-    parser.add_argument('--batch_size', default=16, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
+    parser.add_argument('--epochs', default=10, type=int, help='Number of training epochs.')
+    parser.add_argument('--batch_size', default=8, type=int, help='Mini batch size for stochastic gradient descent algorithms.')
     parser.add_argument('--train_csv', help='Path to CSV with Sample IDs to reserve for training.')
     parser.add_argument('--valid_csv', help='Path to CSV with Sample IDs to reserve for validation. Takes precedence over valid_ratio.')
     parser.add_argument('--test_csv', help='Path to CSV with Sample IDs to reserve for testing. Takes precedence over test_ratio.')
     parser.add_argument(
-        '--valid_ratio', default=0.2, type=float,
+        '--valid_ratio', default=0.1, type=float,
         help='Rate of training tensors to save for validation must be in [0.0, 1.0]. '
              'If any of train/valid/test csv is specified, split by ratio is applied on the remaining tensors after reserving tensors given by csvs. '
              'If not specified, default 0.2 is used. If default ratios are used with train_csv, some tensors may be ignored because ratios do not sum to 1.',
@@ -259,7 +271,7 @@ def parse_args():
     )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
     parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
-    parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2'], help='Adjusts learning rate during training.')
+    parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2', 'cosine_decay'], help='Adjusts learning rate during training.')
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
     parser.add_argument('--anneal_max', default=2.0, type=float, help='Annealing maximum value')
@@ -267,6 +279,11 @@ def parse_args():
         '--save_last_model', default=False, action='store_true',
         help='If true saves the model weights from the last training epoch, otherwise the model with best validation loss is saved.',
     )
+
+    # 2D image data augmentation parameters
+    parser.add_argument('--rotation_factor', default=0., type=float, help='for data augmentation, a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]')
+    parser.add_argument('--zoom_factor', default=0., type=float, help='for data augmentation, a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]')
+    parser.add_argument('--translation_factor', default=0., type=float, help='for data augmentation, a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions')
 
     # Run specific and debugging arguments
     parser.add_argument('--id', default='no_id', help='Identifier for this run, user-defined string to keep experiments organized.')
@@ -374,6 +391,19 @@ def parse_args():
         help='Frequency string indicating resolution of counts over time. Also multiples are accepted, e.g. "3M".',
         default='3M',
     )
+
+    # Arguments for explorations/infer_stats_from_segmented_regions
+    parser.add_argument('--analyze_ground_truth', default=False, action='store_true', help='Whether or not to filter by images with ground truth segmentations, for comparison')
+    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots. Must be in the same order as the output channel map. Use + to merge structures before postprocessing, and ++ to merge structures after postprocessing. E.g., --structures_to_analyze interventricular_septum LV_free_wall anterolateral_pap posteromedial_pap interventricular_septum+LV_free_wall anterolateral_pap++posteromedial_pap')
+    parser.add_argument('--erosion_radius', nargs='*', default=[], type=int, help='Radius of the unit disk structuring element for erosion preprocessing, optionally as a list per structure to analyze')
+    parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
+    parser.add_argument('--intensity_thresh_in_structures', nargs='*', default=[], help='Structure names whose pixels should be replaced if the images has intensity above the threshold')
+    parser.add_argument('--intensity_thresh_out_structure', help='Replacement structure name')
+    parser.add_argument('--intensity_thresh_auto', default=None, type=str, help='Preprocessing using histograms or k-means into two clusters, using the image or a region')
+    parser.add_argument('--intensity_thresh_auto_region_radius', default=5, type=int, help='Radius of the unit disk structuring element for auto-thresholidng in a region')
+    parser.add_argument('--intensity_thresh_auto_clip_low', default=0.65, type=float, help='Lower clip value before auto thresholding')
+    parser.add_argument('--intensity_thresh_auto_clip_high', default=2, type=float, help='Higher clip value before auto thresholding')
+
 
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")
@@ -484,6 +514,10 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
+    if args.latent_input_file is not None:
+        args.tensor_maps_in.append(
+            generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0)),
+        )
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
@@ -508,13 +542,15 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                 ),
             )
+    if args.latent_output_file is not None:
+        args.tensor_maps_out.append(
+            generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0)),
+        )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
 
-    args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
-    if args.bottleneck_type == BottleneckType.NoBottleNeck:
-        check_no_bottleneck(args.u_connect, args.tensor_maps_out)
+    check_no_bottleneck(args.u_connect, args.tensor_maps_out)
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')

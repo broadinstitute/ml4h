@@ -21,7 +21,7 @@ SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
 # Get group names
 GROUP_NAMES=$(groups ${USER} | sed -e 's/.*:\ //')
-
+echo $GROUP_NAMES
 # Get group names as array to iterate through
 GROUP_NAMES_ARR=( $GROUP_NAMES )
 
@@ -184,6 +184,6 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
-${DOCKER_IMAGE} /bin/bash -c "pip3 install --upgrade pip
-pip install ${WORKDIR};
+${DOCKER_IMAGE} /bin/bash -c "pip install --quiet --upgrade pip
+pip install --quiet ${WORKDIR};
 eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"

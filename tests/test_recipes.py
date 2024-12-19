@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 import numpy as np
 
-from ml4h.recipes import inference_file_name, _hidden_file_name
+from ml4h.recipes import inference_file_name, _hidden_file_name,save_to_google_cloud
 from ml4h.recipes import train_legacy, train_multimodal_multitask
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
@@ -52,6 +52,11 @@ class TestRecipes:
 
     def test_find_learning_rate(self, default_arguments):
         _find_learning_rate(default_arguments)
+
+    @pytest.mark.slow
+    def test_save_to_google_cloud(self,default_arguments):
+        save_to_google_cloud(default_arguments)
+
 
     def test_explore(self, default_arguments, tmpdir_factory):
         temp_dir = tmpdir_factory.mktemp('explore_tensors2')

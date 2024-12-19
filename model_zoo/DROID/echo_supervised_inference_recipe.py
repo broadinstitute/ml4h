@@ -36,7 +36,7 @@ def main(
         movinet_chkp_dir,
         output_dir,
         extract_embeddings,
-        start_beat
+        start_beat,
 ):
     # Loading information on saved model:
     model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0], 'model_params.json')
@@ -94,7 +94,7 @@ def main(
         (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
-        ]
+    ]
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -149,7 +149,7 @@ def main(
         lambda sample_ids: tf.data.Dataset.from_generator(
             DDGenerator(
                 INPUT_DD,
-                None
+                None,
             ),
             output_signature=(
                 tf.TensorSpec(shape=(None, n_input_frames, 224, 224, 3), dtype=tf.float32),
@@ -170,6 +170,7 @@ def main(
     backbone_output = backbone.layers[-1].output[0]
     flatten = tf.keras.layers.Flatten()(backbone_output)
     encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
+
     # ---------- Adaptation for regression + classification ---------- #
     # Organize regressor/classifier inputs:
     func_args = {'input_shape': (n_input_frames, 224, 224, 3),
@@ -261,6 +262,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output_labels', action='append', required=False)
     parser.add_argument('--wide_file', type=str)
     parser.add_argument('--splits_file')
+
     parser.add_argument('-v', '--selected_views', action='append', choices=category_dictionaries['view'].keys(),
                         required=False)
     parser.add_argument('-d', '--selected_doppler', action='append', choices=category_dictionaries['doppler'].keys(),
@@ -269,6 +271,7 @@ if __name__ == "__main__":
                         required=False)
     parser.add_argument('-c', '--selected_canonical', action='append',
                         choices=category_dictionaries['canonical'].keys(), required=False)
+
     parser.add_argument('-n', '--n_train_patients', default='all')
     parser.add_argument('--split_idx', type=int, choices=range(4))
     parser.add_argument('--n_splits', type=int, default=4)

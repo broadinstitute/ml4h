@@ -20,7 +20,7 @@ func main() {
 		codingPath string
 	)
 
-	flag.StringVar(&codingPath, "coding", "https://biobank.ctsu.ox.ac.uk/~bbdatan/Codings_Showcase.csv", "URL to CSV file with the UKBB data encodings")
+	flag.StringVar(&codingPath, "coding", "https://raw.githubusercontent.com/OxWearables/ukb_download_and_prep_template/main/Codings_Showcase.csv", "URL to CSV file with the UKBB data encodings")
 	flag.Parse()
 
 	if codingPath == "" {

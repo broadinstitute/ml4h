@@ -2,10 +2,10 @@ pydot
 nibabel==4.0.2
 pydicom==1.2.2
 hyperopt==0.1.2
-seaborn==0.11.2
+seaborn
 scikit-image
 biosppy
-vtk==9.0.3
+vtk==9.2.6
 imageio==2.6.1
 ipywidgets>=7.5.1
 bokeh
@@ -17,8 +17,8 @@ tensorflow==2.9.1
 tensorflow-addons==0.17.1
 tensorflow_hub
 tensorflow_probability==0.17.0
-tensorflow-text==2.9
-tf-models-official==2.9
+tensorflow-text
+tf-models-official
 keras-tuner
 numcodecs
 beautifulsoup4
@@ -39,4 +39,10 @@ opencv-python
 blosc
 boto3
 ml4ht==0.0.10
+google-cloud-storage
 umap-learn[plot]
+neurite
+voxelmorph
+pystrum
+av
+lmdb

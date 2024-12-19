@@ -7,8 +7,12 @@ import copy
 import h5py
 import glob
 import logging
+import datetime
 import numpy as np
+import pandas as pd
+
 from functools import reduce
+from google.cloud import storage
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
@@ -16,23 +20,35 @@ from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
-from ml4h.models.train import train_model_from_generators
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
+from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, latent_space_dataframe
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, infer_stats_from_segmented_regions
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
+from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
+from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
+from ml4h.models.train import train_model_from_generators, train_diffusion_model, train_diffusion_control_model
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
-from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients
-from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls, subplot_roc_per_class, plot_tsne, plot_survival
-from ml4h.plots import plot_reconstruction, plot_hit_to_miss_transforms, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
+from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients, concordance_index_censored
+
+from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+from ml4h.plots import plot_dice, plot_reconstruction, plot_hit_to_miss_transforms, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
-from ml4h.models.legacy_models import make_character_model_plus, embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
-from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model, make_paired_autoencoder_model
+from ml4h.models.legacy_models import embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
+from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
+from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 
+from ml4ht.data.util.date_selector import DATE_OPTION_KEY
+from ml4ht.data.sample_getter import DataDescriptionSampleGetter
+from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoch
+
+from torch.utils.data import DataLoader
 
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
@@ -54,6 +70,10 @@ def run(args):
             train_multimodal_multitask(args)
         elif 'train_legacy' == args.mode:
             train_legacy(args)
+        elif 'train_xdl' == args.mode:
+            train_xdl(args)
+        elif 'train_xdl_af' == args.mode:
+            train_xdl_af(args)
         elif 'test' == args.mode:
             test_multimodal_multitask(args)
         elif 'compare' == args.mode:
@@ -64,8 +84,12 @@ def run(args):
             infer_hidden_layer_multimodal_multitask(args)
         elif 'infer_pixels' == args.mode:
             infer_with_pixels(args)
+        elif 'infer_stats_from_segmented_regions' == args.mode:
+            infer_stats_from_segmented_regions(args)
         elif 'infer_encoders' == args.mode:
             infer_encoders_block_multimodal_multitask(args)
+        elif 'infer_xdl' == args.mode:
+            infer_xdl(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'compare_scalar' == args.mode:
@@ -88,8 +112,10 @@ def run(args):
             plot_partners_ecgs(args)
         elif 'train_shallow' == args.mode:
             train_shallow_model(args)
-        elif 'train_char' == args.mode:
-            train_char_model(args)
+        elif 'train_diffusion' == args.mode:
+            train_diffusion_model(args)
+        elif 'train_diffusion_control' == args.mode:
+            train_diffusion_control_model(args)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
@@ -119,9 +145,48 @@ def run(args):
     except Exception as e:
         logging.exception(e)
 
+    if args.gcs_cloud_bucket is not None:
+        save_to_google_cloud(args)
+
     end_time = timer()
     elapsed_time = end_time - start_time
     logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+
+
+def save_to_google_cloud(args):
+
+    """
+    Function to transfer all files and result from output folder to designated location google cloud bucket.
+    Args:
+        args.output_folder(str): Local folder path where all files and results generated from run are saved:
+        args.gcs_cloud_bucket (str): Google cloud bucket folder path where all files will be stored
+    """
+    #Instantiate a storage client
+    client = storage.Client()
+
+    #get the bucket
+    split_path = args.gcs_cloud_bucket.split("/")
+    bucket_name = split_path[0]
+    blob_path = "/".join(split_path[1:])
+
+    bucket = client.get_bucket(bucket_name)
+
+    # get the output folder
+    if args.mode in ['train', 'compare', 'plot_predictions', 'infer_stats_from_segmented_regions']:
+        output_folder = os.path.join(args.output_folder, args.id)
+    else:
+        output_folder = args.output_folder
+
+    # uploading all files from local to server
+    for root,_,files in os.walk(output_folder):
+        for filename in files:
+            local_file_path = os.path.join(root,filename)
+            blob = bucket.blob(blob_path+filename)
+            blob.upload_from_filename(local_file_path)
+            print("Uploaded from local file path {} to {} in google cloud bucket".format(local_file_path,filename))
+
+
+
 
 
 def _find_learning_rate(args) -> float:
@@ -167,37 +232,39 @@ def train_multimodal_multitask(args):
     if merger:
         merger.save(f'{args.output_folder}{args.id}/merger.h5')
 
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    performance_metrics = _predict_and_evaluate(
-        model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-        args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
-        args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
-    )
+    performance_metrics = {}
+    if args.test_steps > 0:
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+        performance_metrics = _predict_and_evaluate(
+            model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
+            args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
+            args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
+        )
 
-    predictions_list = model.predict(test_data)
-    samples = min(args.test_steps * args.batch_size, 12)
-    out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
-    if len(args.tensor_maps_out) == 1:
-        predictions_list = [predictions_list]
-    predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
-    logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
+        predictions_list = model.predict(test_data)
+        samples = min(args.test_steps * args.batch_size, 12)
+        out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
+        if len(args.tensor_maps_out) == 1:
+            predictions_list = [predictions_list]
+        predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
+        logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
 
-    for i, etm in enumerate(encoders):
-        embed = encoders[etm].predict(test_data[etm.input_name()])
-        if etm.output_name() in predictions_dict:
-            plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
-        for dtm in decoders:
-            reconstruction = decoders[dtm].predict(embed)
-            logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
-            my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
-            os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
-            if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
-            else:
-                evaluate_predictions(
-                    dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
-                    test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
-                )
+        for i, etm in enumerate(encoders):
+            embed = encoders[etm].predict(test_data[etm.input_name()])
+            if etm.output_name() in predictions_dict:
+                plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+            for dtm in decoders:
+                reconstruction = decoders[dtm].predict(embed)
+                logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
+                my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
+                os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
+                if dtm.axes() > 1:
+                    plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
+                else:
+                    evaluate_predictions(
+                        dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
+                        test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                    )
     return performance_metrics
 
 
@@ -238,6 +305,364 @@ def compare_multimodal_scalar_task_models(args):
     outs = _get_common_outputs(models_io, "output")
     predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generate_test, args.test_steps, outs, "input", "output")
     _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
+
+
+def standardize_by_sample_ecg(ecg, _):
+    """Z Score ECG"""
+    return (ecg - np.mean(ecg)) / (np.std(ecg) + 1e-6)
+
+
+def train_xdl(args):
+    mrn_df = pd.read_csv(args.app_csv)
+    if 'start_fu_age' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif 'start_fu' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
+    for ot in args.tensor_maps_out:
+        mrn_df = mrn_df[mrn_df[ot.name].notna()]
+    mrn_df = mrn_df.set_index('sample_id')
+
+    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+
+    ecg_dd = ECGDataDescription(
+        args.tensors,
+        name=args.tensor_maps_in[0].input_name(),
+        ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+        transforms=[standardize_by_sample_ecg],  # these will be applied in order
+        # data will be automatically localized from s3
+    )
+
+    def option_picker(sample_id, data_descriptions):
+        ecg_dts = ecg_dd.get_loading_options(sample_id)
+        htn_dt = output_dds[0].get_loading_options(sample_id)[0]['start_fu_datetime']
+        min_ecg_dt = htn_dt - pd.to_timedelta("1095d")
+        max_ecg_dt = htn_dt + pd.to_timedelta("1095d")
+        dates = []
+        for dt in ecg_dts:
+            if min_ecg_dt <= dt[DATE_OPTION_KEY] <= max_ecg_dt:
+                dates.append(dt)
+        if len(dates) == 0:
+            raise ValueError('No matching dates')
+        chosen_dt = np.random.choice(dates)
+        chosen_dt['day_delta'] = (htn_dt - chosen_dt[DATE_OPTION_KEY]).days
+        return {dd: chosen_dt for dd in data_descriptions}
+
+    sg = DataDescriptionSampleGetter(
+        input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
+        output_data_descriptions=output_dds,  # what we want a model to predict from the input data
+        option_picker=option_picker,
+    )
+    model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
+
+    train_ids = list(mrn_df[mrn_df.split == 'train'].index)
+    valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
+    test_ids = list(mrn_df[mrn_df.split == 'test'].index)
+
+    train_dataset = SampleGetterIterableDataset(
+        sample_ids=list(train_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+    valid_dataset = SampleGetterIterableDataset(
+        sample_ids=list(valid_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+
+    num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+    num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+
+    generate_train = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=train_dataset,
+        num_workers=num_train_workers,
+    )
+    generate_valid = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=valid_dataset,
+        num_workers=num_valid_workers,
+    )
+
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model,
+    )
+    for tm in encoders:
+        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+    for tm in decoders:
+        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+    if merger:
+        merger.save(f'{args.output_folder}{args.id}/merger.h5')
+
+
+def train_xdl_af(args):
+    mrn_df = pd.read_csv(args.app_csv)
+    mrn_df = mrn_df.dropna(subset=['last_encounter'])
+    mrn_df.MRN = mrn_df.MRN.astype(int)
+    mrn_df['survival_curve_af'] = mrn_df.af_event
+    #mrn_df['start_date'] = mrn_df.start_fu_datetime
+
+    if 'start_fu_age' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif 'start_fu' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
+    for ot in args.tensor_maps_out:
+        mrn_df = mrn_df[mrn_df[ot.name].notna()]
+
+    mrn_df = mrn_df.set_index('MRN')
+
+    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+
+    # ecg_dd = ECGDataDescription(
+    #         args.tensors,
+    #         name=f'input_ecg_strip_I_continuous',
+    #         ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+    #         transforms=[standardize_by_sample_ecg],  # these will be applied in order
+    #         leads={'I': 0},
+    #     )
+    ecg_dd = ECGDataDescription(
+        args.tensors,
+        name=args.tensor_maps_in[0].input_name(),
+        ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+        transforms=[standardize_by_sample_ecg],  # these will be applied in order
+        # data will be automatically localized from s3
+    )
+
+    def option_picker(sample_id, data_descriptions):
+        ecg_dts = ecg_dd.get_loading_options(sample_id)
+        start_dt = output_dds[0].get_loading_options(sample_id)[0]['start_date']
+        min_ecg_dt = start_dt - pd.to_timedelta("1095d")
+        dates = []
+        for dt in ecg_dts:
+            if min_ecg_dt <= dt[DATE_OPTION_KEY] <= start_dt:
+                dates.append(dt)
+        if len(dates) == 0:
+            raise ValueError('No matching dates')
+        chosen_dt = np.random.choice(dates)
+        chosen_dt['start_date'] = start_dt
+        chosen_dt['day_delta'] = (start_dt - chosen_dt[DATE_OPTION_KEY]).days
+        return {dd: chosen_dt for dd in data_descriptions}
+
+    logging.info(f'output_dds[0].name {output_dds[0].name}')
+    logging.info(f'output_dds[0].get_loading_options(sample_id)[0] {output_dds[0].get_loading_options(3773)[0]}')
+    logging.info(f'option_picker {option_picker(3773, [ecg_dd])}')
+
+    sg = DataDescriptionSampleGetter(
+        input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
+        output_data_descriptions=output_dds,  # what we want a model to predict from the input data
+        option_picker=option_picker,
+    )
+
+    b = sg(3773)
+    logging.info(f'batch output: {b[1]}')
+
+    model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
+
+    train_ids = list(mrn_df[mrn_df.split == 'train'].index)
+    valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
+    test_ids = list(mrn_df[mrn_df.split == 'test'].index)
+
+    train_dataset = SampleGetterIterableDataset(
+        sample_ids=list(train_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+    valid_dataset = SampleGetterIterableDataset(
+        sample_ids=list(valid_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+
+    num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+    num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+
+    generate_train = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=train_dataset,
+        num_workers=num_train_workers,
+    )
+    generate_valid = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=valid_dataset,
+        num_workers=num_valid_workers,
+    )
+
+    model = train_model_from_generators(
+        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model,
+    )
+    for tm in encoders:
+        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+    for tm in decoders:
+        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+    if merger:
+        merger.save(f'{args.output_folder}{args.id}/merger.h5')
+
+    test_sg = DataDescriptionSampleGetter(
+        input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
+        output_data_descriptions=output_dds,  # what we want a model to predict from the input data
+        option_picker=option_picker,
+    )
+    test_dataset = SampleGetterIterableDataset(
+        sample_ids=list(test_ids), sample_getter=test_sg,
+        get_epoch=shuffle_get_epoch,
+    )
+
+    generate_test = TensorMapDataLoader2(
+        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        dataset=test_dataset,
+        num_workers=num_train_workers,
+    )
+
+    y_trues = defaultdict(list)
+    y_preds = defaultdict(list)
+    logging.info(f'Now start testing... output keys: {list(next(generate_test)[1].keys())}')
+    for X, y in generate_test:
+        preds = model.predict(X, verbose=0)
+        if len(model.output_names) == 1:
+            preds = [preds]
+        predictions_dict = {name: pred for name, pred in zip(model.output_names, preds)}
+        for otm in args.tensor_maps_out:
+            y_preds[otm.name].extend(predictions_dict[otm.output_name()])
+            y_trues[otm.name].extend(y[otm.output_name()])
+
+        if len(y_trues[otm.name]) % 400 == 0:
+            print(f'Predicted on {len(y_trues[otm.name])} test examples.')
+        if len(y_trues[otm.name]) > args.test_steps*args.batch_size:
+            break
+
+    for otm in args.tensor_maps_out:
+        y_preds[otm.name] = np.array(y_preds[otm.name])
+        y_trues[otm.name] = np.array(y_trues[otm.name])
+
+    for otm in args.tensor_maps_out:
+        if otm.is_survival_curve():
+            plot_survival(y_preds[otm.name], y_trues[otm.name], f'{otm.name.upper()} Model:{args.id}', otm.days_window)
+        elif otm.is_categorical():
+            plot_roc(y_preds[otm.name], y_trues[otm.name], otm.channel_map, f'{otm.name} ROC')
+            plot_precision_recall_per_class(
+                y_preds[otm.name], y_trues[otm.name], otm.channel_map,
+                f'{otm.name} Precision Recall',
+            )
+        elif otm.is_continuous():
+            plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
+
+
+def datetime_to_float(d):
+    return pd.to_datetime(d, utc=True).timestamp()
+
+
+def float_to_datetime(fl):
+    return pd.to_datetime(fl, unit='s', utc=True)
+
+
+def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000):
+    dataloader_iterator = iter(dataloader)
+    space_dict = defaultdict(list)
+    for i in range(max_batches):
+        try:
+            data, target = next(dataloader_iterator)
+            for k in data:
+                data[k] = np.array(data[k])
+            prediction = model.predict(data, verbose=0)
+            if len(model.output_names) == 1:
+                prediction = [prediction]
+            predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+            for b in range(prediction[0].shape[0]):
+                for otm in tensor_maps_out:
+                    y = predictions_dict[otm.output_name()]
+                    if otm.is_categorical():
+                        space_dict[f'{otm.name}_prediction'].append(y[b, 1])
+                    elif otm.is_continuous():
+                        space_dict[f'{otm.name}_prediction'].append(y[b, 0])
+                    elif otm.is_survival_curve():
+                        intervals = otm.shape[-1] // 2
+                        days_per_bin = 1 + (2*otm.days_window) // intervals
+                        predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                        space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
+                        sick = np.sum(target[otm.output_name()][:, intervals:], axis=-1)
+                        follow_up = np.cumsum(target[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
+                        space_dict[f'{otm.name}_event'].append(str(sick[0]))
+                        space_dict[f'{otm.name}_follow_up'].append(str(follow_up[0]))
+                for k in target:
+                    if k in ['MRN', 'linker_id', 'is_c3po', 'output_age_in_days_continuous']:
+                        space_dict[f'{k}'].append(target[k][b].numpy())
+                    elif k in ['datetime']:
+                        space_dict[f'{k}'].append(float_to_datetime(int(target[k][b].numpy())))
+                    else:
+                        space_dict[f'{k}'].append(target[k][b, -1].numpy())
+            if i % 100 == 0:
+                logging.info(f'Inferred on {i} batches, {len(space_dict[k])} rows')
+        except StopIteration:
+            logging.info(f'Inferred on all {i} batches.')
+            break
+    return pd.DataFrame.from_dict(space_dict)
+
+
+def infer_xdl(args):
+    mrn_df = pd.read_csv(args.app_csv)
+    if 'start_fu_age' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif 'start_fu' in mrn_df:
+        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
+    mrn_df = mrn_df.rename(columns={'Dem.Gender.no_filter_x': 'sex', 'Dem.Gender.no_filter': 'sex'})
+    mrn_df['is_c3po'] = mrn_df.cohort == 'c3po'
+    for ot in args.tensor_maps_out:
+        mrn_df = mrn_df[mrn_df[ot.name].notna()]
+    mrn_df = mrn_df.set_index('sample_id')
+
+    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+
+    output_dds.append(DataFrameDataDescription(mrn_df, col="MRN"))
+    output_dds.append(DataFrameDataDescription(mrn_df, col="linker_id"))
+    output_dds.append(DataFrameDataDescription(mrn_df, col="is_c3po"))
+    output_dds.append(DataFrameDataDescription(mrn_df, col="datetime", process_col=datetime_to_float))
+
+    ecg_dd = ECGDataDescription(
+        args.tensors,
+        name=args.tensor_maps_in[0].input_name(),
+        ecg_len=5000,  # all ECGs will be linearly interpolated to be this length
+        transforms=[standardize_by_sample_ecg],  # these will be applied in order
+    )
+
+    def test_option_picker(sample_id, data_descriptions):
+        ecg_dts = ecg_dd.get_loading_options(sample_id)
+        htn_dt = output_dds[0].get_loading_options(sample_id)[0]['start_fu_datetime']
+        min_ecg_dt = htn_dt - pd.to_timedelta("1095d")
+        max_ecg_dt = htn_dt - pd.to_timedelta("1d")
+        dates = []
+        for dt in ecg_dts:
+            if min_ecg_dt <= dt[DATE_OPTION_KEY] <= max_ecg_dt:
+                dates.append(dt)
+        if len(dates) == 0:
+            raise ValueError('No matching dates')
+        chosen_dt = dates[-1]
+        return {dd: chosen_dt for dd in data_descriptions}
+
+    sg = DataDescriptionSampleGetter(
+        input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
+        output_data_descriptions=output_dds,  # what we want a model to predict from the input data
+        option_picker=test_option_picker,
+    )
+
+    dataset = SampleGetterIterableDataset(sample_ids=list(mrn_df.index), sample_getter=sg, get_epoch=shuffle_get_epoch)
+    dataloader = DataLoader(dataset, num_workers=0, batch_size=args.batch_size)
+
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+    infer_df = infer_from_dataloader(dataloader, model, args.tensor_maps_out)
+    if 'mgh' in args.tensors:
+        hospital = 'mgh'
+        infer_df = infer_df.rename(columns={'MRN': 'MGH_MRN'})
+        infer_df.MGH_MRN = infer_df.MGH_MRN.astype(int)
+    else:
+        hospital = 'bwh'
+        infer_df = infer_df.rename(columns={'MRN': 'BWH_MRN'})
+        infer_df.BWH_MRN = infer_df.BWH_MRN.astype(int)
+
+    infer_df.linker_id = infer_df.linker_id.astype(int)
+    names = '_'.join([otm.name for otm in args.tensor_maps_out])
+    now_string = datetime.datetime.now().strftime('%Y_%m_%d')
+    out_file = f'{args.output_folder}/{args.id}/infer_{names}_{hospital}_v{now_string}.tsv'
+    infer_df.to_csv(out_file, sep='\t', index=False)
+    logging.info(f'Infer dataframe head: {infer_df.head()}  \n\n Saved inferences to: {out_file}')
 
 
 def _make_tmap_nan_on_fail(tmap):
@@ -346,8 +771,17 @@ def infer_multimodal_multitask(args):
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
-                        hd5.create_dataset(f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]), compression='gzip')
-                        hd5.create_dataset(f'{otm.name}_prediction', data=otm.rescale(y[0]), compression='gzip')
+                        hd5.create_dataset(
+                            f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]),
+                            compression='gzip',
+                        )
+                        if otm.path_prefix == 'ukb_ecg_rest':
+                            for lead in otm.channel_map:
+                                hd5.create_dataset(
+                                    f'/ukb_ecg_rest/{lead}/instance_0',
+                                    data=otm.rescale(y[0, otm.channel_map[lead]]),
+                                    compression='gzip',
+                                )
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
             stats['count'] += 1
@@ -430,33 +864,6 @@ def train_shallow_model(args):
     return _predict_and_evaluate(
         model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
         args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha,
-        args.dpi, args.plot_width, args.plot_height,
-    )
-
-
-def train_char_model(args):
-    args.num_workers = 0
-    logging.info(f'Number of workers forced to 0 for character emitting LSTM model.')
-    base_model = legacy_multimodal_multitask_model(**args.__dict__)
-    model, char_model = make_character_model_plus(
-        args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, base_model, args.language_layer,
-        args.language_prefix, args.model_layers,
-    )
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-
-    model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-    )
-    batch = next(generate_test)
-    input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
-    sample_from_char_embed_model(args.tensor_maps_in, char_model, input_data, tensor_paths)
-
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    return _predict_and_evaluate(
-        model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-        args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
         args.dpi, args.plot_width, args.plot_height,
     )
 
@@ -581,7 +988,7 @@ def _predict_and_evaluate(
     scatters = []
     rocs = []
 
-    y_predictions = model.predict(test_data, batch_size=batch_size)
+    y_predictions = model.predict(test_data, batch_size=batch_size, verbose=0)
     protected_data = {tm: test_labels[tm.output_name()] for tm in tensor_maps_protected}
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
@@ -630,7 +1037,7 @@ def _predict_scalars_and_evaluate_from_generator(
     for i in range(steps):
         batch = next(generate_test)
         input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
-        y_predictions = model.predict(input_data)
+        y_predictions = model.predict(input_data, verbose=0)
         test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
@@ -646,6 +1053,9 @@ def _predict_scalars_and_evaluate_from_generator(
                 y = y_predictions
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
+
+        if i % 100 == 0:
+            logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')
 
     performance_metrics = {}
     scatters = []
@@ -717,7 +1127,6 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
 
         # We can feed 'model.predict()' the entire input data because it knows what subset to use
         y_pred = model.predict(input_data, batch_size=args.batch_size)
-
         for i, tm in enumerate(args.tensor_maps_out):
             if tm in outputs:
                 if len(args.tensor_maps_out) == 1:
@@ -827,11 +1236,15 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
         elif tm.is_categorical() and tm.axes() == 3:
+            # have to plot dice before the reshape
+            plot_dice(
+                predictions[tm], outputs[tm.output_name()], tm.channel_map, paths, plot_title, plot_folder,
+                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+            )
             for p in predictions[tm]:
                 y = predictions[tm][p]
                 melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
                 predictions[tm][p] = y.reshape(melt_shape)
-
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
             plot_rocs(
                 predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,

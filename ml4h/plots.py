@@ -2,6 +2,7 @@
 
 # Imports
 import os
+import csv
 import re
 import math
 import h5py
@@ -54,6 +55,8 @@ from biosppy.signals import ecg
 from scipy.ndimage.filters import gaussian_filter
 from scipy import stats
 
+from pystrum.medipy.metrics import dice
+
 import ml4h.tensormap.ukb.ecg
 import ml4h.tensormap.mgb.ecg
 from ml4h.tensormap.mgb.dynamic import make_waveform_maps
@@ -73,6 +76,7 @@ from ml4h.defines import (
 RECALL_LABEL = "Recall | Sensitivity | True Positive Rate | TP/(TP+FN)"
 FALLOUT_LABEL = "Fallout | 1 - Specificity | False Positive Rate | FP/(FP+TN)"
 PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
+DICE_LABEL = "Dice Score"
 
 SUBPLOT_SIZE = 7
 
@@ -177,6 +181,8 @@ def evaluate_predictions(
     :param height: Figure height in inches
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
+    print("y_predictions",y_predictions.shape)
+    print("y_truth",y_truth.shape)
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
@@ -764,7 +770,7 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(title)
+    ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
@@ -2731,6 +2737,118 @@ def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/
     plt.savefig(figure_path)
     logging.info("Saved Precision Recall curve at: {}".format(figure_path))
 
+def plot_dice(
+        predictions: Dict[str, List[np.ndarray]],
+        truth: np.ndarray,
+        labels: Dict[str, int],
+        paths: List[str],
+        title: str,
+        prefix: str = "./figures/",
+        dpi: int = 300,
+        width: int = 3,
+        height: int = 3,
+) -> None:
+    """
+    Produces boxplots of dice score distributions and .tsv files of dice scores for individual images and structures.
+    :param predictions: dictionary of predicted segmentations for each model, in which keys are model names and values are lists of arrays with shape (height, width, num_labels)
+    :param truth: ground truth segmentations, with shape (num images, height, width, num labels)
+    :param labels: channel map dictionary mapping label names to integer values
+    :param paths: paths of input hd5 files
+    :param title: name for the output files
+    :param prefix: directory that the outputs will be written to
+    :param dpi: dots per inch of the plot
+    :param width: width of the plot
+    :param height: height of the plot
+    :return: None
+    """
+    label_names = labels.keys()
+    label_vals = [labels[k] for k in label_names]
+    batch_size = truth.shape[0]
+    y_true = truth.argmax(-1)
+    y_true_unique = [np.unique(y_true[i]) for i in range(batch_size)]
+    missing_truth_label_vals = [[k for k in label_vals if k not in y_true_unique[i]] for i in range(batch_size)]
+
+    logging.info(f"label_names: {label_names}")
+    dice_scores = {}
+    mean_dice_scores = {}
+    std_dice_scores = {}
+    for p in predictions:
+        y_pred = predictions[p].argmax(-1)
+        dice_scores[p] = np.stack([dice(y_true[i], y_pred[i], labels=label_vals) for i in range(batch_size)], axis=0)
+
+        # If a label is not in y_true nor y_pred, this is actually a perfect score
+        y_pred_unique = [np.unique(y_pred[i]) for i in range(batch_size)]
+        replace = {i: [k for k in missing_truth_label_vals[i] if k not in y_pred_unique[i]] for i in range(batch_size)}
+        for i in range(batch_size):
+            for k in replace[i]:
+                dice_scores[p][i,k] = 1.0
+
+        # stats
+        mean_dice_scores[p] = np.average(dice_scores[p], axis=0)
+        logging.info(f"{p} mean Dice scores {mean_dice_scores[p]}")
+        std_dice_scores[p] = np.std(dice_scores[p], axis=0)
+        logging.info(f"{p} std Dice scores {std_dice_scores[p]}")
+
+        # percentiles
+        for k in label_names:
+            structure_dice_scores = dice_scores[p][:,labels[k]]
+            structure_dice_percentiles = [np.percentile(structure_dice_scores, perc) for perc in [5, 25, 50, 75, 95]]
+            structure_dice_percentile_idxs = [min(range(len(structure_dice_scores)), key=lambda i: abs(structure_dice_scores[i] - perc)) for perc in structure_dice_percentiles]
+            logging.info(f'{p}: [5, 25, 50, 75, 95] percentiles for {k}: {structure_dice_percentiles}')
+            logging.info(f'{p}: sample_ids for [5, 25, 50, 75, 95] percentiles for {k}: {[paths[i] for i in structure_dice_percentile_idxs]}')
+
+    # Plot fig
+    if len(predictions) > 1:
+        row = 0
+        col = 0
+        total_plots = len(label_names)
+        cols = int(math.ceil(math.sqrt(total_plots)))
+        rows = int(math.ceil(total_plots / cols))
+        f, axes = plt.subplots(
+            rows, cols, figsize=(int(cols * width), int(rows * height)), dpi=dpi,
+        )
+
+        for i,k in enumerate(label_names):
+            for j,p in enumerate(predictions):
+                axes[row, col].boxplot(dice_scores[p][:,i], positions = [j], labels=[''])
+            label_text = [f"{p} mean dice:{mean_dice_scores[p][i]:.3f}" for p in predictions]
+            axes[row, col].set_title(f"{k}")
+            axes[row, col].set_ylabel(DICE_LABEL)
+            axes[row, col].legend(label_text, loc="lower right")
+
+            row += 1
+            if row == rows:
+                row = 0
+                col += 1
+                if col >= cols:
+                    break
+
+    else:
+        p = list(predictions.keys())[0]
+        for i,k in enumerate(label_names):
+            plt.boxplot(dice_scores[p][:,i], positions = [i], labels=[k])
+
+        ax = plt.gca()
+        ax.set_ylabel(DICE_LABEL)
+        plt.xticks(rotation=90)
+
+    plt.tight_layout()
+    now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
+    figure_path = os.path.join(prefix, f'dice_{now_string}_{title}{IMAGE_EXT}')
+    if not os.path.exists(os.path.dirname(figure_path)):
+        os.makedirs(os.path.dirname(figure_path))
+    plt.savefig(figure_path)
+    logging.info(f"Saved Dice plots at: {figure_path}")
+
+    # Save tsv
+    for p in predictions:
+        tsv_path = os.path.join(prefix, f'dice_{p}_{now_string}_{title}.tsv')
+        with open(tsv_path, mode='w') as tsv_file:
+            tsv_writer = csv.writer(tsv_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            tsv_writer.writerow(['sample_id'] + list(label_names))
+            for i in range(dice_scores[p].shape[0]):
+                tsv_writer.writerow([paths[i]] + list(dice_scores[p][i,:]))
+        logging.info(f"Saved dice tsv at: {tsv_path}")
 
 def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
     # Compute ROC curve and ROC area for each class

@@ -21,11 +21,11 @@ class DDGenerator:
         ret_output = []
         for sample_id in sample_ids:
             ret_input.append(
-                self.input_dd.get_raw_data(sample_id)
+                self.input_dd.get_raw_data(sample_id),
             )
             if self.output_dd is not None:
                 ret_output.append(
-                    self.output_dd.get_raw_data(sample_id)
+                    self.output_dd.get_raw_data(sample_id),
                 )
             if self.fill_empty:
                 ret_output.append(np.NaN)
@@ -47,7 +47,7 @@ def create_movinet_classifier(
         batch_size,
         checkpoint_dir,
         num_classes,
-        freeze_backbone=False
+        freeze_backbone=False,
 ):
     backbone = movinet.Movinet(model_id='a2')
     model = movinet_model.MovinetClassifier(backbone=backbone, num_classes=600)
@@ -59,7 +59,7 @@ def create_movinet_classifier(
 
     model = movinet_model.MovinetClassifier(
         backbone=backbone,
-        num_classes=num_classes
+        num_classes=num_classes,
     )
     model.build([batch_size, n_input_frames, 224, 224, 3])
 

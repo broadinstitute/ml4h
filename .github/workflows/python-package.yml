@@ -31,9 +31,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        pip cache purge
         python -m pip install --upgrade pip
         # Install the ml4h Python package.
         pip install .
+        pip install -r docker/vm_boot_images/config/tensorflow-requirements.txt
     - name: Test with pytest
       run: |
         pytest tests -m "not slow"

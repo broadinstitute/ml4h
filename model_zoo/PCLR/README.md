@@ -25,6 +25,62 @@ You can get ECG representations using [get_representations.py](./get_representat
 The model expects 10s 12-lead ECGs with a specific lead order and interpolated to be 4,096 samples long.
 [preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing.
 
+### Use git LFS to localize the model file
+Make sure git lfs is installed on your system and then from within the ml4h repo on your machine run:
+`git lfs pull --include model_zoo/PCLR/PCLR.h5` 
+
+### Example inference with UKB ECGs tensorized with ML4H
+This code snippet produces a CSV of a latent space from ECGs stored in HD5s.
+The HD5s can be made from XMLs by with [ml4h/tensorize/tensor_writer_ukbb.py](ml4h/tensorize/tensor_writer_ukbb.py).
+```python
+import os
+from typing import List, Dict
+
+import csv
+import h5py
+import numpy as np
+import pandas as pd
+from tensorflow.keras.models import load_model, Model
+
+from preprocess_ecg import process_ecg, LEADS
+
+tensors = '/mnt/disks/ecg-rest-68k-tensors/2023_09_17/' # Replace this with path to your tensors
+model = load_model("./PCLR.h5")
+model.summary()
+
+leads = [
+    'I', 'II', 'III', 'aVR', 'aVL', 'aVF',
+    'V1', 'V2', 'V3', 'V4', 'V5', 'V6',
+]
+
+latent_dimensions = 320
+
+with open('./pclr_ukb_inferences_v2023_10_24.tsv', mode='w') as inference_file:
+    inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    header = ['sample_id']
+    header += [f'latent_{i}' for i in range(latent_dimensions)]
+    inference_writer.writerow(header)
+    
+    for i,f in enumerate(sorted(os.listdir(tensors))):
+        with h5py.File(f'{tensors}{f}', 'r') as hd5:
+            ecg = np.zeros((1, 4096, 12))
+            for k,l in enumerate(leads):
+                lead = np.array(hd5[f'/ukb_ecg_rest/strip_{l}/instance_0'])
+                interpolated_lead = np.interp(np.linspace(0, 1, 4096),
+                                              np.linspace(0, 1, lead.shape[0]),
+                                              lead,
+                                             )
+                ecg[0, :, k] = interpolated_lead/1000
+            ls = model(ecg)
+            sample_id = os.path.basename(f).replace('.hd5', '')
+            csv_row = [sample_id]
+            csv_row += [f'{ls[0, i]}' for i in range(latent_dimensions)]
+            inference_writer.writerow(csv_row)
+        if i % 500 == 0:
+            print(f'ECGs found in {i} files, last tensor was {f}')
+```
+
+
 ### Building un-trained PCLR and comparison models
 
 You can get compiled, but un-trained models with the hyperparameters selected in our training set.

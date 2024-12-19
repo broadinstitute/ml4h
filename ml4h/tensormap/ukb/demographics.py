@@ -336,25 +336,30 @@ af_dummy = TensorMap(
     'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
     channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
 )
+af_dummy2 = TensorMap(
+    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
+    channel_map={'no_af_in_read': 0, 'af_in_read': 1},
+)
 sex_dummy = TensorMap(
     'sex_from_wide', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
     path_prefix='categorical', annotation_units=2,
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
-# sex = TensorMap(
-#     'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical', annotation_units=2,
-#     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
-# )
-af_dummy2 = TensorMap(
-    'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,
-    channel_map={'no_atrial_fibrillation': 0, 'atrial_fibrillation': 1},
+sex_dummy1 = TensorMap(
+    'sex', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    path_prefix='categorical', annotation_units=2,
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
 sex_dummy2 = TensorMap(
     'is_female', Interpretation.CATEGORICAL,
      path_prefix='categorical', annotation_units=2,
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
-
+sex_dummy3 = TensorMap(
+    'sex_from_wide', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    path_prefix='categorical', annotation_units=2,
+    channel_map={'female': 0, 'male': 1}, loss='categorical_crossentropy',
+)
 brain_volume = TensorMap(
     '25010_Volume-of-brain-greywhite-matter_2_0', Interpretation.CONTINUOUS, path_prefix='continuous', normalization={'mean': 1165940.0, 'std': 111511.0},
     channel_map={'25010_Volume-of-brain-greywhite-matter_2_0': 0}, loss='logcosh', loss_weight=0.1,

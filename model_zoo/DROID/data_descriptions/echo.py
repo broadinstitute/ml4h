@@ -16,18 +16,19 @@ from ml4ht.data.data_description import DataDescription
 
 VIEW_OPTION_KEY = 'view'
 
-metadata_elements = ['PhotometricInterpretation',
-                     'TransferSyntaxUID',
-                     'SamplesPerPixel',
-                     'BitsAllocated',
-                     'BitsStored',
-                     'HighBit',
-                     'PixelRepresentation',
-                     'PlanarConfiguration',
-                     'NumberOfFrames',
-                     'Rows',
-                     'Columns',
-                     ]
+metadata_elements = [
+    'PhotometricInterpretation',
+    'TransferSyntaxUID',
+    'SamplesPerPixel',
+    'BitsAllocated',
+    'BitsStored',
+    'HighBit',
+    'PixelRepresentation',
+    'PlanarConfiguration',
+    'NumberOfFrames',
+    'Rows',
+    'Columns',
+]
 
 
 class LmdbEchoStudyVideoDataDescription(DataDescription):
@@ -62,7 +63,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             raise ValueError('View not saved in the LMDB')
 
         return [
-            {VIEW_OPTION_KEY: view}
+            {VIEW_OPTION_KEY: view},
         ]
 
     def get_raw_data(self, sample_id, loading_option=None):
