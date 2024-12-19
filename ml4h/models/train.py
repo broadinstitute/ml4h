@@ -108,13 +108,14 @@ def _get_callbacks(
 
 def train_diffusion_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x)
+    model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+                           args.diffusion_loss, args.sigmoid_beta)
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
-        loss=keras.losses.mean_absolute_error,
+        loss=keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error,
     )
     batch = next(generate_train)
     for k in batch[0]:
