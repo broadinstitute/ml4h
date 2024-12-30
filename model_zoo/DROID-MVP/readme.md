@@ -1,6 +1,6 @@
 # DROID-MVP Inference Example
 
-This is a simple example script demonstrated how to load and run the DROID-MVP model. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code.
+This is a simple example script demonstrating how to load and run the DROID-MVP model. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code.
 
 1. Download DROID docker image. Note: docker image is not compatible with Apple Silicon.
 
