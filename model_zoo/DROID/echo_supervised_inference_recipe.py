@@ -286,8 +286,9 @@ def main(
                     cls_pred = [predictions[pred_ind:]]
             df = pd.DataFrame()
             df['sample_id'] = inference_ids_split
-            for i_s in range(survival_pred.shape[1]):
-                df[f'survival_interval_{i_s}'] = survival_pred[:, i_s]
+            if survival_var_names:
+                for i_s in range(survival_pred.shape[1]):
+                    df[f'survival_interval_{i_s}'] = survival_pred[:, i_s]
             for i_p in range(reg_pred.shape[1]):
                 df[f'prediction_{i_p}'] = reg_pred[:, i_p]
             for i in range(len(cls_pred)):
