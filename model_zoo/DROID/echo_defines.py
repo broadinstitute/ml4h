@@ -105,6 +105,7 @@ category_dictionaries = {
     'hf_task': {
         'PvN': [0, 1],
         'IvN': [0, 2],
+        'IPvN': [0, 1, 2],
         'I10y': [0, 2],
         'survival': [0, 1, 2, 3]
     },

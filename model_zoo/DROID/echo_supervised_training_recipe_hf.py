@@ -73,7 +73,7 @@ def main(
         else:
             # A wrong number of task type labels was given (empty or different from 1 or 'len(output_labels)')
             raise TypeError(
-                f"The lengths of '{var_type}' and '{var_type}_types' do not match (should be equal or 'len({var_type}_types)=1').")
+                f"The lengths of '{var_type}' and '{var_type}_types' do not match (should be equal or 'len({var_type}_types)=1'). '{var_type}_types': {len(o_lbls_types)}!={len(o_lbls)}: '{var_type}'")
         if not set(unq_lbl_types) <= {'r', 'c'}:
             # Wrong task type labels were given (letters other than 'r' for regression and 'c' for classification)
             raise TypeError(f"'{var_type}_types' contains unrecognized letters (should include 'r' and/or 'c' only).")
