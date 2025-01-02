@@ -477,6 +477,16 @@ t1_random_slice = TensorMap(
     dependent_map=axial_index_map,
 )
 
+t1_random_slice_256 = TensorMap(
+    't1_random_slice_256',
+    Interpretation.CONTINUOUS,
+    shape=(256, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_random_slice_bounded(16, 192),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
 t2_flair_random_slice = TensorMap(
     't2_flair_random_slice',
     Interpretation.CONTINUOUS,
