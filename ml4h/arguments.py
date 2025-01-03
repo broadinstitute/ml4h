@@ -228,6 +228,23 @@ def parse_args():
              'Cross-Attention is applied',
     )
     parser.add_argument(
+        '--attention_modulo', default=3, type=int,
+        help='For diffusion models, this controls how frequently Cross-Attention is applied. '
+             '2 means every other residual block, 3 would mean every third.',
+    )
+    parser.add_argument(
+        '--diffusion_condition_strategy', default='concat', choices=['cross_attention', 'concat', 'film'],
+        help='For diffusion models, this controls conditional embeddings are integrated into the U-NET',
+    )
+    parser.add_argument(
+        '--diffusion_loss', default='sigmoid',
+        help='Loss function to use for diffusion models. Can be sigmoid, mean_absolute_error, or mean_squared_error',
+    )
+    parser.add_argument(
+        '--sigmoid_beta', default=-3, type=float,
+        help='Beta to use with sigmoid loss for diffusion models.',
+    )
+    parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
