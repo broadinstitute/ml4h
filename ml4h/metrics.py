@@ -731,16 +731,16 @@ class KernelInceptionDistance(keras.metrics.Metric):
         self.encoder = keras.Sequential(
             [
                 keras.Input(shape=input_shape), # TODO: handle multi-channel
-                layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
-                layers.Rescaling(255.0),
-                layers.Resizing(height=kernel_image_size, width=kernel_image_size),
-                layers.Lambda(keras.applications.inception_v3.preprocess_input),
+                keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
+                keras.layers.Rescaling(255.0),
+                keras.layers.Resizing(height=kernel_image_size, width=kernel_image_size),
+                keras.layers.Lambda(keras.applications.inception_v3.preprocess_input),
                 keras.applications.InceptionV3(
                     include_top=False,
                     input_shape=(kernel_image_size, kernel_image_size, 3),
                     weights="imagenet",
                 ),
-                layers.GlobalAveragePooling2D(),
+                keras.layers.GlobalAveragePooling2D(),
             ],
             name="inception_encoder",
         )
