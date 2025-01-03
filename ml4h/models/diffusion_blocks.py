@@ -12,6 +12,7 @@ from tensorflow import keras
 from keras import layers
 
 from ml4h.defines import IMAGE_EXT
+from ml4h.metrics import KernelInceptionDistance
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 
@@ -302,11 +303,11 @@ class DiffusionModel(keras.Model):
 
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
         self.image_loss_tracker = keras.metrics.Mean(name="i_loss")
-        # self.kid = KID(name = "kid", input_shape = self.tensor_map.shape)
+        self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=75)
 
     @property
     def metrics(self):
-        return [self.noise_loss_tracker, self.image_loss_tracker]
+        return [self.noise_loss_tracker, self.image_loss_tracker, self.kid]
 
     def denormalize(self, images):
         # convert the pixel values back to 0-1 range
@@ -468,11 +469,11 @@ class DiffusionModel(keras.Model):
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
-        # images = self.denormalize(images)
-        # generated_images = self.generate(
-        #     num_images=self.batch_size, diffusion_steps=20,
-        # )
-        #         self.kid.update_state(images, generated_images)
+        images = self.denormalize(images)
+        generated_images = self.generate(
+            num_images=self.batch_size, diffusion_steps=20
+        )
+        self.kid.update_state(images, generated_images)
 
         return {m.name: m.result() for m in self.metrics}
 
