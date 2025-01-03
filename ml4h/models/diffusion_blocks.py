@@ -747,7 +747,7 @@ class DiffusionController(keras.Model):
         print(f'noises.shape {noises.shape} images.shape {images.shape}')
         noisy_images = signal_rates * images + noise_rates * noises
 
-        with tf.GradientTape() as tape:
+        with tf.GradientTape(persistent=True) if self.supervisor else tf.GradientTape() as tape:
             # train the network to separate noisy images to their components
             pred_noises, pred_images = self.denoise(
                 control_embed, noisy_images, noise_rates, signal_rates, training=True,
