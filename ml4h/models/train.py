@@ -279,13 +279,21 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
     plt.close()
 
 
-def train_diffusion_control_model(args):
+def train_diffusion_control_model(args, supervised=False):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = DiffusionController(
-        args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
-        args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
-        args.sigmoid_beta, args.diffusion_condition_strategy,
-    )
+    if supervised:
+        supervised_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+        model = DiffusionController(
+            args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+            args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
+            args.sigmoid_beta, args.diffusion_condition_strategy, supervised_model,
+        )
+    else:
+        model = DiffusionController(
+            args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+            args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
+            args.sigmoid_beta, args.diffusion_condition_strategy,
+        )
 
     loss = keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error
     model.compile(

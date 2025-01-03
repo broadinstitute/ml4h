@@ -303,11 +303,15 @@ class DiffusionModel(keras.Model):
 
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
         self.image_loss_tracker = keras.metrics.Mean(name="i_loss")
-        self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=75)
+        if self.tensor_map.axes() == 3:
+            self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=75)
 
     @property
     def metrics(self):
-        return [self.noise_loss_tracker, self.image_loss_tracker, self.kid]
+        m = [self.noise_loss_tracker, self.image_loss_tracker]
+        if self.tensor_map.axes() == 3:
+            m.append(self.kid)
+        return m
 
     def denormalize(self, images):
         # convert the pixel values back to 0-1 range
@@ -469,11 +473,12 @@ class DiffusionModel(keras.Model):
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
-        images = self.denormalize(images)
-        generated_images = self.generate(
-            num_images=self.batch_size, diffusion_steps=20
-        )
-        self.kid.update_state(images, generated_images)
+        if self.tensor_map.axes() == 3:
+            images = self.denormalize(images)
+            generated_images = self.generate(
+                num_images=self.batch_size, diffusion_steps=20
+            )
+            self.kid.update_state(images, generated_images)
 
         return {m.name: m.result() for m in self.metrics}
 
@@ -607,6 +612,7 @@ class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
         attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
+        supervisor = None,
     ):
         super().__init__()
 
@@ -620,6 +626,7 @@ class DiffusionController(keras.Model):
         self.ema_network = keras.models.clone_model(self.network)
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
         self.beta = sigmoid_beta
+        self.supervisor = supervisor
 
 
     def compile(self, **kwargs):
@@ -627,11 +634,16 @@ class DiffusionController(keras.Model):
 
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
         self.image_loss_tracker = keras.metrics.Mean(name="i_loss")
+        if self.supervisor is not None:
+            self.supervised_loss_tracker = keras.metrics.Mean(name="supervised_loss")
         # self.kid = KID(name = "kid", input_shape = self.tensor_map.shape)
 
     @property
     def metrics(self):
-        return [self.noise_loss_tracker, self.image_loss_tracker]
+        m = [self.noise_loss_tracker, self.image_loss_tracker]
+        if self.supervisor is not None:
+            m.append(self.supervised_loss_tracker)
+        return m
 
     def denormalize(self, images):
         # convert the pixel values back to 0-1 range
@@ -751,6 +763,17 @@ class DiffusionController(keras.Model):
                 lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
                 weight = tf.math.sigmoid(self.beta - lambda_t)
                 noise_loss = weight * noise_loss
+            if self.supervisor is not None:
+                loss_fn = tf.keras.losses.MeanSquaredError()
+                supervised_preds = self.supervisor(pred_images, training=True)
+                supervised_loss = loss_fn(batch[1][self.output_maps[0].output_name()], supervised_preds)
+                self.supervised_loss_tracker.update_state(supervised_loss)
+                # Combine losses: add noise_loss and supervised_loss
+                noise_loss += 0.01 * supervised_loss
+
+                # Gradients for self.supervised_model
+                supervised_gradients = tape.gradient(supervised_loss, self.supervisor.trainable_weights)
+                self.optimizer.apply_gradients(zip(supervised_gradients, self.supervisor.trainable_weights))
 
         gradients = tape.gradient(noise_loss, self.network.trainable_weights)
         self.optimizer.apply_gradients(zip(gradients, self.network.trainable_weights))
@@ -827,6 +850,21 @@ class DiffusionController(keras.Model):
 
         noise_loss = self.loss(noises, pred_noises)
         image_loss = self.loss(images, pred_images)
+        if self.use_sigmoid_loss:
+            signal_rates_squared = tf.square(signal_rates)
+            noise_rates_squared = tf.square(noise_rates)
+
+            # Compute log-SNR (lambda_t)
+            lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
+            weight = tf.math.sigmoid(self.beta - lambda_t)
+            noise_loss = weight * noise_loss
+        if self.supervisor is not None:
+            loss_fn = tf.keras.losses.MeanSquaredError()
+            supervised_preds = self.supervisor(pred_images, training=True)
+            supervised_loss = loss_fn(batch[1][self.output_maps[0].output_name()], supervised_preds)
+            self.supervised_loss_tracker.update_state(supervised_loss)
+            # Combine losses: add noise_loss and supervised_loss
+            noise_loss += 0.01*supervised_loss
 
         self.image_loss_tracker.update_state(image_loss)
         self.noise_loss_tracker.update_state(noise_loss)
