@@ -786,7 +786,7 @@ class DiffusionController(keras.Model):
             ema_weight.assign(ema * ema_weight + (1 - ema) * weight)
 
         # KID is not measured during the training phase for computational efficiency
-        return {m.name: m.result() for m in self.metrics[:-1]}
+        return {m.name: m.result() for m in self.metrics}
 
     # def call(self, inputs):
     #     # normalize images to have standard deviation of 1, like the noises

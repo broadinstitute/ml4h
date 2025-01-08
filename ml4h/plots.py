@@ -439,7 +439,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     )
 
     for k in sorted(history.history.keys()):
-        if not k.startswith("val_"):
+        if not k.startswith("val_") or k == 'val_supervised_loss':
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [
                     history.history[k][0](i * training_steps)
@@ -470,7 +470,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    for log_label in ['loss', 'val_loss', 'n_loss', 'val_n_loss']:
+    for log_label in ['loss', 'val_loss', 'n_loss', 'val_n_loss', 'val_supervised_loss']:
         if log_label not in history.history:
             continue
         logging.info(
