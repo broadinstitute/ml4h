@@ -303,12 +303,14 @@ class DiffusionModel(keras.Model):
 
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
         self.image_loss_tracker = keras.metrics.Mean(name="i_loss")
+        self.mse_metric = tf.keras.metrics.MeanSquaredError(name="mse")
+        self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
         if self.tensor_map.axes() == 3:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=75)
 
     @property
     def metrics(self):
-        m = [self.noise_loss_tracker, self.image_loss_tracker]
+        m = [self.noise_loss_tracker, self.image_loss_tracker, self.mse_metric, self.mae_metric]
         if self.tensor_map.axes() == 3:
             m.append(self.kid)
         return m
@@ -428,13 +430,15 @@ class DiffusionModel(keras.Model):
 
         self.noise_loss_tracker.update_state(noise_loss)
         self.image_loss_tracker.update_state(image_loss)
+        self.mse_metric.update_state(noises, pred_noises)
+        self.mae_metric.update_state(noises, pred_noises)
 
         # track the exponential moving averages of weights
         for weight, ema_weight in zip(self.network.weights, self.ema_network.weights):
             ema_weight.assign(ema * ema_weight + (1 - ema) * weight)
 
         # KID is not measured during the training phase for computational efficiency
-        return {m.name: m.result() for m in self.metrics[:-1]}
+        return {m.name: m.result() for m in self.metrics}
 
     def test_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
@@ -470,6 +474,8 @@ class DiffusionModel(keras.Model):
 
         self.image_loss_tracker.update_state(image_loss)
         self.noise_loss_tracker.update_state(noise_loss)
+        self.mse_metric.update_state(noises, pred_noises)
+        self.mae_metric.update_state(noises, pred_noises)
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
@@ -631,16 +637,17 @@ class DiffusionController(keras.Model):
 
     def compile(self, **kwargs):
         super().compile(**kwargs)
-
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
         self.image_loss_tracker = keras.metrics.Mean(name="i_loss")
+        self.mse_metric = tf.keras.metrics.MeanSquaredError(name="mse")
+        self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
         if self.supervisor is not None:
             self.supervised_loss_tracker = keras.metrics.Mean(name="supervised_loss")
         # self.kid = KID(name = "kid", input_shape = self.tensor_map.shape)
 
     @property
     def metrics(self):
-        m = [self.noise_loss_tracker, self.image_loss_tracker]
+        m = [self.noise_loss_tracker, self.image_loss_tracker, self.mse_metric, self.mae_metric]
         if self.supervisor is not None:
             m.append(self.supervised_loss_tracker)
         return m
