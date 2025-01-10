@@ -245,6 +245,10 @@ def parse_args():
         help='Beta to use with sigmoid loss for diffusion models.',
     )
     parser.add_argument(
+        '--supervision_scalar', default=0.01, type=float,
+        help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
+    )
+    parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',

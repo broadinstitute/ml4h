@@ -618,7 +618,7 @@ class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
         attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
-        supervisor = None,
+        supervisor = None, supervision_scalar = 0.01,
     ):
         super().__init__()
 
@@ -633,6 +633,7 @@ class DiffusionController(keras.Model):
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
         self.beta = sigmoid_beta
         self.supervisor = supervisor
+        self.supervision_scalar = supervision_scalar
 
 
     def compile(self, **kwargs):
@@ -776,7 +777,7 @@ class DiffusionController(keras.Model):
                 supervised_loss = loss_fn(batch[1][self.output_maps[0].output_name()], supervised_preds)
                 self.supervised_loss_tracker.update_state(supervised_loss)
                 # Combine losses: add noise_loss and supervised_loss
-                noise_loss += 0.01 * supervised_loss
+                noise_loss += self.supervision_scalar * supervised_loss
 
                 # Gradients for self.supervised_model
                 supervised_gradients = tape.gradient(supervised_loss, self.supervisor.trainable_weights)
@@ -787,6 +788,8 @@ class DiffusionController(keras.Model):
 
         self.noise_loss_tracker.update_state(noise_loss)
         self.image_loss_tracker.update_state(image_loss)
+        self.mse_metric.update_state(noises, pred_noises)
+        self.mae_metric.update_state(noises, pred_noises)
 
         # track the exponential moving averages of weights
         for weight, ema_weight in zip(self.network.weights, self.ema_network.weights):
@@ -794,43 +797,6 @@ class DiffusionController(keras.Model):
 
         # KID is not measured during the training phase for computational efficiency
         return {m.name: m.result() for m in self.metrics}
-
-    # def call(self, inputs):
-    #     # normalize images to have standard deviation of 1, like the noises
-    #     images = inputs[self.input_map.input_name()]
-    #     self.normalizer.update_state(images)
-    #     images = self.normalizer(images, training=False)
-
-    #     control_embed = self.control_embed_model(inputs)
-
-    #     noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
-
-    #     # sample uniform random diffusion times
-    #     diffusion_times = tf.random.uniform(
-    #         shape=[self.batch_size, ] + [1] * self.input_map.axes(), minval=0.0, maxval=1.0
-    #     )
-    #     noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
-    #     # mix the images with noises accordingly
-    #     noisy_images = signal_rates * images + noise_rates * noises
-
-    #     # use the network to separate noisy images to their components
-    #     pred_noises, pred_images = self.denoise(
-    #         control_embed, noisy_images, noise_rates, signal_rates, training=False
-    #     )
-
-    #     noise_loss = self.loss(noises, pred_noises)
-    #     image_loss = self.loss(images, pred_images)
-
-    #     self.image_loss_tracker.update_state(image_loss)
-    #     self.noise_loss_tracker.update_state(noise_loss)
-
-    #     # measure KID between real and generated images
-    #     # this is computationally demanding, kid_diffusion_steps has to be small
-    #     images = self.denormalize(images)
-    #     generated_images = self.generate(
-    #         control_embed, num_images=self.batch_size, diffusion_steps=20
-    #     )
-    #     return generated_images
 
     def test_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
@@ -871,10 +837,12 @@ class DiffusionController(keras.Model):
             supervised_loss = loss_fn(batch[1][self.output_maps[0].output_name()], supervised_preds)
             self.supervised_loss_tracker.update_state(supervised_loss)
             # Combine losses: add noise_loss and supervised_loss
-            noise_loss += 0.01*supervised_loss
+            noise_loss += self.supervision_scalar*supervised_loss
 
         self.image_loss_tracker.update_state(image_loss)
         self.noise_loss_tracker.update_state(noise_loss)
+        self.mse_metric.update_state(noises, pred_noises)
+        self.mae_metric.update_state(noises, pred_noises)
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
