@@ -772,7 +772,10 @@ class DiffusionController(keras.Model):
                 weight = tf.math.sigmoid(self.beta - lambda_t)
                 noise_loss = weight * noise_loss
             if self.supervisor is not None:
-                loss_fn = tf.keras.losses.MeanSquaredError()
+                if self.output_maps[0].is_categorical():
+                    loss_fn = tf.keras.losses.CategoricalCrossentropy()
+                else:
+                    loss_fn = tf.keras.losses.MeanSquaredError()
                 supervised_preds = self.supervisor(pred_images, training=True)
                 supervised_loss = loss_fn(batch[1][self.output_maps[0].output_name()], supervised_preds)
                 self.supervised_loss_tracker.update_state(supervised_loss)
@@ -832,7 +835,10 @@ class DiffusionController(keras.Model):
             weight = tf.math.sigmoid(self.beta - lambda_t)
             noise_loss = weight * noise_loss
         if self.supervisor is not None:
-            loss_fn = tf.keras.losses.MeanSquaredError()
+            if self.output_maps[0].is_categorical():
+                loss_fn = tf.keras.losses.CategoricalCrossentropy()
+            else:
+                loss_fn = tf.keras.losses.MeanSquaredError()
             supervised_preds = self.supervisor(pred_images, training=True)
             supervised_loss = loss_fn(batch[1][self.output_maps[0].output_name()], supervised_preds)
             self.supervised_loss_tracker.update_state(supervised_loss)
