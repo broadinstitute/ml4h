@@ -941,6 +941,7 @@ class DiffusionController(keras.Model):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
         plt.close()
+        return generated_images
 
 
     def control_plot_images(
