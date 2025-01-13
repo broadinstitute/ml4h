@@ -922,11 +922,26 @@ class DiffusionController(keras.Model):
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        figure_path = os.path.join(prefix, f'diffusion_image_generations_{now_string}{IMAGE_EXT}')
+        figure_path = os.path.join(prefix, f'diffusion_image_reconstructions_{now_string}{IMAGE_EXT}')
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
         plt.close()
+        plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
+        for row in range(num_rows):
+            for col in range(num_cols):
+                index = row * num_cols + col
+                plt.subplot(num_rows, num_cols, index + 1)
+                plt.imshow(images[index], cmap='gray')
+                plt.axis("off")
+        plt.tight_layout()
+        now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+        figure_path = os.path.join(prefix, f'input_images_{now_string}{IMAGE_EXT}')
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path, bbox_inches="tight")
+        plt.close()
+
 
     def control_plot_images(
         self, control_batch, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None,
