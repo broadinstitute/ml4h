@@ -470,7 +470,8 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    for log_label in ['loss', 'mse', 'mae', 'val_loss', 'n_loss', 'val_n_loss', 'val_supervised_loss', 'val_kid']:
+    for log_label in ['loss', 'mse', 'mae', 'val_loss', 'val_mse', 'val_mae', 'n_loss', 'val_n_loss',
+                      'val_supervised_loss', 'val_kid']:
         if log_label not in history.history:
             continue
         logging.info(
