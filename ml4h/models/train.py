@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 import tensorflow as tf
+from ml4h.explorations import predictions_to_pngs
 from tensorflow import keras
 import tensorflow_addons as tfa
 from tensorflow.keras.callbacks import History
@@ -23,7 +24,7 @@ from ml4h.plots import plot_metric_history, plot_roc
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
 from ml4h.models.model_factory import get_custom_objects, make_multimodal_multitask_model
-from ml4h.tensor_generators import test_train_valid_tensor_generators
+from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
 
 def train_model_from_generators(
@@ -372,6 +373,8 @@ def train_diffusion_control_model(args, supervised=False):
     model.load_weights(checkpoint_path)
 
     if args.inspect_model:
+        data, labels, paths = big_batch_from_minibatch_generator(generate_test, 1)
+        predictions_to_pngs(data, args.tensor_maps_in, args.tensor_maps_in, data, labels, paths, '{args.output_folder}/{args.id}/')
         interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
                                            f'{args.output_folder}/{args.id}/')
         if model.input_map.axes() == 2:
@@ -385,5 +388,6 @@ def train_diffusion_control_model(args, supervised=False):
             eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
             regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size,
                                               0.0,2.0,f'{args.output_folder}/{args.id}/')
+
 
     return model

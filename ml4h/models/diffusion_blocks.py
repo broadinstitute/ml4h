@@ -259,7 +259,7 @@ def get_control_network(input_shape, widths, block_depth, kernel_size, control_s
 
     for i, width in enumerate(reversed(widths[:-1])):
         if attention_modulo > 1 and ((len(widths) - 1) - i) % attention_modulo == 0:
-            if len(input_shape) > 2:
+            if len(input_shape) == 3:
                 c2 = upsample(size=(x.shape[1]*2, x.shape[2]*2))(control[control_idxs])
             else:
                 c2 = upsample(size=x.shape[-2]*2)(control[control_idxs])
@@ -540,8 +540,7 @@ class DiffusionModel(keras.Model):
         plt.close()
 
     def plot_reconstructions(
-        self, images_original, diffusion_amount=0,
-        epoch=None, logs=None, num_rows=3, num_cols=6,
+        self, images_original, diffusion_amount=0, epoch=None, logs=None, num_rows=4, num_cols=4, prefix='./figures/',
     ):
         images = images_original[0][self.tensor_map.input_name()]
         self.normalizer.update_state(images)
@@ -565,7 +564,11 @@ class DiffusionModel(keras.Model):
                 plt.imshow(generated_images[index], cmap='gray')
                 plt.axis("off")
         plt.tight_layout()
-        plt.show()
+        now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+        figure_path = os.path.join(prefix, f'diffusion_reconstructions_{now_string}{IMAGE_EXT}')
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path, bbox_inches="tight")
         plt.close()
 
     def in_paint(self, images_original, masks, diffusion_steps=64, num_rows=3, num_cols=6):
