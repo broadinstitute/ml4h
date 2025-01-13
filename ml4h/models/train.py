@@ -375,7 +375,7 @@ def train_diffusion_control_model(args, supervised=False):
     if args.inspect_model:
         data, labels, paths = big_batch_from_minibatch_generator(generate_test, 1)
 
-        model.plot_reconstructions(data, prefix=f'{args.output_folder}/{args.id}/')
+        model.plot_reconstructions((data, labels), prefix=f'{args.output_folder}/{args.id}/')
         images = data[args.tensor_maps_in[0].input_name()]
         predictions_to_pngs(images, args.tensor_maps_in, args.tensor_maps_in, data, labels, paths, '{args.output_folder}/{args.id}/')
         interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
