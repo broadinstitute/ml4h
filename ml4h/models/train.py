@@ -110,7 +110,7 @@ def _get_callbacks(
 def train_diffusion_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
-                           args.diffusion_loss, args.sigmoid_beta)
+                           args.diffusion_loss, args.sigmoid_beta, args.inspect_model)
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(
@@ -173,9 +173,15 @@ def train_diffusion_model(args):
         callbacks=callbacks,
     )
     model.load_weights(checkpoint_path)
-    #diffusion_model.compile(optimizer='adam', loss='mse')
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     if args.inspect_model:
+        metrics = model.evaluate(generate_test, batch_size=args.batch_size, steps=args.test_steps, return_dict=True)
+        logging.info(f'Test metrics: {metrics}')
+
+        data, labels, paths = big_batch_from_minibatch_generator(generate_test, 1)
+        preds = model.plot_reconstructions((data, labels), prefix=f'{args.output_folder}/{args.id}/reconstructions/')
+        image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
+        predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
         if model.tensor_map.axes() == 2:
             model.plot_ecgs(num_rows=4, prefix=os.path.dirname(checkpoint_path))
         else:

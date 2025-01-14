@@ -284,7 +284,7 @@ def get_control_embed_model(output_maps, control_size):
 
 
 class DiffusionModel(keras.Model):
-    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta):
+    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model):
         super().__init__()
 
         self.tensor_map = tensor_map
@@ -294,6 +294,7 @@ class DiffusionModel(keras.Model):
         self.ema_network = keras.models.clone_model(self.network)
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
         self.beta = sigmoid_beta
+        self.inspect_model = inspect_model
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
@@ -305,13 +306,13 @@ class DiffusionModel(keras.Model):
         self.image_loss_tracker = keras.metrics.Mean(name="i_loss")
         self.mse_metric = tf.keras.metrics.MeanSquaredError(name="mse")
         self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
-        if self.tensor_map.axes() == 3:
+        if self.tensor_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=75)
 
     @property
     def metrics(self):
         m = [self.noise_loss_tracker, self.image_loss_tracker, self.mse_metric, self.mae_metric]
-        if self.tensor_map.axes() == 3:
+        if self.tensor_map.axes() == 3 and self.inspect_model:
             m.append(self.kid)
         return m
 
@@ -479,7 +480,7 @@ class DiffusionModel(keras.Model):
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
-        if self.tensor_map.axes() == 3:
+        if self.tensor_map.axes() == 3 and self.inspect_model:
             images = self.denormalize(images)
             generated_images = self.generate(
                 num_images=self.batch_size, diffusion_steps=20
