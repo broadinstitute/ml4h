@@ -307,7 +307,7 @@ class DiffusionModel(keras.Model):
         self.mse_metric = tf.keras.metrics.MeanSquaredError(name="mse")
         self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
         if self.tensor_map.axes() == 3 and self.inspect_model:
-            self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=75)
+            self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=299)
 
     @property
     def metrics(self):

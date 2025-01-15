@@ -381,7 +381,7 @@ def train_diffusion_control_model(args, supervised=False):
     if args.inspect_model:
         metrics = model.evaluate(generate_test, batch_size=args.batch_size, steps=args.test_steps, return_dict=True)
         logging.info(f'Test metrics: {metrics}')
-        
+
         data, labels, paths = big_batch_from_minibatch_generator(generate_test, 1)
         preds = model.plot_reconstructions((data, labels), prefix=f'{args.output_folder}/{args.id}/reconstructions/')
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
