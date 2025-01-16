@@ -185,7 +185,7 @@ def train_diffusion_model(args):
         if model.tensor_map.axes() == 2:
             model.plot_ecgs(num_rows=4, prefix=os.path.dirname(checkpoint_path))
         else:
-            model.plot_images(num_rows=4, prefix=os.path.dirname(checkpoint_path))
+            model.plot_images(num_cols=min(4,args.batch_size), num_rows=min(4,args.test_steps), prefix=os.path.dirname(checkpoint_path))
     return model
 
 
