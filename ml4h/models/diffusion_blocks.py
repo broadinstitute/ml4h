@@ -541,7 +541,7 @@ class DiffusionModel(keras.Model):
         plt.close()
 
     def plot_reconstructions(
-        self, images_original, diffusion_amount=0, epoch=None, logs=None, num_rows=4, num_cols=4, prefix='./figures/',
+        self, images_original, diffusion_amount=0, epoch=None, logs=None, num_rows=2, num_cols=2, prefix='./figures/',
     ):
         images = images_original[0][self.tensor_map.input_name()]
         self.normalizer.update_state(images)
