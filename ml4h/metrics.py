@@ -780,3 +780,56 @@ class KernelInceptionDistance(keras.metrics.Metric):
 
     def reset_state(self):
         self.kid_tracker.reset_state()
+
+
+class InceptionScore(keras.metrics.Metric):
+    def __init__(self, name, input_shape, kernel_image_size, **kwargs):
+        super().__init__(name=name, **kwargs)
+
+        # Inception score is estimated per batch and averaged across batches
+        self.is_tracker = keras.metrics.Mean(name="is_tracker")
+
+        # A pretrained InceptionV3 is used without its classification layer
+        # We preprocess the images as during the pretraining of InceptionV3
+        self.encoder = keras.Sequential(
+            [
+                keras.Input(shape=input_shape),  # TODO: handle multi-channel
+                keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),  # Ensure 3 channels
+                keras.layers.Rescaling(255.0),
+                keras.layers.Resizing(height=kernel_image_size, width=kernel_image_size),
+                keras.layers.Lambda(keras.applications.inception_v3.preprocess_input),
+                keras.applications.InceptionV3(
+                    include_top=True,  # Include the classification layer for IS
+                    input_shape=(kernel_image_size, kernel_image_size, 3),
+                    weights="imagenet",
+                ),
+            ],
+            name="inception_encoder",
+        )
+
+    def update_state(self, generated_images, sample_weight=None):
+        # Get the predicted class probabilities from the InceptionV3 model
+        logits = self.encoder(generated_images, training=False)
+        softmax_probs = tf.nn.softmax(logits, axis=-1)
+
+        # Compute p(y|x) for each generated image (softmax probabilities)
+        p_y_given_x = softmax_probs
+
+        # Compute the marginal distribution p(y) across all generated images
+        p_y = tf.reduce_mean(p_y_given_x, axis=0)
+
+        # Compute KL divergence between p(y|x) and p(y) for each image
+        kl_divergence = tf.reduce_sum(p_y_given_x * (tf.math.log(p_y_given_x) - tf.math.log(p_y)), axis=-1)
+
+        # Inception score is the exponentiation of the mean KL divergence
+        is_score = tf.exp(tf.reduce_mean(kl_divergence))
+
+        # Update the average IS estimate
+        self.is_tracker.update_state(is_score)
+
+    def result(self):
+        return self.is_tracker.result()
+
+    def reset_state(self):
+        self.is_tracker.reset_state()
+
