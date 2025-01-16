@@ -180,7 +180,7 @@ def train_diffusion_model(args):
 
         steps = 1 if args.batch_size > 3 else args.test_steps
         data, labels, paths = big_batch_from_minibatch_generator(generate_test, steps)
-        sides = int(args.batch_size)
+        sides = int(np.sqrt(steps*args.batch_size))
         preds = model.plot_reconstructions((data, labels), num_rows=sides, num_cols=sides,
                                            prefix=f'{args.output_folder}/{args.id}/reconstructions/')
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
