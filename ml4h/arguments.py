@@ -233,7 +233,8 @@ def parse_args():
              '2 means every other residual block, 3 would mean every third.',
     )
     parser.add_argument(
-        '--diffusion_condition_strategy', default='concat', choices=['cross_attention', 'concat', 'film'],
+        '--diffusion_condition_strategy', default='cross_attention',
+        choices=['cross_attention', 'concat', 'film'],
         help='For diffusion models, this controls conditional embeddings are integrated into the U-NET',
     )
     parser.add_argument(
