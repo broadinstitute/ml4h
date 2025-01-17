@@ -875,7 +875,7 @@ class DiffusionController(keras.Model):
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
-        if self.tensor_map.axes() == 3 and self.inspect_model:
+        if self.input_map.axes() == 3 and self.inspect_model:
             images = self.denormalize(images)
             generated_images = self.generate(
                 num_images=self.batch_size, diffusion_steps=20
