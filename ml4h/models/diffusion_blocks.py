@@ -12,7 +12,7 @@ from tensorflow import keras
 from keras import layers
 
 from ml4h.defines import IMAGE_EXT
-from ml4h.metrics import KernelInceptionDistance
+from ml4h.metrics import KernelInceptionDistance, InceptionScore
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 
@@ -308,6 +308,7 @@ class DiffusionModel(keras.Model):
         self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
         if self.tensor_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=299)
+            self.inception_score = InceptionScore(name = "is", input_shape = self.tensor_map.shape, kernel_image_size=299)
 
     @property
     def metrics(self):
@@ -666,6 +667,7 @@ class DiffusionController(keras.Model):
             self.supervised_loss_tracker = keras.metrics.Mean(name="supervised_loss")
         if self.input_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.input_map.shape, kernel_image_size=299)
+            self.inception_score = InceptionScore(name = "is", input_shape = self.input_map.shape, kernel_image_size=299)
 
     @property
     def metrics(self):
