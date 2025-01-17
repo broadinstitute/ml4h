@@ -233,7 +233,8 @@ def parse_args():
              '2 means every other residual block, 3 would mean every third.',
     )
     parser.add_argument(
-        '--diffusion_condition_strategy', default='concat', choices=['cross_attention', 'concat', 'film'],
+        '--diffusion_condition_strategy', default='cross_attention',
+        choices=['cross_attention', 'concat', 'film'],
         help='For diffusion models, this controls conditional embeddings are integrated into the U-NET',
     )
     parser.add_argument(
@@ -243,6 +244,10 @@ def parse_args():
     parser.add_argument(
         '--sigmoid_beta', default=-3, type=float,
         help='Beta to use with sigmoid loss for diffusion models.',
+    )
+    parser.add_argument(
+        '--supervision_scalar', default=0.01, type=float,
+        help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
     )
     parser.add_argument(
          '--transformer_size', default=32, type=int,

@@ -116,7 +116,7 @@ def run(args):
             train_diffusion_model(args)
         elif 'train_diffusion_control' == args.mode:
             train_diffusion_control_model(args)
-        elif 'train_diffusion_supervised' == args.mode:
+        elif 'train_diffusion_supervise' == args.mode:
             train_diffusion_control_model(args, supervised=True)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
