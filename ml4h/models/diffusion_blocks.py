@@ -637,7 +637,7 @@ class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
         attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
-        supervisor = None, supervision_scalar = 0.01,
+        inspect_model, supervisor = None, supervision_scalar = 0.01,
     ):
         super().__init__()
 
@@ -653,6 +653,7 @@ class DiffusionController(keras.Model):
         self.beta = sigmoid_beta
         self.supervisor = supervisor
         self.supervision_scalar = supervision_scalar
+        self.inspect_model = inspect_model
 
 
     def compile(self, **kwargs):
@@ -663,13 +664,16 @@ class DiffusionController(keras.Model):
         self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
         if self.supervisor is not None:
             self.supervised_loss_tracker = keras.metrics.Mean(name="supervised_loss")
-        # self.kid = KID(name = "kid", input_shape = self.tensor_map.shape)
+        if self.input_map.axes() == 3 and self.inspect_model:
+            self.kid = KernelInceptionDistance(name = "kid", input_shape = self.input_map.shape, kernel_image_size=299)
 
     @property
     def metrics(self):
         m = [self.noise_loss_tracker, self.image_loss_tracker, self.mse_metric, self.mae_metric]
         if self.supervisor is not None:
             m.append(self.supervised_loss_tracker)
+        if self.input_map.axes() == 3 and self.inspect_model:
+            m.append(self.kid)
         return m
 
     def denormalize(self, images):
@@ -871,13 +875,15 @@ class DiffusionController(keras.Model):
 
         # measure KID between real and generated images
         # this is computationally demanding, kid_diffusion_steps has to be small
-        images = self.denormalize(images)
-        generated_images = self.generate(
-            control_embed, num_images=self.batch_size, diffusion_steps=20,
-        )
-        #         self.kid.update_state(images, generated_images)
+        if self.tensor_map.axes() == 3 and self.inspect_model:
+            images = self.denormalize(images)
+            generated_images = self.generate(
+                num_images=self.batch_size, diffusion_steps=20
+            )
+            self.kid.update_state(images, generated_images)
 
         return {m.name: m.result() for m in self.metrics}
+
 
     def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         control_batch = {}

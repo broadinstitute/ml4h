@@ -296,13 +296,13 @@ def train_diffusion_control_model(args, supervised=False):
         model = DiffusionController(
             args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
             args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
-            args.sigmoid_beta, args.diffusion_condition_strategy, supervised_model, args.supervision_scalar,
+            args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, supervised_model, args.supervision_scalar,
         )
     else:
         model = DiffusionController(
             args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
             args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
-            args.sigmoid_beta, args.diffusion_condition_strategy,
+            args.inspect_model, args.sigmoid_beta, args.diffusion_condition_strategy,
         )
 
     loss = keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error
@@ -385,8 +385,12 @@ def train_diffusion_control_model(args, supervised=False):
         metrics = model.evaluate(generate_test, batch_size=args.batch_size, steps=args.test_steps, return_dict=True)
         logging.info(f'Test metrics: {metrics}')
 
-        data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-        preds = model.plot_reconstructions((data, labels), prefix=f'{args.output_folder}/{args.id}/reconstructions/')
+        steps = 1 if args.batch_size > 3 else args.test_steps
+        data, labels, paths = big_batch_from_minibatch_generator(generate_test, steps)
+        sides = int(np.sqrt(steps*args.batch_size))
+        preds = model.plot_reconstructions((data, labels), num_rows=sides, num_cols=sides,
+                                           prefix=f'{args.output_folder}/{args.id}/reconstructions/')
+
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
         predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
         interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
@@ -394,7 +398,7 @@ def train_diffusion_control_model(args, supervised=False):
         if model.input_map.axes() == 2:
             model.plot_ecgs(num_rows=2, prefix=os.path.dirname(checkpoint_path))
         else:
-            model.plot_images(num_rows=2, prefix=os.path.dirname(checkpoint_path))
+            model.plot_images(num_cols=sides, num_rows=sides, prefix=os.path.dirname(checkpoint_path))
 
         for tm_out, model_file in zip(args.tensor_maps_out, args.model_files):
             args.tensor_maps_out = [tm_out]
