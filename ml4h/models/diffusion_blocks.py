@@ -886,7 +886,7 @@ class DiffusionController(keras.Model):
                 num_images=self.batch_size, diffusion_steps=20
             )
             self.kid.update_state(images, generated_images)
-            self.inception_score.update_state(generated_images)
+            self.inception_score.update_state(images)
 
         return {m.name: m.result() for m in self.metrics}
 
