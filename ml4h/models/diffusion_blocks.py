@@ -315,6 +315,7 @@ class DiffusionModel(keras.Model):
         m = [self.noise_loss_tracker, self.image_loss_tracker, self.mse_metric, self.mae_metric]
         if self.tensor_map.axes() == 3 and self.inspect_model:
             m.append(self.kid)
+            m.append(self.inception_score)
         return m
 
     def denormalize(self, images):
@@ -487,6 +488,7 @@ class DiffusionModel(keras.Model):
                 num_images=self.batch_size, diffusion_steps=20
             )
             self.kid.update_state(images, generated_images)
+            self.inception_score.update_state(images, generated_images)
 
         return {m.name: m.result() for m in self.metrics}
 
@@ -676,6 +678,7 @@ class DiffusionController(keras.Model):
             m.append(self.supervised_loss_tracker)
         if self.input_map.axes() == 3 and self.inspect_model:
             m.append(self.kid)
+            m.append(self.inception_score)
         return m
 
     def denormalize(self, images):
@@ -883,6 +886,7 @@ class DiffusionController(keras.Model):
                 num_images=self.batch_size, diffusion_steps=20
             )
             self.kid.update_state(images, generated_images)
+            self.inception_score.update_state(images, generated_images)
 
         return {m.name: m.result() for m in self.metrics}
 
