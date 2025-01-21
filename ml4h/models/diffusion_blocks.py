@@ -308,14 +308,14 @@ class DiffusionModel(keras.Model):
         self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
         if self.tensor_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=299)
-            self.inception_score = InceptionScore(name = "is", input_shape = self.tensor_map.shape, kernel_image_size=299)
+            self.ms_ssim = MultiScaleSSIM()
 
     @property
     def metrics(self):
         m = [self.noise_loss_tracker, self.image_loss_tracker, self.mse_metric, self.mae_metric]
         if self.tensor_map.axes() == 3 and self.inspect_model:
             m.append(self.kid)
-            m.append(self.inception_score)
+            m.append(self.ms_ssim)
         return m
 
     def denormalize(self, images):
@@ -488,7 +488,7 @@ class DiffusionModel(keras.Model):
                 num_images=self.batch_size, diffusion_steps=20
             )
             self.kid.update_state(images, generated_images)
-            self.inception_score.update_state(images, generated_images)
+            self.ms_ssim.update_state(images, generated_images, 255)
 
         return {m.name: m.result() for m in self.metrics}
 

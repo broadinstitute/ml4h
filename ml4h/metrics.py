@@ -842,7 +842,7 @@ class MultiScaleSSIM(keras.metrics.Metric):
 
     def update_state(self, y_true, y_pred, max_val, sample_weight=None):
         # Calculate MS-SSIM for the batch
-        ssim = tf.image.ssim_multiscale(y_true, y_pred, max_val=max_val, power_factors=[0.1, 0.2, 0.4, 0.3])
+        ssim = tf.image.ssim_multiscale(y_true, y_pred, max_val=max_val, power_factors=[0.25, 0.25, 0.25, 0.25])
         if sample_weight is not None:
             ssim = tf.multiply(ssim, sample_weight)
 
