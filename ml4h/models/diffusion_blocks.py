@@ -887,7 +887,7 @@ class DiffusionController(keras.Model):
             )
             self.kid.update_state(images, generated_images)
             max_pixel_value = tf.reduce_max(tf.abs(images))
-            max_val = 2 * max_pixel_value.numpy()  # Double the max absolute value
+            max_val = 2 * max_pixel_value  # Double the max absolute value
             self.ms_ssim.update_state(images, generated_images, max_val)
 
         return {m.name: m.result() for m in self.metrics}
