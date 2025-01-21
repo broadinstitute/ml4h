@@ -835,15 +835,14 @@ class InceptionScore(keras.metrics.Metric):
 
 
 class MultiScaleSSIM(keras.metrics.Metric):
-    def __init__(self, max_val=6.0, name="multi_scale_ssim", **kwargs):
+    def __init__(self, name="multi_scale_ssim", **kwargs):
         super(MultiScaleSSIM, self).__init__(name=name, **kwargs)
-        self.max_val = max_val
         self.total_ssim = self.add_weight(name="total_ssim", initializer="zeros")
         self.count = self.add_weight(name="count", initializer="zeros")
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
+    def update_state(self, y_true, y_pred, max_val, sample_weight=None):
         # Calculate MS-SSIM for the batch
-        ssim = tf.image.ssim_multiscale(y_true, y_pred, max_val=self.max_val)
+        ssim = tf.image.ssim_multiscale(y_true, y_pred, max_val=max_val)
         if sample_weight is not None:
             ssim = tf.multiply(ssim, sample_weight)
 
@@ -855,7 +854,7 @@ class MultiScaleSSIM(keras.metrics.Metric):
         # Return the mean MS-SSIM over all batches
         return tf.divide(self.total_ssim, self.count)
 
-    def reset_states(self):
+    def reset_state(self):
         # Reset the metric state variables
         self.total_ssim.assign(0.0)
         self.count.assign(0.0)
