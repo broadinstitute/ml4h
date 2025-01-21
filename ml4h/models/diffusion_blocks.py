@@ -12,7 +12,7 @@ from tensorflow import keras
 from keras import layers
 
 from ml4h.defines import IMAGE_EXT
-from ml4h.metrics import KernelInceptionDistance, InceptionScore
+from ml4h.metrics import KernelInceptionDistance, InceptionScore, MultiScaleSSIM
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 
@@ -669,7 +669,7 @@ class DiffusionController(keras.Model):
             self.supervised_loss_tracker = keras.metrics.Mean(name="supervised_loss")
         if self.input_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.input_map.shape, kernel_image_size=299)
-            self.inception_score = InceptionScore(name = "is", input_shape = self.input_map.shape, kernel_image_size=299)
+            self.ms_ssim = MultiScaleSSIM()
 
     @property
     def metrics(self):
@@ -678,7 +678,7 @@ class DiffusionController(keras.Model):
             m.append(self.supervised_loss_tracker)
         if self.input_map.axes() == 3 and self.inspect_model:
             m.append(self.kid)
-            m.append(self.inception_score)
+            m.append(self.ms_ssim)
         return m
 
     def denormalize(self, images):
@@ -886,7 +886,7 @@ class DiffusionController(keras.Model):
                 num_images=self.batch_size, diffusion_steps=20
             )
             self.kid.update_state(images, generated_images)
-            self.inception_score.update_state(images)
+            self.ms_ssim.update_state(images, generated_images)
 
         return {m.name: m.result() for m in self.metrics}
 
