@@ -57,8 +57,8 @@ def main(
     lmdb_vois = '_'.join(selected_views)
     olabels = '_'.join(output_labels)
 
-    if hf_task and (category_dictionaries['hf_diag_type'][hf_diag_type] not in output_labels):
-            output_labels += [category_dictionaries['hf_diag_type'][hf_diag_type]]
+    # if hf_task and (category_dictionaries['hf_diag_type'][hf_diag_type] not in output_labels):
+    #        output_labels += [category_dictionaries['hf_diag_type'][hf_diag_type]]
 
     # ---------- Adaptation for regression + classification ---------- #
     def process_labels_types(o_lbls, o_lbls_types, var_type='output_labels'):
