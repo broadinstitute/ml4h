@@ -163,7 +163,27 @@ def main(
     if 'gender' in output_labels:
         wide_df_selected.loc[np.logical_or(wide_df_selected['gender'] == 'Male', wide_df_selected['gender'] == 'M'), 'gender'] = 'M'
         wide_df_selected.loc[np.logical_or(wide_df_selected['gender'] == 'Female', wide_df_selected['gender'] == 'F'), 'gender'] = 'F'
-        
+    if 'lvef_type_primary' in output_labels:
+        def process_lvef_type(x):
+            if x is None:
+                x = '[]'
+            x_list = json.loads(x.replace(' ','').replace('nan','').replace('.]',']').replace('.', ','))
+            if len(x_list)>=1:
+                return x_list[0]
+            else:
+                return 0
+        wide_df_selected['lvef_type_primary'] = wide_df_selected['lvef_type_primary'].apply(lambda x: process_lvef_type(x))
+    if 'lvef_type_nlp' in output_labels:
+        def process_lvef_type(x):
+            if x is None:
+                x = '[]'
+            x_list = json.loads(x.replace(' ','').replace('nan','').replace('.]',']').replace('.', ','))
+            if len(x_list)>=1:
+                return x_list[0]
+            else:
+                return 0
+        wide_df_selected['lvef_type_nlp'] = wide_df_selected['lvef_type_nlp'].apply(lambda x: process_lvef_type(x)) 
+            
     # Drop entries without echolab measurements and get all sample_ids
     wide_df_selected = wide_df_selected.dropna(subset=output_labels)
     working_ids = wide_df_selected['sample_id'].values.tolist()
