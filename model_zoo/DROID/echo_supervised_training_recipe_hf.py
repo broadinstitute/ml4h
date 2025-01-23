@@ -164,6 +164,16 @@ def main(
             else:
                 return 0
         wide_df_selected['lvef_type_primary'] = wide_df_selected['lvef_type_primary'].apply(lambda x: process_lvef_type(x))
+    if 'lvef_type_nlp' in output_labels:
+        def process_lvef_type(x):
+            if x is None:
+                x = '[]'
+            x_list = json.loads(x.replace(' ','').replace('nan','').replace('.]',']').replace('.', ','))
+            if len(x_list)>=1:
+                return x_list[0]
+            else:
+                return 0
+        wide_df_selected['lvef_type_nlp'] = wide_df_selected['lvef_type_nlp'].apply(lambda x: process_lvef_type(x))
     if hf_task == 'IPvN':
         wide_df_selected[category_dictionaries['hf_diag_type'][hf_diag_type]] = wide_df_selected[category_dictionaries['hf_diag_type'][hf_diag_type]].apply(lambda x: 1 if x in [1,2] else 0)
     
