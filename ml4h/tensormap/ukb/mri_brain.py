@@ -502,7 +502,7 @@ t2_flair_random_slice = TensorMap(
     Interpretation.CONTINUOUS,
     shape=(192, 256, 1),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_random_slice_bounded(6, 200),
+    tensor_from_file=_random_slice_bounded(64, 128),
     normalization=ZeroMeanStd1(),
     dependent_map=axial_index_map,
 )
