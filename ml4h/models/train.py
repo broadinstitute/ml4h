@@ -278,7 +278,7 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
                     plt.plot(generated_images[i_col, :, lead], label=lead)
             elif len(generated_images.shape) == 4:
                 plt.imshow(generated_images[i_col], cmap='gray')
-            plt.gca().set_title(f'{control_tm.name[:10]}: {pheno_scale:0.1f}')
+            #plt.gca().set_title(f'{control_tm.name[:10]}: {pheno_scale:0.1f}')
             plt.axis("off")
 
     plt.tight_layout()
