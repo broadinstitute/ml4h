@@ -1,0 +1,8 @@
+service: mlflow
+runtime: custom
+env: flex
+automatic_scaling:
+  min_num_instances: 1
+  max_num_instances: 2
+beta_settings:
+  cloud_sql_instances: broad-ml4cvd:us-central1:broad-ml4cvd-staging-db 
