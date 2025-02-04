@@ -251,7 +251,10 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
 
 def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
     control_batch = {}
-    samples = np.arange(-4, 5, 1)
+    if control_tm.is_continuous():
+        samples = np.arange(-4, 5, 1)
+    elif control_tm.is_categorical():
+        samples = np.arange(0, len(control_tm.channel_map), 1)
     num_rows = len(samples)
     num_cols = 4
     plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
@@ -260,7 +263,8 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
             if cm == control_tm and control_tm.is_continuous():
                 control_batch[cm.output_name()] = np.ones((batch_size,) + cm.shape) * pheno_scale
             elif cm == control_tm and control_tm.is_categorical():
-                control_batch[cm.output_name()] = np.eye(control_tm.shape[-1])[np.random.choice(control_tm.shape[-1], batch_size)]
+                control_batch[cm.output_name()] = np.zeros((batch_size,) + cm.shape)
+                control_batch[cm.output_name()][:, pheno_scale] = 1.0
             else:
                 control_batch[cm.output_name()] = np.zeros((batch_size,) + cm.shape)
 
