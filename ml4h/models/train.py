@@ -257,8 +257,10 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
     plt.figure(figsize=(num_cols * 2.0, num_rows * 2.0), dpi=300)
     for row, pheno_scale in enumerate(samples):
         for cm in tensor_maps_out:
-            if cm == control_tm:
+            if cm == control_tm and control_tm.is_continuous():
                 control_batch[cm.output_name()] = np.ones((batch_size,) + cm.shape) * pheno_scale
+            elif cm == control_tm and control_tm.is_categorical():
+                control_batch[cm.output_name()] = np.eye(control_tm.shape[-1])[np.random.choice(control_tm.shape[-1], batch_size)]
             else:
                 control_batch[cm.output_name()] = np.zeros((batch_size,) + cm.shape)
 
@@ -278,7 +280,7 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
                     plt.plot(generated_images[i_col, :, lead], label=lead)
             elif len(generated_images.shape) == 4:
                 plt.imshow(generated_images[i_col], cmap='gray')
-            #plt.gca().set_title(f'{control_tm.name[:10]}: {pheno_scale:0.1f}')
+            plt.gca().set_title(f'{control_tm.name[:14]}: {pheno_scale:0.1f}')
             plt.axis("off")
 
     plt.tight_layout()
