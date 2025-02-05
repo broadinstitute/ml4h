@@ -431,6 +431,22 @@ lax_2ch_random_slice_3d = TensorMap(
     tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0'),
 )
 
+lax_4ch_random_slice_3d_diastole = TensorMap(
+    'lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', max_random=1),
+)
+lax_3ch_random_slice_3d_diastole = TensorMap(
+    'lax_3ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(224, 160, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_3ch/2/instance_0', max_random=1),
+)
+lax_2ch_random_slice_3d_diastole = TensorMap(
+    'lax_2ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(224, 224, 1),
+    normalization=ZeroMeanStd1(),
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', max_random=1),
+)
+
 lax_4ch_diastole_slice0_224_3d_augmented = TensorMap(
     'lax_4ch_diastole_slice0_224_3d_augmented', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise, _make_rotate(-15, 15)],
