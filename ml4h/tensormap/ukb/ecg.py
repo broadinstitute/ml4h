@@ -1258,6 +1258,20 @@ ecg_bike_strip = TensorMap(
     tensor_from_file=normalized_first_date,
 )
 
+def get_instance_0(tm: TensorMap, hd5: h5py.File, dependents=None):
+    tensor = np.array(
+        hd5[f"{tm.path_prefix}/{tm.name}/instance_0"],
+        dtype=np.float32,
+    )
+    return pad_or_crop_array_to_shape(tm.shape, tensor)
+
+
+
+ecg_bike_median_instance_0 = TensorMap(
+    'median', Interpretation.CONTINUOUS, shape=(5500, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=get_instance_0, normalization=ZeroMeanStd1(), channel_map=ECG_BIKE_LEADS,
+)
+
 def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ppg = np.zeros(tm.shape,  dtype=np.float32)
     ppg[:, 0] = hd5[tm.name]
