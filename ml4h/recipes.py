@@ -263,7 +263,7 @@ def train_multimodal_multitask(args):
 
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = legacy_multimodal_multitask_model(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(
