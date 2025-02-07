@@ -8,7 +8,7 @@ from sklearn.metrics import roc_curve, auc, average_precision_score
 
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
-from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE
 
 #from neurite.tf.losses import Dice
 
@@ -107,39 +107,39 @@ def paired_angle_between_batches(tensors):
 
 def ignore_zeros_l2(y_true, y_pred):
     mask = K.cast(K.not_equal(y_true, 0), K.floatx())
-    return mean_squared_error(y_true * mask, y_pred * mask)
+    return MSE(y_true * mask, y_pred * mask)
 
 
 def ignore_zeros_logcosh(y_true, y_pred):
     mask = K.cast(K.not_equal(y_true, 0), K.floatx())
-    return logcosh(y_true * mask, y_pred * mask)
+    return LogCosh(y_true * mask, y_pred * mask)
 
 
 def sentinel_logcosh_loss(sentinel: float):
     def ignore_sentinel_logcosh(y_true, y_pred):
         mask = K.cast(K.not_equal(y_true, sentinel), K.floatx())
-        return logcosh(y_true * mask, y_pred * mask)
+        return LogCosh(y_true * mask, y_pred * mask)
     return ignore_sentinel_logcosh
 
 
 def y_true_times_mse(y_true, y_pred):
-    return K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(y_true, 1.0)*MSE(y_true, y_pred)
 
 
 def mse_10x(y_true, y_pred):
-    return 10.0*mean_squared_error(y_true, y_pred)
+    return 10.0*MSE(y_true, y_pred)
 
 
 def y_true_squared_times_mse(y_true, y_pred):
-    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*MSE(y_true, y_pred)
 
 
 def y_true_cubed_times_mse(y_true, y_pred):
-    return K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*MSE(y_true, y_pred)
 
 
 def y_true_squared_times_logcosh(y_true, y_pred):
-    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*logcosh(y_true, y_pred)
+    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*LogCosh(y_true, y_pred)
 
 
 def two_batch_euclidean(tensors):
@@ -447,15 +447,15 @@ def get_metric_dict(output_tensor_maps):
         elif tm.loss == 'binary_crossentropy':
             losses.append(binary_crossentropy)
         elif tm.loss == 'mean_absolute_error' or tm.loss == 'mae':
-            losses.append(mean_absolute_error)
+            losses.append(MSE)
         elif tm.loss == 'mean_squared_error' or tm.loss == 'mse':
-            losses.append(mean_squared_error)
+            losses.append(MSE)
         elif tm.loss == 'cosine_similarity':
-            losses.append(cosine_similarity)
+            losses.append(CosineSimilarity)
         elif tm.loss == 'log_cosh':
-            losses.append(logcosh)
+            losses.append(LogCosh)
         elif tm.loss == 'mape':
-            losses.append(mean_absolute_percentage_error)
+            losses.append(MAPE)
         elif hasattr(tm.loss,  '__name__'):
             metrics[tm.loss.__name__] = tm.loss
             losses.append(tm.loss)
