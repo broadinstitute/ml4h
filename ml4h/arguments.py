@@ -104,7 +104,7 @@ def parse_args():
         'argument to the TensorMap made from this file.',
     )
     parser.add_argument(
-        '--latent_output_file', default=None, help=
+        '--latent_output_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
@@ -564,10 +564,11 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                 ),
             )
-    if args.latent_output_file is not None:
-        args.tensor_maps_out.append(
-            generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0)),
-        )
+    if len(args.latent_output_files) > 0:
+        for lof in args.latent_output_files:
+            args.tensor_maps_out.append(
+                generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
+            )
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
