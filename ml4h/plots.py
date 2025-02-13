@@ -463,6 +463,9 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 col += 1
                 if col >= cols:
                     break
+        if len(history.history[k]) < 1:
+            logging.info(f"Not enough epochs to plot learning curves at:{k}")
+            return
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
