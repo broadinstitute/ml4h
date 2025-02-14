@@ -110,6 +110,7 @@ category_dictionaries = {
         'survival': [0, 1, 2, 3]
     },
     'hf_diag_type': {
+        'hf_nlp_5y': 'hf_nlp_5y_cls',
         'hf_nlp': 'hf_nlp_cls',
         'primary': 'hf_primary_cls',
         'both': 'hf_both_cls'
