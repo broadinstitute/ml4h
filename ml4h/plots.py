@@ -463,7 +463,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 col += 1
                 if col >= cols:
                     break
-        if len(history.history[k]) < 1:
+        if len(history.history[k]) < 2:
             logging.info(f"Not enough epochs to plot learning curves at:{k}")
             return
 
