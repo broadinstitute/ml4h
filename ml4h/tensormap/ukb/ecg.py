@@ -581,6 +581,12 @@ ecg_rest_median_576 = TensorMap(
     normalization=Standardize(mean=0, std=10),
 )
 
+ecg_rest_median_512 = TensorMap(
+    'ecg_rest_median_512', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(512, 12), loss='logcosh',
+    activation='linear', tensor_from_file=_make_ecg_rest(), channel_map=ECG_REST_MEDIAN_LEADS,
+    normalization=ZeroMeanStd1(),
+)
+
 ecg_rest_median_raw_10_no_poor = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
@@ -1252,6 +1258,20 @@ ecg_bike_strip = TensorMap(
     tensor_from_file=normalized_first_date,
 )
 
+def get_instance_0(tm: TensorMap, hd5: h5py.File, dependents=None):
+    tensor = np.array(
+        hd5[f"{tm.path_prefix}/{tm.name}/instance_0"],
+        dtype=np.float32,
+    )
+    return pad_or_crop_array_to_shape(tm.shape, tensor)
+
+
+
+ecg_bike_median_instance_0 = TensorMap(
+    'median', Interpretation.CONTINUOUS, shape=(5500, 3), path_prefix='ukb_ecg_bike',
+    tensor_from_file=get_instance_0, normalization=ZeroMeanStd1(), channel_map=ECG_BIKE_LEADS,
+)
+
 def ppg_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     ppg = np.zeros(tm.shape,  dtype=np.float32)
     ppg[:, 0] = hd5[tm.name]
@@ -1266,3 +1286,16 @@ ppg_2 = TensorMap(
     'ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
     normalization=Standardize(mean=4824.6, std=3235.8),
 )
+
+def uw_ecg_from_hd5(tm, hd5, dependents={}):
+    new_mean = 6
+    new_std = 30
+    tensor = new_mean+(new_std*np.array(hd5[tm.path_prefix], dtype=np.float32))
+    return tensor
+
+ecg_median_uw = TensorMap('ecg_rest_median_raw_10',
+                          Interpretation.CONTINUOUS,
+                          shape=(600, 12),
+                          path_prefix='ecg.ecg_rest_median_raw_10',
+                          channel_map=ECG_REST_MEDIAN_LEADS,
+                          tensor_from_file=uw_ecg_from_hd5)
