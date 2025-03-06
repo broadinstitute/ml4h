@@ -12,7 +12,7 @@ COPY ecg2af_quintuplet_v2024_01_13.h5 /app/ecg2af_quintuplet_v2024_01_13.h5
 # Copy the Python script
 COPY process_files.py /app/process_files.py
 
-RUN pip3 install ml4h
+RUN pip install ml4h
 
 # Define the command to run the script
 CMD ["python", "process_files.py", "/data"]
