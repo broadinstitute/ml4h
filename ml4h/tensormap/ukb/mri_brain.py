@@ -439,3 +439,102 @@ t1_mni_accumbens_65_76 = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_accumbens': 19, 'Right_accumbens': 70}),
     normalization=ZeroMeanStd1(),
 )
+def _random_slice_bounded(low=0, high=182):
+    def random_mni_slice_tensor(tm, hd5, dependents={}):
+        slice_index = np.random.randint(low, high)
+        tensor = pad_or_crop_array_to_shape(
+                tm.shape, np.array(
+                tm.hd5_first_dataset_in_group(hd5, f'{tm.path_prefix}axial_{slice_index}/'), dtype=np.float32,
+            ),
+        )
+        dependents[tm.dependent_map] = np.zeros(
+            tm.dependent_map.shape,
+            dtype=np.float32,
+        )
+        dependents[tm.dependent_map][0] = (float(slice_index) - 96) / 8.0
+        return tensor
+    return random_mni_slice_tensor
+
+axial_index_map = TensorMap('axial_index', Interpretation.CONTINUOUS, shape=(1,), channel_map={'axial_index':0})
+
+t1_mni_random_slice = TensorMap(
+    't1_mni_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 192, 1),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_random_slice_bounded(),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t1_mni_random_slice_64_128 = TensorMap(
+    't1_mni_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 192, 1),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_random_slice_bounded(64, 128),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t1_mni_random_slice_32_160 = TensorMap(
+    't1_mni_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 192, 1),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=_random_slice_bounded(32, 160),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t1_random_slice = TensorMap(
+    't1_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(224, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_random_slice_bounded(6, 200),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t1_random_slice_256 = TensorMap(
+    't1_random_slice_256',
+    Interpretation.CONTINUOUS,
+    shape=(256, 256, 1),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=_random_slice_bounded(16, 192),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t2_flair_random_slice = TensorMap(
+    't2_flair_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 256, 1),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_random_slice_bounded(64, 128),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t2_flair_random_slice_32_192 = TensorMap(
+    't2_flair_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 256, 1),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_random_slice_bounded(32, 192),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+t2_flair_random_slice_127 = TensorMap(
+    't2_flair_random_slice',
+    Interpretation.CONTINUOUS,
+    shape=(192, 256, 1),
+    path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
+    tensor_from_file=_random_slice_bounded(127, 128),
+    normalization=ZeroMeanStd1(),
+    dependent_map=axial_index_map,
+)
+
+
