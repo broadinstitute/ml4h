@@ -199,7 +199,7 @@ class LmdbEchoStudyVideoDataDescriptionBWH(DataDescription):
             start_beat=0,
     ):
 
-        self.local_lmdb_dir = local_lmdb_dir
+        self.local_lmdb_dir = local_lmdb_dir[0]
         self._name = name
         self.nframes = nframes
         self.nframes = (nframes + start_beat) * skip_modulo
@@ -213,9 +213,16 @@ class LmdbEchoStudyVideoDataDescriptionBWH(DataDescription):
         # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{mrn}_{study}.lmdb")
         # lmdb_log = pd.read_csv(os.path.join(lmdb_folder, f'log_{mrn}_{study}.tsv'),
         #                        sep='\t').set_index('view')
-        lmdb_log = pd.read_csv(glob.glob(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*",f"log_*_{study}*.tsv"))[0],sep='\t').set_index('view')
-        lmdb_log = lmdb_log[lmdb_log['stored']]
-
+        try:
+            lmdb_log = pd.read_csv(os.path.join(self.local_lmdb_dir,f"{mrn}_{study}",f"log_{mrn}_{study}.tsv"),sep='\t').set_index('view')
+            lmdb_log = lmdb_log[lmdb_log['stored']]
+        except:
+            try:
+                lmdb_log = pd.read_csv(glob.glob(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*",f"log_*_{study}*.tsv"))[0],sep='\t').set_index('view')
+                lmdb_log = lmdb_log[lmdb_log['stored']]
+            except:
+                raise ValueError(f'File not found in folder: {mrn}_{study}')
+        
         if view not in lmdb_log.index:
             raise ValueError('View not saved in the LMDB')
 
@@ -232,12 +239,17 @@ class LmdbEchoStudyVideoDataDescriptionBWH(DataDescription):
 
         # lmdb_folder = os.path.join(self.local_lmdb_dir, f"{mrn}_{study}.lmdb")
         try:
-            lmdb_folder = glob.glob(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*.lmdb"))[0]
+            lmdb_folder = os.path.join(self.local_lmdb_dir,f"{mrn}_{study}.lmdb")
+            env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         except:
-            print(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*.lmdb"))
-            lmdb_folder = glob.glob(os.path.join(self.local_lmdb_dir,f"*{study}*.lmdb"))[0]
+            try:
+                lmdb_folder = glob.glob(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*.lmdb"))[0]
+                env = lmdb.open(lmdb_folder, readonly=True, lock=False)
+            except:
+                print(os.path.join(self.local_lmdb_dir,f"*{mrn}_{study}*.lmdb"))
+                lmdb_folder = glob.glob(os.path.join(self.local_lmdb_dir,f"*{study}*.lmdb"))[0]
+                env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         
-        env = lmdb.open(lmdb_folder, readonly=True, lock=False)
         nframes = self.nframes
 
         frames = []

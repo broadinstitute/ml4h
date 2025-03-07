@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from data_descriptions.echo import LmdbEchoStudyVideoDataDescription, LmdbEchoStudyVideoDataDescriptionBWH
 from echo_defines import category_dictionaries
 from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor, create_regressor_classifier
 
@@ -39,8 +39,14 @@ def main(
         output_dir,
         extract_embeddings,
         start_beat,
-        inf_type
+        inf_type,
+        is_bwh
 ):
+    if is_bwh:
+        input_dd_class = LmdbEchoStudyVideoDataDescriptionBWH
+    else:
+        input_dd_class = LmdbEchoStudyVideoDataDescription
+    
     # Loading information on saved model:
     model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0], 'model_params.json')
     with open(model_param_path, 'r') as json_file:
@@ -124,7 +130,8 @@ def main(
             (wide_df['canonical_prediction'].isin(selected_canonical_idx))
             ]
     
-    
+    if is_bwh:
+        wide_df_selected.rename(columns={'study_age': 'echo_age'}, inplace=True)
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
@@ -160,7 +167,10 @@ def main(
             patient_inference = splits['patient_test']
         elif 'patient_test' in splits[list(splits.keys())[0]].keys():
             patient_inference = splits['ewoc_mgh']['patient_test'] + splits['c3po_mgh']['patient_test']
-
+    
+    if is_bwh:
+        patient_inference = working_mrns
+    
     # Testing a random subset of IDs (for speed) to see if there are matching ids in working_ids and chosen split
     random_ids_for_test = np.random.permutation(len(working_ids))[:min(len(working_ids), 500)]
     # working_ids_subset_test = [working_ids[i] for i in random_ids_for_test]
@@ -177,7 +187,7 @@ def main(
         logging.error(f'No matches found between {wide_file} indices and the {splits_file} indices!')
         sys.exit()
 
-    INPUT_DD = LmdbEchoStudyVideoDataDescription(
+    INPUT_DD = input_dd_class(
         lmdb_folder,
         'image',
         [],
@@ -345,6 +355,7 @@ if __name__ == "__main__":
     parser.add_argument('--extract_embeddings', action='store_true')
     parser.add_argument('--start_beat', type=int, default=0)
     parser.add_argument('--inf_type', type=str, default='validation')
+    parser.add_argument("--is_bwh", action="store_true")
 
     args = parser.parse_args()
     root = logging.getLogger()
@@ -373,5 +384,6 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
         start_beat=args.start_beat,
-        inf_type=args.inf_type
+        inf_type=args.inf_type,
+        is_bwh=args.is_bwh
     )
