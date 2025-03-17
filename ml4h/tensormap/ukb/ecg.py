@@ -1310,7 +1310,7 @@ def norm_uw_ecg_from_hd5(tm, hd5, dependents={}):
     tensor /= tensor.std() + 1e-6
     return tensor
 
-ecg_median_uw_norm = TensorMap('ecg_rest_median_raw_10',
+ecg_median_uw_norm = TensorMap('median',
                           Interpretation.CONTINUOUS,
                           shape=(600, 12),
                           path_prefix='ecg.ecg_rest_median_raw_10',
