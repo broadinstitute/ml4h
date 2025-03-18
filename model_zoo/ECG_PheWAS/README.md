@@ -23,9 +23,6 @@ only age, sex, and race.
 We further demonstrate how a latent space model can be used to generate disease-specific ECG waveforms and facilitate 
 disease profiling for individual patients.
 
-Our model expects ECG median waveforms with 600 centiVolt voltages across 12 leads as input and produces 
-a 256 dimensional latent space encoding, as well as a reconstructed ECG with the same shape as the input.
-
 To create a model from scratch run:
 ```bash
   python /path/to/ml4h/ml4h/recipes.py \
