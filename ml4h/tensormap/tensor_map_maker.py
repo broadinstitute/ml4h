@@ -286,7 +286,7 @@ def generate_latent_tensor_map_from_file(
     dimensions = len(df.columns)-1
     return TensorMap(
             f'{tensor_map_name}', Interpretation.CONTINUOUS, shape=(dimensions,),
-            tensor_from_file=_space_tensor_from_file(df, dimensions),
+            tensor_from_file=_space_tensor_from_file(df, dimensions), metrics=[],
     )
 
 
