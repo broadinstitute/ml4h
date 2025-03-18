@@ -1288,31 +1288,12 @@ ppg_2 = TensorMap(
 )
 
 def uw_ecg_from_hd5(tm, hd5, dependents={}):
-    new_mean = 6
-    new_std = 30
     tensor = np.array(hd5[tm.path_prefix], dtype=np.float32)
-    # tensor -= tensor.mean()
-    # tensor /= tensor.std() + 1e-6
-    # tensor = new_mean+(new_std*tensor)
     return tensor
 
-ecg_median_uw = TensorMap('ecg_rest_median_raw_10',
+ecg_median_uw = TensorMap('median',
                           Interpretation.CONTINUOUS,
                           shape=(600, 12),
                           path_prefix='ecg.ecg_rest_median_raw_10',
                           channel_map=ECG_REST_MEDIAN_LEADS,
                           tensor_from_file=uw_ecg_from_hd5)
-
-
-def norm_uw_ecg_from_hd5(tm, hd5, dependents={}):
-    tensor = np.array(hd5[tm.path_prefix], dtype=np.float32)
-    tensor -= tensor.mean()
-    tensor /= tensor.std() + 1e-6
-    return tensor
-
-ecg_median_uw_norm = TensorMap('median',
-                          Interpretation.CONTINUOUS,
-                          shape=(600, 12),
-                          path_prefix='ecg.ecg_rest_median_raw_10',
-                          channel_map=ECG_REST_MEDIAN_LEADS,
-                          tensor_from_file=norm_uw_ecg_from_hd5)
