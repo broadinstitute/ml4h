@@ -10,6 +10,7 @@ import logging
 import datetime
 import numpy as np
 import pandas as pd
+import mlflow
 
 from functools import reduce
 from google.cloud import storage
@@ -49,6 +50,11 @@ from ml4ht.data.sample_getter import DataDescriptionSampleGetter
 from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoch
 
 from torch.utils.data import DataLoader
+
+# Set the mlflow_experiment with a default
+mlflow.set_experiment("Vm_with_docker")
+mlflow.start_run()
+mlflow.tensorflow.autolog()
 
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
