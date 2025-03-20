@@ -357,10 +357,11 @@ def test_diffusion_control_model(args, supervised=False):
 
     kid_values = []
     fid_values = []
-    for _ in range(args.test_steps):
+    for i in range(args.test_steps):
         batch = next(generate_test)
         for k in batch[0]:
             feature_batch = batch[0][k]
+        model.normalizer.adapt(feature_batch)
         control_embed = model.control_embed_model(batch[1])
         generated_images = model.generate(
             control_embed,
