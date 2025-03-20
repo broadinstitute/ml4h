@@ -372,4 +372,4 @@ def test_diffusion_control_model(args, unconditioned=False, supervised=False):
             generated_images = model.generate(control_embed, num_images=args.batch_size, diffusion_steps=50)
         kid_values.append(calculate_kid(feature_batch, generated_images))
         fid_values.append(calculate_fid(feature_batch, generated_images))
-    logging.info(f"KID:{np.mean(kid_values):.4f} ± {np.std(kid_values, ddof=1):.4f} \nFID:{np.mean(fid_values):.4f} ± {np.std(fid_values, ddof=1):.4f}")
+    logging.info(f"\nKID:{np.mean(kid_values):.4f} ± {np.std(kid_values, ddof=1):.4f} \nFID:{np.mean(fid_values):.4f} ± {np.std(fid_values, ddof=1):.4f}")
