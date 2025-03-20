@@ -4,15 +4,14 @@ import logging
 import keras
 import numpy as np
 import tensorflow as tf
+from scipy.linalg import sqrtm
+from neurite.tf.losses import Dice
 import tensorflow.keras.backend as K
-
 from sklearn.metrics import roc_curve, auc, average_precision_score
-
-
+from tensorflow.keras.applications.inception_v3 import InceptionV3, preprocess_input
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
 from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
-from neurite.tf.losses import Dice
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
@@ -858,3 +857,141 @@ class MultiScaleSSIM(keras.metrics.Metric):
         # Reset the metric state variables
         self.total_ssim.assign(0.0)
         self.count.assign(0.0)
+
+
+def calculate_kid(real, generated):
+    """
+    Compute the Kernel Inception Distance (KID) between two sets of images.
+
+    Parameters:
+      real: np.ndarray of shape (N, 224, 224, 1) – real images (grayscale)
+      generated: np.ndarray of shape (N, 224, 224, 1) – generated images (grayscale)
+
+    Returns:
+      kid_value: float – the estimated KID value.
+
+    Note: This function assumes that the image pixel values are in the [0, 255] range.
+    """
+    # Convert grayscale images to 3 channels by repeating the channel dimension
+    if real.shape[-1] == 1:
+        real = np.repeat(real, 3, axis=-1)
+    if generated.shape[-1] == 1:
+        generated = np.repeat(generated, 3, axis=-1)
+
+    # Convert to TensorFlow tensors and resize images to 299x299 (the InceptionV3 input size)
+    real_tensor = tf.convert_to_tensor(real, dtype=tf.float32)
+    generated_tensor = tf.convert_to_tensor(generated, dtype=tf.float32)
+
+    real_resized = tf.image.resize(real_tensor, (299, 299)).numpy()
+    generated_resized = tf.image.resize(generated_tensor, (299, 299)).numpy()
+
+    # Preprocess images for InceptionV3
+    # real_preprocessed = preprocess_input(real_resized)
+    # generated_preprocessed = preprocess_input(generated_resized)
+
+    # Load InceptionV3 model for feature extraction.
+    # Using include_top=False with global average pooling gives a 2048-D feature vector per image.
+    model = InceptionV3(include_top=False, pooling='avg', input_shape=(299, 299, 3))
+
+    # Extract features for both sets.
+    features_real = model.predict(real_resized)
+    features_generated = model.predict(generated_resized)
+
+    # Determine feature dimension
+    d = features_real.shape[1]
+
+    # Define the third-order polynomial kernel: k(x, y) = (x^T y / d + 1)^3
+    def poly_kernel(X, Y):
+        return (np.dot(X, Y.T) / d + 1) ** 3
+
+    subset_real = features_real
+    subset_generated = features_generated
+
+    # Compute the kernel matrices
+    K_rr = poly_kernel(subset_real, subset_real)
+    K_gg = poly_kernel(subset_generated, subset_generated)
+    K_rg = poly_kernel(subset_real, features_generated)
+
+    m = subset_real.shape[0]
+
+    # For an unbiased estimator, exclude the diagonal elements from the intra-set kernel sums.
+    sum_K_rr = np.sum(K_rr) - np.sum(np.diag(K_rr))
+    sum_K_gg = np.sum(K_gg) - np.sum(np.diag(K_gg))
+
+    # Unbiased MMD^2 estimate (i.e. KID) as described in the literature:
+    kid_value = (sum_K_rr / (m * (m - 1)) +
+                 sum_K_gg / (m * (m - 1)) -
+                 2 * np.mean(K_rg))
+
+    return kid_value
+
+
+def calculate_fid(real, generated):
+    """
+    Calculate the Frechet Inception Distance (FID) between two sets of images.
+
+    Parameters:
+        real (np.ndarray): Array of real images.
+        generated (np.ndarray): Array of generated images.
+        num_subsets (int): Number of subsets to sample for calculating mean FID.
+        subset_size (int): Number of images in each subset.
+
+    Returns:
+        float: Mean FID value over the subsets.
+    """
+
+    # Convert grayscale images to 3 channels by repeating the channel dimension
+    if real.shape[-1] == 1:
+        real = np.repeat(real, 3, axis=-1)
+    if generated.shape[-1] == 1:
+        generated = np.repeat(generated, 3, axis=-1)
+
+    # Convert to TensorFlow tensors and resize images to 299x299 (the InceptionV3 input size)
+    real_tensor = tf.convert_to_tensor(real, dtype=tf.float32)
+    generated_tensor = tf.convert_to_tensor(generated, dtype=tf.float32)
+
+    real_resized = tf.image.resize(real_tensor, (299, 299)).numpy()
+    generated_resized = tf.image.resize(generated_tensor, (299, 299)).numpy()
+
+    model = InceptionV3(include_top=False, pooling='avg', input_shape=(299, 299, 3))
+
+    n_real = real.shape[0]
+    n_generated = generated.shape[0]
+
+    subset_real = real_resized
+    subset_generated = generated_resized
+
+    # Ensure images are resized to (299,299) as expected by InceptionV3.
+    # If they are already 299x299, this step will have minimal cost.
+    if subset_real.shape[1] != 299 or subset_real.shape[2] != 299:
+        subset_real = tf.image.resize(subset_real, (299, 299)).numpy()
+    if subset_generated.shape[1] != 299 or subset_generated.shape[2] != 299:
+        subset_generated = tf.image.resize(subset_generated, (299, 299)).numpy()
+
+    # Preprocess the images as required by InceptionV3 (scaling pixels to [-1, 1])
+    subset_real = preprocess_input(subset_real)
+    subset_generated = preprocess_input(subset_generated)
+
+    # Extract features using the InceptionV3 model.
+    features_real = model.predict(subset_real)
+    features_generated = model.predict(subset_generated)
+
+    # Compute mean and covariance for each set of features.
+    mu_real = np.mean(features_real, axis=0)
+    mu_generated = np.mean(features_generated, axis=0)
+    sigma_real = np.cov(features_real, rowvar=False)
+    sigma_generated = np.cov(features_generated, rowvar=False)
+
+    # Compute the squared difference between the means.
+    diff = mu_real - mu_generated
+    diff_squared = np.sum(diff ** 2)
+
+    # Compute the square root of the product of covariances.
+    covmean, _ = sqrtm(sigma_real.dot(sigma_generated), disp=False)
+    # Handle numerical errors: if imaginary numbers appear, discard the imaginary part.
+    if np.iscomplexobj(covmean):
+        covmean = covmean.real
+
+    # Compute the FID for the subset.
+    fid = diff_squared + np.trace(sigma_real) + np.trace(sigma_generated) - 2 * np.trace(covmean)
+    return fid
