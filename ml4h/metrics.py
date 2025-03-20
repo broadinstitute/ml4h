@@ -894,8 +894,8 @@ def calculate_kid(real, generated):
     model = InceptionV3(include_top=False, pooling='avg', input_shape=(299, 299, 3))
 
     # Extract features for both sets.
-    features_real = model.predict(real_resized)
-    features_generated = model.predict(generated_resized)
+    features_real = model.predict(real_resized, verbose=0)
+    features_generated = model.predict(generated_resized, verbose=0)
 
     # Determine feature dimension
     d = features_real.shape[1]
@@ -973,8 +973,8 @@ def calculate_fid(real, generated):
     subset_generated = preprocess_input(subset_generated)
 
     # Extract features using the InceptionV3 model.
-    features_real = model.predict(subset_real)
-    features_generated = model.predict(subset_generated)
+    features_real = model.predict(subset_real, verbose=0)
+    features_generated = model.predict(subset_generated, verbose=0)
 
     # Compute mean and covariance for each set of features.
     mu_real = np.mean(features_real, axis=0)

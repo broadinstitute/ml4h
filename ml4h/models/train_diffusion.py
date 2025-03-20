@@ -330,9 +330,12 @@ def train_diffusion_control_model(args, supervised=False):
     return model
 
 
-def test_diffusion_control_model(args, supervised=False):
+def test_diffusion_control_model(args, unconditioned=False, supervised=False):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    if supervised:
+    if unconditioned:
+        model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+                               args.diffusion_loss, args.sigmoid_beta, args.inspect_model)
+    elif supervised:
         supervised_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
         model = DiffusionController(
             args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
@@ -353,7 +356,7 @@ def test_diffusion_control_model(args, supervised=False):
         model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
     else:
-        logging.warning(f'Test a random model?! No checkpoint at: {checkpoint_path}')
+        logging.warning(f'Testing a random model?! No checkpoint at: {checkpoint_path}')
 
     kid_values = []
     fid_values = []
@@ -362,12 +365,11 @@ def test_diffusion_control_model(args, supervised=False):
         for k in batch[0]:
             feature_batch = batch[0][k]
         model.normalizer.adapt(feature_batch)
-        control_embed = model.control_embed_model(batch[1])
-        generated_images = model.generate(
-            control_embed,
-            num_images=args.batch_size,
-            diffusion_steps=50,
-        )
+        if unconditioned:
+            generated_images = model.generate(num_images=args.batch_size, diffusion_steps=50)
+        else:
+            control_embed = model.control_embed_model(batch[1])
+            generated_images = model.generate(control_embed, num_images=args.batch_size, diffusion_steps=50)
         kid_values.append(calculate_kid(feature_batch, generated_images))
         fid_values.append(calculate_fid(feature_batch, generated_images))
     logging.info(f"KID:{np.mean(kid_values):.4f} ± {np.std(kid_values, ddof=1):.4f} \nFID:{np.mean(fid_values):.4f} ± {np.std(fid_values, ddof=1):.4f}")
