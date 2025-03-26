@@ -22,8 +22,8 @@ WORKDIR /app
 # Basic setup
 RUN ./ubuntu.sh
 
-# Point any MLflow tracking hooks at the main MLflow instance on App Engine--note that with a swap to Cloud Run this will need to be updated
-ENV MLFLOW_TRACKING_URI='https://mlflow-dot-broad-ml4cvd.uc.r.appspot.com'
+# Point any MLflow tracking hooks at the main MLflow instance on Cloud Run
+ENV MLFLOW_TRACKING_URI='https://mlflow-783282864357.us-central1.run.app'
 
 # FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
 # understand this odd sequence of installing then uninstalling fastai before
