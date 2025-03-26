@@ -6,6 +6,10 @@
 
 ################### VARIABLES ############################################
 
+# The mlflow login information pulled from Google secrets to pass to the docker image for tracking
+MLFLOW_USERNAME=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_username')
+MLFLOW_PASSWORD=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_password')
+
 # The default images are based on ufoym/deepo:all-py36-jupyter
 DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu"
 DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu"
