@@ -286,7 +286,7 @@ def make_multimodal_multitask_model_block(
             decoder_outputs.append(decoders[tm](multimodal_activation))
     if len(decoder_outputs) == 0:
         decoder_outputs = [multimodal_activation]
-    full_model = Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model')
+    full_model = Model(inputs=list(inputs.values()), outputs=decoder_outputs[::-1], name='block_model')
     return full_model, encoders, decoders, merge_model
 
 
