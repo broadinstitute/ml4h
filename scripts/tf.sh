@@ -8,7 +8,7 @@
 
 # The mlflow login information pulled from Google secrets to pass to the docker image for tracking
 export LOGNAME=$(gcloud config get-value account)
-export MLFLOW_TRACKING_USERNAM=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_username')
+export MLFLOW_TRACKING_USERNAME=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_username')
 export MLFLOW_TRACKING_PASSWORD=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_password')
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
