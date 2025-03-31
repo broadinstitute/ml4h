@@ -22,6 +22,9 @@ WORKDIR /app
 # Basic setup
 RUN ./ubuntu.sh
 
+# Point any MLflow tracking hooks at the main MLflow instance on Cloud Run
+ENV MLFLOW_TRACKING_URI='https://mlflow-783282864357.us-central1.run.app'
+
 # FastAI. See the Developer Install under https://github.com/fastai/fastai/ to
 # understand this odd sequence of installing then uninstalling fastai before
 # installing it from github. (Basically, to get its deps.)
