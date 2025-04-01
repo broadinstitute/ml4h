@@ -66,13 +66,16 @@ TrainType = Dict[str, np.ndarray]  # TODO: better name
 
 
 def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]) -> Iterator[Tuple[TrainType, TrainType, List[None]]]:
-    return cycle([
-        (
+    def generator():
+        yield (
             {tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
             {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},
-            #[None] * len(output_tmaps),
-        ), ])
-
+        )
+    return tf.data.Dataset.from_generator(generator, 
+                                          output_signature=(
+                                              {tm.input_name(): tf.TensorSpec(shape=(2,) + tm.shape, dtype=tf.float32) for tm in input_tmaps},
+                                              {tm.output_name(): tf.TensorSpec(shape=(2,) + tm.shape, dtype=tf.float32) for tm in output_tmaps}
+                                          ))
 
 def assert_model_trains(
     input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
@@ -95,7 +98,7 @@ def assert_model_trains(
         for tmap, tensor in zip(input_tmaps, m.inputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
-        for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
+        for tmap, tensor in zip(output_tmaps, m.outputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
     data = make_training_data(input_tmaps, output_tmaps)
