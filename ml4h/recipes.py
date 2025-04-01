@@ -51,10 +51,6 @@ from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoc
 
 from torch.utils.data import DataLoader
 
-# Set the mlflow_experiment with a default
-mlflow.set_experiment("Vm_with_docker")
-mlflow.start_run()
-mlflow.tensorflow.autolog()
 
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
@@ -1351,4 +1347,13 @@ def _tsne_wrapper(
 
 if __name__ == '__main__':
     arguments = parse_args()
+
+    # Set the mlflow_experiment if the arguments is provided
+    # If there is no mlflow_experiment_name, MLflow will use the default experiment or the previously set experiment for logging.
+    if arguments.mlflow_experiment_name:
+        mlflow.set_experiment(arguments.mlflow_experiment_name)
+    mlflow.start_run()
+    mlflow.tensorflow.autolog()
+
     run(arguments)  # back to the top
+
