@@ -30,6 +30,7 @@ from ml4h.models.model_factory import get_custom_objects
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.optimizers import get_optimizer
 from ml4h.defines import IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+from ml4h.models.merge_blocks import CosineLossLayer, L2LossLayer
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
@@ -340,13 +341,24 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     if not target_layer:
         target_layer = parent_model.get_layer(output_layer_name)
         parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
+    
+    if parent_model.inputs:
+        parent_inputs = parent_model.inputs
+    else:
+        # Fallback: create synthetic inputs from tensor_maps_in
+        parent_inputs = []
+        for tm in tensor_maps_in:
+            input_tensor = Input(shape=tm.shape, name=tm.input_name())
+            parent_inputs.append(input_tensor)
+        # Optionally warn
+        logging.warning("parent_model.inputs was empty. Created synthetic Inputs.")
+    dummy_input = {
+        tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in tensor_maps_in
+    }
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input, verbose=0)
     return intermediate_layer_model
-
-
 Tensor = tf.Tensor
 Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
 Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
@@ -1149,7 +1161,7 @@ def make_paired_autoencoder_model(
         multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     else:
         raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
-    latent_inputs = Input(shape=(kwargs['dense_layers'][-1]), name='input_concept_space')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][-1], ), name='input_concept_space')
 
     # build decoder models
     for tm in kwargs['tensor_maps_out']:

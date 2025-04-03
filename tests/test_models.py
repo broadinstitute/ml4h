@@ -66,16 +66,22 @@ TrainType = Dict[str, np.ndarray]  # TODO: better name
 
 
 def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]) -> Iterator[Tuple[TrainType, TrainType, List[None]]]:
-    def generator():
-        yield (
-            {tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
-            {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},
-        )
-    return tf.data.Dataset.from_generator(generator, 
-                                          output_signature=(
-                                              {tm.input_name(): tf.TensorSpec(shape=(2,) + tm.shape, dtype=tf.float32) for tm in input_tmaps},
-                                              {tm.output_name(): tf.TensorSpec(shape=(2,) + tm.shape, dtype=tf.float32) for tm in output_tmaps}
-                                          ))
+    batch_size = 2
+    input_tensors = [
+        tf.random.normal((batch_size,) + tm.shape) for tm in input_tmaps
+    ]
+    output_tensors = [
+        tf.random.normal((batch_size,) + tm.shape) for tm in output_tmaps
+    ]
+
+    # Create 1-element dataset with full batch as tuple
+    inputs_tuple = tuple(input_tensors)
+    outputs_tuple = tuple(output_tensors)
+
+    # Create dataset with one batch repeated for steps_per_epoch
+    dataset = tf.data.Dataset.from_tensors((inputs_tuple, outputs_tuple)).repeat()
+
+    return dataset
 
 def assert_model_trains(
     input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
@@ -98,10 +104,10 @@ def assert_model_trains(
         for tmap, tensor in zip(input_tmaps, m.inputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
-        for tmap, tensor in zip(output_tmaps, m.outputs):
+        for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
-    data = make_training_data(input_tmaps, output_tmaps)
+    data = make_training_data(input_tmaps, parent_sort(output_tmaps))
     history = m.fit(data, steps_per_epoch=2, epochs=2, validation_data=data, validation_steps=2)
     for tmap in output_tmaps:
         for metric in tmap.metrics:

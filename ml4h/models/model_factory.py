@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 import tensorflow as tf
 import keras
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Input, Layer
+from tensorflow.keras.layers import Input, Layer, Lambda
 from tensorflow_hub import KerasLayer
 
 from ml4h.models.Block import Block
@@ -197,7 +197,7 @@ def multimodal_multitask_model(
             merge = compose(merge, BLOCK_CLASSES[merge_block](**kwargs))
 
     decoder_block_functions = {tm: identity for tm in tensor_maps_out}
-    for tm in tensor_maps_out:
+    for tm in parent_sort(tensor_maps_out):
         for decode_block in decoder_blocks:
             if isinstance(decode_block, Block):
                 decoder_block_functions[tm] = compose(
@@ -253,15 +253,16 @@ def make_multimodal_multitask_model_block(
     encodings_as_inputs: List[Input] = []
     intermediates: Dict[TensorMap, List[Layer]] = defaultdict(list)
 
-    for tm, encoder_block in encoder_block_functions.items():
+    tensor_maps_in = list(encoder_block_functions.keys())
+    for tm in tensor_maps_in:
         if tm.is_text():
             inputs[tm] = Input(shape=(), dtype=tf.string, name=tm.name)
         else:
             inputs[tm] = Input(shape=tm.shape, name=tm.input_name())
-        encoding = encoder_block(inputs[tm], intermediates)
+        encoding = encoder_block_functions[tm](inputs[tm], intermediates)
         encoders[tm] = Model(inputs[tm], encoding, name=f'encode_{tm.name}')
         encodings.append(encoders[tm](inputs[tm]))
-        encodings_as_inputs.append(Input(shape=encodings[-1].shape, name=f'encoding_{tm.name}'))
+    
 
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
@@ -270,23 +271,31 @@ def make_multimodal_multitask_model_block(
         latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
     else:
         latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
-        logging.info(f'multimodal_activation.shapes: {multimodal_activation.shape}')
+        logging.info(f'multimodal_activation.shapes: {multimodal_activation[0].shape}')
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
 
+    tensor_maps_out = list(decoder_block_functions.keys())
+    tensor_maps_out = list(decoder_block_functions.keys())
     decoders: Dict[TensorMap, Model] = {}
-    decoder_outputs = []
-    for tm, decoder_block in decoder_block_functions.items():  # TODO this needs to be a topological sorted according to parents hierarchy
-        # Do not save isolated decoders for UNETs because they require skip connection inputs as well as latent space
-        if len([tm_in for tm_in, _ in encoder_block_functions.items() if ((tm in u_connect[tm_in]) or tm.is_language())]) > 0:
-            reconstruction = decoder_block(multimodal_activation, intermediates)
-            decoder_outputs.append(reconstruction)
+    decoder_outputs_dict: Dict[TensorMap, Layer] = {}
+
+    for tm in tensor_maps_out:
+        if any((tm in u_connect[tm_in]) or tm.is_language() for tm_in in tensor_maps_in):
+            output = decoder_block_functions[tm](multimodal_activation, intermediates)
         else:
-            reconstruction = decoder_block(latent_inputs, intermediates)
-            decoders[tm] = Model(latent_inputs, reconstruction, name=tm.output_name())
-            decoder_outputs.append(decoders[tm](multimodal_activation))
-    if len(decoder_outputs) == 0:
-        decoder_outputs = [multimodal_activation]
-    full_model = Model(inputs=list(inputs.values()), outputs=decoder_outputs[::-1], name='block_model')
+            output = decoder_block_functions[tm](latent_inputs, intermediates)
+            decoders[tm] = Model(latent_inputs, output, name=tm.output_name())
+            output = decoders[tm](multimodal_activation)
+        decoder_outputs_dict[tm] = output
+
+    if not decoder_outputs_dict:
+        final_outputs = [multimodal_activation]
+    else:
+        final_outputs = [decoder_outputs_dict[tm] for tm in parent_sort(tensor_maps_out)]
+
+    model_inputs = [inputs[tm] for tm in tensor_maps_in]
+    full_model = Model(inputs=model_inputs, outputs=final_outputs, name='block_model')
+
     return full_model, encoders, decoders, merge_model
 
 
