@@ -9,6 +9,7 @@ from sklearn.metrics import roc_curve, auc, average_precision_score
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
 from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE
+from keras.saving import register_keras_serializable
 
 #from neurite.tf.losses import Dice
 
@@ -46,6 +47,7 @@ def weighted_crossentropy(weights, name='anonymous'):
     string_fxn += '\treturn loss\n'
     exec(string_fxn, globals(), locals())
     loss_fxn = eval(name + fxn_postfix, globals(), locals())
+    loss_fxn = register_keras_serializable()(loss_fxn)
     return loss_fxn
 
 
@@ -277,6 +279,7 @@ def per_class_dice(labels):
 
         exec(string_fxn)
         dice_fxn = eval(fxn_name + '_dice')
+        dice_fxn = register_keras_serializable()(dice_fxn)
         dice_fxns.append(dice_fxn)
 
     return dice_fxns
@@ -297,6 +300,7 @@ def per_class_recall(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_name + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -315,6 +319,7 @@ def per_class_precision(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_name + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -333,6 +338,7 @@ def per_class_recall_3d(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_prefix + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -351,6 +357,7 @@ def per_class_precision_3d(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_prefix + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -369,6 +376,7 @@ def per_class_recall_4d(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_prefix + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -387,6 +395,8 @@ def per_class_precision_4d(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_prefix + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
+
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -405,6 +415,7 @@ def per_class_recall_5d(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_prefix + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -423,6 +434,7 @@ def per_class_precision_5d(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_prefix + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -714,3 +726,11 @@ def concordance_index_censored(event_indicator, event_time, estimate, tied_tol=1
     """
     w = np.ones_like(estimate)
     return _estimate_concordance_index(event_indicator, event_time, estimate, w, tied_tol)
+
+
+def _register_all(module_globals):
+    for name, obj in module_globals.items():
+        if callable(obj) and not name.startswith("_"):
+            module_globals[name] = register_keras_serializable()(obj)
+
+_register_all(globals())
