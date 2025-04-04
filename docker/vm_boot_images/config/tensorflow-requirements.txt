@@ -12,6 +12,7 @@ bokeh
 pillow
 notebook
 pytest
+pytest-xdist
 pysam
 tensorflow==2.18.0
 tensorflow-addons
