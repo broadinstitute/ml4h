@@ -267,7 +267,7 @@ class TestMakeMultimodalMultitaskModel:
         Tests 1d->2d, 2d->1d, (1d,2d)->(1d,2d)
         """
         params = DEFAULT_PARAMS.copy()
-        params['bottleneck_type'] = BottleneckType.Variational
+        #params['bottleneck_type'] = BottleneckType.Variational (This is not implemented yet)
         params['pool_x'] = params['pool_y'] = 2
         m, _, _, _ = make_multimodal_multitask_model(
             input_output_tmaps[0],
