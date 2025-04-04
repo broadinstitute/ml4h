@@ -188,7 +188,7 @@ class PairLossBlock(Block):
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
-    @tf.function()
+    #@tf.function()
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
         for left, right in self.pairs:
@@ -198,14 +198,7 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'concat':
             return concatenate(y)
         elif self.pair_merge == 'dropout':
-            random_index = tf.random.uniform(shape=[intermediates[left][-1].shape[-1]], maxval=len(y), dtype=tf.int32)
-            ranger = tf.range(intermediates[left][-1].shape[-1])
-            indices = tf.stack([random_index, ranger], axis=-1)
-            tf_y = tf.convert_to_tensor(y)
-            tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
-            tf_g = tf.gather_nd(tf_y, indices)
-            out = tf.transpose(tf_g)
-            return out
+            return tf.keras.layers.Lambda(self._dropout_merge , output_shape=lambda input_shapes: input_shapes[0])(y)
         elif self.pair_merge == 'kronecker':
             krons = []
             losses = []
@@ -223,6 +216,30 @@ class PairLossBlock(Block):
             return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
+    def _dropout_merge(self, y):
+        tf_y = tf.stack(y, axis=0)  # shape: [num_pairs, batch, dim]
+        tf_y = tf.transpose(tf_y, perm=[1, 2, 0])  # shape: [batch, dim, num_pairs]
+
+        batch_size = tf.shape(tf_y)[0]
+        dim = tf.shape(tf_y)[1]
+        num_pairs = tf.shape(tf_y)[2]
+
+        random_indices = tf.random.uniform(shape=[batch_size], maxval=num_pairs, dtype=tf.int32)
+        dim_range = tf.range(dim)
+        dim_range = tf.reshape(dim_range, [1, -1])
+        dim_range = tf.tile(dim_range, [batch_size, 1])
+
+        batch_indices = tf.range(batch_size)
+        batch_indices = tf.reshape(batch_indices, [batch_size, 1])
+        batch_indices = tf.tile(batch_indices, [1, dim])
+        gather_indices = tf.stack([batch_indices, dim_range], axis=-1)
+
+        gather_indices = tf.reshape(gather_indices, [-1, 2])
+        rand_idx_exp = tf.reshape(tf.repeat(random_indices, dim), [-1, 1])
+        gather_indices = tf.concat([gather_indices, rand_idx_exp], axis=-1)
+
+        gathered = tf.gather_nd(tf_y, gather_indices)
+        return tf.reshape(gathered, [batch_size, dim])
 
 
 def l2_norm(x, axis=None):
