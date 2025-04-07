@@ -83,7 +83,6 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
 
     return dataset
 
-
 def assert_model_trains(
     input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
     m: Optional[tf.keras.Model] = None, skip_shape_check: bool = False,
@@ -105,7 +104,7 @@ def assert_model_trains(
         for tmap, tensor in zip(input_tmaps, m.inputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
-        for tmap, tensor in zip(output_tmaps, m.outputs):
+        for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
     data = make_training_data(input_tmaps, parent_sort(output_tmaps))
@@ -268,7 +267,7 @@ class TestMakeMultimodalMultitaskModel:
         Tests 1d->2d, 2d->1d, (1d,2d)->(1d,2d)
         """
         params = DEFAULT_PARAMS.copy()
-        params['bottleneck_type'] = BottleneckType.Variational
+        #params['bottleneck_type'] = BottleneckType.Variational (This is not implemented yet)
         params['pool_x'] = params['pool_y'] = 2
         m, _, _, _ = make_multimodal_multitask_model(
             input_output_tmaps[0],

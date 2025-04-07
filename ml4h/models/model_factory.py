@@ -121,7 +121,8 @@ def make_multimodal_multitask_model(
     )
 
     if kwargs.get('model_file', False):
-        return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
+        return tf.keras.models.load_model(kwargs['model_file'])
+        #return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
 
     full_model, encoders, decoders, merger = multimodal_multitask_model(
         tensor_maps_in, tensor_maps_out,
