@@ -278,6 +278,7 @@ def parse_args():
     parser.add_argument('--training_steps', default=96, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=32, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.00005, type=float, help='Learning rate during training.')
+    parser.add_argument('--siamese', default=False, action='store_true', help='Use TensorGenerator.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument(
         '--label_weights', nargs='*', type=float,
