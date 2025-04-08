@@ -1,0 +1,509 @@
+nohup: ignoring input
+rrathod adm dialout cdrom floppy audio dip video plugdev netdev lxd ubuntu google-sudoers docker
+tf2.18-latest-gpu: Pulling from broad-ml4cvd/deeplearning
+Digest: sha256:f10a61a1d046b290db251bfb1bbee9f6c4d86b8b71b72e398ba71ad5d75eb3a7
+Status: Image is up to date for gcr.io/broad-ml4cvd/deeplearning:tf2.18-latest-gpu
+gcr.io/broad-ml4cvd/deeplearning:tf2.18-latest-gpu
+Found /mnt folder will try to mount it.
+Attempting to run Docker with
+    docker run      --gpus all     --env GROUP_NAMES     --env GROUP_IDS     --rm     --ipc=host     -v /home/rrathod/ml4h/:/home/rrathod/ml4h/     -v /home/rrathod/:/home/rrathod/      -v /mnt/:/mnt/     gcr.io/broad-ml4cvd/deeplearning:tf2.18-latest-gpu /bin/bash -c "pip install /home/rrathod/ml4h;
+        eval  python -m pytest /home/rrathod/ml4h/tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder -n auto"
+Requirement already satisfied: pip in /usr/local/lib/python3.11/dist-packages (25.0)
+Collecting pip
+  Downloading pip-25.0.1-py3-none-any.whl.metadata (3.7 kB)
+Downloading pip-25.0.1-py3-none-any.whl (1.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 40.2 MB/s eta 0:00:00
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 25.0
+    Uninstalling pip-25.0:
+      Successfully uninstalled pip-25.0
+Successfully installed pip-25.0.1
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Processing /home/rrathod/ml4h
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Requirement already satisfied: pydot in /usr/lib/python3/dist-packages (from ml4h==0.0.11rc1) (1.4.2)
+Requirement already satisfied: nibabel==4.0.2 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (4.0.2)
+Requirement already satisfied: pydicom==1.2.2 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (1.2.2)
+Requirement already satisfied: seaborn in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.13.2)
+Requirement already satisfied: biosppy in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.2.2)
+Requirement already satisfied: imageio in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.37.0)
+Requirement already satisfied: ipywidgets>=7.5.1 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (8.1.5)
+Requirement already satisfied: bokeh in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (3.6.3)
+Requirement already satisfied: pillow in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (11.1.0)
+Requirement already satisfied: notebook in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (7.3.2)
+Requirement already satisfied: pytest in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (8.3.4)
+Collecting pytest-xdist (from ml4h==0.0.11rc1)
+  Downloading pytest_xdist-3.6.1-py3-none-any.whl.metadata (4.3 kB)
+Requirement already satisfied: pysam in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.23.0)
+Requirement already satisfied: tensorflow==2.18.0 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.18.0)
+Requirement already satisfied: tensorflow-addons in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.23.0)
+Requirement already satisfied: tensorflow_hub in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.16.1)
+Requirement already satisfied: tensorflow_probability in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.25.0)
+Requirement already satisfied: tensorflow-text in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.18.1)
+Requirement already satisfied: tf-models-official in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.18.0)
+Requirement already satisfied: keras-tuner in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (1.4.7)
+Requirement already satisfied: numcodecs in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.15.0)
+Requirement already satisfied: beautifulsoup4 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (4.13.3)
+Requirement already satisfied: lxml in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (5.3.0)
+Requirement already satisfied: xmltodict in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.14.2)
+Requirement already satisfied: google-cloud-bigquery in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (3.29.0)
+Requirement already satisfied: google-cloud-bigquery-storage in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.28.0)
+Requirement already satisfied: pandas_gbq in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.27.0)
+Requirement already satisfied: pyarrow in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (19.0.0)
+Requirement already satisfied: altair in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (5.5.0)
+Requirement already satisfied: facets-overview in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (1.1.1)
+Requirement already satisfied: plotnine in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.14.5)
+Requirement already satisfied: vega in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (4.1.0)
+Requirement already satisfied: ipycanvas>=0.7.0 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.13.3)
+Requirement already satisfied: ipyannotations>=0.2.1 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.5.1)
+Requirement already satisfied: torch==2.2.2 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (2.2.2)
+Requirement already satisfied: opencv-python in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (4.11.0.86)
+Requirement already satisfied: blosc in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (1.11.2)
+Requirement already satisfied: boto3 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (1.36.15)
+Requirement already satisfied: ml4ht==0.0.10 in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.0.10)
+Requirement already satisfied: google-cloud-storage in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (3.0.0)
+Requirement already satisfied: umap-learn[plot] in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.5.7)
+Requirement already satisfied: neurite in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.2)
+Requirement already satisfied: voxelmorph in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.2)
+Requirement already satisfied: pystrum in /usr/local/lib/python3.11/dist-packages (from ml4h==0.0.11rc1) (0.4)
+Requirement already satisfied: numpy in /usr/local/lib/python3.11/dist-packages (from ml4ht==0.0.10->ml4h==0.0.11rc1) (1.26.4)
+Requirement already satisfied: pandas in /usr/local/lib/python3.11/dist-packages (from ml4ht==0.0.10->ml4h==0.0.11rc1) (2.2.3)
+Requirement already satisfied: packaging>=17.0 in /usr/local/lib/python3.11/dist-packages (from nibabel==4.0.2->ml4h==0.0.11rc1) (24.1)
+Requirement already satisfied: setuptools in /usr/local/lib/python3.11/dist-packages (from nibabel==4.0.2->ml4h==0.0.11rc1) (75.2.0)
+Requirement already satisfied: absl-py>=1.0.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (1.4.0)
+Requirement already satisfied: astunparse>=1.6.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (1.6.3)
+Requirement already satisfied: flatbuffers>=24.3.25 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (24.3.25)
+Requirement already satisfied: gast!=0.5.0,!=0.5.1,!=0.5.2,>=0.2.1 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (0.6.0)
+Requirement already satisfied: google-pasta>=0.1.1 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (0.2.0)
+Requirement already satisfied: libclang>=13.0.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (18.1.1)
+Requirement already satisfied: opt-einsum>=2.3.2 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (3.4.0)
+Requirement already satisfied: protobuf!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<6.0.0dev,>=3.20.3 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (5.28.3)
+Requirement already satisfied: requests<3,>=2.21.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (2.32.3)
+Requirement already satisfied: six>=1.12.0 in /usr/lib/python3/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (1.16.0)
+Requirement already satisfied: termcolor>=1.1.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (2.5.0)
+Requirement already satisfied: typing-extensions>=3.6.6 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (4.12.2)
+Requirement already satisfied: wrapt>=1.11.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (1.16.0)
+Requirement already satisfied: grpcio<2.0,>=1.24.3 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (1.70.0)
+Requirement already satisfied: tensorboard<2.19,>=2.18 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (2.18.0)
+Requirement already satisfied: keras>=3.5.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (3.6.0)
+Requirement already satisfied: h5py>=3.11.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (3.12.1)
+Requirement already satisfied: ml-dtypes<0.5.0,>=0.4.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (0.4.1)
+Requirement already satisfied: tensorflow-io-gcs-filesystem>=0.23.1 in /usr/local/lib/python3.11/dist-packages (from tensorflow==2.18.0->ml4h==0.0.11rc1) (0.37.1)
+Requirement already satisfied: filelock in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (3.17.0)
+Requirement already satisfied: sympy in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (1.13.3)
+Requirement already satisfied: networkx in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (3.4.2)
+Requirement already satisfied: jinja2 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (3.1.5)
+Requirement already satisfied: fsspec in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (2025.2.0)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu12==12.1.105 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (12.1.105)
+Requirement already satisfied: nvidia-cuda-runtime-cu12==12.1.105 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (12.1.105)
+Requirement already satisfied: nvidia-cuda-cupti-cu12==12.1.105 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (12.1.105)
+Requirement already satisfied: nvidia-cudnn-cu12==8.9.2.26 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (8.9.2.26)
+Requirement already satisfied: nvidia-cublas-cu12==12.1.3.1 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (12.1.3.1)
+Requirement already satisfied: nvidia-cufft-cu12==11.0.2.54 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (11.0.2.54)
+Requirement already satisfied: nvidia-curand-cu12==10.3.2.106 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (10.3.2.106)
+Requirement already satisfied: nvidia-cusolver-cu12==11.4.5.107 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (11.4.5.107)
+Requirement already satisfied: nvidia-cusparse-cu12==12.1.0.106 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (12.1.0.106)
+Requirement already satisfied: nvidia-nccl-cu12==2.19.3 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (2.19.3)
+Requirement already satisfied: nvidia-nvtx-cu12==12.1.105 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (12.1.105)
+Requirement already satisfied: triton==2.2.0 in /usr/local/lib/python3.11/dist-packages (from torch==2.2.2->ml4h==0.0.11rc1) (2.2.0)
+Requirement already satisfied: nvidia-nvjitlink-cu12 in /usr/local/lib/python3.11/dist-packages (from nvidia-cusolver-cu12==11.4.5.107->torch==2.2.2->ml4h==0.0.11rc1) (12.8.61)
+Requirement already satisfied: palettable in /usr/local/lib/python3.11/dist-packages (from ipyannotations>=0.2.1->ml4h==0.0.11rc1) (3.3.3)
+Requirement already satisfied: ipyevents in /usr/local/lib/python3.11/dist-packages (from ipyannotations>=0.2.1->ml4h==0.0.11rc1) (2.0.2)
+Requirement already satisfied: comm>=0.1.3 in /usr/local/lib/python3.11/dist-packages (from ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.2.2)
+Requirement already satisfied: ipython>=6.1.0 in /usr/local/lib/python3.11/dist-packages (from ipywidgets>=7.5.1->ml4h==0.0.11rc1) (8.32.0)
+Requirement already satisfied: traitlets>=4.3.1 in /usr/local/lib/python3.11/dist-packages (from ipywidgets>=7.5.1->ml4h==0.0.11rc1) (5.14.3)
+Requirement already satisfied: widgetsnbextension~=4.0.12 in /usr/local/lib/python3.11/dist-packages (from ipywidgets>=7.5.1->ml4h==0.0.11rc1) (4.0.13)
+Requirement already satisfied: jupyterlab-widgets~=3.0.12 in /usr/local/lib/python3.11/dist-packages (from ipywidgets>=7.5.1->ml4h==0.0.11rc1) (3.0.13)
+Requirement already satisfied: jsonschema>=3.0 in /usr/local/lib/python3.11/dist-packages (from altair->ml4h==0.0.11rc1) (4.23.0)
+Requirement already satisfied: narwhals>=1.14.2 in /usr/local/lib/python3.11/dist-packages (from altair->ml4h==0.0.11rc1) (1.25.2)
+Requirement already satisfied: soupsieve>1.2 in /usr/local/lib/python3.11/dist-packages (from beautifulsoup4->ml4h==0.0.11rc1) (2.6)
+Requirement already satisfied: bidict in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (0.23.1)
+Requirement already satisfied: matplotlib in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (3.10.0)
+Requirement already satisfied: scikit-learn in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (1.6.1)
+Requirement already satisfied: scipy in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (1.15.1)
+Requirement already satisfied: shortuuid in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (1.0.13)
+Requirement already satisfied: joblib in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (1.4.2)
+Requirement already satisfied: pywavelets in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (1.8.0)
+Requirement already satisfied: mock in /usr/local/lib/python3.11/dist-packages (from biosppy->ml4h==0.0.11rc1) (5.1.0)
+Requirement already satisfied: contourpy>=1.2 in /usr/local/lib/python3.11/dist-packages (from bokeh->ml4h==0.0.11rc1) (1.3.1)
+Requirement already satisfied: PyYAML>=3.10 in /usr/local/lib/python3.11/dist-packages (from bokeh->ml4h==0.0.11rc1) (6.0.2)
+Requirement already satisfied: tornado>=6.2 in /usr/local/lib/python3.11/dist-packages (from bokeh->ml4h==0.0.11rc1) (6.4.2)
+Requirement already satisfied: xyzservices>=2021.09.1 in /usr/local/lib/python3.11/dist-packages (from bokeh->ml4h==0.0.11rc1) (2025.1.0)
+Requirement already satisfied: botocore<1.37.0,>=1.36.15 in /usr/local/lib/python3.11/dist-packages (from boto3->ml4h==0.0.11rc1) (1.36.15)
+Requirement already satisfied: jmespath<2.0.0,>=0.7.1 in /usr/local/lib/python3.11/dist-packages (from boto3->ml4h==0.0.11rc1) (1.0.1)
+Requirement already satisfied: s3transfer<0.12.0,>=0.11.0 in /usr/local/lib/python3.11/dist-packages (from boto3->ml4h==0.0.11rc1) (0.11.2)
+Requirement already satisfied: google-api-core<3.0.0dev,>=2.11.1 in /usr/local/lib/python3.11/dist-packages (from google-api-core[grpc]<3.0.0dev,>=2.11.1->google-cloud-bigquery->ml4h==0.0.11rc1) (2.24.1)
+Requirement already satisfied: google-auth<3.0.0dev,>=2.14.1 in /usr/local/lib/python3.11/dist-packages (from google-cloud-bigquery->ml4h==0.0.11rc1) (2.38.0)
+Requirement already satisfied: google-cloud-core<3.0.0dev,>=2.4.1 in /usr/local/lib/python3.11/dist-packages (from google-cloud-bigquery->ml4h==0.0.11rc1) (2.4.1)
+Requirement already satisfied: google-resumable-media<3.0dev,>=2.0.0 in /usr/local/lib/python3.11/dist-packages (from google-cloud-bigquery->ml4h==0.0.11rc1) (2.7.2)
+Requirement already satisfied: python-dateutil<3.0dev,>=2.7.3 in /usr/local/lib/python3.11/dist-packages (from google-cloud-bigquery->ml4h==0.0.11rc1) (2.9.0.post0)
+Requirement already satisfied: proto-plus<2.0.0dev,>=1.22.0 in /usr/local/lib/python3.11/dist-packages (from google-cloud-bigquery-storage->ml4h==0.0.11rc1) (1.26.0)
+Requirement already satisfied: google-crc32c<2.0dev,>=1.0 in /usr/local/lib/python3.11/dist-packages (from google-cloud-storage->ml4h==0.0.11rc1) (1.6.0)
+Requirement already satisfied: kt-legacy in /usr/local/lib/python3.11/dist-packages (from keras-tuner->ml4h==0.0.11rc1) (1.0.5)
+Requirement already satisfied: tqdm in /usr/local/lib/python3.11/dist-packages (from neurite->ml4h==0.0.11rc1) (4.67.1)
+Requirement already satisfied: jupyter-server<3,>=2.4.0 in /usr/local/lib/python3.11/dist-packages (from notebook->ml4h==0.0.11rc1) (2.15.0)
+Requirement already satisfied: jupyterlab-server<3,>=2.27.1 in /usr/local/lib/python3.11/dist-packages (from notebook->ml4h==0.0.11rc1) (2.27.3)
+Requirement already satisfied: jupyterlab<4.4,>=4.3.4 in /usr/local/lib/python3.11/dist-packages (from notebook->ml4h==0.0.11rc1) (4.3.5)
+Requirement already satisfied: notebook-shim<0.3,>=0.2 in /usr/local/lib/python3.11/dist-packages (from notebook->ml4h==0.0.11rc1) (0.2.4)
+Requirement already satisfied: deprecated in /usr/local/lib/python3.11/dist-packages (from numcodecs->ml4h==0.0.11rc1) (1.2.18)
+Requirement already satisfied: db-dtypes<2.0.0,>=1.0.4 in /usr/local/lib/python3.11/dist-packages (from pandas_gbq->ml4h==0.0.11rc1) (1.4.1)
+Requirement already satisfied: pydata-google-auth>=1.5.0 in /usr/local/lib/python3.11/dist-packages (from pandas_gbq->ml4h==0.0.11rc1) (1.9.1)
+Requirement already satisfied: google-auth-oauthlib>=0.7.0 in /usr/local/lib/python3.11/dist-packages (from pandas_gbq->ml4h==0.0.11rc1) (1.2.1)
+Requirement already satisfied: mizani~=0.13.0 in /usr/local/lib/python3.11/dist-packages (from plotnine->ml4h==0.0.11rc1) (0.13.1)
+Requirement already satisfied: statsmodels>=0.14.0 in /usr/local/lib/python3.11/dist-packages (from plotnine->ml4h==0.0.11rc1) (0.14.4)
+Requirement already satisfied: iniconfig in /usr/local/lib/python3.11/dist-packages (from pytest->ml4h==0.0.11rc1) (2.0.0)
+Requirement already satisfied: pluggy<2,>=1.5 in /usr/local/lib/python3.11/dist-packages (from pytest->ml4h==0.0.11rc1) (1.5.0)
+Collecting execnet>=2.1 (from pytest-xdist->ml4h==0.0.11rc1)
+  Downloading execnet-2.1.1-py3-none-any.whl.metadata (2.9 kB)
+Requirement already satisfied: typeguard<3.0.0,>=2.7 in /usr/local/lib/python3.11/dist-packages (from tensorflow-addons->ml4h==0.0.11rc1) (2.13.3)
+Requirement already satisfied: tf-keras>=2.14.1 in /usr/local/lib/python3.11/dist-packages (from tensorflow_hub->ml4h==0.0.11rc1) (2.18.0)
+Requirement already satisfied: decorator in /usr/local/lib/python3.11/dist-packages (from tensorflow_probability->ml4h==0.0.11rc1) (5.1.1)
+Requirement already satisfied: cloudpickle>=1.3 in /usr/local/lib/python3.11/dist-packages (from tensorflow_probability->ml4h==0.0.11rc1) (3.1.1)
+Requirement already satisfied: dm-tree in /usr/local/lib/python3.11/dist-packages (from tensorflow_probability->ml4h==0.0.11rc1) (0.1.9)
+Requirement already satisfied: Cython in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (3.0.11)
+Requirement already satisfied: ai-edge-litert>=1.0.1 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (1.1.1)
+Requirement already satisfied: gin-config in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (0.5.0)
+Requirement already satisfied: google-api-python-client>=1.6.7 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (2.160.0)
+Requirement already satisfied: immutabledict in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (4.2.1)
+Requirement already satisfied: kaggle>=1.3.9 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (1.6.17)
+Requirement already satisfied: oauth2client in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (4.1.3)
+Requirement already satisfied: opencv-python-headless in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (4.11.0.86)
+Requirement already satisfied: psutil>=5.4.3 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (6.1.1)
+Requirement already satisfied: py-cpuinfo>=3.3.0 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (9.0.0)
+Requirement already satisfied: pycocotools in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (2.0.8)
+Requirement already satisfied: sacrebleu in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (2.5.1)
+Requirement already satisfied: sentencepiece in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (0.2.0)
+Requirement already satisfied: seqeval in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (1.2.2)
+Requirement already satisfied: tensorflow-datasets in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (4.9.7)
+Requirement already satisfied: tensorflow-model-optimization>=0.4.1 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (0.8.0)
+Requirement already satisfied: tf-slim>=1.1.0 in /usr/local/lib/python3.11/dist-packages (from tf-models-official->ml4h==0.0.11rc1) (1.1.0)
+Requirement already satisfied: numba>=0.51.2 in /usr/local/lib/python3.11/dist-packages (from umap-learn[plot]->ml4h==0.0.11rc1) (0.61.0)
+Requirement already satisfied: pynndescent>=0.5 in /usr/local/lib/python3.11/dist-packages (from umap-learn[plot]->ml4h==0.0.11rc1) (0.5.13)
+Requirement already satisfied: datashader in /usr/local/lib/python3.11/dist-packages (from umap-learn[plot]->ml4h==0.0.11rc1) (0.17.0)
+Requirement already satisfied: holoviews in /usr/local/lib/python3.11/dist-packages (from umap-learn[plot]->ml4h==0.0.11rc1) (1.20.0)
+Requirement already satisfied: colorcet in /usr/local/lib/python3.11/dist-packages (from umap-learn[plot]->ml4h==0.0.11rc1) (3.1.0)
+Requirement already satisfied: scikit-image in /usr/local/lib/python3.11/dist-packages (from umap-learn[plot]->ml4h==0.0.11rc1) (0.25.1)
+Requirement already satisfied: ipytablewidgets<0.4.0,>=0.3.0 in /usr/local/lib/python3.11/dist-packages (from vega->ml4h==0.0.11rc1) (0.3.2)
+Requirement already satisfied: jupyter<2.0.0,>=1.0.0 in /usr/local/lib/python3.11/dist-packages (from vega->ml4h==0.0.11rc1) (1.1.1)
+Requirement already satisfied: wheel<1.0,>=0.23.0 in /usr/local/lib/python3.11/dist-packages (from astunparse>=1.6.0->tensorflow==2.18.0->ml4h==0.0.11rc1) (0.44.0)
+Requirement already satisfied: urllib3!=2.2.0,<3,>=1.25.4 in /usr/local/lib/python3.11/dist-packages (from botocore<1.37.0,>=1.36.15->boto3->ml4h==0.0.11rc1) (2.2.3)
+Requirement already satisfied: googleapis-common-protos<2.0.dev0,>=1.56.2 in /usr/local/lib/python3.11/dist-packages (from google-api-core<3.0.0dev,>=2.11.1->google-api-core[grpc]<3.0.0dev,>=2.11.1->google-cloud-bigquery->ml4h==0.0.11rc1) (1.67.0rc1)
+Requirement already satisfied: grpcio-status<2.0.dev0,>=1.33.2 in /usr/local/lib/python3.11/dist-packages (from google-api-core[grpc]<3.0.0dev,>=2.11.1->google-cloud-bigquery->ml4h==0.0.11rc1) (1.70.0)
+Requirement already satisfied: httplib2<1.dev0,>=0.19.0 in /usr/lib/python3/dist-packages (from google-api-python-client>=1.6.7->tf-models-official->ml4h==0.0.11rc1) (0.20.2)
+Requirement already satisfied: google-auth-httplib2<1.0.0,>=0.2.0 in /usr/local/lib/python3.11/dist-packages (from google-api-python-client>=1.6.7->tf-models-official->ml4h==0.0.11rc1) (0.2.0)
+Requirement already satisfied: uritemplate<5,>=3.0.1 in /usr/local/lib/python3.11/dist-packages (from google-api-python-client>=1.6.7->tf-models-official->ml4h==0.0.11rc1) (4.1.1)
+Requirement already satisfied: cachetools<6.0,>=2.0.0 in /usr/local/lib/python3.11/dist-packages (from google-auth<3.0.0dev,>=2.14.1->google-cloud-bigquery->ml4h==0.0.11rc1) (5.5.1)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in /usr/local/lib/python3.11/dist-packages (from google-auth<3.0.0dev,>=2.14.1->google-cloud-bigquery->ml4h==0.0.11rc1) (0.4.1)
+Requirement already satisfied: rsa<5,>=3.1.4 in /usr/local/lib/python3.11/dist-packages (from google-auth<3.0.0dev,>=2.14.1->google-cloud-bigquery->ml4h==0.0.11rc1) (4.9)
+Requirement already satisfied: requests-oauthlib>=0.7.0 in /usr/local/lib/python3.11/dist-packages (from google-auth-oauthlib>=0.7.0->pandas_gbq->ml4h==0.0.11rc1) (2.0.0)
+Requirement already satisfied: lz4 in /usr/local/lib/python3.11/dist-packages (from ipytablewidgets<0.4.0,>=0.3.0->vega->ml4h==0.0.11rc1) (4.4.3)
+Requirement already satisfied: jedi>=0.16 in /usr/local/lib/python3.11/dist-packages (from ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.19.2)
+Requirement already satisfied: matplotlib-inline in /usr/local/lib/python3.11/dist-packages (from ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.1.7)
+Requirement already satisfied: pexpect>4.3 in /usr/local/lib/python3.11/dist-packages (from ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (4.9.0)
+Requirement already satisfied: prompt_toolkit<3.1.0,>=3.0.41 in /usr/local/lib/python3.11/dist-packages (from ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (3.0.50)
+Requirement already satisfied: pygments>=2.4.0 in /usr/local/lib/python3.11/dist-packages (from ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (2.18.0)
+Requirement already satisfied: stack_data in /usr/local/lib/python3.11/dist-packages (from ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.6.3)
+Requirement already satisfied: MarkupSafe>=2.0 in /usr/local/lib/python3.11/dist-packages (from jinja2->torch==2.2.2->ml4h==0.0.11rc1) (3.0.2)
+Requirement already satisfied: attrs>=22.2.0 in /usr/local/lib/python3.11/dist-packages (from jsonschema>=3.0->altair->ml4h==0.0.11rc1) (25.1.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /usr/local/lib/python3.11/dist-packages (from jsonschema>=3.0->altair->ml4h==0.0.11rc1) (2024.10.1)
+Requirement already satisfied: referencing>=0.28.4 in /usr/local/lib/python3.11/dist-packages (from jsonschema>=3.0->altair->ml4h==0.0.11rc1) (0.36.2)
+Requirement already satisfied: rpds-py>=0.7.1 in /usr/local/lib/python3.11/dist-packages (from jsonschema>=3.0->altair->ml4h==0.0.11rc1) (0.22.3)
+Requirement already satisfied: jupyter-console in /usr/local/lib/python3.11/dist-packages (from jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (6.6.3)
+Requirement already satisfied: nbconvert in /usr/local/lib/python3.11/dist-packages (from jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (7.16.6)
+Requirement already satisfied: ipykernel in /usr/local/lib/python3.11/dist-packages (from jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (6.29.5)
+Requirement already satisfied: anyio>=3.1.0 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (4.8.0)
+Requirement already satisfied: argon2-cffi>=21.1 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (23.1.0)
+Requirement already satisfied: jupyter-client>=7.4.4 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (8.6.3)
+Requirement already satisfied: jupyter-core!=5.0.*,>=4.12 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (5.7.2)
+Requirement already satisfied: jupyter-events>=0.11.0 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (0.12.0)
+Requirement already satisfied: jupyter-server-terminals>=0.4.4 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (0.5.3)
+Requirement already satisfied: nbformat>=5.3.0 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (5.10.4)
+Requirement already satisfied: overrides>=5.0 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (7.7.0)
+Requirement already satisfied: prometheus-client>=0.9 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (0.21.1)
+Requirement already satisfied: pyzmq>=24 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (26.2.1)
+Requirement already satisfied: send2trash>=1.8.2 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.8.3)
+Requirement already satisfied: terminado>=0.8.3 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (0.18.1)
+Requirement already satisfied: websocket-client>=1.7 in /usr/local/lib/python3.11/dist-packages (from jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.8.0)
+Requirement already satisfied: async-lru>=1.0.0 in /usr/local/lib/python3.11/dist-packages (from jupyterlab<4.4,>=4.3.4->notebook->ml4h==0.0.11rc1) (2.0.4)
+Requirement already satisfied: httpx>=0.25.0 in /usr/local/lib/python3.11/dist-packages (from jupyterlab<4.4,>=4.3.4->notebook->ml4h==0.0.11rc1) (0.28.1)
+Requirement already satisfied: jupyter-lsp>=2.0.0 in /usr/local/lib/python3.11/dist-packages (from jupyterlab<4.4,>=4.3.4->notebook->ml4h==0.0.11rc1) (2.2.5)
+Requirement already satisfied: babel>=2.10 in /usr/local/lib/python3.11/dist-packages (from jupyterlab-server<3,>=2.27.1->notebook->ml4h==0.0.11rc1) (2.17.0)
+Requirement already satisfied: json5>=0.9.0 in /usr/local/lib/python3.11/dist-packages (from jupyterlab-server<3,>=2.27.1->notebook->ml4h==0.0.11rc1) (0.10.0)
+Requirement already satisfied: certifi>=2023.7.22 in /usr/local/lib/python3.11/dist-packages (from kaggle>=1.3.9->tf-models-official->ml4h==0.0.11rc1) (2024.8.30)
+Requirement already satisfied: python-slugify in /usr/local/lib/python3.11/dist-packages (from kaggle>=1.3.9->tf-models-official->ml4h==0.0.11rc1) (8.0.4)
+Requirement already satisfied: bleach in /usr/local/lib/python3.11/dist-packages (from kaggle>=1.3.9->tf-models-official->ml4h==0.0.11rc1) (6.2.0)
+Requirement already satisfied: rich in /usr/local/lib/python3.11/dist-packages (from keras>=3.5.0->tensorflow==2.18.0->ml4h==0.0.11rc1) (13.9.3)
+Requirement already satisfied: namex in /usr/local/lib/python3.11/dist-packages (from keras>=3.5.0->tensorflow==2.18.0->ml4h==0.0.11rc1) (0.0.8)
+Requirement already satisfied: optree in /usr/local/lib/python3.11/dist-packages (from keras>=3.5.0->tensorflow==2.18.0->ml4h==0.0.11rc1) (0.13.0)
+Requirement already satisfied: cycler>=0.10 in /usr/local/lib/python3.11/dist-packages (from matplotlib->biosppy->ml4h==0.0.11rc1) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /usr/local/lib/python3.11/dist-packages (from matplotlib->biosppy->ml4h==0.0.11rc1) (4.56.0)
+Requirement already satisfied: kiwisolver>=1.3.1 in /usr/local/lib/python3.11/dist-packages (from matplotlib->biosppy->ml4h==0.0.11rc1) (1.4.8)
+Requirement already satisfied: pyparsing>=2.3.1 in /usr/lib/python3/dist-packages (from matplotlib->biosppy->ml4h==0.0.11rc1) (2.4.7)
+Requirement already satisfied: llvmlite<0.45,>=0.44.0dev0 in /usr/local/lib/python3.11/dist-packages (from numba>=0.51.2->umap-learn[plot]->ml4h==0.0.11rc1) (0.44.0)
+Requirement already satisfied: pytz>=2020.1 in /usr/local/lib/python3.11/dist-packages (from pandas->ml4ht==0.0.10->ml4h==0.0.11rc1) (2025.1)
+Requirement already satisfied: tzdata>=2022.7 in /usr/local/lib/python3.11/dist-packages (from pandas->ml4ht==0.0.10->ml4h==0.0.11rc1) (2025.1)
+Requirement already satisfied: charset-normalizer<4,>=2 in /usr/local/lib/python3.11/dist-packages (from requests<3,>=2.21.0->tensorflow==2.18.0->ml4h==0.0.11rc1) (3.4.0)
+Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.11/dist-packages (from requests<3,>=2.21.0->tensorflow==2.18.0->ml4h==0.0.11rc1) (3.10)
+Requirement already satisfied: threadpoolctl>=3.1.0 in /usr/local/lib/python3.11/dist-packages (from scikit-learn->biosppy->ml4h==0.0.11rc1) (3.5.0)
+Requirement already satisfied: patsy>=0.5.6 in /usr/local/lib/python3.11/dist-packages (from statsmodels>=0.14.0->plotnine->ml4h==0.0.11rc1) (1.0.1)
+Requirement already satisfied: markdown>=2.6.8 in /usr/local/lib/python3.11/dist-packages (from tensorboard<2.19,>=2.18->tensorflow==2.18.0->ml4h==0.0.11rc1) (3.7)
+Requirement already satisfied: tensorboard-data-server<0.8.0,>=0.7.0 in /usr/local/lib/python3.11/dist-packages (from tensorboard<2.19,>=2.18->tensorflow==2.18.0->ml4h==0.0.11rc1) (0.7.2)
+Requirement already satisfied: werkzeug>=1.0.1 in /usr/local/lib/python3.11/dist-packages (from tensorboard<2.19,>=2.18->tensorflow==2.18.0->ml4h==0.0.11rc1) (3.0.5)
+Requirement already satisfied: multipledispatch in /usr/local/lib/python3.11/dist-packages (from datashader->umap-learn[plot]->ml4h==0.0.11rc1) (1.0.0)
+Requirement already satisfied: param in /usr/local/lib/python3.11/dist-packages (from datashader->umap-learn[plot]->ml4h==0.0.11rc1) (2.2.0)
+Requirement already satisfied: pyct in /usr/local/lib/python3.11/dist-packages (from datashader->umap-learn[plot]->ml4h==0.0.11rc1) (0.5.0)
+Requirement already satisfied: toolz in /usr/local/lib/python3.11/dist-packages (from datashader->umap-learn[plot]->ml4h==0.0.11rc1) (1.0.0)
+Requirement already satisfied: xarray in /usr/local/lib/python3.11/dist-packages (from datashader->umap-learn[plot]->ml4h==0.0.11rc1) (2025.1.2)
+Requirement already satisfied: panel>=1.0 in /usr/local/lib/python3.11/dist-packages (from holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (1.6.0)
+Requirement already satisfied: pyviz-comms>=2.1 in /usr/local/lib/python3.11/dist-packages (from holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (3.0.4)
+Requirement already satisfied: pyasn1>=0.1.7 in /usr/local/lib/python3.11/dist-packages (from oauth2client->tf-models-official->ml4h==0.0.11rc1) (0.6.1)
+Requirement already satisfied: portalocker in /usr/local/lib/python3.11/dist-packages (from sacrebleu->tf-models-official->ml4h==0.0.11rc1) (3.1.1)
+Requirement already satisfied: regex in /usr/local/lib/python3.11/dist-packages (from sacrebleu->tf-models-official->ml4h==0.0.11rc1) (2024.11.6)
+Requirement already satisfied: tabulate>=0.8.9 in /usr/local/lib/python3.11/dist-packages (from sacrebleu->tf-models-official->ml4h==0.0.11rc1) (0.9.0)
+Requirement already satisfied: colorama in /usr/local/lib/python3.11/dist-packages (from sacrebleu->tf-models-official->ml4h==0.0.11rc1) (0.4.6)
+Requirement already satisfied: tifffile>=2022.8.12 in /usr/local/lib/python3.11/dist-packages (from scikit-image->umap-learn[plot]->ml4h==0.0.11rc1) (2025.1.10)
+Requirement already satisfied: lazy-loader>=0.4 in /usr/local/lib/python3.11/dist-packages (from scikit-image->umap-learn[plot]->ml4h==0.0.11rc1) (0.4)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /usr/local/lib/python3.11/dist-packages (from sympy->torch==2.2.2->ml4h==0.0.11rc1) (1.3.0)
+Requirement already satisfied: click in /usr/local/lib/python3.11/dist-packages (from tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (8.1.8)
+Requirement already satisfied: promise in /usr/local/lib/python3.11/dist-packages (from tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (2.3)
+Requirement already satisfied: simple-parsing in /usr/local/lib/python3.11/dist-packages (from tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (0.1.7)
+Requirement already satisfied: tensorflow-metadata in /usr/local/lib/python3.11/dist-packages (from tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (1.16.1)
+Requirement already satisfied: toml in /usr/local/lib/python3.11/dist-packages (from tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (0.10.2)
+Requirement already satisfied: array-record>=0.5.0 in /usr/local/lib/python3.11/dist-packages (from tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (0.6.0)
+Requirement already satisfied: etils>=1.9.1 in /usr/local/lib/python3.11/dist-packages (from etils[edc,enp,epath,epy,etree]>=1.9.1; python_version >= "3.11"->tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (1.11.0)
+Requirement already satisfied: sniffio>=1.1 in /usr/local/lib/python3.11/dist-packages (from anyio>=3.1.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.3.1)
+Requirement already satisfied: argon2-cffi-bindings in /usr/local/lib/python3.11/dist-packages (from argon2-cffi>=21.1->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (21.2.0)
+Requirement already satisfied: importlib_resources in /usr/local/lib/python3.11/dist-packages (from etils[edc,enp,epath,epy,etree]>=1.9.1; python_version >= "3.11"->tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (6.5.2)
+Requirement already satisfied: zipp in /usr/lib/python3/dist-packages (from etils[edc,enp,epath,epy,etree]>=1.9.1; python_version >= "3.11"->tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (1.0.0)
+Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.11/dist-packages (from httpx>=0.25.0->jupyterlab<4.4,>=4.3.4->notebook->ml4h==0.0.11rc1) (1.0.7)
+Requirement already satisfied: h11<0.15,>=0.13 in /usr/local/lib/python3.11/dist-packages (from httpcore==1.*->httpx>=0.25.0->jupyterlab<4.4,>=4.3.4->notebook->ml4h==0.0.11rc1) (0.14.0)
+Requirement already satisfied: debugpy>=1.6.5 in /usr/local/lib/python3.11/dist-packages (from ipykernel->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (1.8.12)
+Requirement already satisfied: nest-asyncio in /usr/local/lib/python3.11/dist-packages (from ipykernel->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (1.6.0)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in /usr/local/lib/python3.11/dist-packages (from jedi>=0.16->ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.8.4)
+Requirement already satisfied: platformdirs>=2.5 in /usr/local/lib/python3.11/dist-packages (from jupyter-core!=5.0.*,>=4.12->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (4.3.6)
+Requirement already satisfied: python-json-logger>=2.0.4 in /usr/local/lib/python3.11/dist-packages (from jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (3.2.1)
+Requirement already satisfied: rfc3339-validator in /usr/local/lib/python3.11/dist-packages (from jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (0.1.4)
+Requirement already satisfied: rfc3986-validator>=0.1.1 in /usr/local/lib/python3.11/dist-packages (from jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (0.1.1)
+Requirement already satisfied: defusedxml in /usr/local/lib/python3.11/dist-packages (from nbconvert->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (0.7.1)
+Requirement already satisfied: jupyterlab-pygments in /usr/local/lib/python3.11/dist-packages (from nbconvert->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (0.3.0)
+Requirement already satisfied: mistune<4,>=2.0.3 in /usr/local/lib/python3.11/dist-packages (from nbconvert->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (3.1.1)
+Requirement already satisfied: nbclient>=0.5.0 in /usr/local/lib/python3.11/dist-packages (from nbconvert->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (0.10.2)
+Requirement already satisfied: pandocfilters>=1.4.1 in /usr/local/lib/python3.11/dist-packages (from nbconvert->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (1.5.1)
+Requirement already satisfied: webencodings in /usr/local/lib/python3.11/dist-packages (from bleach->kaggle>=1.3.9->tf-models-official->ml4h==0.0.11rc1) (0.5.1)
+Requirement already satisfied: fastjsonschema>=2.15 in /usr/local/lib/python3.11/dist-packages (from nbformat>=5.3.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (2.21.1)
+Requirement already satisfied: linkify-it-py in /usr/local/lib/python3.11/dist-packages (from panel>=1.0->holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (2.0.3)
+Requirement already satisfied: markdown-it-py in /usr/local/lib/python3.11/dist-packages (from panel>=1.0->holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (3.0.0)
+Requirement already satisfied: mdit-py-plugins in /usr/local/lib/python3.11/dist-packages (from panel>=1.0->holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (0.4.2)
+Requirement already satisfied: ptyprocess>=0.5 in /usr/local/lib/python3.11/dist-packages (from pexpect>4.3->ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.7.0)
+Requirement already satisfied: wcwidth in /usr/local/lib/python3.11/dist-packages (from prompt_toolkit<3.1.0,>=3.0.41->ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.2.13)
+Requirement already satisfied: oauthlib>=3.0.0 in /usr/lib/python3/dist-packages (from requests-oauthlib>=0.7.0->google-auth-oauthlib>=0.7.0->pandas_gbq->ml4h==0.0.11rc1) (3.2.0)
+Requirement already satisfied: text-unidecode>=1.3 in /usr/local/lib/python3.11/dist-packages (from python-slugify->kaggle>=1.3.9->tf-models-official->ml4h==0.0.11rc1) (1.3)
+Requirement already satisfied: docstring-parser<1.0,>=0.15 in /usr/local/lib/python3.11/dist-packages (from simple-parsing->tensorflow-datasets->tf-models-official->ml4h==0.0.11rc1) (0.16)
+Requirement already satisfied: executing>=1.2.0 in /usr/local/lib/python3.11/dist-packages (from stack_data->ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (2.2.0)
+Requirement already satisfied: asttokens>=2.1.0 in /usr/local/lib/python3.11/dist-packages (from stack_data->ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (3.0.0)
+Requirement already satisfied: pure-eval in /usr/local/lib/python3.11/dist-packages (from stack_data->ipython>=6.1.0->ipywidgets>=7.5.1->ml4h==0.0.11rc1) (0.2.3)
+Requirement already satisfied: tinycss2<1.5,>=1.1.0 in /usr/local/lib/python3.11/dist-packages (from bleach[css]!=5.0.0->nbconvert->jupyter<2.0.0,>=1.0.0->vega->ml4h==0.0.11rc1) (1.4.0)
+Requirement already satisfied: fqdn in /usr/local/lib/python3.11/dist-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.5.1)
+Requirement already satisfied: isoduration in /usr/local/lib/python3.11/dist-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (20.11.0)
+Requirement already satisfied: jsonpointer>1.13 in /usr/local/lib/python3.11/dist-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (3.0.0)
+Requirement already satisfied: uri-template in /usr/local/lib/python3.11/dist-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.3.0)
+Requirement already satisfied: webcolors>=24.6.0 in /usr/local/lib/python3.11/dist-packages (from jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (24.11.1)
+Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.11/dist-packages (from markdown-it-py->panel>=1.0->holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (0.1.2)
+Requirement already satisfied: cffi>=1.0.1 in /usr/local/lib/python3.11/dist-packages (from argon2-cffi-bindings->argon2-cffi>=21.1->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.17.1)
+Requirement already satisfied: uc-micro-py in /usr/local/lib/python3.11/dist-packages (from linkify-it-py->panel>=1.0->holoviews->umap-learn[plot]->ml4h==0.0.11rc1) (1.0.3)
+Requirement already satisfied: pycparser in /usr/local/lib/python3.11/dist-packages (from cffi>=1.0.1->argon2-cffi-bindings->argon2-cffi>=21.1->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (2.22)
+Requirement already satisfied: arrow>=0.15.0 in /usr/local/lib/python3.11/dist-packages (from isoduration->jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (1.3.0)
+Requirement already satisfied: types-python-dateutil>=2.8.10 in /usr/local/lib/python3.11/dist-packages (from arrow>=0.15.0->isoduration->jsonschema[format-nongpl]>=4.18.0->jupyter-events>=0.11.0->jupyter-server<3,>=2.4.0->notebook->ml4h==0.0.11rc1) (2.9.0.20241206)
+Downloading pytest_xdist-3.6.1-py3-none-any.whl (46 kB)
+Downloading execnet-2.1.1-py3-none-any.whl (40 kB)
+Building wheels for collected packages: ml4h
+  Building wheel for ml4h (setup.py): started
+  Building wheel for ml4h (setup.py): finished with status 'done'
+  Created wheel for ml4h: filename=ml4h-0.0.11rc1-py3-none-any.whl size=411798 sha256=7729c3ea0ea0c66f8b2b59e93fc1778c5200d670465ad98af5c6b02a0881d15b
+  Stored in directory: /tmp/pip-ephem-wheel-cache-kswjw7p0/wheels/b9/48/8e/9a01e89db9d280f4af71233909215e33f6cbd1854d4ceea6ef
+Successfully built ml4h
+Installing collected packages: execnet, pytest-xdist, ml4h
+Successfully installed execnet-2.1.1 ml4h-0.0.11rc1 pytest-xdist-3.6.1
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+============================= test session starts ==============================
+platform linux -- Python 3.11.0rc1, pytest-8.3.4, pluggy-1.5.0
+rootdir: /home/rrathod/ml4h
+plugins: xdist-3.6.1, typeguard-2.13.3, anyio-4.8.0
+created: 8/8 workers
+8 workers [256 items]
+
+........................................................................ [ 28%]
+........................................................................ [ 56%]
+........................................................................ [ 84%]
+........................................                                 [100%]
+=============================== warnings summary ===============================
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+../usr/lib/python3/dist-packages/pyparsing.py:108
+  /usr/lib/python3/dist-packages/pyparsing.py:108: DeprecationWarning: module 'sre_constants' is deprecated
+    import sre_constants
+
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+../usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9
+  /usr/local/lib/python3.11/dist-packages/ml4h/tensormap/tensor_map_maker.py:9: DeprecationWarning: typing.io is deprecated, import directly from typing instead. typing.io will be removed in Python 3.12.
+    from typing.io import TextIO
+
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+  /usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36: DeprecationWarning: Please import `binary_closing` from the `scipy.ndimage` namespace; the `scipy.ndimage.morphology` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
+
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+../usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36
+  /usr/local/lib/python3.11/dist-packages/ml4h/tensorize/tensor_writer_ukbb.py:36: DeprecationWarning: Please import `binary_erosion` from the `scipy.ndimage` namespace; the `scipy.ndimage.morphology` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
+
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+../usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55
+  /usr/local/lib/python3.11/dist-packages/ml4h/plots.py:55: DeprecationWarning: Please import `gaussian_filter` from the `scipy.ndimage` namespace; the `scipy.ndimage.filters` namespace is deprecated and will be removed in SciPy 2.0.0.
+    from scipy.ndimage.filters import gaussian_filter
+
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+../usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61
+  /usr/local/lib/python3.11/dist-packages/tensorflow_hub/__init__.py:61: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    from pkg_resources import parse_version
+
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57
+  /usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:57: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    if (distutils.version.LooseVersion(tf.__version__) <
+
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+../usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58
+  /usr/local/lib/python3.11/dist-packages/tensorflow_probability/python/__init__.py:58: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    distutils.version.LooseVersion(required_tensorflow_version)):
+
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps0]
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 58 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+2025-04-08 13:55:35.680187: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1744134935.704893      18 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1744134935.712445      18 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-04-08 13:55:35.737834: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+W0000 00:00:1744134941.231362      18 gpu_device.cc:2344] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps1-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps2-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps3-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps4-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps8-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps12-input_tmaps0]
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 114 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps8]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps1]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps2]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps3]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps4]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps12]
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 138 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py: 36 warnings
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 194 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps9]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps10]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps11]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps5]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps6]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps13]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps7]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps14]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps0-input_tmaps15]
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 218 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py: 54 warnings
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 274 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py: 81 warnings
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 330 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py: 54 warnings
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 250 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps7-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps6-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps5-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps10-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps9-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps11-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps13-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps14-input_tmaps0]
+tests/test_models.py::TestMakeMultimodalMultitaskModel::test_load_multimodal_encoder_decoder[output_tmaps15-input_tmaps0]
+  /usr/local/lib/python3.11/dist-packages/keras/src/saving/saving_lib.py:719: UserWarning: Skipping variable loading for optimizer 'adam', because it has 170 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(weights_store.get(inner_path))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 256 passed, 328 warnings in 94.55s (0:01:34) =================
