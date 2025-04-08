@@ -237,6 +237,7 @@ def train_multimodal_multitask(args):
     performance_metrics = {}
     if (args.plot_valid and args.validation_steps > 0) or args.test_steps > 0:
         if args.plot_valid:
+            _, generate_valid, _ = test_train_valid_tensor_generators(**args.__dict__)
             test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_valid, args.validation_steps)
             fig_folder = '/valid'
         else:
