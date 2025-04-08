@@ -122,7 +122,9 @@ def make_multimodal_multitask_model(
 
     if kwargs.get('model_file', False):
         return tf.keras.models.load_model(kwargs['model_file'])
-        #return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
+    if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
+        return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
+
 
     full_model, encoders, decoders, merger = multimodal_multitask_model(
         tensor_maps_in, tensor_maps_out,
@@ -183,7 +185,7 @@ def multimodal_multitask_model(
             elif encode_block in BLOCK_CLASSES:
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
 
-            elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
+            elif encode_block.endswith(f'encoder_{tm.name}.keras'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
                 serialized_encoder = add_prefix(serialized_encoder, f'encode_block_{tm.name}', custom_dict)
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
@@ -218,7 +220,7 @@ def multimodal_multitask_model(
                         **kwargs,
                     ),
                 )
-            elif decode_block.endswith(f'decoder_{tm.name}.h5'):
+            elif decode_block.endswith(f'decoder_{tm.name}.keras'):
                 serialized_decoder = load_model(decode_block, custom_objects=custom_dict, compile=False)
                 serialized_decoder = add_prefix(serialized_decoder, f'decode_block_{tm.name}', custom_dict)
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
@@ -226,7 +228,7 @@ def multimodal_multitask_model(
             else:
                 logging.warning(f'{tm.name} is ignoring decoding block {decode_block}.')
 
-    return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
+    return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect, **kwargs)
 
 
 def make_multimodal_multitask_model_block(
@@ -234,6 +236,7 @@ def make_multimodal_multitask_model_block(
         merge: Block,
         decoder_block_functions: Dict[TensorMap, Block],  # Assumed to be topologically sorted according to parents hierarchy
         u_connect: DefaultDict[TensorMap, Set[TensorMap]],
+        **kwargs
 ) -> Tuple[Model, Dict[TensorMap, Model], Dict[TensorMap, Model], Model]:
     """
     Turn Blocks into Models
@@ -296,6 +299,18 @@ def make_multimodal_multitask_model_block(
 
     model_inputs = [inputs[tm] for tm in tensor_maps_in]
     full_model = Model(inputs=model_inputs, outputs=final_outputs, name='block_model')
+
+    model_file = kwargs.get('model_file')
+    if model_file:
+        for tm, encoder_model in encoders.items():
+            logging.info(f"saving encoder model encoder_{tm.name}.keras")
+            encoder_model.save(f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras")
+
+        for tm, decoder_model in decoders.items():
+            logging.info(f"saving decoder model decoder_{tm.name}.keras")
+            decoder_model.save(f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras")
+
+        merge_model.save(f"{os.path.dirname(model_file)}/merger.keras")
 
     return full_model, encoders, decoders, merge_model
 
