@@ -91,7 +91,7 @@ def parse_args():
     parser.add_argument(
         '--categorical_file', default=None, help='Path to a file containing categorical values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
-        'argument to the TensorMap made from this file.',
+        'argument to the TensorMap made from this file (or the second one if there is a continuous_file as well).',
     )
     parser.add_argument(
         '--categorical_file_columns', nargs='*', default=[],
