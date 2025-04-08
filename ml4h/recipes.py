@@ -235,17 +235,22 @@ def train_multimodal_multitask(args):
         merger.save(f'{args.output_folder}{args.id}/merger.h5')
 
     performance_metrics = {}
-    if args.test_steps > 0:
-        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    if (args.plot_valid and args.validation_steps > 0) or args.test_steps > 0:
+        if args.plot_valid:
+            test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_valid, args.validation_steps)
+            fig_folder = '/valid'
+        else:
+            test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+            fig_folder = ''
         performance_metrics = _predict_and_evaluate(
             model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-            args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
+            args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + fig_folder + '/'), test_paths,
             args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
         )
 
         predictions_list = model.predict(test_data)
         samples = min(args.test_steps * args.batch_size, 12)
-        out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
+        out_path = os.path.join(args.output_folder, args.id, fig_folder + '/' + 'reconstructions')
         if len(args.tensor_maps_out) == 1:
             predictions_list = [predictions_list]
         predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
