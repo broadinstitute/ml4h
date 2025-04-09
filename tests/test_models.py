@@ -231,6 +231,32 @@ class TestMakeMultimodalMultitaskModel:
             **params,
         )
 
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        'input_tmaps',
+        MULTIMODAL_UP_TO_4D,
+    )
+    @pytest.mark.parametrize(
+        'output_tmaps',
+        MULTIMODAL_UP_TO_4D,
+    )
+    def test_load_multimodal_encoder_decoder(self, tmpdir, input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]):
+        m, _, _, _ = make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **DEFAULT_PARAMS,
+        )
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        params = DEFAULT_PARAMS.copy()
+        params['model_file'] = path
+        print(params['model_file'])
+        params['load_enc_dec'] = True
+        make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **params,
+        )
     def test_u_connect_auto_encode(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
