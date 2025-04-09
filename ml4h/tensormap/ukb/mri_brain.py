@@ -439,7 +439,7 @@ t1_mni_accumbens_65_76 = TensorMap(
     tensor_from_file=_mni_label_masked({'Left_accumbens': 19, 'Right_accumbens': 70}),
     normalization=ZeroMeanStd1(),
 )
-def _random_slice_bounded(low=0, high=182):
+def _random_slice_bounded(low=0, high=192):
     def random_mni_slice_tensor(tm, hd5, dependents={}):
         slice_index = np.random.randint(low, high)
         tensor = pad_or_crop_array_to_shape(
@@ -546,5 +546,3 @@ t2_flair_random_slice_127 = TensorMap(
     normalization=ZeroMeanStd1(),
     dependent_map=axial_index_map,
 )
-
-
