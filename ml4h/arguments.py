@@ -287,6 +287,7 @@ def parse_args():
         '--patience', default=8, type=int,
         help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.',
     )
+    parser.add_argument('--monitor', default='val_loss', type=str, help='Monitor for callbacks.')
     parser.add_argument(
         '--max_models', default=16, type=int,
         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
