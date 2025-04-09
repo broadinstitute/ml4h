@@ -824,6 +824,7 @@ def test_train_valid_tensor_generators(
     zoom_factor: float = 0,
     translation_factor: float = 0,
     wrap_with_tf_dataset: bool = False,
+    treat_valid_like_test: bool = False,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
@@ -853,6 +854,7 @@ def test_train_valid_tensor_generators(
     :param zoom_factor: for data augmentation, a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
     :param translation_factor: for data augmentation, a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
     :param wrap_with_tf_dataset: if True will return tf.dataset objects for the 3 generators
+    ;param treat_valid_like_test: whether to create the validation dataset in the same way as a test dataset
     :return: A tuple of three generators. Each yields a Tuple of dictionaries of input and output numpy arrays for training, validation and testing.
     """
     generate_train, generate_valid, generate_test = None, None, None
@@ -893,11 +895,18 @@ def test_train_valid_tensor_generators(
         paths=train_paths, num_workers=num_train_workers, cache_size=cache_size, weights=weights,
         keep_paths=keep_paths, mixup_alpha=mixup_alpha, name='train_worker', siamese=siamese, augment=True,
     )
-    generate_valid = generator_class(
-        batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out,
-        paths=valid_paths, num_workers=num_valid_workers, cache_size=cache_size, weights=weights,
-        keep_paths=keep_paths, mixup_alpha=0, name='validation_worker', siamese=siamese, augment=False,
-    )
+    if not treat_valid_like_test:
+        generate_valid = generator_class(
+            batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out,
+            paths=valid_paths, num_workers=num_valid_workers, cache_size=cache_size, weights=weights,
+            keep_paths=keep_paths, mixup_alpha=0, name='validation_worker', siamese=siamese, augment=False,
+        )
+    else:
+        generate_valid = generator_class(
+            batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out,
+            paths=valid_paths, num_workers=num_valid_workers, cache_size=0, weights=weights,
+            keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='validation_worker', siamese=siamese, augment=False,
+        )
     generate_test = generator_class(
         batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out + tensor_maps_protected,
         paths=test_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
