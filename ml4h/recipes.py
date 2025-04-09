@@ -251,7 +251,7 @@ def train_multimodal_multitask(args):
 
         predictions_list = model.predict(test_data)
         samples = min(args.test_steps * args.batch_size, 12)
-        out_path = os.path.join(args.output_folder, args.id, fig_folder + '/' + 'reconstructions')
+        out_path = os.path.join(args.output_folder, args.id + fig_folder + '/' + 'reconstructions')
         if len(args.tensor_maps_out) == 1:
             predictions_list = [predictions_list]
         predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
