@@ -207,7 +207,7 @@ def train_legacy(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model,
+        save_last_model=args.save_last_model, monitor=args.monitor,
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
@@ -225,7 +225,7 @@ def train_multimodal_multitask(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model,
+        save_last_model=args.save_last_model, monitor=args.monitor,
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -392,7 +392,7 @@ def train_xdl(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model,
+        save_last_model=args.save_last_model, monitor=args.monitor,
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -495,7 +495,7 @@ def train_xdl_af(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model,
+        save_last_model=args.save_last_model, monitor=args.monitor,
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -865,6 +865,7 @@ def train_shallow_model(args):
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+        monitor=args.monitor,
     )
 
     p = os.path.join(args.output_folder, args.id + '/')
@@ -883,6 +884,7 @@ def train_siamese_model(args):
     siamese_model = train_model_from_generators(
         siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
         args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+        monitor=args.monitor,
     )
 
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)

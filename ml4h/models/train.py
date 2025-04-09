@@ -44,6 +44,7 @@ def train_model_from_generators(
     return_history: bool = False,
     plot: bool = True,
     save_last_model: bool = False,
+    monitor: str = 'val_loss',
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
@@ -66,6 +67,7 @@ def train_model_from_generators(
     :param return_history: If true return history from training and don't plot the training history
     :param plot: If true, plots the metrics for train and validation set at the end of each epoch
     :param save_last_model: If true saves the model weights from last epoch otherwise saves model with best validation loss
+    ;param monitor: Monitor used for callbacks
 
     :return: The optimized model.
 
@@ -81,7 +83,7 @@ def train_model_from_generators(
     history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
         validation_steps=validation_steps, validation_data=generate_valid,
-        callbacks=_get_callbacks(patience, model_file, save_last_model),
+        callbacks=_get_callbacks(patience, model_file, save_last_model, monitor),
     )
 
     logging.info('Model weights saved at: %s' % model_file)
@@ -96,12 +98,12 @@ def train_model_from_generators(
 
 
 def _get_callbacks(
-    patience: int, model_file: str, save_last_model: bool,
+    patience: int, model_file: str, save_last_model: bool, monitor: str = 'val_loss',
 ) -> List[Callback]:
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
-        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
+        EarlyStopping(monitor=monitor, patience=patience * 3, verbose=1),
+        ReduceLROnPlateau(monitor=monitor, factor=0.5, patience=patience, verbose=1),
+        ModelCheckpoint(monitor=monitor, filepath=model_file, verbose=1, save_best_only=not save_last_model),
     ]
 
     return callbacks
@@ -109,8 +111,10 @@ def _get_callbacks(
 
 def train_diffusion_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
-                           args.diffusion_loss, args.sigmoid_beta, args.inspect_model)
+    model = DiffusionModel(
+        args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+        args.diffusion_loss, args.sigmoid_beta, args.inspect_model,
+    )
 
     model.compile(
         optimizer=tfa.optimizers.AdamW(
@@ -181,8 +185,10 @@ def train_diffusion_model(args):
         steps = 1 if args.batch_size > 3 else args.test_steps
         data, labels, paths = big_batch_from_minibatch_generator(generate_test, steps)
         sides = int(np.sqrt(steps*args.batch_size))
-        preds = model.plot_reconstructions((data, labels), num_rows=sides, num_cols=sides,
-                                           prefix=f'{args.output_folder}/{args.id}/reconstructions/')
+        preds = model.plot_reconstructions(
+            (data, labels), num_rows=sides, num_cols=sides,
+            prefix=f'{args.output_folder}/{args.id}/reconstructions/',
+        )
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
         predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
         if model.tensor_map.axes() == 2:
@@ -245,8 +251,10 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
         plt.savefig(figure_path)
         plt.close()
     elif tm_out.is_categorical():
-        plot_roc(preds, all_controls, tm_out.channel_map,
-                 f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
+        plot_roc(
+            preds, all_controls, tm_out.channel_map,
+            f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix,
+        )
 
 
 def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
@@ -394,13 +402,17 @@ def train_diffusion_control_model(args, supervised=False):
         steps = 1 if args.batch_size > 3 else args.test_steps
         data, labels, paths = big_batch_from_minibatch_generator(generate_test, steps)
         sides = int(np.sqrt(steps*args.batch_size))
-        preds = model.plot_reconstructions((data, labels), num_rows=sides, num_cols=sides,
-                                           prefix=f'{args.output_folder}/{args.id}/reconstructions/')
+        preds = model.plot_reconstructions(
+            (data, labels), num_rows=sides, num_cols=sides,
+            prefix=f'{args.output_folder}/{args.id}/reconstructions/',
+        )
 
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
         predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
-        interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
-                                           f'{args.output_folder}/{args.id}/')
+        interpolate_controlled_generations(
+            model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
+            f'{args.output_folder}/{args.id}/',
+        )
         if model.input_map.axes() == 2:
             model.plot_ecgs(num_rows=2, prefix=os.path.dirname(checkpoint_path))
         else:
@@ -410,8 +422,10 @@ def train_diffusion_control_model(args, supervised=False):
             args.tensor_maps_out = [tm_out]
             args.model_file = model_file
             eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-            regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size,
-                                              0.0,2.0,f'{args.output_folder}/{args.id}/')
+            regress_on_controlled_generations(
+                model, eval_model, tm_out, args.test_steps, args.batch_size,
+                0.0,2.0,f'{args.output_folder}/{args.id}/',
+            )
 
 
     return model
