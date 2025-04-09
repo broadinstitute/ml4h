@@ -107,7 +107,8 @@ def parse_args():
         '--latent_output_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
-        'argument to the TensorMap made from this file.',
+        'argument to the TensorMap made from this file (or the output_tensors arguments following'
+        'the continuous_file or categorical_file names, if applicable)',
     )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
