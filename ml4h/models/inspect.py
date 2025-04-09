@@ -34,7 +34,10 @@ def plot_and_time_model(
         The slightly optimized keras model
     """
     if image_path:
-        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=True, show_layer_activations=True), image_path, inspect_show_labels)
+        # HACK - expand_nested doesn't work if there is a '-' in a layer name
+        expand_nested = not any(['-' in l.name for l in model.layers])
+        _plot_dot_model_in_color(model_to_dot(model, show_shapes=inspect_show_labels, expand_nested=expand_nested, show_layer_activations=True), image_path, inspect_show_labels)
+
     t0 = time.time()
     _ = model.fit(generate_train, steps_per_epoch=training_steps, validation_steps=1, validation_data=generate_valid)
     t1 = time.time()
