@@ -451,7 +451,7 @@ def _random_slice_bounded(low=0, high=192):
             tm.dependent_map.shape,
             dtype=np.float32,
         )
-        dependents[tm.dependent_map][0] = float(slice_index)
+        dependents[tm.dependent_map][0] = (float(slice_index) - 96) / 55.4
         return tensor
     return random_mni_slice_tensor
 
