@@ -216,17 +216,20 @@ def train_multimodal_multitask(args):
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
         save_last_model=args.save_last_model,
     )
+
+    save_dir = os.path.join(args.output_folder, args.id)
+    os.makedirs(save_dir, exist_ok=True)
     for tm in encoders:
-        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}{MODEL_EXT}')
+        encoders[tm].save(os.path.join(save_dir, f'encoder_{tm.name}{MODEL_EXT}'))
     for tm in decoders:
-        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}{MODEL_EXT}')
+        decoders[tm].save(os.path.join(save_dir, f'decoder_{tm.name}{MODEL_EXT}'))
     if merger:
-        merger.save(f'{args.output_folder}{args.id}/merger{MODEL_EXT}')
+        merger.save(os.path.join(save_dir, f'merger{MODEL_EXT}'))
 
     performance_metrics = {}
     if args.test_steps > 0:
         iter_generate_test = iter(generate_test)
-        test_data, test_labels = big_batch_from_minibatch_generator(iter_generate_test, args.test_steps)
+        test_data, test_labels, _ = big_batch_from_minibatch_generator(iter_generate_test, args.test_steps)
         test_paths = None
         performance_metrics = _predict_and_evaluate(
             model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
@@ -798,7 +801,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     full_model = legacy_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     embed_model.save(_hidden_file_name(args.output_folder, f'{args.hidden_layer}_encoder_', args.id, '.h5'))
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
     latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions} Will write inferences to: {inference_tsv}')
@@ -1014,10 +1017,14 @@ def _predict_scalars_and_evaluate_from_generator(
     embeddings = []
     test_paths = []
     for i in range(steps):
-        batch = next(generate_test)
-        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        batch = next(iter(generate_test))
+        if len(batch) == 3:
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            test_paths.extend(tensor_paths)
+        else:
+            input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
+            tensor_paths = None
         y_predictions = model.predict(input_data, verbose=0)
-        test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))

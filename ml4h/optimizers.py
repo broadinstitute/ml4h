@@ -66,7 +66,7 @@ def find_learning_rate(model: Model, generate_train: TensorGenerator, steps: int
     optimizer = model.optimizer
     losses, smoothed_losses = [], []
     for i, lr in enumerate(lrs):
-        K.set_value(optimizer.learning_rate, lr)
+        optimizer.learning_rate.assign(lr)
         history = model.fit(generate_train, verbose=0, steps_per_epoch=2, epochs=2)
         loss = history.history['loss'][0]
         losses.append(loss)
