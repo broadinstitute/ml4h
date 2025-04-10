@@ -98,6 +98,11 @@ def parse_args():
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
     parser.add_argument(
+        '--categorical_file_label_weights', default=[], nargs='*', type=float,
+        help='List of per-label weights for weighted categorical cross entropy for the categorical TensorMap(s). If provided, must map 1:1 to number of labels.'
+             'Currently implemented for only one categorical file column.',
+    )
+    parser.add_argument(
         '--latent_input_file', default=None, help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first input_tensors'
@@ -559,12 +564,18 @@ def _process_args(args):
             )
     if args.categorical_file is not None:
         # Categorical TensorMap(s) generated from file is given the name specified by the first output_tensors argument
+        if len(args.categorical_file_label_weights) > 0:
+            assert(
+                len(args.categorical_file_columns) == 1,
+                'categorical_file_label_weights only implemented for a single categorical_file_column',
+            )
         for column in args.categorical_file_columns:
             args.tensor_maps_out.append(
                 generate_categorical_tensor_map_from_file(
                     args.categorical_file,
                     column,
                     args.output_tensors.pop(0),
+                    args.categorical_file_label_weights,
                 ),
             )
     if len(args.latent_output_files) > 0:
