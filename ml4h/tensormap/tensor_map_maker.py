@@ -9,7 +9,7 @@ import pandas as pd
 from typing.io import TextIO
 from typing import List, Tuple
 
-from ml4h.metrics import sparse_cross_entropy
+from ml4h.metrics import sparse_cross_entropy, weighted_crossentropy
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
@@ -253,6 +253,7 @@ def generate_categorical_tensor_map_from_file(
     file_name: str,
     column_name: str,
     tensor_map_name: str,
+    label_weights: List[float],
 ) -> TensorMap:
     ext = file_name.split('.')[1]
     delimiter = ',' if ext == 'csv' else '\t'
@@ -260,8 +261,13 @@ def generate_categorical_tensor_map_from_file(
     channel_map = {}
     for i, k in enumerate(df[column_name].value_counts().keys()):
         channel_map[k] = i
+    logging.info(f'Creating categorical tensormap with channel_map {channel_map}')
+    if len(label_weights) == 0:
+        loss = None
+    else:
+        loss = weighted_crossentropy(label_weights, name=f'{tensor_map_name}_weighted_crossentropy')
     return TensorMap(
-            f'{tensor_map_name}', Interpretation.CATEGORICAL, channel_map=channel_map,
+            f'{tensor_map_name}', Interpretation.CATEGORICAL, loss=loss, channel_map=channel_map,
             tensor_from_file=build_categorical_tensor_from_file(file_name, column_name),
     )
 
