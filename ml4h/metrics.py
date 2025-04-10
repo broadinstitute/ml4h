@@ -50,6 +50,12 @@ def weighted_crossentropy(weights, name='anonymous'):
     loss_fxn = eval(name + fxn_postfix, globals(), locals())
     return loss_fxn
 
+# Assumes that the last dimension of y_true's channels are the weights
+def weighted_mse(y_true, y_pred):
+    y_true_vals = y_true[...,:-1]
+    weights = tf.expand_dims(y_true[...,-1],-1)
+    loss = tf.reduce_mean(weights * tf.square(y_true_vals - y_pred), axis=-1)
+    return loss
 
 def sparse_cross_entropy(window_size: int):
     def _sparse_cross_entropy(y_true, y_pred):
@@ -171,6 +177,9 @@ def pearson(y_true, y_pred):
     pearson_correlation = K.sum(y_true * y_pred, axis=-1)
     return pearson_correlation
 
+def pearson_ignoring_weights(y_true, y_pred):
+    y_true_vals = y_true[...,:-1]
+    return pearson(y_true_vals, y_pred)
 
 def abs_pearson(y_true, y_pred):
     # normalizing stage - setting a 0 mean.
@@ -756,7 +765,7 @@ class KernelInceptionDistance(keras.metrics.Metric):
         # compute polynomial kernels using the two sets of features
         kernel_real = self.polynomial_kernel(real_features, real_features)
         kernel_generated = self.polynomial_kernel(
-            generated_features, generated_features
+            generated_features, generated_features,
         )
         kernel_cross = self.polynomial_kernel(real_features, generated_features)
 
@@ -767,7 +776,7 @@ class KernelInceptionDistance(keras.metrics.Metric):
             batch_size_f * (batch_size_f - 1.0)
         )
         mean_kernel_generated = tf.reduce_sum(
-            kernel_generated * (1.0 - tf.eye(batch_size))
+            kernel_generated * (1.0 - tf.eye(batch_size)),
         ) / (batch_size_f * (batch_size_f - 1.0))
         mean_kernel_cross = tf.reduce_mean(kernel_cross)
         kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross

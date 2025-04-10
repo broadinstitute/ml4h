@@ -391,6 +391,8 @@ def evaluate_predictions(
                 ),
             )
     elif tm.is_continuous():
+        if tm.get_has_continuous_weights():
+            y_truth = y_truth[..., :-1]
         if tm.sentinel is not None:
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
@@ -473,8 +475,10 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    for log_label in ['loss', 'mse', 'mae', 'val_loss', 'val_mse', 'val_mae', 'n_loss', 'val_n_loss',
-                      'val_supervised_loss', 'val_kid', 'val_is']:
+    for log_label in [
+        'loss', 'mse', 'mae', 'val_loss', 'val_mse', 'val_mae', 'n_loss', 'val_n_loss',
+        'val_supervised_loss', 'val_kid', 'val_is',
+    ]:
         if log_label not in history.history:
             continue
         logging.info(
@@ -482,7 +486,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
             Starting {log_label.replace('val_', 'validation ')}: {history.history[log_label][0]:0.4f},
             Final    {log_label.replace('val_', 'validation ')}: {history.history[log_label][-1]:0.4f},
             Minimum  {log_label.replace('val_', 'validation ')}: {min(history.history[log_label]):0.4f}
-            '''
+            ''',
         )
     logging.info(f"Saved learning curves at:{figure_path}")
     plt.close()

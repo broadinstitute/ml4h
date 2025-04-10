@@ -89,6 +89,10 @@ def parse_args():
         help='Bin boundaries to use to discretize a continuous TensorMap read from a file.',
     )
     parser.add_argument(
+        '--continuous_file_weight_columns', nargs='*', default = [],
+        help = 'Column headers in file from which weights for weighted mse loss will be made.',
+    )
+    parser.add_argument(
         '--categorical_file', default=None, help='Path to a file containing categorical values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file (or the second one if there is a continuous_file as well).',
@@ -552,6 +556,17 @@ def _process_args(args):
 
     if args.continuous_file is not None:
         # Continuous TensorMap(s) generated from file is given the name specified by the first output_tensors argument
+        if len(args.continuous_file_weight_columns) == 0:
+            args.continuous_file_weight_columns = [None] * len(args.continuous_file_columns)
+        else:
+            assert(
+                len(args.continuous_file_weight_columns) == len(args.continuous_file_columns),
+                'number of continuous_file_weight_columns must match number of continuous_file_columns',
+            )
+            assert(
+                not args.continuous_file_discretization_bounds,
+                'cannot use continuous_file_weight_columns with discretization bounds',
+            )
         for column in args.continuous_file_columns:
             args.tensor_maps_out.append(
                 generate_continuous_tensor_map_from_file(
@@ -560,6 +575,7 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                     args.continuous_file_normalize,
                     args.continuous_file_discretization_bounds,
+                    args.continuous_file_weight_columns.pop(0),
                 ),
             )
     if args.categorical_file is not None:
