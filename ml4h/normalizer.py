@@ -31,6 +31,19 @@ class Standardize(Normalizer):
     def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
         return tensor * self.std + self.mean
 
+class StandardizeIgnoringWeights(Normalizer):
+    def __init__(self, mean: float, std:float):
+        self.mean, self.std = mean, std
+
+    def normalize(self, tensor: np.ndarray) -> np.ndarray:
+        tensor_vals = tensor[..., :-1]
+        weights = np.expand_dims(tensor[..., -1], -1)
+        return np.concatenate([(tensor_vals - self.mean) / self.std, weights], axis=-1)
+
+    def un_normalize(self, tensor: np.ndarray) -> np.ndarray:
+        tensor_vals = tensor[..., :-1]
+        weights = np.expand_dims(tensor[..., -1], -1)
+        return np.concatenate([tensor_vals * self.std + self.mean, weights], axis=-1)
 
 class ZeroMeanStd1(Normalizer):
     def normalize(self, tensor: np.ndarray) -> np.ndarray:

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Tuple, Dict
 from ml4h.TensorMap import TensorMap, Interpretation
-from ml4h.normalizer import Standardize
+from ml4h.normalizer import Standardize, StandardizeIgnoringWeights
 
 
 def tensor_path(path_prefix: str, name: str) -> str:
@@ -123,11 +123,14 @@ def build_tensor_from_file(
     file_name: str,
     target_column: str,
     normalization: bool = False,
+    weight_column: str = None,
 ):
     """
     Build a tensor_from_file function from a column in a file.
     Only works for continuous values.
     When normalization is True values will be normalized according to the mean and std of all of the values in the column.
+    If weight_column is given, will return a 2D tensor that includes weight in the second column, to be used by the
+    weighted_mse loss
     """
     error = None
     try:
@@ -136,13 +139,15 @@ def build_tensor_from_file(
             delimiter = ',' if ext == 'csv' else '\t'
             reader = csv.reader(f, delimiter=delimiter)
             header = next(reader)
-            index = header.index(target_column)
+            indices = [header.index(target_column)]
+            if weight_column is not None:
+                indices.append(header.index(weight_column))
             table = {}
             for row in reader:
                 try:
-                    table[row[0]] = np.array([float(row[index])])
+                    table[row[0]] = np.array([float(row[i]) for i in indices])
                 except ValueError:
-                    logging.debug(f'ValueError parsing: {row[index]}')
+                    logging.debug(f'ValueError parsing: {[row[i] for i in indices]}')
             if normalization:
                 value_array = np.array(
                     [sub_array[0] for sub_array in table.values()],
@@ -159,7 +164,10 @@ def build_tensor_from_file(
         if error:
             raise error
         if normalization:
-            tm.normalization = Standardize(mean=mean, std=std)
+            if weight_column is None:
+                tm.normalization = Standardize(mean=mean, std=std)
+            else:
+                tm.normalization = StandardizeIgnoringWeights(mean=mean, std=std)
         try:
             return table[
                 os.path.basename(hd5.filename).replace('.hd5', '')

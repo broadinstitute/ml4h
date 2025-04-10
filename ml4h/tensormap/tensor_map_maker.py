@@ -9,7 +9,7 @@ import pandas as pd
 from typing.io import TextIO
 from typing import List, Tuple
 
-from ml4h.metrics import sparse_cross_entropy, weighted_crossentropy
+from ml4h.metrics import sparse_cross_entropy, weighted_crossentropy, weighted_mse, pearson_ignoring_weights
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
@@ -234,6 +234,7 @@ def generate_continuous_tensor_map_from_file(
     tensor_map_name: str,
     normalization: bool,
     discretization_bounds: List[float],
+    weight_column_name: str,
 ) -> TensorMap:
     if discretization_bounds:
         return TensorMap(
@@ -245,7 +246,8 @@ def generate_continuous_tensor_map_from_file(
         return TensorMap(
             f'{tensor_map_name}', channel_map={tensor_map_name: 0},
             annotation_units=64, days_window=0,
-            tensor_from_file=build_tensor_from_file(file_name, column_name, normalization),
+            tensor_from_file=build_tensor_from_file(file_name, column_name, normalization, weight_column_name),
+            has_continuous_weights=(weight_column_name is not None),
         )
 
 

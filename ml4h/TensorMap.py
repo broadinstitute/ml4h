@@ -21,7 +21,7 @@ from tensorflow.keras.utils import to_categorical
 
 from ml4h.normalizer import Normalizer, Standardize, ZeroMeanStd1
 from ml4h.defines import StorageType, JOIN_CHAR, STOP_CHAR, PARTNERS_READ_TEXT
-from ml4h.metrics import sentinel_logcosh_loss, survival_likelihood_loss, cox_hazard_loss, pearson
+from ml4h.metrics import sentinel_logcosh_loss, survival_likelihood_loss, cox_hazard_loss, pearson, pearson_ignoring_weights, weighted_mse
 from ml4h.metrics import per_class_recall, per_class_recall_3d, per_class_recall_4d, per_class_recall_5d
 from ml4h.metrics import per_class_precision, per_class_precision_3d, per_class_precision_4d, per_class_precision_5d
 
@@ -113,6 +113,7 @@ class TensorMap(object):
         time_series_order: Optional[TimeSeriesOrder] = TimeSeriesOrder.NEWEST,
         time_series_lookup: Optional[Dict[int,Tuple]] = None,
         discretization_bounds: Optional[List[float]] = None,
+        has_continuous_weights: Optional[bool] = False,
     ):
         """TensorMap constructor
 
@@ -143,6 +144,7 @@ class TensorMap(object):
         :param time_series_lookup: Dict of time intervals filtering which tensors are used in a time series
         :param discretization_bounds: List of floats that delineate the boundaries of the bins that will be used
                                           for producing categorical values from continuous values
+        :param has_continuous_weights: For continuous TensorMaps, whether the last dimension will contain weights
         """
         self.name = name
         self.interpretation = interpretation
@@ -170,6 +172,7 @@ class TensorMap(object):
         self.time_series_order = time_series_order
         self.time_series_lookup = time_series_lookup
         self.discretization_bounds = discretization_bounds
+        self.has_continuous_weights = has_continuous_weights
 
         # Infer shape from channel map or interpretation
         if self.shape is None:
@@ -185,8 +188,10 @@ class TensorMap(object):
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
             self.loss = sentinel_logcosh_loss(self.sentinel)
-        elif self.loss is None and self.is_continuous():
+        elif self.loss is None and self.is_continuous() and not self.has_continuous_weights:
             self.loss = 'mse'
+        elif self.loss is None and self.is_continuous() and self.has_continuous_weights:
+            self.loss = weighted_mse
         elif self.loss is None and self.is_survival_curve():
             self.loss = survival_likelihood_loss(self.shape[0]//2)
         elif self.loss is None and self.is_time_to_event():
@@ -331,6 +336,9 @@ class TensorMap(object):
                 tensor = augmentation(tensor)
         return tensor
 
+    def get_has_continuous_weights(self):
+        return self.has_continuous_weights
+
     def infer_metrics(self):
         if self.metrics is None and self.is_categorical():
             self.metrics = ['categorical_accuracy']
@@ -347,7 +355,10 @@ class TensorMap(object):
                 self.metrics += per_class_precision_5d(self.channel_map)
                 self.metrics += per_class_recall_5d(self.channel_map)
         elif self.metrics is None and self.is_continuous() and self.axes() == 1:
-            self.metrics = [pearson]
+            if self.has_continuous_weights:
+                self.metrics = [pearson_ignoring_weights]
+            else:
+                self.metrics = [pearson]
         elif self.metrics is None:
             self.metrics = []
 
