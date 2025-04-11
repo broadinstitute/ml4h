@@ -50,7 +50,7 @@ ACTIVATION_CLASSES = {
     'thresh_relu': ThresholdedReLU,
 }
 ACTIVATION_FUNCTIONS = {
-    'swish': tf.nn.swish,
+    'swish': tf.keras.activations.silu,
     'gelu': tf.keras.activations.gelu,
     'mish': tf.keras.activations.mish,
 }
