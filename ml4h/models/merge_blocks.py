@@ -200,7 +200,6 @@ class PairLossBlock(Block):
             return concatenate(y)
         elif self.pair_merge == 'dropout':
             return DropoutMergeLayer()(y)
-            return tf.keras.layers.Lambda(self._dropout_merge , output_shape=lambda input_shapes: input_shapes[0])(y)
         elif self.pair_merge == 'kronecker':
             krons = []
             losses = []
