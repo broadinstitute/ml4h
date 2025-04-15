@@ -401,6 +401,8 @@ def parse_args():
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")
 
+    #Parent Sort enable or disable
+    parser.add_argument('--parent_sort', default=True, type=lambda x: x.lower() == 'true', help='disable or enable parent_sort on output tmaps')
     args = parser.parse_args()
     _process_args(args)
     return args

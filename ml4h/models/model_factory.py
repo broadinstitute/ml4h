@@ -279,7 +279,6 @@ def make_multimodal_multitask_model_block(
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
 
     tensor_maps_out = list(decoder_block_functions.keys())
-    tensor_maps_out = list(decoder_block_functions.keys())
     decoders: Dict[TensorMap, Model] = {}
     decoder_outputs_dict: Dict[TensorMap, Layer] = {}
 
@@ -295,8 +294,8 @@ def make_multimodal_multitask_model_block(
     if not decoder_outputs_dict:
         final_outputs = [multimodal_activation]
     else:
-        final_outputs = [decoder_outputs_dict[tm] for tm in parent_sort(tensor_maps_out)]
-
+        final_outputs = [decoder_outputs_dict[tm] for tm in parent_sort(tensor_maps_out, **kwargs)]
+    
     model_inputs = [inputs[tm] for tm in tensor_maps_in]
     full_model = Model(inputs=model_inputs, outputs=final_outputs, name='block_model')
 
@@ -357,11 +356,14 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 
 
-def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
+def parent_sort(tms: List[TensorMap], **kwargs) -> List[TensorMap]:
     """
     Parents will always appear before their children after sorting. Idempotent and slow.
     """
     to_process = sorted(tms, key=lambda x: str(x))
+
+    if kwargs.get('parent_sort', True) == False:
+        return to_process
     final: List[TensorMap] = []
     visited = Counter()
     while to_process:
