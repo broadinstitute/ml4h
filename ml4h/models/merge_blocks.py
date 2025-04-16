@@ -13,6 +13,7 @@ from ml4h.TensorMap import TensorMap
 from ml4h.models.basic_blocks import DenseBlock
 from ml4h.models.layer_wrappers import global_average_pool
 from tensorflow.keras.losses import categorical_crossentropy
+from keras.saving import register_keras_serializable
 
 
 Tensor = tf.Tensor
@@ -198,7 +199,7 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'concat':
             return concatenate(y)
         elif self.pair_merge == 'dropout':
-            return tf.keras.layers.Lambda(self._dropout_merge , output_shape=lambda input_shapes: input_shapes[0])(y)
+            return DropoutMergeLayer()(y)
         elif self.pair_merge == 'kronecker':
             krons = []
             losses = []
@@ -240,6 +241,38 @@ class PairLossBlock(Block):
 
         gathered = tf.gather_nd(tf_y, gather_indices)
         return tf.reshape(gathered, [batch_size, dim])
+
+@register_keras_serializable()
+class DropoutMergeLayer(tf.keras.layers.Layer):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    def call(self, y):
+        tf_y = tf.stack(y, axis=0)  # shape: [num_pairs, batch, dim]
+        tf_y = tf.transpose(tf_y, perm=[1, 2, 0])  # shape: [batch, dim, num_pairs]
+
+        batch_size = tf.shape(tf_y)[0]
+        dim = tf.shape(tf_y)[1]
+        num_pairs = tf.shape(tf_y)[2]
+
+        random_indices = tf.random.uniform(shape=[batch_size], maxval=num_pairs, dtype=tf.int32)
+        dim_range = tf.range(dim)
+        dim_range = tf.reshape(dim_range, [1, -1])
+        dim_range = tf.tile(dim_range, [batch_size, 1])
+
+        batch_indices = tf.range(batch_size)
+        batch_indices = tf.reshape(batch_indices, [batch_size, 1])
+        batch_indices = tf.tile(batch_indices, [1, dim])
+        gather_indices = tf.stack([batch_indices, dim_range], axis=-1)
+
+        gather_indices = tf.reshape(gather_indices, [-1, 2])
+        rand_idx_exp = tf.reshape(tf.repeat(random_indices, dim), [-1, 1])
+        gather_indices = tf.concat([gather_indices, rand_idx_exp], axis=-1)
+
+        gathered = tf.gather_nd(tf_y, gather_indices)
+        return tf.reshape(gathered, [batch_size, dim])
+    def get_config(self):
+        config = super().get_config()
+        return config
 
 
 def l2_norm(x, axis=None):
