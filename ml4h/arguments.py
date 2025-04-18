@@ -98,7 +98,7 @@ def parse_args():
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
     parser.add_argument(
-        '--latent_input_file', default=None, help=
+        '--latent_input_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first input_tensors'
         'argument to the TensorMap made from this file.',
@@ -537,10 +537,11 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
-    if args.latent_input_file is not None:
-        args.tensor_maps_in.append(
-            generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0)),
-        )
+    if len(args.latent_input_files) > 0:
+        for lif in args.latent_input_files:
+            args.tensor_maps_in.append(
+                generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0)),
+            )
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
