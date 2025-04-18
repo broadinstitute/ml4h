@@ -538,10 +538,13 @@ def _process_args(args):
         args.tensor_maps_out.append(output_map)
 
     if len(args.latent_input_files) > 0:
+        new_pairs = []
         for lif in args.latent_input_files:
-            args.tensor_maps_in.append(
-                generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0)),
-            )
+            tm = generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0))
+            args.tensor_maps_in.append(tm)
+            new_pairs.append(tm)
+        if len(args.pairs) > 0:
+            args.pairs = [new_pairs]
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
