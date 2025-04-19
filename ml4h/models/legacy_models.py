@@ -1003,7 +1003,7 @@ def legacy_multimodal_multitask_model(
                 activation=activation,
             )
 
-    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders)
+    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders, tensor_maps_out,  kwargs.get('named_outputs', False))
 
     # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
@@ -1036,7 +1036,9 @@ def legacy_multimodal_multitask_model(
 def _make_multimodal_multitask_model(
         encoders: Dict[TensorMap, Encoder],
         bottle_neck: BottleNeck,
-        decoders: Dict[TensorMap, Decoder],  # Assumed to be topologically sorted according to parents hierarchy
+        decoders: Dict[TensorMap, Decoder], 
+        tensor_maps_out: List[TensorMap],
+        named_outputs = False # Assumed to be topologically sorted according to parents hierarchy
 ) -> Model:
     inputs: Dict[TensorMap, Input] = {}
     encoder_outputs: Dict[TensorMap, Tuple[Tensor, List[Tensor]]] = {}  # TensorMap -> embed, encoder_intermediates
@@ -1054,7 +1056,16 @@ def _make_multimodal_multitask_model(
     for tm, decoder in decoders.items():
         decoder_outputs[tm] = decoder(bottle_neck_outputs[tm], encoder_intermediates, decoder_outputs)
 
-    return Model(inputs=list(inputs.values()), outputs=list(decoder_outputs.values()))
+    if not named_outputs:
+        outputs = list(decoder_outputs.values())
+    else:
+        outputs = {
+                tm.output_name(): decoder_outputs[tm]
+                for tm in parent_sort(tensor_maps_out)
+            }
+    print("named outputs", named_outputs, outputs)
+
+    return Model(inputs=list(inputs.values()), outputs=outputs)
 
 
 def _transfer_layers_by_name(model_layers: str, freeze_model_layers: str, custom_dict: Dict[str, Any], m: Model):

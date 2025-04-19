@@ -181,8 +181,6 @@ def evaluate_predictions(
     :param height: Figure height in inches
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
-    print("y_predictions",y_predictions.shape)
-    print("y_truth",y_truth.shape)
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(

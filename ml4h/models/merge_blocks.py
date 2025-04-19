@@ -363,9 +363,11 @@ class ContrastiveLossLayer(Layer):
         config.update({'weight': self.weight, 'batch_size': self.batch_size})
         return config
 
-    def call(self, inputs):
+    def call(self, inputs, training = None):
         # We use `add_loss` to create a regularization loss
         # that depends on the inputs.
+        if training is False:
+            return inputs
         contrastive_loss = self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature)
         self.add_loss(contrastive_loss)
         #self.add_metric(contrastive_loss)

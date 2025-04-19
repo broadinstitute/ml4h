@@ -34,6 +34,7 @@ def test_tensor_map_from_data_description():
         merge_blocks=[],
         learning_rate=1e-4,
         optimizer='sgd',
+        named_outputs = True
     )
     data_set = SampleGetterIterableDataset(
         sample_ids=list(RAW_DATA),
@@ -50,6 +51,13 @@ def test_tensor_map_from_data_description():
         {'output_dd2_continuous': tf.TensorSpec(shape=(1, 1), dtype=tf.float32)}
         )
     )
+
+    for i, (x, y) in enumerate(tf_dataset.take(5)):
+        print(f"TF Batch {i}:")
+        print("  x =", x)
+        print("  y =", y)
+        print("  y dtype =", type(list(y.values())[0]))
+
     # model can train?
     history = model.fit(tf_dataset).history
     # metrics recorded?

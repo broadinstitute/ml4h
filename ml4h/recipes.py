@@ -237,12 +237,24 @@ def train_multimodal_multitask(args):
             args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
         )
 
-        predictions_list = model.predict(test_data)
+        predictions = model.predict(test_data)
+        predictions_dict = {}
+
+        if isinstance(predictions, dict):
+            predictions_dict = predictions
+
+        elif isinstance(predictions, (list, tuple)):
+            # Map outputs by model.output_names (strings)
+            predictions_dict = {
+                str(name): pred for name, pred in zip(model.output_names, predictions)
+            }
+        else:
+            # Single tensor output
+            predictions_dict = {
+                model.output_names[0]: predictions
+        }
         samples = min(args.test_steps * args.batch_size, 12)
         out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
-        if len(args.tensor_maps_out) == 1:
-            predictions_list = [predictions_list]
-        predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
         logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
 
         for i, etm in enumerate(encoders):
@@ -975,6 +987,8 @@ def _predict_and_evaluate(
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
+        if isinstance(y_predictions, dict):
+            y_predictions = y_predictions[tm.output_name()]
         if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
