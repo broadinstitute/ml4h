@@ -134,8 +134,8 @@ def make_multimodal_multitask_model(
     losses = [tm.loss for tm in tensor_maps_out]
     if len(losses) == 0:
         logging.info(f"No losses found adding MAE")
-        losses = [keras.losses.mean_absolute_error]
-        full_model.add_loss(keras.losses.mean_absolute_error)
+        losses = None
+        #full_model.add_loss(keras.losses.MeanAbsoluteError)
     full_model.compile(
         optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
@@ -368,6 +368,9 @@ def parent_sort(tms: List[TensorMap], **kwargs) -> List[TensorMap]:
     Parents will always appear before their children after sorting. Idempotent and slow.
     """
     to_process = sorted(tms, key=lambda x: str(x))
+
+    if kwargs.get('parent_sort', True) == False:
+        return to_process
 
     if kwargs.get('parent_sort', True) == False:
         return to_process
