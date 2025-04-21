@@ -371,9 +371,6 @@ def parent_sort(tms: List[TensorMap], **kwargs) -> List[TensorMap]:
 
     if kwargs.get('parent_sort', True) == False:
         return to_process
-
-    if kwargs.get('parent_sort', True) == False:
-        return to_process
     final: List[TensorMap] = []
     visited = Counter()
     while to_process:

@@ -1036,9 +1036,9 @@ def legacy_multimodal_multitask_model(
 def _make_multimodal_multitask_model(
         encoders: Dict[TensorMap, Encoder],
         bottle_neck: BottleNeck,
-        decoders: Dict[TensorMap, Decoder], 
+        decoders: Dict[TensorMap, Decoder],  # Assumed to be topologically sorted according to parents hierarchy
         tensor_maps_out: List[TensorMap],
-        named_outputs = False # Assumed to be topologically sorted according to parents hierarchy
+        named_outputs = False 
 ) -> Model:
     inputs: Dict[TensorMap, Input] = {}
     encoder_outputs: Dict[TensorMap, Tuple[Tensor, List[Tensor]]] = {}  # TensorMap -> embed, encoder_intermediates
@@ -1063,7 +1063,6 @@ def _make_multimodal_multitask_model(
                 tm.output_name(): decoder_outputs[tm]
                 for tm in parent_sort(tensor_maps_out)
             }
-    print("named outputs", named_outputs, outputs)
 
     return Model(inputs=list(inputs.values()), outputs=outputs)
 
