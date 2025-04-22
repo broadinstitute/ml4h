@@ -191,6 +191,9 @@ class PairLossBlock(Block):
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
+    def get_config(self):
+        return self.loss_layer.get_config()
+
     #@tf.function()
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
