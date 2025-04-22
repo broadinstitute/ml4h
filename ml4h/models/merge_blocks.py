@@ -163,7 +163,7 @@ class EncodeIdentityBlock(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         return x
 
-@keras.saving.register_keras_serializable()
+@register_keras_serializable()
 class PairLossBlock(Block):
     """
     Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
@@ -310,7 +310,7 @@ def contrastive_difference(left: Tensor, right: Tensor, batch_size: int, tempera
     loss = (loss_left + loss_right)/2
     return loss / batch_size
 
-
+@register_keras_serializable()
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
@@ -329,7 +329,7 @@ class CosineLossLayer(Layer):
         self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
         return inputs
 
-
+@register_keras_serializable()
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
 
@@ -348,7 +348,7 @@ class L2LossLayer(Layer):
         return inputs
 
 
-@keras.saving.register_keras_serializable()
+@register_keras_serializable()
 class ContrastiveLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
