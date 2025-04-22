@@ -2,6 +2,8 @@ import logging
 from typing import Dict, List, Tuple
 
 import numpy as np
+
+import keras
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
