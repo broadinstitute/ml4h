@@ -163,7 +163,7 @@ class EncodeIdentityBlock(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         return x
 
-@register_keras_serializable()
+
 class PairLossBlock(Block):
     """
     Flattens or GAPs then concatenates all inputs, applies a dense layer, then restructures to provided shapes
