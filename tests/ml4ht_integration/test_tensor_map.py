@@ -34,6 +34,7 @@ def test_tensor_map_from_data_description():
         merge_blocks=[],
         learning_rate=1e-4,
         optimizer='sgd',
+        named_outputs = True
     )
     data_set = SampleGetterIterableDataset(
         sample_ids=list(RAW_DATA),

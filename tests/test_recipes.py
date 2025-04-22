@@ -19,9 +19,11 @@ from ml4h.TensorMap import TensorMap, Interpretation
 
 class TestRecipes:
     def test_train(self, default_arguments):
+        default_arguments.named_outputs = True
         train_multimodal_multitask(default_arguments)
 
     def test_train_legacy(self, default_arguments):
+        default_arguments.named_outputs = True
         train_legacy(default_arguments)
 
     def test_test(self, default_arguments):
@@ -51,6 +53,7 @@ class TestRecipes:
         assert len(set(inferred['sample_id'])) == pytest.N_TENSORS
 
     def test_find_learning_rate(self, default_arguments):
+        default_arguments.named_outputs = True
         _find_learning_rate(default_arguments)
     
     @pytest.mark.slow

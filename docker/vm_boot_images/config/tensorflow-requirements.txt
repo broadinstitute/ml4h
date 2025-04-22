@@ -14,7 +14,7 @@ notebook
 pytest
 pytest-xdist
 pysam
-tensorflow==2.18.0
+tensorflow==2.19.0
 tensorflow-addons
 tensorflow_hub
 tensorflow_probability
