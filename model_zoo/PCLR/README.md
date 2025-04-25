@@ -22,7 +22,7 @@ python -i get_representations.py  # test the setup worked
 You can get ECG representations using [get_representations.py](./get_representations.py).
 `get_representations.get_representations` builds `N x 320` ECG representations from `N` ECGs.
 
-The model expects 10s 12-lead ECGs with a specific lead order and interpolated to be 4,096 samples long.
+The model expects 10s 12-lead ECGs meaured in milli-volts with a specific lead order and interpolated to be 4,096 samples long.
 [preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing.
 
 ### Use git LFS to localize the model file
@@ -102,6 +102,24 @@ the model only takes lead I of the ECG as input.
 
 ## Lead II PCLR
 [Lead II PCLR](./PCLR_lead_II.h5) is like lead I PCLR except it was trained with all ECGs sampled to 250Hz.
+
+## C3PO PCLR and AUG C3PO PCLR
+We also provide PCLR models trained using subjects from the C3PO cohort, with and without augmentation.
+The model files are available via:
+
+`git lfs pull --include model_zoo/PCLR/c3po_pclr.h5`
+
+`git lfs pull --include model_zoo/PCLR/aug_c3po_pclr.h5`
+
+You can get ECG representations using for example [get_representations.py(ecgs, model_name='c3po_pclr')](./get_representations.py).
+`get_representations.get_representations` builds `N x 320` ECG representations from `N` ECGs.
+
+The model expects 10s 12-lead ECGs measured in milli-volts with a specific lead order and interpolated to be 2,500 samples long. Note that this interpolation is different from the standard PCLR model.
+[preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing; when calling it remember to set `ecg_samples=2500`.
+
+The code snippet above showing example inference with UKB ECGs is also appropriate for these models. Remember to:
+1. Load `c3po_pclr.h5` or `aug_c3po_pclr.h5` instead of `PCLR.h5`.
+2. Interpolate to 2500 instead of 4096.
 
 ## Alternative save format
 The newer keras saved model format is available for the 12-lead and single lead models at [PCLR](./PCLR)
