@@ -1,0 +1,16 @@
+{
+  "inputs": [ 
+    {
+      "name": "ecg_tensor",
+      "shape": [4096, 12],
+      "dtype": "FP32"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "embed",
+      "shape": [320],
+      "dtype": "FP32"
+    },
+  ]
+}
