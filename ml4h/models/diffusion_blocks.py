@@ -9,6 +9,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from tensorflow import keras
+import tensorflow_addons as tfa
 from keras import layers
 
 from ml4h.defines import IMAGE_EXT
@@ -58,46 +59,50 @@ def sinusoidal_embedding(x, dims=1):
     return embeddings
 
 
-def residual_block(width, conv, kernel_size):
+def residual_block(width, conv, kernel_size, groups=32):
     def apply(x):
-        input_width = x.shape[-1]
-        if input_width == width:
-            residual = x
-        else:
+        # shortcut
+        input_channels = x.shape[-1]
+        if input_channels != width:
             residual = conv(width, kernel_size=1)(x)
-        x = layers.BatchNormalization(center=False, scale=False)(x)
-        x = conv(
-            width, kernel_size=kernel_size, padding="same", activation=keras.activations.swish,
-        )(x)
+        else:
+            residual = x
+
+        # first GN → SiLU → Conv
+        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
+
+        # second GN → SiLU → Conv
+        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = layers.Activation('silu')(x)
+        x = conv(width, kernel_size=kernel_size, padding="same")(x)
+
+        # merge
         x = layers.Add()([x, residual])
         return x
-
     return apply
 
 
-def down_block(width, block_depth, conv, pool, kernel_size):
+def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
     def apply(x):
         x, skips = x
         for _ in range(block_depth):
-            x = residual_block(width, conv, kernel_size)(x)
+            x = residual_block(width, conv, kernel_size, groups=groups)(x)
             skips.append(x)
         x = pool(pool_size=2)(x)
         return x
-
     return apply
 
 
-def up_block(width, block_depth, conv, upsample, kernel_size):
+def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
     def apply(x):
         x, skips = x
-        # x = upsample(size=2, interpolation="bilinear")(x)
         x = upsample(size=2)(x)
         for _ in range(block_depth):
             x = layers.Concatenate()([x, skips.pop()])
-            x = residual_block(width, conv, kernel_size)(x)
+            x = residual_block(width, conv, kernel_size, groups=groups)(x)
         return x
-
     return apply
 
 
