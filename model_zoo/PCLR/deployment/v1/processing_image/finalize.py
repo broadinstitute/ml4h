@@ -15,8 +15,8 @@ def finalize(input_csv, predictions_json, output_csv):
     if len(embedding) != len(df):
         raise ValueError(f"Mismatch: {len(embedding)} predictions but {len(df)} rows in input CSV!")
 
-    for i in range(latent_dimensions):
-        df[f'pclr_{i}'] = [row[i] for row in embedding]
+    new_frame = pd.DataFrame(embedding, columns=[f'pclr_{i}' for i in range(latent_dimensions)])
+    df = pd.concat([df, new_frame], axis=1)
 
     df.to_csv(output_csv, index=False)
     print(f"✅ Predictions written to {output_csv} ({len(df)} rows).")
