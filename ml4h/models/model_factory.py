@@ -236,7 +236,6 @@ def make_multimodal_multitask_model_block(
         merge: Block,
         decoder_block_functions: Dict[TensorMap, Block],  # Assumed to be topologically sorted according to parents hierarchy
         u_connect: DefaultDict[TensorMap, Set[TensorMap]],
-        named_outputs=False,
         **kwargs
 ) -> Tuple[Model, Dict[TensorMap, Model], Dict[TensorMap, Model], Model]:
     """
@@ -291,7 +290,8 @@ def make_multimodal_multitask_model_block(
             decoders[tm] = Model(latent_inputs, output, name=tm.output_name())
             output = decoders[tm](multimodal_activation)
         decoder_outputs_dict[tm] = output
-
+        
+    named_outputs = kwargs.get("named_outputs", False)
     if not decoder_outputs_dict:
         final_outputs = [multimodal_activation]
     else:
