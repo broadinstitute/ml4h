@@ -21,7 +21,7 @@ from ml4h.TensorMap import TensorMap
 Tensor = tf.Tensor
 
 # sampling
-min_signal_rate = 0.05
+min_signal_rate = 0.03
 max_signal_rate = 0.95
 
 # architecture
