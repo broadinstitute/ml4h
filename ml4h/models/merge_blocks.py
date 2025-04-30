@@ -201,18 +201,6 @@ class ReduceMean(Block):
         y = tf.math.reduce_mean(y, axis=0)
         return y
 
-# class GeometricRALoss(Block):
-#     """
-#     Average the last tensors in intermediates dictionary
-#     """
-#     def __init__(self, **kwargs):
-#         pass
-#
-#     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-#         for tm, x in intermediates.items():
-#             compute geomtery over x[0] and x[-1]
-#             self.add_loss(
-
 
 class EncodeIdentityBlock(Block):
     """
