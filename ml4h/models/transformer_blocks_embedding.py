@@ -18,7 +18,7 @@ class TransformerEncoderEmbedding(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-     
+
         self.dropout = tf.keras.layers.Dropout(rate=dense_regularize_rate)
         self.padding_mask_layer = tf.keras.layers.Lambda(
             create_padding_mask, output_shape=(256, None),
@@ -225,7 +225,7 @@ def encoder(
 
     inputs = tf.keras.Input(shape=(None, 3), name=input_name)
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-   
+
     embeddings = tf.keras.layers.Dense(units=d_model, activation='relu')(inputs)
     embeddings = PositionalEncoding(window_size, d_model)(embeddings)
 
@@ -243,5 +243,3 @@ def encoder(
     return tf.keras.Model(
         inputs=[inputs, padding_mask], outputs=outputs, name=name,
     )
-
-

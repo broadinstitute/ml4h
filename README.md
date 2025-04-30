@@ -13,6 +13,7 @@
 * [Setting up a remote VM](#setting-up-a-remote-vm)
 * Modeling/Data Sources/Tests [(`ml4h/DATA_MODELING_TESTS.md`)](ml4h/DATA_MODELING_TESTS.md)
 * [Contributing Code](#contributing-code)
+* [Releases and Versioning](#releases)
 * [Command line interface](#command-line-interface)
 
 Advanced Topics:
@@ -113,6 +114,70 @@ If you get a public key error run: `gcloud compute config-ssh`
 Now open a browser on your laptop and go to the URL `http://localhost:8888`
 
 
+### Attach a disk with tensorized data to a VM
+Running
+
+```
+gcloud compute instances attach-disk my-vm --disk my-disk --device-name my-disk --mode rw --zone us-central1-a
+```
+
+will attach `my-disk` to `my-vm`. You can also do this by clicking edit on VM in the [GCP console](https://console.cloud.google.com/compute/instances). Then selecting Attach Existing Disk. If you create a new disk you will also need to format it.
+
+Now we can mount the disk.   
+
+### Mount the disk
+SSH into your VM and run:
+```
+ls -l /dev/disk/by-id
+```
+
+That will output something like
+
+```
+total 0
+lrwxrwxrwx 1 root root  9 Feb 11 19:13 google-mri-october -> ../../sdb
+lrwxrwxrwx 1 root root  9 Feb 15 21:42 google-my-disk -> ../../sdd
+lrwxrwxrwx 1 root root  9 Feb 11 19:13 scsi-0Google_PersistentDisk_mri-october -> ../../sdb
+lrwxrwxrwx 1 root root  9 Feb 15 21:42 scsi-0Google_PersistentDisk_my-disk -> ../../sdd
+``` 
+
+The line that contains the name of our disk (`my-disk`) 
+
+```
+lrwxrwxrwx 1 root root  9 Feb 15 21:42 google-my-disk -> ../../sdd
+```
+
+indicates that our disk was assigned to the device named `sdd`. The subsequent steps will use this device name.
+Make sure to replace it with yours, if different.
+ 
+Next, we'll create a directory that will serve as the mount point for the new disk:
+
+```
+sudo mkdir -p /mnt/disks/my-disk
+```
+
+The directory name doesn't have to match the name of the disk but it's one less name to keep track of that way.
+
+Finally, we can do the mounting:
+
+```
+sudo mount -o norecovery,discard,defaults /dev/sdd /mnt/disks/my-disk
+```
+
+We will also add the persistent disk to the `/etc/fstab` file so that the device automatically mounts again 
+if/when the VM restarts:
+
+```
+echo UUID=`sudo blkid -s UUID -o value /dev/sdd` /mnt/disks/my-disk ext4 norecovery,discard,defaults,nofail 0 2 | sudo tee -a /etc/fstab
+```
+
+If you detach this persistent disk or create a snapshot from the boot disk for this instance, edit the `/etc/fstab`
+file and remove the entry for the disk. Even with the `nofail` or `nobootwait` options in place,
+keep the `/etc/fstab` file in sync with the devices that are attached to your instance.
+
+Voilà! You now have a shiny new disk where you can persist the tensors you will generate next.
+
+
 ### Set up VScode to connect to the GCP VM (which makes your coding much easier)
 
 
@@ -128,28 +193,17 @@ Step 4: connect to the VM by pressing F1 and type "Remote-SSH: Connect to Host..
 Step 5: open the folder you want to work on in the VM, type in your Broad password, and you are good to go!
 
 
-
-
 ## Contributing code
 
 Want to contribute code to this project? Please see [CONTRIBUTING](./CONTRIBUTING.md) for developer setup and other details.
 
-## Citation
-If you use ML4H for research, you can use this citation format:
-```
-@misc{ml4h,
-	title = {ml4h},
-	copyright = {BSD 3-Clause License, 2021},
-	url = {https://github.com/broadinstitute/ml4h},
-	author = {{Data Sciences Platform at Broad Institute of MIT and Harvard}},
-	abstract = {ML4H is a toolkit for machine learning on clinical data of all kinds including genetics, labs, imaging, clinical notes, and more.},
-	urldate = {2021-03-31},
-	publisher = {Broad Institute},
-	month = mar,
-	year = {2021},
-	note = {original-date: 2019-04-10}
-}
-```
+## Releases
+Ideally, each release should be available on our [github releases page](https://github.com/broadinstitute/ml4h/releases)
+In addition, the version # in setup.py should be incremented. 
+The pip installable [ml4h package on pypi should also be updated](https://pypi.org/project/ml4h/). 
+
+If the release changed the docker image, the new dockers both (CPU & GPU) should update the “latest” tag and should be pushed to both gcr: `gcr.io/broad-ml4cvd/deeplearning`, and the [ml4h github container repo](https://github.com/broadinstitute/ml4h/pkgs/container/ml4h) with appropriate tags (e.g. `tf2.9-latest-gpu` for the latest GPU docker image or `tf2.9-latest-cpu` for the CPU) at: ` ghcr.io/broadinstitute/ml4h`
+
 
 ## Command line interface
 The ml4h package is designed to be accessable through the command line using "recipes".

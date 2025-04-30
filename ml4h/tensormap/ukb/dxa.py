@@ -103,6 +103,13 @@ dxa_11 = TensorMap(
     tensor_from_file=dxa_background_erase,
     normalization=ZeroMeanStd1(),
 )
+dxa_11_768 = TensorMap(
+    'dxa_1_11',
+    shape=(768, 256, 1),
+    path_prefix='ukb_dxa',
+    tensor_from_file=dxa_background_erase,
+    normalization=ZeroMeanStd1(),
+)
 
 
 def register_to_sample(

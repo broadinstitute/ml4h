@@ -21,8 +21,8 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
+from typing import Set, Dict, List, Optional, Tuple
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
@@ -30,10 +30,12 @@ from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
     generate_latent_tensor_map_from_file
+
 from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, generate_latent_tensor_map_from_file
 
 
 def parse_args():
@@ -105,7 +107,7 @@ def parse_args():
         'argument to the TensorMap made from this file.',
     )
     parser.add_argument(
-        '--latent_output_file', default=None, help=
+        '--latent_output_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
@@ -223,6 +225,33 @@ def parse_args():
     parser.add_argument('--text_window', default=32, type=int, help='Size of text window in number of tokens.')
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
+    parser.add_argument(
+        '--attention_window', default=4, type=int,
+        help='For diffusion models, when U-Net representation size is smaller than attention_window '
+             'Cross-Attention is applied',
+    )
+    parser.add_argument(
+        '--attention_modulo', default=3, type=int,
+        help='For diffusion models, this controls how frequently Cross-Attention is applied. '
+             '2 means every other residual block, 3 would mean every third.',
+    )
+    parser.add_argument(
+        '--diffusion_condition_strategy', default='cross_attention',
+        choices=['cross_attention', 'concat', 'film'],
+        help='For diffusion models, this controls conditional embeddings are integrated into the U-NET',
+    )
+    parser.add_argument(
+        '--diffusion_loss', default='sigmoid',
+        help='Loss function to use for diffusion models. Can be sigmoid, mean_absolute_error, or mean_squared_error',
+    )
+    parser.add_argument(
+        '--sigmoid_beta', default=-3, type=float,
+        help='Beta to use with sigmoid loss for diffusion models.',
+    )
+    parser.add_argument(
+        '--supervision_scalar', default=0.01, type=float,
+        help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
+    )
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
@@ -390,13 +419,16 @@ def parse_args():
 
     # Arguments for explorations/infer_stats_from_segmented_regions
     parser.add_argument('--analyze_ground_truth', default=False, action='store_true', help='Whether or not to filter by images with ground truth segmentations, for comparison')
-    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots')
-    parser.add_argument('--erosion_radius', default=1, type=int, help='Radius of the unit disk structuring element for erosion preprocessing')
+    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots. Must be in the same order as the output channel map. Use + to merge structures before postprocessing, and ++ to merge structures after postprocessing. E.g., --structures_to_analyze interventricular_septum LV_free_wall anterolateral_pap posteromedial_pap interventricular_septum+LV_free_wall anterolateral_pap++posteromedial_pap')
+    parser.add_argument('--erosion_radius', nargs='*', default=[], type=int, help='Radius of the unit disk structuring element for erosion preprocessing, optionally as a list per structure to analyze')
     parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
-    parser.add_argument('--intensity_thresh_percentile', type=float, help='Threshold percentile for preprocessing, between 0 and 100 inclusive')
-    parser.add_argument('--intensity_thresh_k_means', nargs='*', default=[], type=int, help='Preprocessing using k-means specified as two numbers, the first is the number of clusters and the second is the cluster index to keep')
     parser.add_argument('--intensity_thresh_in_structures', nargs='*', default=[], help='Structure names whose pixels should be replaced if the images has intensity above the threshold')
     parser.add_argument('--intensity_thresh_out_structure', help='Replacement structure name')
+    parser.add_argument('--intensity_thresh_auto', default=None, type=str, help='Preprocessing using histograms or k-means into two clusters, using the image or a region')
+    parser.add_argument('--intensity_thresh_auto_region_radius', default=5, type=int, help='Radius of the unit disk structuring element for auto-thresholidng in a region')
+    parser.add_argument('--intensity_thresh_auto_clip_low', default=0.65, type=float, help='Lower clip value before auto thresholding')
+    parser.add_argument('--intensity_thresh_auto_clip_high', default=2, type=float, help='Higher clip value before auto thresholding')
+
 
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")
@@ -539,10 +571,13 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                 ),
             )
-    if args.latent_output_file is not None:
-        args.tensor_maps_out.append(
-            generate_latent_tensor_map_from_file(args.latent_output_file, args.output_tensors.pop(0))
-        )
+
+    if len(args.latent_output_files) > 0:
+        for lof in args.latent_output_files:
+            args.tensor_maps_out.append(
+                generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
+            )
+
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]

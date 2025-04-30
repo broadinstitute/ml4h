@@ -2,6 +2,7 @@ pydot
 nibabel==4.0.2
 pydicom==1.2.2
 seaborn
+scikit-image
 peakutils
 biosppy
 imageio
@@ -43,3 +44,6 @@ umap-learn[plot]
 neurite
 voxelmorph
 pystrum
+av
+lmdb
+mlflow
