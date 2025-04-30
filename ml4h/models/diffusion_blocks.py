@@ -9,7 +9,6 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from tensorflow import keras
-import tensorflow_addons as tfa
 from keras import layers
 
 from ml4h.defines import IMAGE_EXT
@@ -69,12 +68,12 @@ def residual_block(width, conv, kernel_size, groups=32):
             residual = x
 
         # first GN → SiLU → Conv
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
 
         # second GN → SiLU → Conv
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
 
@@ -197,11 +196,11 @@ def residual_block_control(
             x = condition_layer_film(x, control, width)
 
         # ─── GN → SiLU → Conv → GN → SiLU → Conv → Add ───────────
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding='same')(x)
 
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding='same')(x)
 
