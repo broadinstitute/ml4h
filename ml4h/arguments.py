@@ -403,6 +403,8 @@ def parse_args():
 
     #Parent Sort enable or disable
     parser.add_argument('--parent_sort', default=True, type=lambda x: x.lower() == 'true', help='disable or enable parent_sort on output tmaps')
+    #Dictionary outputs
+    parser.add_argument('--named_outputs', default=False, type=lambda x: x.lower() == 'false', help='pass output tmaps as dictionaries if true else pass as list')
     args = parser.parse_args()
     _process_args(args)
     return args

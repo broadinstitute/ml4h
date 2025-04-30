@@ -8,7 +8,7 @@ from sklearn.metrics import roc_curve, auc, average_precision_score
 
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
-from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE
+from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE, Dice
 from keras.saving import register_keras_serializable
 
 #from neurite.tf.losses import Dice
@@ -265,6 +265,7 @@ def survival_likelihood_loss(n_intervals):
     return loss
 
 def dice(y_true, y_pred):
+    return Dice()(y_true, y_pred)
     return Dice(laplace_smoothing=1e-05).mean_loss(y_true, y_pred)
 
 def per_class_dice(labels):
@@ -273,8 +274,8 @@ def per_class_dice(labels):
         label_idx = labels[label_key]
         fxn_name = label_key.replace('-', '_').replace(' ', '_')
         string_fxn = 'def ' + fxn_name + '_dice(y_true, y_pred):\n'
-        string_fxn += '\tdice = Dice(laplace_smoothing=1e-05).dice(y_true, y_pred)\n'
-        string_fxn += '\tdice = K.mean(dice, axis=0)['+str(label_idx)+']\n'
+        string_fxn += '\tdice = tf.keras.losses.Dice()(y_true, y_pred)\n'
+        #string_fxn += '\tdice = K.mean(dice, axis=0)['+str(label_idx)+']\n'
         string_fxn += '\treturn dice'
 
         exec(string_fxn)

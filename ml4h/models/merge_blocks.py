@@ -346,6 +346,7 @@ class L2LossLayer(Layer):
         return inputs
 
 
+@register_keras_serializable()
 class ContrastiveLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
