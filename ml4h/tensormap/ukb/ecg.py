@@ -581,6 +581,12 @@ ecg_rest_median_576 = TensorMap(
     normalization=Standardize(mean=0, std=10),
 )
 
+ecg_rest_median_512 = TensorMap(
+    'ecg_rest_median_512', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(512, 12), loss='logcosh',
+    activation='linear', tensor_from_file=_make_ecg_rest(), channel_map=ECG_REST_MEDIAN_LEADS,
+    normalization=ZeroMeanStd1(),
+)
+
 ecg_rest_median_raw_10_no_poor = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='log_cosh', activation='linear',
     tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
@@ -1279,3 +1285,14 @@ ppg_2 = TensorMap(
     'ppg_2', shape=(100, 1), tensor_from_file=ppg_from_hd5, channel_map={'ppg_2': 0},
     normalization=Standardize(mean=4824.6, std=3235.8),
 )
+
+def uw_ecg_from_hd5(tm, hd5, dependents={}):
+    tensor = np.array(hd5[tm.path_prefix], dtype=np.float32)
+    return tensor
+
+ecg_median_uw = TensorMap('median',
+                          Interpretation.CONTINUOUS,
+                          shape=(600, 12),
+                          path_prefix='ecg.ecg_rest_median_raw_10',
+                          channel_map=ECG_REST_MEDIAN_LEADS,
+                          tensor_from_file=uw_ecg_from_hd5)

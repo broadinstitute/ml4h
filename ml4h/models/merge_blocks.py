@@ -2,6 +2,8 @@ import logging
 from typing import Dict, List, Tuple
 
 import numpy as np
+
+import keras
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
@@ -64,7 +66,7 @@ class FlatConcatDenseBlock(Block):
 
 class KroneckerBlock(Block):
     """
-    Outerproduct of all inputs, applies a dense layer
+    Outer-product of all paired inputs, applies a dense layer
     """
     def __init__(
             self,
@@ -73,8 +75,11 @@ class KroneckerBlock(Block):
             dense_normalize: str = None,
             dense_regularize: str = None,
             dense_regularize_rate: float = 0.0,
+            pairs: List[Tuple[TensorMap, TensorMap]] = None,
             **kwargs,
     ):
+        self.pairs = pairs
+        self.encoding_size = dense_layers[-1]
         self.fully_connected = DenseBlock(
             widths=dense_layers,
             activation=activation,
@@ -95,6 +100,59 @@ class KroneckerBlock(Block):
 
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
+
+
+class DropoutBlock(Block):
+    """
+    Dropout from embeddings of different modalities
+    """
+
+    def __init__(
+            self,
+            activation: str = 'swish',
+            dense_layers: List[int] = [256],
+            dense_normalize: str = None,
+            dense_regularize: str = None,
+            dense_regularize_rate: float = 0.0,
+            pairs: List[Tuple[TensorMap, TensorMap]] = None,
+            **kwargs,
+    ):
+        self.pairs = pairs
+        self.encoding_size = dense_layers[-1]
+        self.fully_connected = DenseBlock(
+            widths=dense_layers,
+            activation=activation,
+            normalization=dense_normalize,
+            regularization=dense_regularize,
+            regularization_rate=dense_regularize_rate,
+            name='embed',
+        ) if dense_layers else None
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        for left, right in self.pairs:
+            random_index = tf.random.uniform(
+                shape=[intermediates[left][-1].shape[-1]],
+                maxval=len(intermediates), dtype=tf.int32,
+            )
+            ranger = tf.range(intermediates[left][-1].shape[-1])
+            indices = tf.stack([random_index, ranger], axis=-1)
+            tf_y = tf.convert_to_tensor([intermediates[left][-1], intermediates[right][-1]])
+            tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
+            tf_g = tf.gather_nd(tf_y, indices)
+            y = tf.transpose(tf_g)
+            y = self.fully_connected(y, intermediates) if self.fully_connected else y
+            return y
+
+
+        # elif self.pair_merge == 'dropout':
+        #     random_index = tf.random.uniform(shape=[intermediates[left][-1].shape[-1]], maxval=len(y), dtype=tf.int32)
+        #     ranger = tf.range(intermediates[left][-1].shape[-1])
+        #     indices = tf.stack([random_index, ranger], axis=-1)
+        #     tf_y = tf.convert_to_tensor(y)
+        #     tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
+        #     tf_g = tf.gather_nd(tf_y, indices)
+        #     out = tf.transpose(tf_g)
+        #     return out
 
 
 class GlobalAveragePoolBlock(Block):
@@ -189,6 +247,9 @@ class PairLossBlock(Block):
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
+    def get_config(self):
+        return self.loss_layer.get_config()
+
     #@tf.function()
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
@@ -202,7 +263,6 @@ class PairLossBlock(Block):
             return DropoutMergeLayer()(y)
         elif self.pair_merge == 'kronecker':
             krons = []
-            losses = []
             for left, right in self.pairs:
                 eshape = tf.shape(intermediates[left][-1])
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
@@ -308,7 +368,7 @@ def contrastive_difference(left: Tensor, right: Tensor, batch_size: int, tempera
     loss = (loss_left + loss_right)/2
     return loss / batch_size
 
-
+@register_keras_serializable()
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
@@ -327,7 +387,7 @@ class CosineLossLayer(Layer):
         self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
         return inputs
 
-
+@register_keras_serializable()
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
 

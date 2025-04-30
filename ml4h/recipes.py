@@ -34,7 +34,10 @@ from ml4h.models.train import train_model_from_generators, train_diffusion_model
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients, concordance_index_censored
+
 from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+from ml4h.plots import plot_dice, plot_reconstruction, plot_hit_to_miss_transforms, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
 from ml4h.models.legacy_models import embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
@@ -46,6 +49,7 @@ from ml4ht.data.sample_getter import DataDescriptionSampleGetter
 from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoch
 
 from torch.utils.data import DataLoader
+
 
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
@@ -113,6 +117,8 @@ def run(args):
             train_diffusion_model(args)
         elif 'train_diffusion_control' == args.mode:
             train_diffusion_control_model(args)
+        elif 'train_diffusion_supervise' == args.mode:
+            train_diffusion_control_model(args, supervised=True)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
@@ -141,7 +147,7 @@ def run(args):
 
     except Exception as e:
         logging.exception(e)
-        
+
     if args.gcs_cloud_bucket is not None:
         save_to_google_cloud(args)
 
@@ -168,8 +174,14 @@ def save_to_google_cloud(args):
 
     bucket = client.get_bucket(bucket_name)
 
+    # get the output folder
+    if args.mode in ['train', 'compare', 'plot_predictions', 'infer_stats_from_segmented_regions']:
+        output_folder = os.path.join(args.output_folder, args.id)
+    else:
+        output_folder = args.output_folder
+
     # uploading all files from local to server
-    for root,_,files in os.walk(args.output_folder):
+    for root,_,files in os.walk(output_folder):
         for filename in files:
             local_file_path = os.path.join(root,filename)
             blob = bucket.blob(blob_path+filename)
@@ -366,10 +378,14 @@ def train_xdl(args):
     valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
     test_ids = list(mrn_df[mrn_df.split == 'test'].index)
 
-    train_dataset = SampleGetterIterableDataset(sample_ids=list(train_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
-    valid_dataset = SampleGetterIterableDataset(sample_ids=list(valid_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
+    train_dataset = SampleGetterIterableDataset(
+        sample_ids=list(train_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+    valid_dataset = SampleGetterIterableDataset(
+        sample_ids=list(valid_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
 
     num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
     num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
@@ -465,10 +481,14 @@ def train_xdl_af(args):
     valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
     test_ids = list(mrn_df[mrn_df.split == 'test'].index)
 
-    train_dataset = SampleGetterIterableDataset(sample_ids=list(train_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
-    valid_dataset = SampleGetterIterableDataset(sample_ids=list(valid_ids), sample_getter=sg,
-                                                get_epoch=shuffle_get_epoch)
+    train_dataset = SampleGetterIterableDataset(
+        sample_ids=list(train_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
+    valid_dataset = SampleGetterIterableDataset(
+        sample_ids=list(valid_ids), sample_getter=sg,
+        get_epoch=shuffle_get_epoch,
+    )
 
     num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
     num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
@@ -501,14 +521,16 @@ def train_xdl_af(args):
         output_data_descriptions=output_dds,  # what we want a model to predict from the input data
         option_picker=option_picker,
     )
-    test_dataset = SampleGetterIterableDataset(sample_ids=list(test_ids), sample_getter=test_sg,
-                                               get_epoch=shuffle_get_epoch)
+    test_dataset = SampleGetterIterableDataset(
+        sample_ids=list(test_ids), sample_getter=test_sg,
+        get_epoch=shuffle_get_epoch,
+    )
 
     generate_test = TensorMapDataLoader2(
         batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
         dataset=test_dataset,
         num_workers=num_train_workers,
-        )
+    )
 
     y_trues = defaultdict(list)
     y_preds = defaultdict(list)
@@ -536,8 +558,10 @@ def train_xdl_af(args):
             plot_survival(y_preds[otm.name], y_trues[otm.name], f'{otm.name.upper()} Model:{args.id}', otm.days_window)
         elif otm.is_categorical():
             plot_roc(y_preds[otm.name], y_trues[otm.name], otm.channel_map, f'{otm.name} ROC')
-            plot_precision_recall_per_class(y_preds[otm.name], y_trues[otm.name], otm.channel_map,
-                                            f'{otm.name} Precision Recall')
+            plot_precision_recall_per_class(
+                y_preds[otm.name], y_trues[otm.name], otm.channel_map,
+                f'{otm.name} Precision Recall',
+            )
         elif otm.is_continuous():
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
 
@@ -579,7 +603,7 @@ def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000
                         space_dict[f'{otm.name}_event'].append(str(sick[0]))
                         space_dict[f'{otm.name}_follow_up'].append(str(follow_up[0]))
                 for k in target:
-                    if k in ['MRN', 'linker_id', 'is_c3po', 'output_age_in_days_continuous' ]:
+                    if k in ['MRN', 'linker_id', 'is_c3po', 'output_age_in_days_continuous']:
                         space_dict[f'{k}'].append(target[k][b].numpy())
                     elif k in ['datetime']:
                         space_dict[f'{k}'].append(float_to_datetime(int(target[k][b].numpy())))
@@ -767,13 +791,17 @@ def infer_multimodal_multitask(args):
                     hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
                     with h5py.File(hd5_path, 'a') as hd5:
-                        hd5.create_dataset(f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]),
-                                           compression='gzip')
+                        hd5.create_dataset(
+                            f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]),
+                            compression='gzip',
+                        )
                         if otm.path_prefix == 'ukb_ecg_rest':
                             for lead in otm.channel_map:
-                                hd5.create_dataset(f'/ukb_ecg_rest/{lead}/instance_0',
-                                                   data=otm.rescale(y[0, otm.channel_map[lead]]),
-                                                   compression='gzip')
+                                hd5.create_dataset(
+                                    f'/ukb_ecg_rest/{lead}/instance_0',
+                                    data=otm.rescale(y[0, otm.channel_map[lead]]),
+                                    compression='gzip',
+                                )
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
             stats['count'] += 1
@@ -1343,4 +1371,13 @@ def _tsne_wrapper(
 
 if __name__ == '__main__':
     arguments = parse_args()
+
+    # Set the mlflow_experiment if the arguments is provided
+    # If there is no mlflow_experiment_name, MLflow will use the default experiment or the previously set experiment for logging.
+    if arguments.mlflow_experiment_name:
+        mlflow.set_experiment(arguments.mlflow_experiment_name)
+    mlflow.start_run()
+    mlflow.tensorflow.autolog()
+
     run(arguments)  # back to the top
+

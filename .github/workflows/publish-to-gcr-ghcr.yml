@@ -1,0 +1,29 @@
+name: Push to GCR/GHCR GitHub Action
+on: 
+  push:
+    tags:        
+      - '*'           # Push events to every tag not containing / 
+
+
+jobs:
+  build-and-push-to-gcr-service-account:
+    name: Build & push to GCR/GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.B64_GCLOUD_SERVICE_ACCOUNT_JSON }}'
+      - name: Building and pushing the image
+        run: |
+          docker login ghcr.io -u ${github_username} -p ${github_token}
+          yes | gcloud auth configure-docker gcr.io
+          docker system prune --all --force
+          ./docker/vm_boot_images/build.sh -P
+          docker system prune --all --force
+          ./docker/vm_boot_images/build.sh -c -P
+        env:
+          github_token: ${{ secrets.GHCR_TOKEN }}
+          github_username: ${{ secrets.GHCR_USERNAME }}

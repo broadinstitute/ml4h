@@ -1,7 +1,7 @@
-This folder contains the code and notebooks used in our paper: ["Genetic Architectures of Medical Images Revealed by Registration of Multiple Modalities"](https://www.biorxiv.org/content/10.1101/2023.07.27.550885v1)
+This folder contains the code and notebooks used in our paper: ["Genetic Architectures of Medical Images Revealed by Registration of Multiple Modalities"](https://doi.org/10.1177/11779322241282489)
 
-In this paper we show how the systematic importance of registration for finding genetic signals directly from medical imaging modalities.
-This is demonstrated across a wide array of registration techniques.  
+We show how the systematic importance of registration for finding genetic signals directly from medical imaging modalities.
+This is demonstrated across a wide range of registration techniques.  
 Our multimodal autoencoder comparison framework allows us to learn representations of medical images before and after registration.
 The learned registration methods considered are graphically summarized here:
 ![Learned Registration Methods](./registration.png)
