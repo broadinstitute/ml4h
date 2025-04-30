@@ -19,7 +19,6 @@ from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
 
-from ml4h.models.diffusion_blocks import DiffusionBlock
 from ml4h.optimizers import get_optimizer
 
 from ml4h.models.perceiver_blocks import PerceiverEncoder, PerceiverLatentLayer
@@ -70,7 +69,6 @@ BLOCK_CLASSES = {
     'resnet_encoder': ResNetEncoder,
     'movinet_encoder': MoviNetEncoder,
     'bert_encoder': BertEncoder,
-    'diffusion': DiffusionBlock,
     'identity_decode': IdentityDecoderBlock,
     'identity_encode': IdentityEncoderBlock,
 }
