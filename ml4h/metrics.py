@@ -8,12 +8,10 @@ import tensorflow.keras.backend as K
 
 from sklearn.metrics import roc_curve, auc, average_precision_score
 
-
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
 from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE, Dice
 from keras.saving import register_keras_serializable
 
-from neurite.tf.losses import Dice
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
