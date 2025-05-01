@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: [3.11, 3.12]
 
     steps:
     - uses: actions/checkout@v2
@@ -35,7 +35,6 @@ jobs:
         python -m pip install --upgrade pip
         # Install the ml4h Python package.
         pip install .
-        pip install -r docker/vm_boot_images/config/tensorflow-requirements.txt
-    - name: Test with pytest
+    - name: Test with pytest and pytest-xdist
       run: |
-        pytest tests -m "not slow"
+        pytest tests -m "not slow" -n auto

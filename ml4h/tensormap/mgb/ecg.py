@@ -641,7 +641,7 @@ partners_ecg_rate_pc = TensorMap(
     "partners_ecg_rate_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_pc"),
     shape=(None, 1),
     normalization=Standardize(mean=59.3, std=10.6),
@@ -654,7 +654,7 @@ partners_ecg_rate_md = TensorMap(
     "partners_ecg_rate_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="ventricularrate_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -666,7 +666,7 @@ partners_ecg_qrs_pc = TensorMap(
     "partners_ecg_qrs_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_pc"),
     shape=(None, 1),
     time_series_limit=0,
@@ -678,7 +678,7 @@ partners_ecg_qrs_md = TensorMap(
     "partners_ecg_qrs_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="qrsduration_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -690,7 +690,7 @@ partners_ecg_pr_pc = TensorMap(
     "partners_ecg_pr_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="printerval_pc"),
     shape=(None, 1),
     time_series_limit=0,
@@ -702,7 +702,7 @@ partners_ecg_pr_md = TensorMap(
     "partners_ecg_pr_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="printerval_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -714,7 +714,7 @@ partners_ecg_qt_pc = TensorMap(
     "partners_ecg_qt_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_pc"),
     shape=(None, 1),
     time_series_limit=0,
@@ -726,7 +726,7 @@ partners_ecg_qt_md = TensorMap(
     "partners_ecg_qt_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtinterval_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -738,7 +738,7 @@ partners_ecg_qtc_pc = TensorMap(
     "partners_ecg_qtc_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_pc"),
     shape=(None, 1),
     time_series_limit=0,
@@ -750,7 +750,7 @@ partners_ecg_qtc_md = TensorMap(
     "partners_ecg_qtc_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="qtcorrected_md"),
     shape=(None, 1),
     time_series_limit=0,
@@ -762,7 +762,7 @@ partners_ecg_paxis_pc = TensorMap(
     "partners_ecg_paxis_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="paxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
@@ -774,7 +774,7 @@ partners_ecg_paxis_md = TensorMap(
     "partners_ecg_paxis_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="paxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
@@ -786,7 +786,7 @@ partners_ecg_raxis_pc = TensorMap(
     "partners_ecg_raxis_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="raxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
@@ -798,7 +798,7 @@ partners_ecg_raxis_md = TensorMap(
     "partners_ecg_raxis_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="raxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
@@ -810,7 +810,7 @@ partners_ecg_taxis_pc = TensorMap(
     "partners_ecg_taxis_pc",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="taxis_pc", fill=999),
     shape=(None, 1),
     time_series_limit=0,
@@ -822,7 +822,7 @@ partners_ecg_taxis_md = TensorMap(
     "partners_ecg_taxis_md",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="taxis_md", fill=999),
     shape=(None, 1),
     time_series_limit=0,
@@ -834,7 +834,7 @@ partners_ecg_measuredamplitudepeak_r = TensorMap(
     "partners_ecg_measuredamplitudepeak_r",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="measuredamplitudepeak_IE_R", fill=np.nan),
     shape=(None, 12),
     time_series_limit=0,
@@ -855,7 +855,7 @@ partners_ecg_weight_lbs = TensorMap(
     "partners_ecg_weight_lbs",
     interpretation=Interpretation.CONTINUOUS,
     path_prefix=PARTNERS_PREFIX,
-    loss='logcosh',
+    loss='log_cosh',
     tensor_from_file=make_partners_ecg_tensor(key="weightlbs"),
     shape=(None, 1),
     time_series_limit=0,
@@ -885,7 +885,7 @@ def _partners_ecg_age_from_hd5(tm, hd5, dependents={}):
     return tensor
 
 
-partners_ecg_age = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='logcosh', tensor_from_file=_partners_ecg_age_from_hd5, shape=(None, 1), time_series_limit=0)
+partners_ecg_age = TensorMap('partners_ecg_age', path_prefix=PARTNERS_PREFIX, loss='log_cosh', tensor_from_file=_partners_ecg_age_from_hd5, shape=(None, 1), time_series_limit=0)
 
 
 def partners_ecg_acquisition_year(tm, hd5, dependents={}):
@@ -902,7 +902,7 @@ def partners_ecg_acquisition_year(tm, hd5, dependents={}):
     return tensor
 
 
-partners_ecg_acquisition_year = TensorMap('partners_ecg_acquisition_year', path_prefix=PARTNERS_PREFIX, loss='logcosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(None, 1), time_series_limit=0)
+partners_ecg_acquisition_year = TensorMap('partners_ecg_acquisition_year', path_prefix=PARTNERS_PREFIX, loss='log_cosh',  tensor_from_file=partners_ecg_acquisition_year, shape=(None, 1), time_series_limit=0)
 
 
 def partners_bmi(tm, hd5, dependents={}):
@@ -1147,7 +1147,7 @@ partners_ecg_supranodal_6_weighted = TensorMap(
 
 patientage = TensorMap(
     'patientage', Interpretation.CONTINUOUS,
-    path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+    path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'patientage': 0},
 )
