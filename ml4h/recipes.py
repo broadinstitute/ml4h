@@ -773,7 +773,7 @@ def infer_multimodal_multitask(args):
                 elif len(otm.shape) == 1 and otm.is_categorical():
                     for k, i in otm.channel_map.items():
                         try:
-                            csv_row.append(str(y[0][otm.channel_map[k]]))
+                            csv_row.append(str(y[ot][0][otm.channel_map[k]]))
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
@@ -1080,7 +1080,7 @@ def _predict_scalars_and_evaluate_from_generator(
             if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                 y = y_predictions
             if tm_output_name in scalar_predictions:
-                scalar_predictions[tm_output_name].extend(np.copy(y))
+                scalar_predictions[tm_output_name].extend(np.copy(y[tm_output_name]))
 
         if i % 100 == 0:
             logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')
