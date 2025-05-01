@@ -20,7 +20,7 @@ from ml4h.TensorMap import TensorMap
 Tensor = tf.Tensor
 
 # sampling
-min_signal_rate = 0.02
+min_signal_rate = 0.05
 max_signal_rate = 0.95
 
 # architecture
@@ -58,46 +58,50 @@ def sinusoidal_embedding(x, dims=1):
     return embeddings
 
 
-def residual_block(width, conv, kernel_size):
+def residual_block(width, conv, kernel_size, groups=32):
     def apply(x):
-        input_width = x.shape[-1]
-        if input_width == width:
-            residual = x
-        else:
+        # shortcut
+        input_channels = x.shape[-1]
+        if input_channels != width:
             residual = conv(width, kernel_size=1)(x)
-        x = layers.BatchNormalization(center=False, scale=False)(x)
-        x = conv(
-            width, kernel_size=kernel_size, padding="same", activation=keras.activations.swish,
-        )(x)
+        else:
+            residual = x
+
+        # first GN → SiLU → Conv
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
+
+        # second GN → SiLU → Conv
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = layers.Activation('silu')(x)
+        x = conv(width, kernel_size=kernel_size, padding="same")(x)
+
+        # merge
         x = layers.Add()([x, residual])
         return x
-
     return apply
 
 
-def down_block(width, block_depth, conv, pool, kernel_size):
+def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
     def apply(x):
         x, skips = x
         for _ in range(block_depth):
-            x = residual_block(width, conv, kernel_size)(x)
+            x = residual_block(width, conv, kernel_size, groups=groups)(x)
             skips.append(x)
         x = pool(pool_size=2)(x)
         return x
-
     return apply
 
 
-def up_block(width, block_depth, conv, upsample, kernel_size):
+def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
     def apply(x):
         x, skips = x
-        # x = upsample(size=2, interpolation="bilinear")(x)
         x = upsample(size=2)(x)
         for _ in range(block_depth):
             x = layers.Concatenate()([x, skips.pop()])
-            x = residual_block(width, conv, kernel_size)(x)
+            x = residual_block(width, conv, kernel_size, groups=groups)(x)
         return x
-
     return apply
 
 
@@ -126,6 +130,8 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     for width in reversed(widths[:-1]):
         x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
+    if len(input_shape) > 2:
+        x = conv(input_shape[-1], kernel_size=3, padding='same', kernel_initializer="ones")(x)
     x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances], x, name="residual_unet")
@@ -162,39 +168,69 @@ def condition_layer_film(input_tensor, control_vector, filters):
     return input_tensor * gamma + beta
 
 
-def residual_block_control(width, conv, kernel_size, attention_heads, condition_strategy):
-    def apply(x):
-        x, control = x
-        input_width = x.shape[-1]
-        if input_width == width:
-            residual = x
-        else:
+def residual_block_control(
+    width,
+    conv,
+    kernel_size,
+    attention_heads,
+    condition_strategy,
+    groups: int = 32,
+):
+    def apply(inputs):
+        x, control = inputs
+        # ─── shortcut ─────────────────────────────────────────────
+        in_channels = x.shape[-1]
+        if in_channels != width:
             residual = conv(width, kernel_size=1)(x)
+        else:
+            residual = x
 
-        if 'cross_attention' == condition_strategy:
-            x = layers.MultiHeadAttention(num_heads=attention_heads, key_dim=width)(x, control)
-        elif 'concat' == condition_strategy:
+        # ─── conditioning ─────────────────────────────────────────
+        if condition_strategy == 'cross_attention':
+            x = layers.MultiHeadAttention(
+                num_heads=attention_heads, key_dim=width
+            )(x, control)
+        elif condition_strategy == 'concat':
             x = layers.Concatenate()([x, control])
-        elif 'film' == condition_strategy:
+        elif condition_strategy == 'film':
             x = condition_layer_film(x, control, width)
 
-        x = layers.BatchNormalization(center=False, scale=False)(x)
-        x = conv(
-            width, kernel_size=kernel_size, padding="same", activation=keras.activations.swish
-        )(x)
+        # ─── GN → SiLU → Conv → GN → SiLU → Conv → Add ───────────
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = layers.Activation('silu')(x)
+        x = conv(width, kernel_size=kernel_size, padding='same')(x)
 
-        x = conv(width, kernel_size=kernel_size, padding="same")(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = layers.Activation('silu')(x)
+        x = conv(width, kernel_size=kernel_size, padding='same')(x)
+
         x = layers.Add()([x, residual])
         return x
 
     return apply
 
 
-def down_block_control(width, block_depth, conv, pool, kernel_size, attention_heads, condition_strategy):
-    def apply(x):
-        x, skips, control = x
+def down_block_control(
+    width,
+    block_depth,
+    conv,
+    pool,
+    kernel_size,
+    attention_heads,
+    condition_strategy,
+    groups: int = 32,
+):
+    def apply(inputs):
+        x, skips, control = inputs
         for _ in range(block_depth):
-            x = residual_block_control(width, conv, kernel_size, attention_heads, condition_strategy)([x, control])
+            x = residual_block_control(
+                width,
+                conv,
+                kernel_size,
+                attention_heads,
+                condition_strategy,
+                groups=groups,
+            )([x, control])
             skips.append(x)
         x = pool(pool_size=2)(x)
         return x
@@ -202,72 +238,118 @@ def down_block_control(width, block_depth, conv, pool, kernel_size, attention_he
     return apply
 
 
-def up_block_control(width, block_depth, conv, upsample, kernel_size, attention_heads, condition_strategy):
-    def apply(x):
-        x, skips, control = x
-        # x = upsample(size=2, interpolation="bilinear")(x)
+def up_block_control(
+    width,
+    block_depth,
+    conv,
+    upsample,
+    kernel_size,
+    attention_heads,
+    condition_strategy,
+    groups: int = 32,
+):
+    def apply(inputs):
+        x, skips, control = inputs
         x = upsample(size=2)(x)
         for _ in range(block_depth):
             x = layers.Concatenate()([x, skips.pop()])
-            x = residual_block_control(width, conv, kernel_size, attention_heads, condition_strategy)([x, control])
+            x = residual_block_control(
+                width,
+                conv,
+                kernel_size,
+                attention_heads,
+                condition_strategy,
+                groups=groups,
+            )([x, control])
         return x
 
     return apply
 
 
-def get_control_network(input_shape, widths, block_depth, kernel_size, control_size,
-                        attention_window, attention_heads, attention_modulo, condition_strategy):
+def get_control_network(
+    input_shape,
+    widths,
+    block_depth,
+    kernel_size,
+    control_size,
+    attention_window,
+    attention_heads,
+    attention_modulo,
+    condition_strategy,
+    groups: int = 32,
+):
     noisy_images = keras.Input(shape=input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
-
     conv, upsample, pool, control_idxs = layers_from_shape_control(input_shape)
     control = keras.Input(shape=(control_size,))
 
     x = conv(widths[0], kernel_size=1)(noisy_images)
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
 
-    if len(input_shape) == 2:  # 1D Signals
+    # upsample embeddings & control
+    if len(input_shape) == 2:
         e = upsample(size=input_shape[-2])(e)
         c = upsample(size=input_shape[-2])(control[control_idxs])
     else:
         e = upsample(size=input_shape[:-1], interpolation="nearest")(e)
         c = upsample(size=input_shape[:-1])(control[control_idxs])
 
-    print(f'Control up-sampled shape shape: {c.shape} e shape {e.shape} x: {x.shape}')
-
     x = layers.Concatenate()([x, e])
 
     skips = []
+    # ─── down blocks ────────────────────────────────────────────
     for i, width in enumerate(widths[:-1]):
-        if attention_modulo > 1 and (i + 1) % attention_modulo == 0:
-            if len(input_shape) > 2:
-                c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
-            else:
-                c2 = upsample(size=x.shape[-2])(control[control_idxs])
-            x = down_block_control(width, block_depth, conv, pool,
-                                   kernel_size, attention_heads, condition_strategy)([x, skips, c2])
+        use_control = (attention_modulo > 1 and (i+1) % attention_modulo == 0)
+        if use_control:
+            # recompute c2 at this resolution...
+            c2 = upsample(size=x.shape[1:-1] if len(input_shape)>2 else x.shape[-2])(control[control_idxs])
+            x = down_block_control(
+                width,
+                block_depth,
+                conv,
+                pool,
+                kernel_size,
+                attention_heads,
+                condition_strategy,
+                groups=groups,
+            )([x, skips, c2])
         else:
             x = down_block(width, block_depth, conv, pool, kernel_size)([x, skips])
 
-    if len(input_shape) > 2:
-        c2 = upsample(size=x.shape[1:-1])(control[control_idxs])
-    else:
-        c2 = upsample(size=x.shape[-2])(control[control_idxs])
+    # ─── bottleneck ────────────────────────────────────────────
+    c2 = upsample(size=x.shape[1:-1] if len(input_shape)>2 else x.shape[-2])(control[control_idxs])
+    for _ in range(block_depth):
+        x = residual_block_control(
+            widths[-1],
+            conv,
+            kernel_size,
+            attention_heads,
+            condition_strategy,
+            groups=groups,
+        )([x, c2])
 
-    for i in range(block_depth):
-        x = residual_block_control(widths[-1], conv, kernel_size, attention_heads, condition_strategy)([x, c2])
-
+    # ─── up blocks ──────────────────────────────────────────────
     for i, width in enumerate(reversed(widths[:-1])):
-        if attention_modulo > 1 and ((len(widths) - 1) - i) % attention_modulo == 0:
-            if len(input_shape) == 3:
-                c2 = upsample(size=(x.shape[1]*2, x.shape[2]*2))(control[control_idxs])
-            else:
-                c2 = upsample(size=x.shape[-2]*2)(control[control_idxs])
-            x = up_block_control(width, block_depth, conv, upsample,
-                                 kernel_size, attention_heads, condition_strategy)([x, skips, c2])
+        use_control = (attention_modulo > 1 and (len(widths)-1 - i) % attention_modulo == 0)
+        if use_control:
+            up_size = (x.shape[1]*2, x.shape[2]*2) if len(input_shape)==3 else x.shape[-2]*2
+            c2 = upsample(size=up_size)(control[control_idxs])
+            x = up_block_control(
+                width,
+                block_depth,
+                conv,
+                upsample,
+                kernel_size,
+                attention_heads,
+                condition_strategy,
+                groups=groups,
+            )([x, skips, c2])
         else:
             x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
+    # ─── final convs ────────────────────────────────────────────
+    if len(input_shape) > 2:
+        x = conv(input_shape[-1], kernel_size=3, activation="linear", padding="same", kernel_initializer="ones")(x)
     x = conv(input_shape[-1], kernel_size=1, activation="linear", kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances, control], x, name="control_unet")

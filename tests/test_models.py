@@ -65,13 +65,22 @@ TrainType = Dict[str, np.ndarray]  # TODO: better name
 
 
 def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]) -> Iterator[Tuple[TrainType, TrainType, List[None]]]:
-    return cycle([
-        (
-            {tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
-            {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},
-            #[None] * len(output_tmaps),
-        ), ])
+    batch_size = 2
+    input_tensors = [
+        tf.random.normal((batch_size,) + tm.shape) for tm in input_tmaps
+    ]
+    output_tensors = [
+        tf.random.normal((batch_size,) + tm.shape) for tm in output_tmaps
+    ]
 
+    # Create 1-element dataset with full batch as tuple
+    inputs_tuple = tuple(input_tensors)
+    outputs_tuple = tuple(output_tensors)
+
+    # Create dataset with one batch repeated for steps_per_epoch
+    dataset = tf.data.Dataset.from_tensors((inputs_tuple, outputs_tuple)).repeat()
+
+    return dataset
 
 def assert_model_trains(
     input_tmaps: List[TensorMap], output_tmaps: List[TensorMap],
@@ -97,7 +106,7 @@ def assert_model_trains(
         for tmap, tensor in zip(parent_sort(output_tmaps), m.outputs):
             assert tensor.shape[1:] == tmap.shape
             assert tensor.shape[1:] == tmap.shape
-    data = make_training_data(input_tmaps, output_tmaps)
+    data = make_training_data(input_tmaps, parent_sort(output_tmaps))
     history = m.fit(data, steps_per_epoch=2, epochs=2, validation_data=data, validation_steps=2)
     for tmap in output_tmaps:
         for metric in tmap.metrics:
@@ -221,6 +230,32 @@ class TestMakeMultimodalMultitaskModel:
             **params,
         )
 
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        'input_tmaps',
+        MULTIMODAL_UP_TO_4D,
+    )
+    @pytest.mark.parametrize(
+        'output_tmaps',
+        MULTIMODAL_UP_TO_4D,
+    )
+    def test_load_multimodal_encoder_decoder(self, tmpdir, input_tmaps: List[TensorMap], output_tmaps: List[TensorMap]):
+        m, _, _, _ = make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **DEFAULT_PARAMS,
+        )
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        params = DEFAULT_PARAMS.copy()
+        params['model_file'] = path
+        print(params['model_file'])
+        params['load_enc_dec'] = True
+        make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **params,
+        )
     def test_u_connect_auto_encode(self):
         params = DEFAULT_PARAMS.copy()
         params['pool_x'] = params['pool_y'] = 2
@@ -245,6 +280,35 @@ class TestMakeMultimodalMultitaskModel:
         )
         assert_model_trains([SEGMENT_IN], [SEGMENT_OUT], m)
 
+    @pytest.mark.parametrize(
+        'input_output_tmaps',
+        [
+            (CONTINUOUS_TMAPS[:1], [SEGMENT_IN]), ([SEGMENT_IN], CONTINUOUS_TMAPS[:1]),
+            ([SEGMENT_IN], [SEGMENT_IN]),
+        ],
+    )
+    def test_multimodal_multitask_variational(self, input_output_tmaps, tmpdir):
+        """
+        Tests 1d->2d, 2d->1d, (1d,2d)->(1d,2d)
+        """
+        params = DEFAULT_PARAMS.copy()
+        #params['bottleneck_type'] = BottleneckType.Variational (This is not implemented yet)
+        params['pool_x'] = params['pool_y'] = 2
+        m, _, _, _ = make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            **params
+        )
+        assert_model_trains(input_output_tmaps[0], input_output_tmaps[1], m)
+        m.save(os.path.join(tmpdir, 'vae.h5'))
+        path = os.path.join(tmpdir, f'm{MODEL_EXT}')
+        m.save(path)
+        params['model_file'] = path
+        make_multimodal_multitask_model(
+            input_output_tmaps[0],
+            input_output_tmaps[1],
+            **params,
+        )
 
     def test_u_connect_adaptive_normalization(self):
         params = DEFAULT_PARAMS.copy()

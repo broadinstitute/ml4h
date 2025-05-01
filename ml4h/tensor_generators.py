@@ -471,7 +471,8 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = True):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int,
+                                       batch_size: int = 16, keep_paths: bool = False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -483,9 +484,9 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    first_batch = next(generator)
+    first_batch = next(iter(generator))
+    #first_batch = generator.take(batch_size)
     saved_tensors = {}
-    batch_size = None
     for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
         shape = (batch_array.shape[0] * minibatches,) + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
@@ -498,7 +499,8 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
         logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
-        next_batch = next(generator)
+        next_batch = next(iter(generator))
+        #next_batch = generator.take(batch_size)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
             saved_tensors[key][s:t] = next_batch[BATCH_INPUT_INDEX][key]
@@ -514,7 +516,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     if keep_paths:
         return inputs, outputs, paths
     else:
-        return inputs, outputs
+        return inputs, outputs, None
 
 
 def _get_train_valid_test_discard_ratios(
@@ -732,34 +734,7 @@ def get_train_valid_test_paths_split_by_csvs(
             logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
     return train_paths, valid_paths, test_paths
 
-def augment_using_layers(
-        images: Dict[str, tf.Tensor],
-        mask: Dict[str, tf.Tensor],
-        in_shapes: Dict[str, Tuple[int, int, int, int]],
-        out_shapes: Dict[str, Tuple[int, int, int, int]],
-        rotation_factor: float,
-        zoom_factor: float,
-        translation_factor: float,
-) -> Tuple[tf.Tensor, tf.Tensor]:
-    """
-    Applies random data augmentation (rotation, zoom and/or translation) to pairs of 2D images and segmentations.
-    :param images: a dictionary mapping an input tensor map's name to an image tensor
-    :param mask: a dictionary mapping an output tensor map's name to a segmentation tensor
-    :param in_shapes: a dictionary mapping an input tensor map's name to its shape (including the batch_size)
-    :param out_shapes: a dictionary mapping an output tensor map's name to its shape (including the batch_size)
-    :param rotation_factor: a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
-    :param zoom_factor: a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
-    :param translation_factor: a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
-    :return: an augmented image tensor and its corresponding augmented segmentation tensor
-    """
-
-    # Adapted from:
-    # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
-
-    assert(len(in_shapes) == 1, 'no support for multiple inputs')
-    assert(len(out_shapes) == 1, 'no support for mulitple outputs')
-
-    def aug():
+def aug_model(rotation_factor, zoom_factor, translation_factor):
         rota = tf.keras.layers.RandomRotation(factor=rotation_factor, fill_mode='constant')
 
         zoom = tf.keras.layers.RandomZoom(
@@ -779,25 +754,46 @@ def augment_using_layers(
 
         return aug_model
 
-    aug = aug()
+class ImageMaskAugmentor:
+    """
+    Applies random data augmentation (rotation, zoom and/or translation) to pairs of 2D images and segmentations.
+    :param images: a dictionary mapping an input tensor map's name to an image tensor
+    :param mask: a dictionary mapping an output tensor map's name to a segmentation tensor
+    :param in_shapes: a dictionary mapping an input tensor map's name to its shape (including the batch_size)
+    :param out_shapes: a dictionary mapping an output tensor map's name to its shape (including the batch_size)
+    :param rotation_factor: a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
+    :param zoom_factor: a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
+    :param translation_factor: a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
+    :return: an augmented image tensor and its corresponding augmented segmentation tensor
+    """
 
-    # we know there's just one
-    in_key = list(in_shapes.keys())[0]
-    out_key = list(out_shapes.keys())[0]
-    images = images[in_key]
-    mask = mask[out_key]
+    # Adapted from:
+    # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
 
-    # concatenate the inputs and outputs together into a single tensor, and do data augmentation
-    images_mask = tf.concat([images, mask], -1)
-    images_mask = aug(images_mask)
+    def __init__(self, rotation_factor: float, zoom_factor: float, translation_factor: float,
+                 in_shapes: Dict[str, Tuple[int, int, int, int]],
+                 out_shapes: Dict[str, Tuple[int, int, int, int]]):
+        self.model = aug_model(rotation_factor, zoom_factor, translation_factor)
+        self.in_shapes = in_shapes
+        self.out_shapes = out_shapes
 
-    # split the inputs and outputs again
-    assert(in_shapes[in_key][-1] == 1) # we are only handling one channel in the input
-    image = images_mask[..., 0]
-    image = image[..., tf.newaxis]
-    mask = images_mask[..., 1:]
+    def __call__(self, images: Dict[str, tf.Tensor], mask: Dict[str, tf.Tensor]) -> Tuple[tf.Tensor, tf.Tensor]:
+        assert len(self.in_shapes) == 1
+        assert len(self.out_shapes) == 1
 
-    return image, mask
+        in_key = next(iter(self.in_shapes))
+        out_key = next(iter(self.out_shapes))
+
+        image_tensor = images[in_key]
+        mask_tensor = mask[out_key]
+
+        combined = tf.concat([image_tensor, mask_tensor], axis=-1)
+        augmented = self.model(combined, training=True)
+
+        input_channels = self.in_shapes[in_key][-1]
+        image = augmented[..., :input_channels]
+        mask = augmented[..., input_channels:]
+        return image, mask
 
 def test_train_valid_tensor_generators(
     tensor_maps_in: List[TensorMap],
@@ -811,7 +807,7 @@ def test_train_valid_tensor_generators(
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
-    keep_paths_test: bool = True,
+    keep_paths_test: bool = False,
     mixup_alpha: float = -1.0,
     sample_csv: str = None,
     valid_ratio: float = None,
@@ -823,7 +819,7 @@ def test_train_valid_tensor_generators(
     rotation_factor: float = 0,
     zoom_factor: float = 0,
     translation_factor: float = 0,
-    wrap_with_tf_dataset: bool = False,
+    wrap_with_tf_dataset: bool = True,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
@@ -912,7 +908,7 @@ def test_train_valid_tensor_generators(
         assert(len(tensor_maps_in) == 1, 'no support for multiple input tensors')
         assert(len(tensor_maps_out) == 1, 'no support for multiple output tensors')
 
-    if wrap_with_tf_dataset or do_augmentation:
+    if wrap_with_tf_dataset and do_augmentation:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
         out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
 
@@ -921,14 +917,24 @@ def test_train_valid_tensor_generators(
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
             output_shapes=(in_shapes, out_shapes),
         )
-        train_dataset = train_dataset.map(
-            lambda x, y: augment_using_layers(
-                x, y, in_shapes, out_shapes,
-                rotation_factor, zoom_factor, translation_factor,
-            ),
+        augmentor = ImageMaskAugmentor(
+            rotation_factor,
+            zoom_factor,
+            translation_factor,
+            in_shapes,
+            out_shapes
         )
+        train_dataset = train_dataset.map(augmentor)
 
     if wrap_with_tf_dataset:
+        in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
+        out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
+
+        train_dataset = tf.data.Dataset.from_generator(
+            generate_train,
+            output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+            output_shapes=(in_shapes, out_shapes),
+        )
         valid_dataset = tf.data.Dataset.from_generator(
             generate_valid,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),

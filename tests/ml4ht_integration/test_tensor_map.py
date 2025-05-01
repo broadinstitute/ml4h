@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pytest
 import numpy as np
 from torch.utils.data import DataLoader
+import tensorflow as tf
 
 from ml4ht.data.data_description import DataDescription
 from ml4ht.data.sample_getter import DataDescriptionSampleGetter
@@ -13,7 +14,7 @@ from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter, tensor_map_
 
 from ml4h.TensorMap import Interpretation
 from ml4h.test_utils import TMAPS_UP_TO_4D, build_hdf5s
-from ml4h.models.model_factory import make_multimodal_multitask_model
+from ml4h.models.model_factory import make_multimodal_multitask_model, parent_sort
 
 
 # Tests
@@ -23,7 +24,7 @@ def test_tensor_map_from_data_description():
     )
     tmap_out = tensor_map_from_data_description(
         DD2_OUTPUT, Interpretation.CONTINUOUS, (1,), name='dd2',
-        loss='logcosh',
+        loss='log_cosh',
         metrics=['mae', 'mse'],
     )
     model, _, _, _ = make_multimodal_multitask_model(
@@ -33,6 +34,7 @@ def test_tensor_map_from_data_description():
         merge_blocks=[],
         learning_rate=1e-4,
         optimizer='sgd',
+        named_outputs = True
     )
     data_set = SampleGetterIterableDataset(
         sample_ids=list(RAW_DATA),
@@ -42,8 +44,15 @@ def test_tensor_map_from_data_description():
         data_set, batch_size=4, num_workers=2,
         collate_fn=numpy_collate_fn,
     )
+    tf_dataset = tf.data.Dataset.from_generator(
+        lambda : iter(data_loader),
+        output_signature=(
+        {'input_dd1_continuous': tf.TensorSpec(shape=(1, 1), dtype=tf.float32)},
+        {'output_dd2_continuous': tf.TensorSpec(shape=(1, 1), dtype=tf.float32)}
+        )
+    )
     # model can train?
-    history = model.fit(iter(data_loader)).history
+    history = model.fit(tf_dataset).history
     # metrics recorded?
     assert 'mae' in history
     assert 'mse' in history
@@ -86,8 +95,27 @@ class TestTensorMapSampleGetter:
             dataset, batch_size=2, num_workers=3,
             collate_fn=numpy_collate_fn,
         )
+        model_input_names = [t.name.split(":")[0] for t in model.inputs]
+        tmap_output_names = [tmap.output_name() for tmap in parent_sort(TMAPS_UP_TO_4D)]
+        
+        def generator():
+            for batch_input, batch_output in data_loader:
+                inputs = [tf.convert_to_tensor(batch_input[name]) for name in model_input_names]
+                outputs = [tf.convert_to_tensor(batch_output[name]) for name in tmap_output_names]
+                
+                yield tuple(inputs), tuple(outputs)
+
+        example_inputs, example_outputs = next(generator())
+        tf_dataset = tf.data.Dataset.from_generator(
+            generator,
+            output_signature=(
+                tuple(tf.TensorSpec(shape=(None,) + inp.shape[1:], dtype=inp.dtype) for inp in example_inputs),
+                tuple(tf.TensorSpec(shape=(None,) + out.shape[1:], dtype=out.dtype) for out in example_outputs),
+            ),
+        ).repeat()
+
         history = model.fit(
-            cycle(data_loader), validation_data=cycle(val_loader),
+            tf_dataset, validation_data=tf_dataset,
             steps_per_epoch=10, validation_steps=2, epochs=3,
         ).history
         for tmap in TMAPS_UP_TO_4D:

@@ -5,20 +5,23 @@ import logging
 from functools import partial
 from typing import List, Tuple, Iterable, Union
 
+import tensorflow as tf
+import keras
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
 import tensorflow as tf
 from ml4h.explorations import predictions_to_pngs
-from tensorflow import keras
-import tensorflow_addons as tfa
+
 from tensorflow.keras.callbacks import History
-from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 
 from ml4h.TensorMap import TensorMap
-from ml4h.metrics import coefficient_of_determination
+
 from ml4h.models.diffusion_blocks import DiffusionModel, DiffusionController
 from ml4h.plots import plot_metric_history, plot_roc
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
@@ -86,7 +89,7 @@ def train_model_from_generators(
 
     logging.info('Model weights saved at: %s' % model_file)
     custom_dict = get_custom_objects(output_tensor_maps)
-    model = load_model(model_file, custom_objects=custom_dict, compile=False)
+    model = tf.keras.models.load_model(model_file, custom_objects=custom_dict, compile=False)
     model.compile(optimizer='adam', loss='mse')
     if plot:
         plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
@@ -113,10 +116,11 @@ def train_diffusion_model(args):
                            args.diffusion_loss, args.sigmoid_beta, args.inspect_model)
 
     model.compile(
-        optimizer=tfa.optimizers.AdamW(
+        optimizer=tf.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
         loss=keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error,
+
     )
     batch = next(generate_train)
     for k in batch[0]:
@@ -125,11 +129,13 @@ def train_diffusion_model(args):
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
     checkpoint_path = f"{args.output_folder}{args.id}/{args.id}"
+
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
+
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=True,
@@ -157,6 +163,7 @@ def train_diffusion_model(args):
             layer_range=None,
             show_layer_activations=False,
         )
+
         prefix_value = f'{args.output_folder}{args.id}/learning_generations/'
         if model.tensor_map.axes() == 2:
             plot_partial = partial(model.plot_ecgs, reseed=args.random_seed, prefix=prefix_value)
@@ -313,7 +320,7 @@ def train_diffusion_control_model(args, supervised=False):
 
     loss = keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error
     model.compile(
-        optimizer=tfa.optimizers.AdamW(
+        optimizer=tf.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
         loss=loss,
@@ -332,7 +339,9 @@ def train_diffusion_control_model(args, supervised=False):
         mode="min",
         save_best_only=True,
     )
+
     callbacks = [checkpoint_callback]
+
 
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
@@ -412,6 +421,5 @@ def train_diffusion_control_model(args, supervised=False):
             eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
             regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size,
                                               0.0,2.0,f'{args.output_folder}/{args.id}/')
-
 
     return model

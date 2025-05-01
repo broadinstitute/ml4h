@@ -12,8 +12,8 @@ export MLFLOW_TRACKING_USERNAME=$(gcloud --project='broad-ml4cvd' secrets versio
 export MLFLOW_TRACKING_PASSWORD=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_password')
 
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.19-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.19-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
@@ -196,5 +196,5 @@ ${GPU_DEVICE} \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install --quiet --upgrade pip
-pip install --quiet ${WORKDIR};
+pip install ${WORKDIR}
 eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"

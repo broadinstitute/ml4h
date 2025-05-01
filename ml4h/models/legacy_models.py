@@ -4,45 +4,36 @@
 
 # Imports
 import os
-import time
 import logging
 import numpy as np
 from enum import Enum, auto
-from itertools import chain
-from abc import ABC, abstractmethod
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
+from typing import Dict, List, Tuple, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
 
 # Keras imports
 import tensorflow as tf
-import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
 from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 from tensorflow.keras.regularizers import L1, L2
-import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
 from ml4h.models.model_factory import get_custom_objects
-from ml4h.plots import plot_metric_history
 from ml4h.TensorMap import TensorMap, Interpretation
-from ml4h.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
-from ml4h.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+from ml4h.optimizers import get_optimizer
+from ml4h.defines import IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+from ml4h.models.merge_blocks import CosineLossLayer, L2LossLayer
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
-tfd = tfp.distributions
 
 
 class BottleneckType(Enum):
@@ -59,16 +50,15 @@ ACTIVATION_CLASSES = {
     'thresh_relu': ThresholdedReLU,
 }
 ACTIVATION_FUNCTIONS = {
-    'swish': tf.nn.swish,
-    'gelu': tfa.activations.gelu,
-    'lisht': tfa.activations.lisht,
-    'mish': tfa.activations.mish,
+    'swish': tf.keras.activations.silu,
+    'gelu': tf.keras.activations.gelu,
+    'mish': tf.keras.activations.mish,
 }
 NORMALIZATION_CLASSES = {
     'batch_norm': BatchNormalization,
     'layer_norm': LayerNormalization,
-    'instance_norm': tfa.layers.InstanceNormalization,
-    'poincare_norm': tfa.layers.PoincareNormalize,
+    #'instance_norm': tfa.layers.InstanceNormalization,
+    #'poincare_norm': tfa.layers.PoincareNormalize,
 }
 # PREPROCESS_CLASSES = {
 #     'zoom': RandomZoom,
@@ -351,13 +341,24 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     if not target_layer:
         target_layer = parent_model.get_layer(output_layer_name)
         parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
+    
+    if parent_model.inputs:
+        parent_inputs = parent_model.inputs
+    else:
+        # Fallback: create synthetic inputs from tensor_maps_in
+        parent_inputs = []
+        for tm in tensor_maps_in:
+            input_tensor = Input(shape=tm.shape, name=tm.input_name())
+            parent_inputs.append(input_tensor)
+        # Optionally warn
+        logging.warning("parent_model.inputs was empty. Created synthetic Inputs.")
+    dummy_input = {
+        tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in tensor_maps_in
+    }
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input, verbose=0)
     return intermediate_layer_model
-
-
 Tensor = tf.Tensor
 Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
 Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
@@ -1002,7 +1003,7 @@ def legacy_multimodal_multitask_model(
                 activation=activation,
             )
 
-    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders)
+    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders, tensor_maps_out,  kwargs.get('named_outputs', False))
 
     # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
@@ -1036,6 +1037,8 @@ def _make_multimodal_multitask_model(
         encoders: Dict[TensorMap, Encoder],
         bottle_neck: BottleNeck,
         decoders: Dict[TensorMap, Decoder],  # Assumed to be topologically sorted according to parents hierarchy
+        tensor_maps_out: List[TensorMap],
+        named_outputs = False 
 ) -> Model:
     inputs: Dict[TensorMap, Input] = {}
     encoder_outputs: Dict[TensorMap, Tuple[Tensor, List[Tensor]]] = {}  # TensorMap -> embed, encoder_intermediates
@@ -1053,7 +1056,15 @@ def _make_multimodal_multitask_model(
     for tm, decoder in decoders.items():
         decoder_outputs[tm] = decoder(bottle_neck_outputs[tm], encoder_intermediates, decoder_outputs)
 
-    return Model(inputs=list(inputs.values()), outputs=list(decoder_outputs.values()))
+    if not named_outputs:
+        outputs = list(decoder_outputs.values())
+    else:
+        outputs = {
+                tm.output_name(): decoder_outputs[tm]
+                for tm in parent_sort(tensor_maps_out)
+            }
+
+    return Model(inputs=list(inputs.values()), outputs=outputs)
 
 
 def _transfer_layers_by_name(model_layers: str, freeze_model_layers: str, custom_dict: Dict[str, Any], m: Model):
@@ -1100,6 +1111,127 @@ def _load_model_encoders_and_decoders(
     m.summary(print_fn=logging.info)
     logging.info(f"Loaded encoders, decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
+
+
+def make_paired_autoencoder_model(
+        pairs: List[Tuple[TensorMap, TensorMap]],
+        pair_loss: str = 'cosine',
+        pair_loss_weight: float = 1.0,
+        multimodal_merge: str = 'average',
+        **kwargs
+) -> Model:
+    custom_dict = get_custom_objects(kwargs['tensor_maps_out'])
+    opt = get_optimizer(
+        kwargs['optimizer'], kwargs['learning_rate'], steps_per_epoch=kwargs['training_steps'],
+        learning_rate_schedule=kwargs['learning_rate_schedule'], optimizer_kwargs=kwargs.get('optimizer_kwargs'),
+    )
+    if 'model_file' in kwargs and kwargs['model_file'] is not None:
+        return _load_model_encoders_and_decoders(kwargs['tensor_maps_in'], kwargs['tensor_maps_out'], custom_dict, opt, kwargs['model_file'])
+
+    inputs = {tm: Input(shape=tm.shape, name=tm.input_name()) for tm in kwargs['tensor_maps_in']}
+    real_serial_layers = kwargs['model_layers']
+    kwargs['model_layers'] = None
+    multimodal_activations = []
+    encoders = {}
+    decoders = {}
+    outputs = {}
+    losses = []
+    for left, right in pairs:
+        if left in encoders:
+            encode_left = encoders[left]
+        else:
+            kwargs['tensor_maps_in'] = [left]
+            left_model = legacy_multimodal_multitask_model(**kwargs)
+            encode_left = make_hidden_layer_model(left_model, [left], kwargs['hidden_layer'])
+        h_left = encode_left(inputs[left])
+
+        if right in encoders:
+            encode_right = encoders[right]
+        else:
+            kwargs['tensor_maps_in'] = [right]
+            right_model = legacy_multimodal_multitask_model(**kwargs)
+            encode_right = make_hidden_layer_model(right_model, [right], kwargs['hidden_layer'])
+        h_right = encode_right(inputs[right])
+
+        if pair_loss == 'cosine':
+            loss_layer = CosineLossLayer(pair_loss_weight)
+        elif pair_loss == 'euclid':
+            loss_layer = L2LossLayer(pair_loss_weight)
+
+        multimodal_activations.extend(loss_layer([h_left, h_right]))
+        encoders[left] = encode_left
+        encoders[right] = encode_right
+
+    kwargs['tensor_maps_in'] = list(inputs.keys())
+    if multimodal_merge == 'average':
+        multimodal_activation = Average()(multimodal_activations)
+    elif multimodal_merge == 'concatenate':
+        multimodal_activation = Concatenate()(multimodal_activations)
+        multimodal_activation = Dense(units=kwargs['dense_layers'][0], use_bias=False)(multimodal_activation)
+        multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
+    else:
+        raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][-1], ), name='input_concept_space')
+
+    # build decoder models
+    for tm in kwargs['tensor_maps_out']:
+        if tm.axes() > 1:
+            shape = _calc_start_shape(
+                num_upsamples=len(kwargs['dense_blocks']), output_shape=tm.shape,
+                upsample_rates=[kwargs['pool_x'], kwargs['pool_y'], kwargs['pool_z']],
+                channels=kwargs['dense_blocks'][-1],
+            )
+
+            restructure = FlatToStructure(
+                output_shape=shape, activation=kwargs['activation'],
+                normalization=kwargs['dense_normalize'],
+            )
+
+            decode = ConvDecoder(
+                tensor_map_out=tm,
+                filters_per_dense_block=kwargs['dense_blocks'][::-1],
+                conv_layer_type=kwargs['conv_type'],
+                conv_x=kwargs['conv_x'] if tm.axes() > 2 else kwargs['conv_width'],
+                conv_y=kwargs['conv_y'],
+                conv_z=kwargs['conv_z'],
+                block_size=kwargs['block_size'],
+                activation=kwargs['activation'],
+                normalization=kwargs['conv_normalize'],
+                regularization=kwargs['conv_regularize'],
+                regularization_rate=kwargs['conv_regularize_rate'],
+                upsample_x=kwargs['pool_x'],
+                upsample_y=kwargs['pool_y'],
+                upsample_z=kwargs['pool_z'],
+                u_connect_parents=[tm_in for tm_in in kwargs['tensor_maps_in'] if tm in kwargs['u_connect'][tm_in]],
+            )
+            reconstruction = decode(restructure(latent_inputs), {}, {})
+        else:
+            dense_block = FullyConnected(
+                widths=kwargs['dense_layers'],
+                activation=kwargs['activation'],
+                normalization=kwargs['dense_normalize'],
+                regularization=kwargs['dense_regularize'],
+                regularization_rate=kwargs['dense_regularize_rate'],
+                is_encoder=False,
+            )
+            decode = DenseDecoder(tensor_map_out=tm, parents=tm.parents, activation=kwargs['activation'])
+            reconstruction = decode(dense_block(latent_inputs), {}, {})
+
+        decoder = Model(latent_inputs, reconstruction, name=tm.output_name())
+        decoders[tm] = decoder
+        outputs[tm.output_name()] = decoder(multimodal_activation)
+        losses.append(tm.loss)
+
+    m = Model(inputs=list(inputs.values()), outputs=list(outputs.values()))
+    my_metrics = {tm.output_name(): tm.metrics for tm in kwargs['tensor_maps_out']}
+    m.compile(optimizer=opt, loss=losses, metrics=my_metrics)
+    m.summary(print_fn=logging.info)
+
+    if real_serial_layers is not None:
+        m.load_weights(real_serial_layers, by_name=True)
+        logging.info(f"Loaded model weights from:{real_serial_layers}")
+
+    return m, encoders, decoders
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

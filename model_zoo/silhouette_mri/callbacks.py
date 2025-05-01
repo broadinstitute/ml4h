@@ -25,6 +25,7 @@ import tensorflow as tf
 class LossHistory(tf.keras.callbacks.Callback):
     def __init__(self, decay_function):
         self.decay_function = decay_function
+        self.async_safe = True
 
     def on_train_begin(self, logs={}):
         self.losses = []
@@ -53,6 +54,7 @@ class BatchMetricsLogger(tf.keras.callbacks.Callback):
         super(BatchMetricsLogger, self).__init__()
         self.metrics = metrics
         self.storage = []
+        self.async_safe = True
 
     #
     def on_test_batch_end(self, batch, logs=None):

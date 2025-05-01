@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Sequence
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
+import keras
 import tensorflow_hub as hub
 from tensorflow.keras.layers import Dense, Flatten, Reshape, LayerNormalization, DepthwiseConv2D, concatenate, Concatenate, Add
 
