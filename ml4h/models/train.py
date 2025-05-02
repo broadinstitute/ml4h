@@ -99,9 +99,10 @@ def _get_callbacks(
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
-        ModelCheckpointWithGCP(model_file, gcp_bucket, gcp_path, verbose=1, save_best_only=not save_last_model) if gcp_bucket else ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
-        CSVLogger(os.path.join(os.path.dirname(model_file), 'training.log'), append=True),
-        TensorBoard(log_dir=os.path.join(os.path.dirname(model_file), 'training.log'),
+        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
+        ModelCheckpointWithGCP(model_file, gcp_bucket, gcp_path, verbose=1, save_best_only=not save_last_model) if gcp_bucket else None,
+        CSVLogger(os.path.join(os.path.dirname(model_file), 'training_log.csv'), append=True),
+        TensorBoard(log_dir=os.path.join(os.path.dirname(model_file), 'tensorboard_logs'),
                     histogram_freq=1) if log_tensorboard else None,
     ]
     callbacks = [item for item in callbacks if item is not None]
@@ -119,16 +120,6 @@ class ModelCheckpointWithGCP(Callback):
         self.save_best_only = save_best_only
         self.monitor = monitor
         self.mode = mode
-
-        # Configure ModelCheckpoint callback to save locally
-        self.checkpoint_callback = ModelCheckpoint(
-            filepath=self.local_checkpoint_path,
-            monitor=monitor,
-            save_best_only=self.save_best_only,
-            verbose = verbose,
-            mode=mode,
-            save_weights_only=False
-        )
 
         # Google Cloud Storage client
         self.client = storage.Client()
@@ -155,9 +146,6 @@ class ModelCheckpointWithGCP(Callback):
         current = logs.get(self.monitor)
         if current is None:
             return
-
-        # Delegate to the internal ModelCheckpoint
-        self.checkpoint_callback.on_epoch_end(epoch, logs)
 
         # Upload the file to GCP if it's the best or not save_best_only
         if (not self.save_best_only) or self.monitor_op(current, self.best):
