@@ -17,6 +17,39 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.B64_GCLOUD_SERVICE_ACCOUNT_JSON }}'
+      - name: Check if secrets are set
+        run: |
+          if [ -z "${{ secrets.B64_GCLOUD_SERVICE_ACCOUNT_JSON }}" ]; then
+            echo "❌ B64_GCLOUD_SERVICE_ACCOUNT_JSON is not set"
+          else
+            echo "✅ B64_GCLOUD_SERVICE_ACCOUNT_JSON is set"
+          fi
+
+          if [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
+            echo "❌ GHCR_TOKEN is not set"
+          else
+            echo "✅ GHCR_TOKEN is set"
+          fi
+
+          if [ -z "${{ secrets.GHCR_USERNAME }}" ]; then
+            echo "❌ GHCR_USERNAME is not set"
+          else
+            echo "✅ GHCR_USERNAME is set"
+          fi
+          
+      - name: Check GHCR credentials and test login
+        run: |
+          echo "Using GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}"
+
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ GHCR login succeeded"
+          else
+            echo "❌ GHCR login failed"
+            exit 1
+          fi
+
       - name: Building and pushing the image
         run: |
           echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
