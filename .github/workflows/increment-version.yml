@@ -15,9 +15,12 @@ jobs:
     steps:
       - name: Check out source code
         uses: actions/checkout@v4
+        env:
+          GIT_LFS_SKIP_SMUDGE: 1
 
       - name: Checkout main for version edit
         run: |
+          export GIT_LFS_SKIP_SMUDGE=1
           # Note: the following account information will not work on GHES
           git config --global user.name "github-actions[bot]"
           git config --global user.email {user.id}+{user.login}@users.noreply.github.com
@@ -39,5 +42,5 @@ jobs:
       - name: Push to git
         run: |
           git add setup.py 
-          git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
+          git commit -m "Version bump to ${{ github.event.release.tag_name }}"
           git push
