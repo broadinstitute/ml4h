@@ -17,17 +17,11 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.B64_GCLOUD_SERVICE_ACCOUNT_JSON }}'
-      - name: Free up disk space
-        run: |
-          docker system prune --all --force
-          sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache
-          sudo apt-get clean
-          df -h
 
       - name: Building and pushing the image
         run: |
           echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
-          yes | gcloud auth configure-docker gcr.io
+          yes | gcloud auth configure-docker us-central1-docker.pkg.dev
           docker system prune --all --force
           ./docker/vm_boot_images/build.sh -P
           docker system prune --all --force
