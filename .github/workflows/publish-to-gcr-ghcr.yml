@@ -22,7 +22,5 @@ jobs:
         run: |
           echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
           yes | gcloud auth configure-docker us-central1-docker.pkg.dev
-          docker system prune --all --force
           ./docker/vm_boot_images/build.sh -P
-          docker system prune --all --force
           ./docker/vm_boot_images/build.sh -c -P
