@@ -3,10 +3,13 @@
 import os
 import logging
 from typing import List, Tuple, Iterable, Union
+from google.cloud import storage
+
+import numpy as np
 
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback, CSVLogger, TensorBoard
 
 from ml4h.TensorMap import TensorMap
 from ml4h.plots import plot_metric_history
@@ -32,6 +35,9 @@ def train_model_from_generators(
     return_history: bool = False,
     plot: bool = True,
     save_last_model: bool = False,
+    gcp_bucket: str = None,
+    gcp_path: str = None,
+    log_tensorboard: bool = False,
 ) -> Union[Model, Tuple[Model, History]]:
     """Train a model from tensor generators for validation and training data.
 
@@ -54,6 +60,10 @@ def train_model_from_generators(
     :param return_history: If true return history from training and don't plot the training history
     :param plot: If true, plots the metrics for train and validation set at the end of each epoch
     :param save_last_model: If true saves the model weights from last epoch otherwise saves model with best validation loss
+    :param gcp_bucket: If not None, save the model to GCP bucket with gcp_path (should be without gs://)
+    :param gcp_path: If gcp_bucket is not None, save the model to gs://gcp_bucket/gcp_path
+    :param log_tensorboard: If True, create TensorBorad logging
+
 
     :return: The optimized model.
 
@@ -69,7 +79,7 @@ def train_model_from_generators(
     history = model.fit(
         generate_train, steps_per_epoch=training_steps, epochs=epochs, verbose=1,
         validation_steps=validation_steps, validation_data=generate_valid,
-        callbacks=_get_callbacks(patience, model_file, save_last_model),
+        callbacks=_get_callbacks(patience, model_file, save_last_model, log_tensorboard, gcp_bucket, gcp_path),
     )
 
     logging.info('Model weights saved at: %s' % model_file)
@@ -84,12 +94,77 @@ def train_model_from_generators(
 
 
 def _get_callbacks(
-    patience: int, model_file: str, save_last_model: bool,
+    patience: int, model_file: str, save_last_model: bool, log_tensorboard: bool, gcp_bucket: str, gcp_path: str,
 ) -> List[Callback]:
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
-        ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
+        ModelCheckpointWithGCP(model_file, gcp_bucket, gcp_path, verbose=1, save_best_only=not save_last_model) if gcp_bucket else ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
+        CSVLogger(os.path.join(os.path.dirname(model_file), 'training.log'), append=True),
+        TensorBoard(log_dir=os.path.join(os.path.dirname(model_file), 'training.log'),
+                    histogram_freq=1) if log_tensorboard else None,
     ]
-    
+    callbacks = [item for item in callbacks if item is not None]
+
     return callbacks
+
+
+### Custom Callbacks ###
+class ModelCheckpointWithGCP(Callback):
+    def __init__(self, local_checkpoint_path, gcp_bucket, gcp_path, monitor='val_loss', verbose=0, save_best_only=False, mode='auto'):
+        super().__init__()
+        self.local_checkpoint_path = local_checkpoint_path
+        self.gcp_bucket = gcp_bucket
+        self.gcp_path = gcp_path
+        self.save_best_only = save_best_only
+        self.monitor = monitor
+        self.mode = mode
+
+        # Configure ModelCheckpoint callback to save locally
+        self.checkpoint_callback = ModelCheckpoint(
+            filepath=self.local_checkpoint_path,
+            monitor=monitor,
+            save_best_only=self.save_best_only,
+            verbose = verbose,
+            mode=mode,
+            save_weights_only=False
+        )
+
+        # Google Cloud Storage client
+        self.client = storage.Client()
+        self.bucket = self.client.bucket(self.gcp_bucket)
+
+        # For tracking best value
+        self.best = None
+        if self.mode == 'min':
+            self.monitor_op = np.less
+            self.best = np.inf
+        elif self.mode == 'max':
+            self.monitor_op = np.greater
+            self.best = -np.inf
+        else:
+            if 'acc' in self.monitor or self.monitor.startswith('fmeasure'):
+                self.monitor_op = np.greater
+                self.best = -np.inf
+            else:
+                self.monitor_op = np.less
+                self.best = np.inf
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        current = logs.get(self.monitor)
+        if current is None:
+            return
+
+        # Delegate to the internal ModelCheckpoint
+        self.checkpoint_callback.on_epoch_end(epoch, logs)
+
+        # Upload the file to GCP if it's the best or not save_best_only
+        if (not self.save_best_only) or self.monitor_op(current, self.best):
+            self.best = current
+            self.upload_to_gcp()
+
+    def upload_to_gcp(self):
+        blob = self.bucket.blob(self.gcp_path)
+        blob.upload_from_filename(self.local_checkpoint_path)
+        print(f"Uploaded checkpoint to gs://{self.gcp_bucket}/{self.gcp_path}")
