@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-push-to-gcr-service-account:
     name: Build & push to GCR/GHCR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       - name: Authenticate to Google Cloud
