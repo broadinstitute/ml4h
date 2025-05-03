@@ -43,6 +43,7 @@ jobs:
 
       - name: Push to git
         run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git add setup.py 
           git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
           git push
