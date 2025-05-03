@@ -30,8 +30,9 @@ jobs:
 
       - name: Replace string in file
         run: |
+          VERSION_TAG="${{ github.event.release.tag_name }}"
           grep "version" setup.py
-          if [[ ${{ github.event.release.tag_name }} =~ [v0-9.]* ]]; then
+          if [[ "$VERSION_TAG" =~ [v0-9.]* ]]; then
               sed  -i "s/version='[v0-9.]*',/version='${{ github.event.release.tag_name }}',/g" setup.py
           else
               echo "Tag is an unexpected value and no version uodate will occur"
