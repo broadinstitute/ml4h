@@ -3,13 +3,14 @@ name: Increment version
 on:
   release:
     types: [published]
+  workflow_dispatch:  # Allows manual trigger via GitHub UI
 
 permissions:
   contents: write
 
 jobs:
   update_version:
-    if: ${{ github.event.release.tag_name != '' }}
+    if: ${{ github.event.release.tag_name != '' || github.event_name == 'workflow_dispatch'}}
     name: Update version
     runs-on: ubuntu-latest
     steps:
