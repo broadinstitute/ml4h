@@ -43,8 +43,9 @@ jobs:
 
       - name: Push to git
         run: |
-          git config lfs.https://github.com/${{ github.repository }}.locksverify false
-          git remote set-url origin https://${{ secrets.CR_PAT }}@github.com/${{ github.repository }}
+          git config lfs.https://github.com/broadinstitute/ml4h.locksverify false
+          git config lfs.https://github.com/broadinstitute/ml4h.git.locksverify false
+          git remote set-url origin https://${{ secrets.GHCR_USERNAME }}:${{ secrets.GHCR_TOKEN }}@github.com/${{ github.repository }}
           git remote -v
           git add setup.py 
           git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
