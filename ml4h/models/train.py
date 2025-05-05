@@ -153,6 +153,6 @@ class ModelCheckpointWithGCP(Callback):
             self.upload_to_gcp()
 
     def upload_to_gcp(self):
-        blob = self.bucket.blob(self.gcp_path)
+        blob = self.bucket.blob(os.path.join(self.gcp_path,os.path.basename(self.local_checkpoint_path)))
         blob.upload_from_filename(self.local_checkpoint_path)
         print(f"Uploaded checkpoint to gs://{self.gcp_bucket}/{self.gcp_path}")
