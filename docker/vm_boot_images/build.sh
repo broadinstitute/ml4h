@@ -11,7 +11,7 @@ set -e
 
 ################### VARIABLES ############################################
 
-REPO="gcr.io/broad-ml4cvd/deeplearning"
+REPO="us-central1-docker.pkg.dev/broad-ml4cvd/deeplearning/ml4h"
 GITHUB_REPO="ghcr.io/broadinstitute/ml4h"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
