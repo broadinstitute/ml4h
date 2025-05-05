@@ -20,6 +20,7 @@ jobs:
 
       - name: Checkout main for version edit
         run: |
+          export GIT_LFS_SKIP_SMUDGE=1
           # Note: the following account information will not work on GHES
           export GIT_LFS_SKIP_SMUDGE=1
           git config --global user.name "github-actions[bot]"
@@ -45,5 +46,5 @@ jobs:
           git config lfs.https://github.com/broadinstitute/ml4h.git.locksverify false
           git remote set-url origin https://${{ secrets.GHCR_USERNAME }}:${{ secrets.GHCR_TOKEN }}@github.com/${{ github.repository }}
           git add setup.py 
-          git commit -m "Version bump to ${{ github.event.release.tag_name }}'"
+          git commit -m "Version bump to ${{ github.event.release.tag_name }}"
           git push
