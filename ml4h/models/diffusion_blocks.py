@@ -131,6 +131,7 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     for width in reversed(widths[:-1]):
         x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
+    x = conv(input_shape[-1], kernel_size=3, kernel_initializer="zeros")(x)
     x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances], x, name="residual_unet")
@@ -347,6 +348,7 @@ def get_control_network(
             x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
     # ─── final convs ────────────────────────────────────────────
+    x = conv(input_shape[-1], kernel_size=3, kernel_initializer="zeros")(x)
     x = conv(input_shape[-1], kernel_size=1, activation="linear", kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances, control], x, name="control_unet")
