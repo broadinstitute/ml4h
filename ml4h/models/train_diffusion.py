@@ -165,7 +165,7 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
 def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
     control_batch = {}
     if control_tm.is_continuous():
-        samples = np.arange(-4, 5, 1)
+        samples = np.arange(-1, 1, 0.4)
     elif control_tm.is_categorical():
         samples = np.arange(0, len(control_tm.channel_map), 1)
     num_rows = len(samples)
