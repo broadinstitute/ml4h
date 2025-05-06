@@ -39,7 +39,7 @@ def train_diffusion_model(args):
     checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.keras"
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
-        save_weights_only=True,
+        save_weights_only=False,
         monitor="val_i_loss",
         mode="min",
         save_best_only=True,
