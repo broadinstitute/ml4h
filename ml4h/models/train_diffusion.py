@@ -54,7 +54,7 @@ def train_diffusion_model(args):
 
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
-    test_preds = model.network.predict(batch[0])
+    test_preds = model.network.predict(generate_train, steps=1)
     if args.inspect_model:
         model.network.summary(print_fn=logging.info, expand_nested=True)
         tf.keras.utils.plot_model(
