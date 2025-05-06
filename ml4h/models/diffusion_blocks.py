@@ -743,7 +743,7 @@ class DiffusionController(keras.Model):
         config = super().get_config().copy()
         config.update({'sigmoid_beta': self.sigmoid_beta, 'batch_size': self.batch_size})
         return config
-    
+
     def compile(self, **kwargs):
         super().compile(**kwargs)
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
@@ -1172,6 +1172,7 @@ class DiffusionController(keras.Model):
 def _register_all(module_globals):
     for name, obj in module_globals.items():
         if callable(obj) and not name.startswith("_"):
+            logging.info(f'Trying to register {name}')
             module_globals[name] = register_keras_serializable()(obj)
 
 _register_all(globals())
