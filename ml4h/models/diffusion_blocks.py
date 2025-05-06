@@ -573,6 +573,18 @@ class DiffusionModel(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
+    def call(self, inputs, training=False):
+        """
+        A minimal forward pass so that:
+          1. Keras knows how to build() the model
+          2. You can use model((noisy_images, noise_rates)) for inference
+        """
+        noisy_images, noise_rates = inputs
+        # re-compute signal_rates
+        signal_rates = tf.sqrt(1.0 - tf.square(noise_rates))
+        # this returns (pred_noises, pred_images)
+        return self.denoise(noisy_images, noise_rates, signal_rates, training=training)
+
     def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
