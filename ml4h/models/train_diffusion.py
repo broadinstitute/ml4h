@@ -76,6 +76,9 @@ def train_diffusion_model(args):
             plot_partial = partial(model.plot_images, reseed=args.random_seed, prefix=prefix_value)
         callbacks.append(keras.callbacks.LambdaCallback(on_epoch_end=plot_partial))
 
+    sample_input = next(iter(generate_train))[0][model.tensor_map.input_name()]
+    model.normalizer.adapt(sample_input)
+    model(sample_input)
     history = model.fit(
         generate_train,
         steps_per_epoch=args.training_steps,
