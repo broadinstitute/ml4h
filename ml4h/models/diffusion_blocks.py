@@ -474,7 +474,6 @@ class DiffusionModel(keras.Model):
         generated_images = self.denormalize(generated_images)
         return generated_images
 
-    @tf.function
     def train_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
