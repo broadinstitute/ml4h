@@ -1172,7 +1172,7 @@ class DiffusionController(keras.Model):
 def _register_all(module_globals):
     for name, obj in module_globals.items():
         if callable(obj) and not name.startswith("_"):
-            logging.info(f'Trying to register {name}')
+            print(f'Trying to register {name}')
             module_globals[name] = register_keras_serializable()(obj)
 
 _register_all(globals())
