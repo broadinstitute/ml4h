@@ -9,7 +9,6 @@ from datetime import datetime
 
 import tensorflow as tf
 from tensorflow import keras
-import tensorflow_addons as tfa
 
 from ml4h.defines import IMAGE_EXT
 from ml4h.explorations import predictions_to_pngs
@@ -26,7 +25,7 @@ def train_diffusion_model(args):
                            args.diffusion_loss, args.sigmoid_beta, args.inspect_model)
 
     model.compile(
-        optimizer=tfa.optimizers.AdamW(
+        optimizer=tf.keras.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
         loss=keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error,
@@ -226,7 +225,7 @@ def train_diffusion_control_model(args, supervised=False):
 
     loss = keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error
     model.compile(
-        optimizer=tfa.optimizers.AdamW(
+        optimizer=tf.keras.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
         loss=loss,
@@ -350,7 +349,7 @@ def test_diffusion_control_model(args, unconditioned=False, supervised=False):
         )
 
     loss = keras.losses.mean_absolute_error if args.diffusion_loss == 'mean_absolute_error' else keras.losses.mean_squared_error
-    model.compile(optimizer=tfa.optimizers.AdamW(learning_rate=args.learning_rate, weight_decay=1e-4), loss=loss)
+    model.compile(optimizer=tf.keras.optimizers.AdamW(learning_rate=args.learning_rate, weight_decay=1e-4), loss=loss)
     checkpoint_path = f"{args.output_folder}{args.id}/{args.id}"
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
