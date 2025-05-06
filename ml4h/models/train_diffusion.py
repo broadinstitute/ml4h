@@ -7,8 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+import keras
 import tensorflow as tf
-from tensorflow import keras
 
 from ml4h.defines import IMAGE_EXT
 from ml4h.explorations import predictions_to_pngs
@@ -54,7 +54,7 @@ def train_diffusion_model(args):
 
     # calculate mean and variance of training dataset for normalization
     model.normalizer.adapt(feature_batch)
-
+    test_preds = model.network.predict(batch[0])
     if args.inspect_model:
         model.network.summary(print_fn=logging.info, expand_nested=True)
         tf.keras.utils.plot_model(
