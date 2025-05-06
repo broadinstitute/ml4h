@@ -31,7 +31,7 @@ ema = 0.999
 # plotting
 plot_diffusion_steps = 50
 
-
+@register_keras_serializable()
 def sinusoidal_embedding(x, dims=1):
     embedding_min_frequency = 1.0
     frequencies = tf.exp(
@@ -55,7 +55,7 @@ def sinusoidal_embedding(x, dims=1):
         raise ValueError(f'No support for 4d or more.')
     return embeddings
 
-
+@register_keras_serializable()
 def residual_block(width, conv, kernel_size, groups=32):
     def apply(x):
         # shortcut
@@ -80,7 +80,7 @@ def residual_block(width, conv, kernel_size, groups=32):
         return x
     return apply
 
-
+@register_keras_serializable()
 def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
     def apply(x):
         x, skips = x
@@ -91,7 +91,7 @@ def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
         return x
     return apply
 
-
+@register_keras_serializable()
 def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
     def apply(x):
         x, skips = x
@@ -102,7 +102,7 @@ def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
         return x
     return apply
 
-
+@register_keras_serializable()
 def get_network(input_shape, widths, block_depth, kernel_size):
     noisy_images = keras.Input(shape=input_shape)
     conv, upsample, pool, _ = layers_from_shape_control(input_shape)
@@ -357,7 +357,7 @@ def get_control_embed_model(output_maps, control_size):
     c = layers.Dense(control_size, activation='linear')(c)
     return keras.Model(control_ins, c, name='control_embed')
 
-
+@register_keras_serializable()
 class DiffusionModel(keras.Model):
     def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model):
         super().__init__()
@@ -716,7 +716,7 @@ class DiffusionModel(keras.Model):
         plt.show()
         plt.close()
 
-
+@register_keras_serializable()
 class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
@@ -1168,11 +1168,3 @@ class DiffusionController(keras.Model):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
         plt.close()
-
-def _register_all(module_globals):
-    for name, obj in module_globals.items():
-        if callable(obj) and not name.startswith("_"):
-            print(f'Trying to register {name}')
-            module_globals[name] = register_keras_serializable()(obj)
-
-_register_all(globals())
