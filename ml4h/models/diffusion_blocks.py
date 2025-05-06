@@ -376,7 +376,7 @@ class DiffusionModel(keras.Model):
 
     def get_config(self):
         config = super().get_config().copy()
-        config.update({'sigmoid_beta': self.sigmoid_beta, 'batch_size': self.batch_size})
+        config.update({'beta': self.beta, 'batch_size': self.batch_size})
         return config
 
 
