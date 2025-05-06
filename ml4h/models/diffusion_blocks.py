@@ -474,6 +474,7 @@ class DiffusionModel(keras.Model):
         generated_images = self.denormalize(generated_images)
         return generated_images
 
+    @tf.function
     def train_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
@@ -498,8 +499,8 @@ class DiffusionModel(keras.Model):
                 noisy_images, noise_rates, signal_rates, training=True,
             )
 
-            noise_loss = tf.reduce_mean(self.loss(noises, pred_noises))  # used for training
-            image_loss = tf.reduce_mean(self.loss(images, pred_images))  # only used as metric
+            noise_loss = self.loss(noises, pred_noises)  # used for training
+            image_loss = self.loss(images, pred_images)  # only used as metric
             if self.use_sigmoid_loss:
                 signal_rates_squared = tf.square(signal_rates)
                 noise_rates_squared = tf.square(noise_rates)
