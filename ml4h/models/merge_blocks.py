@@ -2,6 +2,8 @@ import logging
 from typing import Dict, List, Tuple
 
 import numpy as np
+
+import keras
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
@@ -13,6 +15,7 @@ from ml4h.TensorMap import TensorMap
 from ml4h.models.basic_blocks import DenseBlock
 from ml4h.models.layer_wrappers import global_average_pool
 from tensorflow.keras.losses import categorical_crossentropy
+from keras.saving import register_keras_serializable
 
 
 Tensor = tf.Tensor
@@ -87,11 +90,14 @@ class KroneckerBlock(Block):
         ) if dense_layers else None
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        for left, right in self.pairs:
-            ein_shape = tf.shape(intermediates[left][-1])
-            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-            kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
-            y = tf.reshape(kron, [ein_shape[0], self.encoding_size * self.encoding_size])
+        y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
+        eshape = tf.shape(intermediates.items()[0][-1])
+        if len(y) == 2:
+            logging.info(f'********\n\n\n*********** Trying KRONECKER {self.encoding_size}\n*******************\n\n')
+            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', y[0], y[1]))
+            kron = kron_layer(y)
+            y = tf.reshape(kron, [eshape[0], self.encoding_size * self.encoding_size])
+
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
 
@@ -147,6 +153,7 @@ class DropoutBlock(Block):
         #     tf_g = tf.gather_nd(tf_y, indices)
         #     out = tf.transpose(tf_g)
         #     return out
+
 
 class GlobalAveragePoolBlock(Block):
     """
@@ -240,6 +247,10 @@ class PairLossBlock(Block):
         else:
             raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
+    def get_config(self):
+        return self.loss_layer.get_config()
+
+    #@tf.function()
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
         for left, right in self.pairs:
@@ -249,14 +260,7 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'concat':
             return concatenate(y)
         elif self.pair_merge == 'dropout':
-            random_index = tf.random.uniform(shape=[intermediates[left][-1].shape[-1]], maxval=len(y), dtype=tf.int32)
-            ranger = tf.range(intermediates[left][-1].shape[-1])
-            indices = tf.stack([random_index, ranger], axis=-1)
-            tf_y = tf.convert_to_tensor(y)
-            tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
-            tf_g = tf.gather_nd(tf_y, indices)
-            out = tf.transpose(tf_g)
-            return out
+            return DropoutMergeLayer()(y)
         elif self.pair_merge == 'kronecker':
             krons = []
             for left, right in self.pairs:
@@ -273,6 +277,62 @@ class PairLossBlock(Block):
             return kron
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
+    def _dropout_merge(self, y):
+        tf_y = tf.stack(y, axis=0)  # shape: [num_pairs, batch, dim]
+        tf_y = tf.transpose(tf_y, perm=[1, 2, 0])  # shape: [batch, dim, num_pairs]
+
+        batch_size = tf.shape(tf_y)[0]
+        dim = tf.shape(tf_y)[1]
+        num_pairs = tf.shape(tf_y)[2]
+
+        random_indices = tf.random.uniform(shape=[batch_size], maxval=num_pairs, dtype=tf.int32)
+        dim_range = tf.range(dim)
+        dim_range = tf.reshape(dim_range, [1, -1])
+        dim_range = tf.tile(dim_range, [batch_size, 1])
+
+        batch_indices = tf.range(batch_size)
+        batch_indices = tf.reshape(batch_indices, [batch_size, 1])
+        batch_indices = tf.tile(batch_indices, [1, dim])
+        gather_indices = tf.stack([batch_indices, dim_range], axis=-1)
+
+        gather_indices = tf.reshape(gather_indices, [-1, 2])
+        rand_idx_exp = tf.reshape(tf.repeat(random_indices, dim), [-1, 1])
+        gather_indices = tf.concat([gather_indices, rand_idx_exp], axis=-1)
+
+        gathered = tf.gather_nd(tf_y, gather_indices)
+        return tf.reshape(gathered, [batch_size, dim])
+
+@register_keras_serializable()
+class DropoutMergeLayer(tf.keras.layers.Layer):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    def call(self, y):
+        tf_y = tf.stack(y, axis=0)  # shape: [num_pairs, batch, dim]
+        tf_y = tf.transpose(tf_y, perm=[1, 2, 0])  # shape: [batch, dim, num_pairs]
+
+        batch_size = tf.shape(tf_y)[0]
+        dim = tf.shape(tf_y)[1]
+        num_pairs = tf.shape(tf_y)[2]
+
+        random_indices = tf.random.uniform(shape=[batch_size], maxval=num_pairs, dtype=tf.int32)
+        dim_range = tf.range(dim)
+        dim_range = tf.reshape(dim_range, [1, -1])
+        dim_range = tf.tile(dim_range, [batch_size, 1])
+
+        batch_indices = tf.range(batch_size)
+        batch_indices = tf.reshape(batch_indices, [batch_size, 1])
+        batch_indices = tf.tile(batch_indices, [1, dim])
+        gather_indices = tf.stack([batch_indices, dim_range], axis=-1)
+
+        gather_indices = tf.reshape(gather_indices, [-1, 2])
+        rand_idx_exp = tf.reshape(tf.repeat(random_indices, dim), [-1, 1])
+        gather_indices = tf.concat([gather_indices, rand_idx_exp], axis=-1)
+
+        gathered = tf.gather_nd(tf_y, gather_indices)
+        return tf.reshape(gathered, [batch_size, dim])
+    def get_config(self):
+        config = super().get_config()
+        return config
 
 
 def l2_norm(x, axis=None):
@@ -308,7 +368,7 @@ def contrastive_difference(left: Tensor, right: Tensor, batch_size: int, tempera
     loss = (loss_left + loss_right)/2
     return loss / batch_size
 
-
+@register_keras_serializable()
 class CosineLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
@@ -327,7 +387,7 @@ class CosineLossLayer(Layer):
         self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
         return inputs
 
-
+@register_keras_serializable()
 class L2LossLayer(Layer):
     """Layer that creates an L2 loss."""
 
@@ -346,6 +406,7 @@ class L2LossLayer(Layer):
         return inputs
 
 
+@register_keras_serializable()
 class ContrastiveLossLayer(Layer):
     """Layer that creates an Cosine loss."""
 
@@ -363,13 +424,12 @@ class ContrastiveLossLayer(Layer):
         config.update({'weight': self.weight, 'batch_size': self.batch_size})
         return config
 
-    def call(self, inputs):
+    def call(self, inputs, training = None):
         # We use `add_loss` to create a regularization loss
         # that depends on the inputs.
-
         contrastive_loss = self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature)
         self.add_loss(contrastive_loss)
-        self.add_metric(contrastive_loss, name="contrastive_loss")
+        #self.add_metric(contrastive_loss)
         return inputs
 
 

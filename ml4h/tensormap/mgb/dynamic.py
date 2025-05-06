@@ -814,7 +814,7 @@ def make_mgb_ecg_measurement_matrix_global_tensor_maps(needed_name: str):
                 interpretation=Interpretation.CONTINUOUS,
                 shape=(None, 1),
                 path_prefix=PARTNERS_PREFIX,
-                loss='logcosh',
+                loss='log_cosh',
                 time_series_limit=0,
                 tensor_from_file=make_measurement_matrix_from_file(measure_idx),
             )
@@ -888,7 +888,7 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                     interpretation=Interpretation.CONTINUOUS,
                     shape=(None, 1),
                     path_prefix=PARTNERS_PREFIX,
-                    loss='logcosh',
+                    loss='log_cosh',
                     time_series_limit=0,
                     tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=lead_idx),
                 )
@@ -901,7 +901,7 @@ def make_mgb_ecg_measurement_matrix_lead_tensor_maps(needed_name: str):
                 interpretation=Interpretation.CONTINUOUS,
                 shape=(None, 1),
                 path_prefix=PARTNERS_PREFIX,
-                loss='logcosh',
+                loss='log_cosh',
                 time_series_limit=0,
                 tensor_from_file=make_measurement_matrix_from_file(measure_idx, lead_idx=list(measurement_matrix_leads.values())),
             )

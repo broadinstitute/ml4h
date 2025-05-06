@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - '*'           # Push events to every tag not containing /
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.12]
 
     steps:
     - uses: actions/checkout@v4
@@ -32,9 +33,9 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: python -m build
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: python-package-distributions
+        name: python-package-distributions-${{ matrix.python-version }}
         path: dist/
 
   publish-to-pypi:
@@ -51,9 +52,9 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
+        name: python-package-distributions-3.12
         path: dist/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

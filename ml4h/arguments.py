@@ -28,6 +28,9 @@ from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
+    generate_latent_tensor_map_from_file
+
 from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
@@ -293,7 +296,7 @@ def parse_args():
         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
     )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
-    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
     parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2', 'cosine_decay'], help='Adjusts learning rate during training.')
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
@@ -431,6 +434,10 @@ def parse_args():
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")
 
+    #Parent Sort enable or disable
+    parser.add_argument('--parent_sort', default=True, type=lambda x: x.lower() == 'true', help='disable or enable parent_sort on output tmaps')
+    #Dictionary outputs
+    parser.add_argument('--named_outputs', default=False, type=lambda x: x.lower() == 'true', help='pass output tmaps as dictionaries if true else pass as list')
     args = parser.parse_args()
     _process_args(args)
     return args
@@ -545,6 +552,7 @@ def _process_args(args):
             new_pairs.append(tm)
         if len(args.pairs) > 0:
             args.pairs = [new_pairs]
+
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
@@ -569,11 +577,13 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                 ),
             )
+
     if len(args.latent_output_files) > 0:
         for lof in args.latent_output_files:
             args.tensor_maps_out.append(
                 generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
             )
+
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]

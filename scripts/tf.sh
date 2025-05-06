@@ -6,9 +6,14 @@
 
 ################### VARIABLES ############################################
 
+# The mlflow login information pulled from Google secrets to pass to the docker image for tracking
+export LOGNAME=$(gcloud config get-value account)
+export MLFLOW_TRACKING_USERNAME=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_username')
+export MLFLOW_TRACKING_PASSWORD=$(gcloud --project='broad-ml4cvd' secrets versions access latest --secret='mlflow_tracking_password')
+
 # The default images are based on ufoym/deepo:all-py36-jupyter
-DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-gpu"
-DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.9-latest-cpu"
+DOCKER_IMAGE_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.19-latest-gpu"
+DOCKER_IMAGE_NO_GPU="gcr.io/broad-ml4cvd/deeplearning:tf2.19-latest-cpu"
 DOCKER_IMAGE=${DOCKER_IMAGE_GPU}
 GPU_DEVICE="--gpus all"
 INTERACTIVE=""
@@ -166,6 +171,9 @@ Attempting to run Docker with
     ${GPU_DEVICE} \
     --env GROUP_NAMES \
     --env GROUP_IDS \
+    --env LOGNAME \
+    --env MLFLOW_TRACKING_USERNAME \
+    --env MLFLOW_TRACKING_PASSWORD \
     --rm \
     --ipc=host \
     -v ${WORKDIR}/:${WORKDIR}/ \
@@ -179,11 +187,14 @@ docker run ${INTERACTIVE} \
 ${GPU_DEVICE} \
 --env GROUP_NAMES \
 --env GROUP_IDS \
+--env LOGNAME \
+--env MLFLOW_TRACKING_USERNAME \
+--env MLFLOW_TRACKING_PASSWORD \
 --rm \
 --ipc=host \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install --quiet --upgrade pip
-pip install --quiet ${WORKDIR};
+pip install ${WORKDIR}
 eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"

@@ -181,8 +181,6 @@ def evaluate_predictions(
     :param height: Figure height in inches
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
-    print("y_predictions",y_predictions.shape)
-    print("y_truth",y_truth.shape)
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
@@ -781,8 +779,8 @@ def plot_scatter(
     ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
-    sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
-    sns.distplot(truth, label="Truth", color="b", ax=ax2)
+    sns.histplot(prediction, label="Predicted", color="blue", edgecolor=None, ax=ax2, bins=min(64, len(prediction)))
+    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor=None, bins=min(64, len(prediction)))
     ax2.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, f"scatter_r_{pearson:0.4f}_{title}{IMAGE_EXT}")
@@ -3492,7 +3490,7 @@ def regplot(
     )
     axes[1].axhline(0, ls="--", color="k")
 
-    sns.distplot(res.resid, ax=axes[2], bins=bins)
+    sns.histplot(res.resid, ax=axes[2], bins=bins)
 
     if destination is not None:
         fig.savefig(destination)

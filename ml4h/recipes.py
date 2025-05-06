@@ -49,6 +49,7 @@ from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoc
 
 from torch.utils.data import DataLoader
 
+
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
     try:
@@ -230,28 +231,45 @@ def train_multimodal_multitask(args):
         args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
         save_last_model=args.save_last_model,
     )
+
+    save_dir = os.path.join(args.output_folder, args.id)
+    os.makedirs(save_dir, exist_ok=True)
     for tm in encoders:
-        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+        encoders[tm].save(os.path.join(save_dir, f'encoder_{tm.name}{MODEL_EXT}'))
     for tm in decoders:
-        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+        decoders[tm].save(os.path.join(save_dir, f'decoder_{tm.name}{MODEL_EXT}'))
     if merger:
-        merger.save(f'{args.output_folder}{args.id}/merger.h5')
+        merger.save(os.path.join(save_dir, f'merger{MODEL_EXT}'))
 
     performance_metrics = {}
     if args.test_steps > 0:
-        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+        iter_generate_test = iter(generate_test)
+        test_data, test_labels, _ = big_batch_from_minibatch_generator(iter_generate_test, args.test_steps)
+        test_paths = None
         performance_metrics = _predict_and_evaluate(
             model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
             args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
             args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
         )
 
-        predictions_list = model.predict(test_data)
+        predictions = model.predict(test_data)
+        predictions_dict = {}
+
+        if isinstance(predictions, dict):
+            predictions_dict = predictions
+
+        elif isinstance(predictions, (list, tuple)):
+            # Map outputs by model.output_names (strings)
+            predictions_dict = {
+                str(name): pred for name, pred in zip(model.output_names, predictions)
+            }
+        else:
+            # Single tensor output
+            predictions_dict = {
+                model.output_names[0]: predictions
+        }
         samples = min(args.test_steps * args.batch_size, 12)
         out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
-        if len(args.tensor_maps_out) == 1:
-            predictions_list = [predictions_list]
-        predictions_dict = {name: pred for name, pred in zip(model.output_names, predictions_list)}
         logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
 
         for i, etm in enumerate(encoders):
@@ -275,7 +293,7 @@ def train_multimodal_multitask(args):
 
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = legacy_multimodal_multitask_model(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(
@@ -287,7 +305,7 @@ def test_multimodal_multitask(args):
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = legacy_multimodal_multitask_model(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     p = os.path.join(args.output_folder, args.id + '/')
     return _predict_scalars_and_evaluate_from_generator(
         model, generate_test, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected, args.test_steps,
@@ -758,7 +776,7 @@ def infer_multimodal_multitask(args):
                 elif len(otm.shape) == 1 and otm.is_categorical():
                     for k, i in otm.channel_map.items():
                         try:
-                            csv_row.append(str(y[0][otm.channel_map[k]]))
+                            csv_row.append(str(y[ot][0][otm.channel_map[k]]))
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
@@ -766,8 +784,8 @@ def infer_multimodal_multitask(args):
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
                     days_per_bin = 1 + otm.days_window // intervals
-                    predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
-                    #predicted_survivals = np.cumprod(y[:, :10], axis=1) 2 year probability
+                    #predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                    predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
                     csv_row.append(str(1 - predicted_survivals[0, -1]))
                     sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
                     follow_up = np.cumsum(output_data[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
@@ -826,7 +844,7 @@ def infer_hidden_layer_multimodal_multitask(args):
     full_model = legacy_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
     embed_model.save(_hidden_file_name(args.output_folder, f'{args.hidden_layer}_encoder_', args.id, '.h5'))
-    dummy_input = {tm.input_name(): np.zeros((1,) + full_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in args.tensor_maps_in}
+    dummy_input = {tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in args.tensor_maps_in}
     dummy_out = embed_model.predict(dummy_input)
     latent_dimensions = int(np.prod(dummy_out.shape[1:]))
     logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions} Will write inferences to: {inference_tsv}')
@@ -972,6 +990,8 @@ def plot_while_training(args):
 def saliency_maps(args):
     import tensorflow as tf
     tf.compat.v1.disable_eager_execution()
+    from tensorflow.python.framework.ops import disable_eager_execution
+    disable_eager_execution()
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = legacy_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
@@ -998,6 +1018,8 @@ def _predict_and_evaluate(
     for y, tm in zip(y_predictions, tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
+        if isinstance(y_predictions, dict):
+            y_predictions = y_predictions[tm.output_name()]
         if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
@@ -1040,10 +1062,14 @@ def _predict_scalars_and_evaluate_from_generator(
     embeddings = []
     test_paths = []
     for i in range(steps):
-        batch = next(generate_test)
-        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        batch = next(iter(generate_test))
+        if len(batch) == 3:
+            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            test_paths.extend(tensor_paths)
+        else:
+            input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
+            tensor_paths = None
         y_predictions = model.predict(input_data, verbose=0)
-        test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
@@ -1057,7 +1083,7 @@ def _predict_scalars_and_evaluate_from_generator(
             if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                 y = y_predictions
             if tm_output_name in scalar_predictions:
-                scalar_predictions[tm_output_name].extend(np.copy(y))
+                scalar_predictions[tm_output_name].extend(np.copy(y[tm_output_name]))
 
         if i % 100 == 0:
             logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')

@@ -21,7 +21,7 @@ from ml4h.TensorMap import TensorMap
 Tensor = tf.Tensor
 
 # sampling
-min_signal_rate = 0.02
+min_signal_rate = 0.05
 max_signal_rate = 0.95
 
 # architecture
@@ -69,12 +69,12 @@ def residual_block(width, conv, kernel_size, groups=32):
             residual = x
 
         # first GN → SiLU → Conv
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
 
         # second GN → SiLU → Conv
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
 
@@ -130,7 +130,6 @@ def get_network(input_shape, widths, block_depth, kernel_size):
 
     for width in reversed(widths[:-1]):
         x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
-
 
     x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
@@ -196,11 +195,10 @@ def residual_block_control(
             x = condition_layer_film(x, control, width)
 
         # ─── GN → SiLU → Conv → GN → SiLU → Conv → Add ───────────
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding='same')(x)
-
-        x = tfa.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding='same')(x)
 

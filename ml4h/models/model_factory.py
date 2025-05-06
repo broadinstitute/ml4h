@@ -8,15 +8,19 @@ from collections import defaultdict, Counter
 from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 
 import tensorflow as tf
-from tensorflow import keras
+
+import keras
+
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Input, Layer
+from tensorflow.keras.layers import Input, Layer, Lambda
 from tensorflow_hub import KerasLayer
 
 from ml4h.models.Block import Block
 from ml4h.TensorMap import TensorMap
 from ml4h.metrics import get_metric_dict
-from ml4h.optimizers import NON_KERAS_OPTIMIZERS, get_optimizer
+
+from ml4h.optimizers import get_optimizer
+
 from ml4h.models.perceiver_blocks import PerceiverEncoder, PerceiverLatentLayer
 from ml4h.models.layer_wrappers import ACTIVATION_FUNCTIONS, NORMALIZATION_CLASSES
 from ml4h.models.pretrained_blocks import ResNetEncoder, MoviNetEncoder, BertEncoder
@@ -25,8 +29,10 @@ from ml4h.models.transformer_blocks import TransformerDecoder, TransformerEncode
 from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, LanguagePredictionBlock, RandomGauss, \
     IdentityEncoderBlock, IdentityDecoderBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
-from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, CosineLossLayer
-from ml4h.models.merge_blocks import L2LossLayer, VariationalDiagNormal, KroneckerBlock, DropoutBlock
+
+from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, \
+    VariationalDiagNormal, KroneckerBlock, DropoutBlock
+
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
 
@@ -120,7 +126,10 @@ def make_multimodal_multitask_model(
     )
 
     if kwargs.get('model_file', False):
+        return tf.keras.models.load_model(kwargs['model_file'])
+    if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
+
 
     full_model, encoders, decoders, merger = multimodal_multitask_model(
         tensor_maps_in, tensor_maps_out,
@@ -129,12 +138,13 @@ def make_multimodal_multitask_model(
     )
     losses = [tm.loss for tm in tensor_maps_out]
     if len(losses) == 0:
-        logging.info(f"No losses found hopefully a contrastive loss is being used.")
+        logging.warning(f"No losses found, hoping there is contrastive loss merge block.")
         losses = None
     full_model.compile(
         optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    full_model.summary(print_fn=logging.info, expand_nested=True)
+    full_model.summary()
+    #full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
         full_model.load_weights(kwargs['model_layers'], by_name=True)
         logging.info(f"Loaded model weights from:{kwargs['model_layers']}")
@@ -173,13 +183,14 @@ def multimodal_multitask_model(
     encoder_block_functions = {tm: identity for tm in tensor_maps_in}  # Dict[TensorMap, Block]
     for tm in tensor_maps_in:
         logging.info(f"*** Building Encoder of Tensor Map {tm} of {len(tensor_maps_in)} input TensorMaps.")
+
         for encode_block in encoder_blocks:  # TODO: just check that it is a block?,
             if isinstance(encode_block, Block):
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], encode_block(tensor_map=tm, **kwargs))
             elif encode_block in BLOCK_CLASSES:
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
 
-            elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
+            elif encode_block.endswith(f'encoder_{tm.name}.keras'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
                 serialized_encoder = add_prefix(serialized_encoder, f'encode_block_{tm.name}', custom_dict)
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
@@ -194,7 +205,7 @@ def multimodal_multitask_model(
             merge = compose(merge, BLOCK_CLASSES[merge_block](**kwargs))
 
     decoder_block_functions = {tm: identity for tm in tensor_maps_out}
-    for tm in tensor_maps_out:
+    for tm in parent_sort(tensor_maps_out):
         for decode_block in decoder_blocks:
             if isinstance(decode_block, Block):
                 decoder_block_functions[tm] = compose(
@@ -214,7 +225,7 @@ def multimodal_multitask_model(
                         **kwargs,
                     ),
                 )
-            elif decode_block.endswith(f'decoder_{tm.name}.h5'):
+            elif decode_block.endswith(f'decoder_{tm.name}.keras'):
                 serialized_decoder = load_model(decode_block, custom_objects=custom_dict, compile=False)
                 serialized_decoder = add_prefix(serialized_decoder, f'decode_block_{tm.name}', custom_dict)
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
@@ -222,7 +233,7 @@ def multimodal_multitask_model(
             else:
                 logging.warning(f'{tm.name} is ignoring decoding block {decode_block}.')
 
-    return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect)
+    return make_multimodal_multitask_model_block(encoder_block_functions, merge, decoder_block_functions, u_connect, **kwargs)
 
 
 def make_multimodal_multitask_model_block(
@@ -230,6 +241,7 @@ def make_multimodal_multitask_model_block(
         merge: Block,
         decoder_block_functions: Dict[TensorMap, Block],  # Assumed to be topologically sorted according to parents hierarchy
         u_connect: DefaultDict[TensorMap, Set[TensorMap]],
+        **kwargs
 ) -> Tuple[Model, Dict[TensorMap, Model], Dict[TensorMap, Model], Model]:
     """
     Turn Blocks into Models
@@ -250,15 +262,16 @@ def make_multimodal_multitask_model_block(
     encodings_as_inputs: List[Input] = []
     intermediates: Dict[TensorMap, List[Layer]] = defaultdict(list)
 
-    for tm, encoder_block in encoder_block_functions.items():
+    tensor_maps_in = list(encoder_block_functions.keys())
+    for tm in tensor_maps_in:
         if tm.is_text():
             inputs[tm] = Input(shape=(), dtype=tf.string, name=tm.name)
         else:
             inputs[tm] = Input(shape=tm.shape, name=tm.input_name())
-        encoding = encoder_block(inputs[tm], intermediates)
+        encoding = encoder_block_functions[tm](inputs[tm], intermediates)
         encoders[tm] = Model(inputs[tm], encoding, name=f'encode_{tm.name}')
         encodings.append(encoders[tm](inputs[tm]))
-        encodings_as_inputs.append(Input(shape=encodings[-1].shape, name=f'encoding_{tm.name}'))
+    
 
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
@@ -267,23 +280,49 @@ def make_multimodal_multitask_model_block(
         latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
     else:
         latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
-        logging.info(f'multimodal_activation.shapes: {multimodal_activation.shape}')
+        logging.info(f'multimodal_activation.shapes: {multimodal_activation[0].shape}')
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
 
+    tensor_maps_out = list(decoder_block_functions.keys())
     decoders: Dict[TensorMap, Model] = {}
-    decoder_outputs = []
-    for tm, decoder_block in decoder_block_functions.items():  # TODO this needs to be a topological sorted according to parents hierarchy
-        # Do not save isolated decoders for UNETs because they require skip connection inputs as well as latent space
-        if len([tm_in for tm_in, _ in encoder_block_functions.items() if ((tm in u_connect[tm_in]) or tm.is_language())]) > 0:
-            reconstruction = decoder_block(multimodal_activation, intermediates)
-            decoder_outputs.append(reconstruction)
+    decoder_outputs_dict: Dict[TensorMap, Layer] = {}
+
+    for tm in tensor_maps_out:
+        if any((tm in u_connect[tm_in]) or tm.is_language() for tm_in in tensor_maps_in):
+            output = decoder_block_functions[tm](multimodal_activation, intermediates)
         else:
-            reconstruction = decoder_block(latent_inputs, intermediates)
-            decoders[tm] = Model(latent_inputs, reconstruction, name=tm.output_name())
-            decoder_outputs.append(decoders[tm](multimodal_activation))
-    if len(decoder_outputs) == 0:
-        decoder_outputs = [multimodal_activation]
-    full_model = Model(inputs=list(inputs.values()), outputs=decoder_outputs, name='block_model')
+            output = decoder_block_functions[tm](latent_inputs, intermediates)
+            decoders[tm] = Model(latent_inputs, output, name=tm.output_name())
+            output = decoders[tm](multimodal_activation)
+        decoder_outputs_dict[tm] = output
+        
+    named_outputs = kwargs.get("named_outputs", False)
+    if not decoder_outputs_dict:
+        final_outputs = [multimodal_activation]
+    else:
+        if named_outputs:
+            final_outputs = {
+                tm.output_name(): decoder_outputs_dict[tm]
+                for tm in parent_sort(tensor_maps_out, **kwargs)
+            }
+        else:
+            final_outputs = [decoder_outputs_dict[tm] for tm in parent_sort(tensor_maps_out, **kwargs)]
+    
+    model_inputs = [inputs[tm] for tm in tensor_maps_in]
+    full_model = Model(inputs=model_inputs, outputs=final_outputs, name='block_model')
+
+    model_file = kwargs.get('model_file')
+    if model_file:
+        for tm, encoder_model in encoders.items():
+            logging.info(f"saving encoder model encoder_{tm.name}.keras")
+            encoder_model.save(f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras")
+
+        for tm, decoder_model in decoders.items():
+            logging.info(f"saving decoder model decoder_{tm.name}.keras")
+            decoder_model.save(f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras")
+
+        merge_model.save(f"{os.path.dirname(model_file)}/merger.keras")
+
     return full_model, encoders, decoders, merge_model
 
 
@@ -296,10 +335,10 @@ def _load_model_encoders_and_decoders(
     merger = None
     try:
         for tm in tensor_maps_in:
-            encoders[tm] = load_model(f"{os.path.dirname(model_file)}/encoder_{tm.name}.h5", custom_objects=custom_dict, compile=False)
+            encoders[tm] = load_model(f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
         for tm in tensor_maps_out:
-            decoders[tm] = load_model(f"{os.path.dirname(model_file)}/decoder_{tm.name}.h5", custom_objects=custom_dict, compile=False)
-        merger = load_model(f"{os.path.dirname(model_file)}/merger.h5", custom_objects=custom_dict, compile=False)
+            decoders[tm] = load_model(f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+        merger = load_model(f"{os.path.dirname(model_file)}/merger.keras", custom_objects=custom_dict, compile=False)
     except OSError as e:
         logging.warning(f'Could not load some model modules, error: {e}')
     logging.info(f"Attempting to load model file from: {model_file}")
@@ -308,7 +347,8 @@ def _load_model_encoders_and_decoders(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
         metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
-    m.summary(print_fn=logging.info, expand_nested=True)
+    m.summary()
+    #m.summary(print_fn=logging.info, expand_nested=True)
     logging.info(f"Loaded {len(encoders)} encoders, {len(decoders)} decoders and model file from: {model_file}")
     return m, encoders, decoders, merger
 
@@ -317,7 +357,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     custom_objects = {
         obj.__name__: obj
         for obj in chain(
-            NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
+            ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
                 VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
@@ -327,11 +367,14 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
     return {**custom_objects, **get_metric_dict(tensor_maps_out)}
 
 
-def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
+def parent_sort(tms: List[TensorMap], **kwargs) -> List[TensorMap]:
     """
     Parents will always appear before their children after sorting. Idempotent and slow.
     """
     to_process = sorted(tms, key=lambda x: str(x))
+
+    if kwargs.get('parent_sort', True) == False:
+        return to_process
     final: List[TensorMap] = []
     visited = Counter()
     while to_process:
