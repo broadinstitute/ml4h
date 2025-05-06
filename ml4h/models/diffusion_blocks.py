@@ -374,6 +374,12 @@ class DiffusionModel(keras.Model):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'sigmoid_beta': self.sigmoid_beta, 'batch_size': self.batch_size})
+        return config
+
+
     def compile(self, **kwargs):
         super().compile(**kwargs)
 
@@ -733,7 +739,11 @@ class DiffusionController(keras.Model):
         self.supervision_scalar = supervision_scalar
         self.inspect_model = inspect_model
 
-
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'sigmoid_beta': self.sigmoid_beta, 'batch_size': self.batch_size})
+        return config
+    
     def compile(self, **kwargs):
         super().compile(**kwargs)
         self.noise_loss_tracker = keras.metrics.Mean(name="n_loss")
