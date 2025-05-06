@@ -5,7 +5,6 @@ import keras
 import numpy as np
 import tensorflow as tf
 from scipy.linalg import sqrtm
-from neurite.tf.losses import Dice
 import tensorflow.keras.backend as K
 from sklearn.metrics import roc_curve, auc, average_precision_score
 from tensorflow.keras.applications.inception_v3 import InceptionV3, preprocess_input
