@@ -28,7 +28,7 @@ def train_diffusion_model(args):
         optimizer=tf.keras.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
         ),
-        loss=keras.losses.MAE if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MSE,
+        loss=keras.losses.MeanAbsoluteError if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError,
     )
     batch = next(iter(generate_train))
     for k in batch[0]:
@@ -223,7 +223,7 @@ def train_diffusion_control_model(args, supervised=False):
             args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model,
         )
 
-    loss = keras.losses.MAE if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MSE
+    loss = keras.losses.MeanAbsoluteError if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError
     model.compile(
         optimizer=tf.keras.optimizers.AdamW(
             learning_rate=args.learning_rate, weight_decay=1e-4,
@@ -348,7 +348,7 @@ def test_diffusion_control_model(args, unconditioned=False, supervised=False):
             args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model,
         )
 
-    loss = keras.losses.MAE if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MSE
+    loss = keras.losses.MeanAbsoluteError if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError
     model.compile(optimizer=tf.keras.optimizers.AdamW(learning_rate=args.learning_rate, weight_decay=1e-4), loss=loss)
     checkpoint_path = f"{args.output_folder}{args.id}/{args.id}"
     if os.path.exists(checkpoint_path+'.index'):
