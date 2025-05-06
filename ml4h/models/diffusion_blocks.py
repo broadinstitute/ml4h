@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-from typing import Dict, List, Tuple, Sequence
 import math
 
 import numpy as np
@@ -9,13 +8,11 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from tensorflow import keras
-import tensorflow_addons as tfa
+
 from keras import layers
 
 from ml4h.defines import IMAGE_EXT
-from ml4h.metrics import KernelInceptionDistance, InceptionScore, MultiScaleSSIM
-from ml4h.models.Block import Block
-from ml4h.TensorMap import TensorMap
+from ml4h.metrics import KernelInceptionDistance, MultiScaleSSIM
 
 
 Tensor = tf.Tensor
