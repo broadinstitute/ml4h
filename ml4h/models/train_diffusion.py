@@ -36,7 +36,7 @@ def train_diffusion_model(args):
         feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
-    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}"
+    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}_weights.h5"
     if os.path.exists(checkpoint_path+'.index'):
         model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
