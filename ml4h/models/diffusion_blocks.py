@@ -7,9 +7,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from tensorflow import keras
-
+import keras
 from keras import layers
+from keras.saving import register_keras_serializable
 
 from ml4h.defines import IMAGE_EXT
 from ml4h.metrics import KernelInceptionDistance, MultiScaleSSIM
@@ -1158,3 +1158,10 @@ class DiffusionController(keras.Model):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path, bbox_inches="tight")
         plt.close()
+
+def _register_all(module_globals):
+    for name, obj in module_globals.items():
+        if callable(obj) and not name.startswith("_"):
+            module_globals[name] = register_keras_serializable()(obj)
+
+_register_all(globals())
