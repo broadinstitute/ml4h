@@ -4,8 +4,7 @@ This directory contains models and code for predicting incident atrial fibrillat
 
 The raw model files are stored using `git lfs` so you must have it installed and localize the full ~200MB files with:
 ```bash
-git lfs pull --include model_zoo/ECG2AF/ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5
-git lfs pull --include model_zoo/ECG2AF/strip_*
+git lfs pull --include model_zoo/ECG2AF/*keras
 ```
 
 To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the [example](./ecg2af_infer.ipynb) or run:
@@ -19,7 +18,7 @@ from ml4h.tensormap.ukb.demographics import age_2_wide, af_dummy, sex_dummy3
 
 output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3]}
 custom_dict = get_custom_objects(list(output_tensormaps.values()))
-model = load_model('./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5', custom_objects=custom_dict)
+model = load_model('./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.keras')
 ecg = np.random.random((1, 5000, 12))
 prediction = model(ecg)
 ```
