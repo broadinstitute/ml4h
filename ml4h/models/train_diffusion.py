@@ -308,7 +308,7 @@ def train_diffusion_control_model(args, supervised=False):
     # (3) adapt your normalizer, if you hadn’t already
     model.normalizer.adapt(images)
     # (4) call the model once
-    _ = model((images, noise_rates))
+    _ = model(((images, noise_rates), batch[1]))
     history = model.fit(
         generate_train,
         steps_per_epoch=args.training_steps,

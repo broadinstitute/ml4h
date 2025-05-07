@@ -987,6 +987,18 @@ class DiffusionController(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
+    def call(self, batch, training=False):
+        """
+        A minimal forward pass so that:
+          1. Keras knows how to build() the model
+          2. You can use model((noisy_images, noise_rates)) for inference
+        """
+        noisy_images, noise_rates = batch[0]
+        control_embed = self.control_embed_model(batch[1])
+        # re-compute signal_rates
+        signal_rates = tf.sqrt(1.0 - tf.square(noise_rates))
+        # this returns (pred_noises, pred_images)
+        return self.denoise(control_embed, noisy_images, noise_rates, signal_rates, training=training)
 
     def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         control_batch = {}
