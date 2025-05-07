@@ -8,7 +8,7 @@
   ],
   "outputs": [
     {
-      "name": "embed",
+      "name": "output_0",
       "shape": [320],
       "dtype": "FP32"
     },
