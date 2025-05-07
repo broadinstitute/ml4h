@@ -253,7 +253,6 @@ def train_multimodal_multitask(args):
         )
 
         predictions = model.predict(test_data)
-        predictions_dict = {}
 
         if isinstance(predictions, dict):
             predictions_dict = predictions
@@ -1070,6 +1069,19 @@ def _predict_scalars_and_evaluate_from_generator(
             input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
             tensor_paths = None
         y_predictions = model.predict(input_data, verbose=0)
+        if isinstance(y_predictions, dict):
+            predictions_dict = y_predictions
+
+        elif isinstance(y_predictions, (list, tuple)):
+            # Map outputs by model.output_names (strings)
+            predictions_dict = {
+                str(name): pred for name, pred in zip(model.output_names, y_predictions)
+            }
+        else:
+            # Single tensor output
+            predictions_dict = {
+                model.output_names[0]: y_predictions
+        }
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
@@ -1079,11 +1091,9 @@ def _predict_scalars_and_evaluate_from_generator(
         for tm in tensor_maps_protected:
             protected_data[tm].extend(np.copy(output_data[tm.output_name()]))
 
-        for y, tm_output_name in zip(y_predictions, model_predictions):
-            if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
-                y = y_predictions
+        for tm_output_name, y in predictions_dict:
             if tm_output_name in scalar_predictions:
-                scalar_predictions[tm_output_name].extend(np.copy(y[tm_output_name]))
+                scalar_predictions[tm_output_name].extend(np.copy(y))
 
         if i % 100 == 0:
             logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')
