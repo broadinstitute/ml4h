@@ -1091,7 +1091,7 @@ def _predict_scalars_and_evaluate_from_generator(
         for tm in tensor_maps_protected:
             protected_data[tm].extend(np.copy(output_data[tm.output_name()]))
 
-        for tm_output_name, y in predictions_dict:
+        for tm_output_name, y in predictions_dict.items():
             if tm_output_name in scalar_predictions:
                 scalar_predictions[tm_output_name].extend(np.copy(y))
 
