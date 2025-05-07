@@ -775,7 +775,7 @@ def infer_multimodal_multitask(args):
                 elif len(otm.shape) == 1 and otm.is_categorical():
                     for k, i in otm.channel_map.items():
                         try:
-                            csv_row.append(str(y[ot][0][otm.channel_map[k]]))
+                            csv_row.append(str(y[0][otm.channel_map[k]]))
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except IndexError:
@@ -783,8 +783,8 @@ def infer_multimodal_multitask(args):
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
                     days_per_bin = 1 + otm.days_window // intervals
-                    #predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
-                    predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
+                    predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                    #predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
                     csv_row.append(str(1 - predicted_survivals[0, -1]))
                     sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
                     follow_up = np.cumsum(output_data[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
