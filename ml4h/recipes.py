@@ -1093,7 +1093,7 @@ def _predict_scalars_and_evaluate_from_generator(
 
         for tm_output_name, y in predictions_dict.items():
             if tm_output_name in scalar_predictions:
-                scalar_predictions[tm_output_name].extend(np.copy(y))
+                scalar_predictions[tm_output_name].extend(np.copy(y.numpy()))
 
         if i % 100 == 0:
             logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')
