@@ -10,7 +10,7 @@ def finalize(input_csv, predictions_json, output_csv):
 
     df = pd.read_csv(input_csv, dtype={"file_id": str})
 
-    embedding = prediction_data["embed"]
+    embedding = prediction_data["output_0"]
 
     if len(embedding) != len(df):
         raise ValueError(f"Mismatch: {len(embedding)} predictions but {len(df)} rows in input CSV!")
