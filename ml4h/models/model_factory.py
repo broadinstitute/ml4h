@@ -31,7 +31,7 @@ from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, La
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, \
-    VariationalDiagNormal, KroneckerBlock, DropoutBlock
+    VariationalDiagNormal, KroneckerBlock, DropoutBlock, GeometricLossBlock
 
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
@@ -49,6 +49,7 @@ BLOCK_CLASSES = {
     'concat': FlatConcatDenseBlock,
     'kronecker': KroneckerBlock,
     'dropout': DropoutBlock,
+    'geometric_loss': GeometricLossBlock,
     'flat': FlatConcatBlock,
     'average': AverageBlock,
     'mean': ReduceMean,
