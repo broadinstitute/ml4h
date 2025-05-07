@@ -209,6 +209,62 @@ class ReduceMean(Block):
         return y
 
 
+class GeometricLossBlock(Block):
+    """
+    Geometric loss to preserve neighborhood structures during multimodal alignment of unimodal embeddings
+    """
+    def __init__(
+            self,
+            geom_loss_weight: float = 1.0,
+            geom_kernel_sigma: float = 0.8,
+            **kwargs,
+    ):
+        self.loss_layer = GeometricLossLayer(geom_loss_weight, geom_kernel_sigma, **kwargs)
+
+    def get_config(self):
+        return self.loss_layer.get_config()
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        for tm in intermediates:
+            self.loss_layer(intermediates[tm][0], intermediates[tm][-1])
+
+
+@register_keras_serializable()
+class GeometricLossLayer(Layer):
+    """Layer that creates GeRA loss: Geometrically regularized alignment loss."""
+
+    def __init__(self, weight, geom_kernel_sigma: float = 0.8, **kwargs):
+        super(GeometricLossLayer, self).__init__(**kwargs)
+        self.weight = weight
+        self.geom_kernel_sigma = geom_kernel_sigma
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'weight': self.weight})
+        return config
+
+    def call(self, inputs):
+        self.add_loss(self.weight * self.kernel_regularization(inputs[0], inputs[1]))
+        return inputs
+
+    def kernel_regularization(self, emb_pre: Tensor, emb_post: Tensor) -> Tensor: # x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        dist_pre = tf.norm(tf.expand_dims(emb_pre, 1) - tf.expand_dims(emb_pre, 0), axis=-1)
+        dist_post = tf.norm(tf.expand_dims(emb_post, 1) - tf.expand_dims(emb_post, 0), axis=-1)
+
+        mean_dist_pre = tf.reduce_mean(dist_pre)
+        mean_dist_post = tf.reduce_mean(dist_post)
+
+        kernel_pre = tf.exp(-dist_pre / (self.geom_kernel_sigma * mean_dist_pre + 1e-6))
+        kernel_pre /= tf.reduce_sum(kernel_pre, axis=1, keepdims=True)
+
+        kernel_post = tf.exp(-dist_post / (self.geom_kernel_sigma * mean_dist_post + 1e-6))
+        kernel_post /= tf.reduce_sum(kernel_post, axis=1, keepdims=True)
+
+        reg_loss = tf.norm(kernel_post - kernel_pre, ord='fro')
+
+        return reg_loss
+
+
 class EncodeIdentityBlock(Block):
     """
     Adds the input tensor to the intermediates dictionary, useful for TensorMaps with pretrained embeddings
