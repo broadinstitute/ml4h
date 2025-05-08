@@ -754,10 +754,21 @@ def infer_multimodal_multitask(args):
                 next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
-            prediction = model.predict(input_data, verbose=0)
-            if len(no_fail_tmaps_out) == 1:
-                prediction = [prediction]
-            predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+            predictions = model.predict(input_data, verbose=0)
+            if isinstance(predictions, dict):
+                predictions_dict = predictions
+
+            elif isinstance(predictions, (list, tuple)):
+                # Map outputs by model.output_names (strings)
+                predictions_dict = {
+                    str(name): pred for name, pred in zip(model.output_names, predictions)
+                }
+            else:
+                # Single tensor output
+                predictions_dict = {
+                    model.output_names[0]: predictions
+                }
+
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             csv_row = [sample_id]
             if tsv_style_is_genetics:
@@ -779,7 +790,7 @@ def infer_multimodal_multitask(args):
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except (IndexError, KeyError):
-                            logging.warning(f'Error in infer at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
+                            logging.warning(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
                     days_per_bin = 1 + otm.days_window // intervals
