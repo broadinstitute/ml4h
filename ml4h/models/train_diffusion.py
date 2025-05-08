@@ -52,18 +52,18 @@ def train_diffusion_model(args):
     ##test_preds = model.network.predict(generate_train, steps=1)
     if args.inspect_model:
         model.network.summary(print_fn=logging.info, expand_nested=True)
-        tf.keras.utils.plot_model(
-            model.network,
-            to_file=f"{args.output_folder}/{args.id}/architecture_diffusion_unet.png",
-            show_shapes=True,
-            show_dtype=False,
-            show_layer_names=True,
-            rankdir="TB",
-            expand_nested=True,
-            dpi=args.dpi,
-            layer_range=None,
-            show_layer_activations=False,
-        )
+        # tf.keras.utils.plot_model(
+        #     model.network,
+        #     to_file=f"{args.output_folder}/{args.id}/architecture_diffusion_unet.png",
+        #     show_shapes=True,
+        #     show_dtype=False,
+        #     show_layer_names=True,
+        #     rankdir="TB",
+        #     expand_nested=True,
+        #     dpi=args.dpi,
+        #     layer_range=None,
+        #     show_layer_activations=False,
+        # )
         prefix_value = f'{args.output_folder}{args.id}/learning_generations/'
         if model.tensor_map.axes() == 2:
             plot_partial = partial(model.plot_ecgs, reseed=args.random_seed, prefix=prefix_value)

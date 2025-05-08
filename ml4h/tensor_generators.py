@@ -900,8 +900,6 @@ def test_train_valid_tensor_generators(
         keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
 
-    if siamese:
-        wrap_with_tf_dataset = False
     do_augmentation = bool(rotation_factor or zoom_factor or translation_factor)
     if do_augmentation:
         logging.info(f'Augment with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
