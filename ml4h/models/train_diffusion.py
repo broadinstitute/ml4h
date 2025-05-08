@@ -293,7 +293,7 @@ def train_diffusion_control_model(args, supervised=False):
             plot_partial = partial(model.plot_images, reseed=args.random_seed, prefix=prefix_value)
         callbacks.append(keras.callbacks.LambdaCallback(on_epoch_end=plot_partial))
 
-    if os.path.exists(checkpoint_path+'.index'):
+    if os.path.exists(checkpoint_path):
         model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
     else:
