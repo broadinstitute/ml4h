@@ -293,12 +293,6 @@ def train_diffusion_control_model(args, supervised=False):
             plot_partial = partial(model.plot_images, reseed=args.random_seed, prefix=prefix_value)
         callbacks.append(keras.callbacks.LambdaCallback(on_epoch_end=plot_partial))
 
-    if os.path.exists(checkpoint_path):
-        model.load_weights(checkpoint_path)
-        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
-    else:
-        logging.info(f'No checkpoint at: {checkpoint_path}')
-
     images = batch[0][model.input_map.input_name()]
     # (2) create a dummy noise_rates tensor of the right shape
     noise_rates = tf.zeros(
@@ -309,6 +303,13 @@ def train_diffusion_control_model(args, supervised=False):
     model.normalizer.adapt(images)
     # (4) call the model once
     _ = model(((images, noise_rates), batch[1]))
+
+    if os.path.exists(checkpoint_path):
+        model.load_weights(checkpoint_path)
+        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+    else:
+        logging.info(f'No checkpoint at: {checkpoint_path}')
+
     history = model.fit(
         generate_train,
         steps_per_epoch=args.training_steps,
