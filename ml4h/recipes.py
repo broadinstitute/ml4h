@@ -714,7 +714,7 @@ def infer_multimodal_multitask(args):
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
 
-    model = legacy_multimodal_multitask_model(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
@@ -778,8 +778,8 @@ def infer_multimodal_multitask(args):
                             csv_row.append(str(y[0][otm.channel_map[k]]))
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
-                        except IndexError:
-                            logging.debug(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
+                        except (IndexError, KeyError):
+                            logging.warning(f'Error in infer at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
                     days_per_bin = 1 + otm.days_window // intervals
