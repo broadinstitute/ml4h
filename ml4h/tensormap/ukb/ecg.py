@@ -132,13 +132,16 @@ def _make_ecg_rest(
         skip_poor: bool = False, random_offset: int = 0,
 ):
     def ecg_rest_from_file(tm, hd5, dependents={}):
-        ecg_interpretation = str(
-            tm.hd5_first_dataset_in_group(
-            hd5, 'ukb_ecg_rest/ecg_rest_text/',
-            )[()],
-        )
-        if skip_poor and 'Poor data quality' in ecg_interpretation:
-            raise ValueError(f'Poor data quality skipped by {tm.name}.')
+        if skip_poor:
+            ecg_interpretation = str(
+                tm.hd5_first_dataset_in_group(
+                    hd5, 'ukb_ecg_rest/ecg_rest_text/',
+                )[()],
+            )
+            if 'Poor data quality' in ecg_interpretation:
+                raise ValueError(f'Poor data quality skipped by {tm.name}.')
+        if random_offset > 0:
+            offset = np.random.randint(random_offset)
         tensor = np.zeros(tm.shape, dtype=np.float32)
         for k in hd5[tm.path_prefix]:
             if k in tm.channel_map:
@@ -146,7 +149,6 @@ def _make_ecg_rest(
                     hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
                 )
                 if random_offset > 0:
-                    offset = np.random.randint(random_offset)
                     data = data[offset:]
                 if short_time_nperseg > 0 and short_time_noverlap > 0:
                     f, t, short_time_ft = scipy.signal.stft(
@@ -512,6 +514,16 @@ rest_strip_II_random_2s = TensorMap(
     'rest_strip_II_random_2s', Interpretation.CONTINUOUS, shape=(1000, 1), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest(random_offset=4000),
     channel_map={'strip_II': 0}, normalization=ZeroMeanStd1(),
+)
+ecg_rest_random_1s = TensorMap(
+    'ecg_rest_random_1s', Interpretation.CONTINUOUS, shape=(500, 12), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4500),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_rest_random_2s = TensorMap(
+    'ecg_rest_random_2s', Interpretation.CONTINUOUS, shape=(1000, 12), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest(random_offset=4000),
+    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_mgb_2500_test = TensorMap(
     'ecg_2500_std', Interpretation.CONTINUOUS, shape=(2500, 12), path_prefix='ukb_ecg_rest',
@@ -1291,9 +1303,11 @@ def uw_ecg_from_hd5(tm, hd5, dependents={}):
     tensor = np.array(hd5[tm.path_prefix], dtype=np.float32)
     return tensor
 
-ecg_median_uw = TensorMap('median',
-                          Interpretation.CONTINUOUS,
-                          shape=(600, 12),
-                          path_prefix='ecg.ecg_rest_median_raw_10',
-                          channel_map=ECG_REST_MEDIAN_LEADS,
-                          tensor_from_file=uw_ecg_from_hd5)
+ecg_median_uw = TensorMap(
+    'median',
+    Interpretation.CONTINUOUS,
+    shape=(600, 12),
+    path_prefix='ecg.ecg_rest_median_raw_10',
+    channel_map=ECG_REST_MEDIAN_LEADS,
+    tensor_from_file=uw_ecg_from_hd5,
+)
