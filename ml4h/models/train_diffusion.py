@@ -334,6 +334,8 @@ def train_diffusion_control_model(args, supervised=False):
         predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
         interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
                                            f'{args.output_folder}/{args.id}/')
+
+        model.normalizer.adapt(images)
         if model.input_map.axes() == 2:
             model.plot_ecgs(num_rows=2, prefix=os.path.dirname(checkpoint_path))
         else:
