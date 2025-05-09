@@ -315,7 +315,7 @@ def train_diffusion_control_model(args, supervised=False):
     _ = model(((images, noise_rates), batch[1]))
 
     if os.path.exists(checkpoint_path):
-        model.load_weights(checkpoint_path)
+        model.load_weights(checkpoint_path, by_name=True, skip_mismatch=True)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
