@@ -83,17 +83,8 @@ def train_diffusion_model(args):
     # (4) call the model once
     _ = model((images, noise_rates))
     if os.path.exists(checkpoint_path):
-        model.load_weights(checkpoint_path, by_name=True, skip_mismatch=True)
+        model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
-        model.compile(
-            optimizer=tf.keras.optimizers.AdamW(
-                learning_rate=args.learning_rate, weight_decay=1e-4,
-            ),
-            loss=keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError(),
-        )
-        model.normalizer.adapt(images)
-        # (4) call the model once
-        _ = model((images, noise_rates))
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
     history = model.fit(
@@ -315,7 +306,7 @@ def train_diffusion_control_model(args, supervised=False):
     _ = model(((images, noise_rates), batch[1]))
 
     if os.path.exists(checkpoint_path):
-        model.load_weights(checkpoint_path, by_name=True, skip_mismatch=True)
+        model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
