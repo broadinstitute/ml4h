@@ -71,13 +71,23 @@ class TensorMapSampleGetter:
         with h5py.File(path, 'r') as hd5:
             in_batch = {}
             for tm in self.tensor_maps_in:
+                if tm.tensor_from_file and tm.dependent_map:
+                    if isinstance(tm.dependent_map, list):
+                        dependents = {dep.name: dep for dep in tm.dependent_map}
+                    else:
+                        dependents = {tm.dependent_map.name: tm.dependent_map}
+                    
                 in_batch[tm.input_name()] = tm.postprocess_tensor(
                     tm.tensor_from_file(tm, hd5, dependents),
                     augment=self.augment, hd5=hd5,
                 )
             out_batch = {}
             for tm in self.tensor_maps_out:
-                # TODO: Check for dependents here
+                if tm.tensor_from_file and tm.dependent_map:
+                    if isinstance(tm.dependent_map, list):
+                        dependents = {dep.name: dep for dep in tm.dependent_map}
+                    else:
+                        dependents = {tm.dependent_map.name: tm.dependent_map}
                 out_batch[tm.output_name()] = tm.postprocess_tensor(
                     tm.tensor_from_file(tm, hd5, dependents),
                     augment=self.augment, hd5=hd5,
