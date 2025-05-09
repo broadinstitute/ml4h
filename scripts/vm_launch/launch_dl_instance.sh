@@ -20,7 +20,7 @@ gcloud compute instances create ${NAME} \
 --image-family dl-image \
 --accelerator=type=${ACCEL},count=1 \
 --maintenance-policy=TERMINATE \
---boot-disk-type=pd-ssd \
+--boot-disk-type=pd-standard \
 --boot-disk-size=${DISK_SIZE} \
 --service-account 783282864357-compute@developer.gserviceaccount.com \
 --scopes https://www.googleapis.com/auth/cloud-platform \
