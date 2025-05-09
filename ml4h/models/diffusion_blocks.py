@@ -12,8 +12,8 @@ from keras import layers
 from keras.saving import register_keras_serializable
 
 from ml4h.defines import IMAGE_EXT
+from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.metrics import KernelInceptionDistance, MultiScaleSSIM
-
 
 Tensor = tf.Tensor
 
@@ -389,6 +389,7 @@ class DiffusionModel(keras.Model):
         config.pop("input_layers", None)
         config.pop("output_layers", None)
         # now re-inject exactly the args your __init__ needs:
+        logging.info(f'Saving tensormap as: {str(self.tensor_map)}')
         config.update({
             "tensor_map":     str(self.tensor_map),        # or .to_config() if needed
             "batch_size":     self.batch_size,
@@ -404,8 +405,8 @@ class DiffusionModel(keras.Model):
 
     @classmethod
     def from_config(cls, config):
-        # If you need to massage the config (e.g. rehydrate tensor_map),
-        # do it here before calling __init__.
+        tm_string = config.pop("tensor_map")
+        config['tensor_map'] = TensorMap('lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1))
         return cls(**config)
 
     def compile(self, **kwargs):
