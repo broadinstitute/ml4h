@@ -36,10 +36,10 @@ def train_diffusion_model(args):
         feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
-    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.keras"
+    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.weights.h5"
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
-        save_weights_only=False,
+        save_weights_only=True,
         monitor="val_i_loss",
         mode="min",
         save_best_only=True,
@@ -83,8 +83,17 @@ def train_diffusion_model(args):
     # (4) call the model once
     _ = model((images, noise_rates))
     if os.path.exists(checkpoint_path):
-        model.load_weights(checkpoint_path)
+        model = tf.keras.models.load_model(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+        model.compile(
+            optimizer=tf.keras.optimizers.AdamW(
+                learning_rate=args.learning_rate, weight_decay=1e-4,
+            ),
+            loss=keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError(),
+        )
+        model.normalizer.adapt(images)
+        # (4) call the model once
+        _ = model((images, noise_rates))
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
     history = model.fit(
