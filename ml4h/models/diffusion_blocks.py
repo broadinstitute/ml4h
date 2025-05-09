@@ -377,7 +377,6 @@ class DiffusionModel(keras.Model):
         self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
         self.ema_network = keras.models.clone_model(self.network)
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
-        self.inspect_model = inspect_model
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
