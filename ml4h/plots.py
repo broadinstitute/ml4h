@@ -1175,7 +1175,7 @@ def plot_survival_curves(
     cur_healthy = 0
     min_sick = num_curves * 0.1
     for i in range(truth.shape[0]):
-        p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
+        p = i #os.path.basename(paths[i]).replace(TENSOR_EXT, "")
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period * (days_window // intervals)
