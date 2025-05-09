@@ -83,7 +83,7 @@ def train_diffusion_model(args):
     # (4) call the model once
     _ = model((images, noise_rates))
     if os.path.exists(checkpoint_path):
-        model = tf.keras.models.load_model(checkpoint_path)
+        model.load_weights(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
         model.compile(
             optimizer=tf.keras.optimizers.AdamW(
