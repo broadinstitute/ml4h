@@ -85,6 +85,12 @@ def train_diffusion_model(args):
     if os.path.exists(checkpoint_path):
         model = tf.keras.models.load_model(checkpoint_path)
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
+        model.compile(
+            optimizer=tf.keras.optimizers.AdamW(
+                learning_rate=args.learning_rate, weight_decay=1e-4,
+            ),
+            loss=keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError(),
+        )
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
     history = model.fit(
