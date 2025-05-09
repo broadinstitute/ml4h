@@ -359,26 +359,54 @@ def get_control_embed_model(output_maps, control_size):
 
 @register_keras_serializable()
 class DiffusionModel(keras.Model):
-    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model):
+    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model,
+                 name=None,
+                 **kwargs):
         super().__init__()
 
-        self.tensor_map = tensor_map
-        self.batch_size = batch_size
+        self.tensor_map     = tensor_map
+        self.batch_size     = batch_size
+        self.widths         = widths
+        self.block_depth    = block_depth
+        self.kernel_size    = kernel_size
+        self.diffusion_loss = diffusion_loss
+        self.sigmoid_beta   = sigmoid_beta
+        self.inspect_model  = inspect_model
+
         self.normalizer = layers.Normalization()
         self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
         self.ema_network = keras.models.clone_model(self.network)
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
-        self.beta = sigmoid_beta
         self.inspect_model = inspect_model
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
     def get_config(self):
-        config = super().get_config().copy()
-        config.update({'beta': self.beta, 'batch_size': self.batch_size})
+        config = super().get_config()
+        # pop out any Keras-internal stuff you don’t want to pass back
+        config.pop("layers", None)
+        config.pop("input_layers", None)
+        config.pop("output_layers", None)
+        # now re-inject exactly the args your __init__ needs:
+        config.update({
+            "tensor_map":     self.tensor_map,        # or .to_config() if needed
+            "batch_size":     self.batch_size,
+            "widths":         self.widths,
+            "block_depth":    self.block_depth,
+            "kernel_size":    self.kernel_size,
+            "diffusion_loss": self.diffusion_loss,
+            "sigmoid_beta":   self.sigmoid_beta,
+            "inspect_model":  self.inspect_model,
+            # name/trainable/dtype are already in super().get_config()
+        })
         return config
 
+    @classmethod
+    def from_config(cls, config):
+        # If you need to massage the config (e.g. rehydrate tensor_map),
+        # do it here before calling __init__.
+        return cls(**config)
 
     def compile(self, **kwargs):
         super().compile(**kwargs)
@@ -509,7 +537,7 @@ class DiffusionModel(keras.Model):
 
                 # Compute log-SNR (lambda_t)
                 lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
-                weight = tf.math.sigmoid(self.beta - lambda_t)
+                weight = tf.math.sigmoid(self.sigmoid_beta - lambda_t)
                 noise_loss = weight * noise_loss
 
         gradients = tape.gradient(noise_loss, self.network.trainable_weights)
@@ -556,7 +584,7 @@ class DiffusionModel(keras.Model):
 
             # Compute log-SNR (lambda_t)
             lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
-            weight = tf.math.sigmoid(self.beta - lambda_t)
+            weight = tf.math.sigmoid(self.sigmoid_beta - lambda_t)
             noise_loss = weight * noise_loss
 
         self.image_loss_tracker.update_state(image_loss)
