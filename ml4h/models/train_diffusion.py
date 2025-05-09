@@ -235,18 +235,20 @@ def train_diffusion_control_model(args, supervised=False):
         )
 
     loss = keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError()
-    model.compile(
-        optimizer=tf.keras.optimizers.AdamW(
-            learning_rate=args.learning_rate, weight_decay=1e-4,
-        ),
-        loss=loss,
-    )
+
     batch = next(iter(generate_train))
     for k in batch[0]:
         logging.info(f"input {k} {batch[0][k].shape}")
         feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
+    model.normalizer.adapt(feature_batch)
+    model.compile(
+        optimizer=tf.keras.optimizers.AdamW(
+            learning_rate=args.learning_rate, weight_decay=1e-4,
+        ),
+        loss=loss,
+    )
     checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.keras"
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
@@ -308,12 +310,7 @@ def train_diffusion_control_model(args, supervised=False):
         logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
-    model.compile(
-        optimizer=tf.keras.optimizers.AdamW(
-            learning_rate=args.learning_rate, weight_decay=1e-4,
-        ),
-        loss=loss,
-    )
+
     history = model.fit(
         generate_train,
         steps_per_epoch=args.training_steps,
