@@ -780,7 +780,7 @@ class DiffusionController(keras.Model):
         self.beta = sigmoid_beta
         self.supervisor = supervisor
         self.supervision_scalar = supervision_scalar
-        self.inspect_model = inspect_model
+        self.inspect_model = False# inspect_model
 
     def get_config(self):
         config = super().get_config().copy()
