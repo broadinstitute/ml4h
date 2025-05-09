@@ -131,7 +131,7 @@ def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
         diffusion_steps=50,
     )
     control_predictions = regressor.predict(generated_images, verbose=0)
-    return control_predictions[:, 0] if tm_out.is_continuous() else control_predictions
+    return control_predictions[tm_out.output_name()][:, 0] if tm_out.is_continuous() else control_predictions
 
 
 def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batch_size, mean, std, prefix):
