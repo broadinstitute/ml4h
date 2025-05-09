@@ -235,7 +235,12 @@ def train_diffusion_control_model(args, supervised=False):
         )
 
     loss = keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError()
-
+    model.compile(
+        optimizer=tf.keras.optimizers.AdamW(
+            learning_rate=args.learning_rate, weight_decay=1e-4,
+        ),
+        loss=loss,
+    )
     batch = next(iter(generate_train))
     for k in batch[0]:
         logging.info(f"input {k} {batch[0][k].shape}")
