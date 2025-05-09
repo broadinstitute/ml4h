@@ -390,7 +390,7 @@ class DiffusionModel(keras.Model):
         config.pop("output_layers", None)
         # now re-inject exactly the args your __init__ needs:
         config.update({
-            "tensor_map":     self.tensor_map,        # or .to_config() if needed
+            "tensor_map":     str(self.tensor_map),        # or .to_config() if needed
             "batch_size":     self.batch_size,
             "widths":         self.widths,
             "block_depth":    self.block_depth,
