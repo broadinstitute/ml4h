@@ -480,7 +480,7 @@ class DiffusionModel(keras.Model):
     def train_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.adapt(images)
+        #self.normalizer.adapt(images)
         # images = images['input_lax_4ch_diastole_slice0_224_3d_continuous']
         images = self.normalizer(images, training=True)
         # images = images.numpy() - images.numpy().mean() / images.numpy().std()
@@ -530,7 +530,7 @@ class DiffusionModel(keras.Model):
     def test_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.adapt(images)
+        #self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         # images = images - tf.math.reduce_mean(images) / tf.math.reduce_std(images)
         noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
