@@ -782,13 +782,11 @@ class DiffusionController(keras.Model):
         return m
 
     def denormalize(self, images):
-        # convert the pixel values back to 0-1 range
-        # images = images - tf.math.reduce_mean(images) + images * tf.math.reduce_std(images)
-        std = tf.sqrt(self.normalizer.variance)
-        images = images * std + self.normalizer.mean
-        #images = self.normalizer.mean + images * self.normalizer.variance ** 0.5
-        # print(f'images max min {images}')
-        return images  # tf.clip_by_value(images, 0.0, 1.0)
+        with tf.init_scope():
+            mean = self.normalizer.mean
+            var = self.normalizer.variance
+        std = tf.sqrt(var)
+        return images * std + mean
 
     def diffusion_schedule(self, diffusion_times):
         # diffusion times -> angles
