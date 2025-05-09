@@ -377,7 +377,7 @@ def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict
                     plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(tm.shape) == 4:
                     plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
-
+    plt.close()
 
 def plot_while_learning(
     model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],
