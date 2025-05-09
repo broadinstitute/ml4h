@@ -36,7 +36,7 @@ def train_diffusion_model(args):
         feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
-    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.h5"
+    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.weights.h5"
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=True,
@@ -249,7 +249,7 @@ def train_diffusion_control_model(args, supervised=False):
         ),
         loss=loss,
     )
-    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.h5"
+    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.weights.h5"
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=True,
