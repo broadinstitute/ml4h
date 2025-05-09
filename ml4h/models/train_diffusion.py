@@ -91,6 +91,9 @@ def train_diffusion_model(args):
             ),
             loss=keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError(),
         )
+        model.normalizer.adapt(images)
+        # (4) call the model once
+        _ = model((images, noise_rates))
     else:
         logging.info(f'No checkpoint at: {checkpoint_path}')
     history = model.fit(
