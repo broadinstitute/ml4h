@@ -156,3 +156,7 @@ class ModelCheckpointWithGCP(Callback):
         blob = self.bucket.blob(os.path.join(self.gcp_path,os.path.basename(self.local_checkpoint_path)))
         blob.upload_from_filename(self.local_checkpoint_path)
         print(f"Uploaded checkpoint to gs://{self.gcp_bucket}/{self.gcp_path}")
+
+        blob_log = self.bucket.blob(os.path.join(self.gcp_path,'training_log.csv'))
+        blob_log.upload_from_filename(os.path.join(os.path.dirname(self.local_checkpoint_path),'training_log.csv'))
+        print(f"Uploaded training log to gs://{self.gcp_bucket}/{self.gcp_path}/training_log.csv")
