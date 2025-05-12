@@ -215,27 +215,40 @@ class GeometricLossBlock(Block):
     """
     def __init__(
             self,
+            pairs: List[Tuple[TensorMap, TensorMap]],
             geom_loss_weight: float = 1.0,
             geom_kernel_sigma: float = 0.8,
+            pair_loss: str = 'cosine',
+            pair_loss_weight: float = 1.0,
+            pair_merge: str = 'dropout',
+            batch_size: int = 4,
+            dense_layers: List[int] = [32],
             **kwargs,
     ):
-        self.loss_layer = GeometricLossLayer(geom_loss_weight, geom_kernel_sigma, **kwargs)
+        self.loss_layer = GeometricLossLayer(geom_loss_weight, geom_kernel_sigma)
+        self.pair_block = PairLossBlock(pairs,pair_loss, pair_loss_weight, pair_merge, batch_size, dense_layers)
 
     def get_config(self):
         return self.loss_layer.get_config()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None, **kwargs) -> Tensor:
+        y = []
         for tm in intermediates:
-            self.loss_layer(intermediates[tm][0], intermediates[tm][-1])
+            intermediates[tm].append(self.loss_layer([intermediates[tm][0], intermediates[tm][-1]]))
+            # y.append(self.loss_layer([intermediates[tm][0], intermediates[tm][-1]]))
+        return self.pair_block(x, intermediates)  # tf.math.reduce_mean(y) #Average()(y)
+
+        # for tm in intermediates:
+        #     self.loss_layer(intermediates[tm][0], intermediates[tm][-1])
 
 
 @register_keras_serializable()
 class GeometricLossLayer(Layer):
     """Layer that creates GeRA loss: Geometrically regularized alignment loss."""
 
-    def __init__(self, weight, geom_kernel_sigma: float = 0.8, **kwargs):
+    def __init__(self, geom_loss_weight, geom_kernel_sigma: float = 0.8, **kwargs):
         super(GeometricLossLayer, self).__init__(**kwargs)
-        self.weight = weight
+        self.weight = geom_loss_weight
         self.geom_kernel_sigma = geom_kernel_sigma
 
     def get_config(self):
@@ -248,8 +261,14 @@ class GeometricLossLayer(Layer):
         return inputs
 
     def kernel_regularization(self, emb_pre: Tensor, emb_post: Tensor) -> Tensor: # x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        dist_pre = tf.norm(tf.expand_dims(emb_pre, 1) - tf.expand_dims(emb_pre, 0), axis=-1)
-        dist_post = tf.norm(tf.expand_dims(emb_post, 1) - tf.expand_dims(emb_post, 0), axis=-1)
+
+        batch_size = tf.shape(emb_pre)[0]
+        dist_pre = tf.norm(
+            tf.expand_dims(tf.reshape(emb_pre, (batch_size, -1)), 1) - tf.expand_dims(
+                tf.reshape(emb_pre, (batch_size, -1)),
+                0), axis=-1)
+        dist_post = tf.norm(tf.expand_dims(tf.reshape(emb_post, (batch_size, -1)), 1) - tf.expand_dims(
+            tf.reshape(emb_post, (batch_size, -1)), 0), axis=-1)
 
         mean_dist_pre = tf.reduce_mean(dist_pre)
         mean_dist_post = tf.reduce_mean(dist_post)
@@ -260,7 +279,7 @@ class GeometricLossLayer(Layer):
         kernel_post = tf.exp(-dist_post / (self.geom_kernel_sigma * mean_dist_post + 1e-6))
         kernel_post /= tf.reduce_sum(kernel_post, axis=1, keepdims=True)
 
-        reg_loss = tf.norm(kernel_post - kernel_pre, ord='fro')
+        reg_loss = tf.reduce_sum(tf.norm(kernel_post - kernel_pre, ord='fro', axis=(-2, -1)))
 
         return reg_loss
 

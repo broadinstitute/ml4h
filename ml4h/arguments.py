@@ -215,7 +215,7 @@ def parse_args():
     parser.add_argument('--pair_loss', default='contrastive', help='Distance metric between paired embeddings', choices=['euclid', 'cosine', 'contrastive'])
     parser.add_argument('--pair_merge', default='dropout', help='Merging method for paired modality embeddings', choices=['average', 'concat', 'dropout', 'kronecker'])
     parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
-    parser.add_argument('--geom_loss_weight', type=float, default=1.0, help='Weight on the geometric alignment loss term (GeRA) relative to other losses')
+    parser.add_argument('--geom_loss_weight', type=float, default=1.0, help='Weight on the geometric alignment loss term (GeRA) relative to other losses. Note that the GeRA loss calls a pair-merge loss block as well.')
     parser.add_argument('--geom_kernel_sigma', type=float, default=0.8, help='Kernel normalization factor for geometric alignment loss (GeRA)')
     parser.add_argument(
         '--max_parameters', default=50000000, type=int,
