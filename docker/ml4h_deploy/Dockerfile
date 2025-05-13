@@ -1,4 +1,4 @@
-FROM ghcr.io/broadinstitute/ml4h:tf2.9-latest-cpu
+FROM ghcr.io/broadinstitute/ml4h:tf2.19-latest-cpu
 
 # Set the working directory
 WORKDIR /app
@@ -7,7 +7,7 @@ WORKDIR /app
 RUN pip install tensorflow
 
 # Copy the Keras model file into the Docker image
-COPY ecg2af_quintuplet_v2024_01_13.h5 /app/ecg2af_quintuplet_v2024_01_13.h5
+COPY ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras /app/ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras
 
 # Copy the Python script
 COPY process_files.py /app/process_files.py
