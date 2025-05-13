@@ -28,19 +28,34 @@ af_tmap = TensorMap(
     shape=(n_intervals*2,),
 )
 
+hf_nlp_tmap = TensorMap(
+    'hf_nlp_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(n_intervals*2,),
+)
+
+hf_primary_tmap = TensorMap(
+    'hf_primary_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(n_intervals*2,),
+)
+
+
 death_tmap = TensorMap(
     'death_event',
     Interpretation.SURVIVAL_CURVE,
     shape=(n_intervals*2,),
 )
-
+is_male_tmap = TensorMap(
+    'is_male', Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1},
+)
 sex_tmap = TensorMap(name='sex', interpretation=Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male':1})
 age_tmap = TensorMap(name='age_in_days', interpretation=Interpretation.CONTINUOUS, channel_map={'age_in_days': 0})
 af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CATEGORICAL, channel_map={'no_af_in_read': 0, 'af_in_read':1})
 
-output_tensormaps = {tm.output_name(): tm for tm in [af_tmap, death_tmap, sex_tmap, age_tmap, af_in_read_tmap]}
+output_tensormaps = {tm.output_name(): tm for tm in [hf_nlp_tmap, hf_primary_tmap, death_tmap, is_male_tmap, age_tmap]}
 custom_dict = get_custom_objects(list(output_tensormaps.values()))
-model = load_model('ecg2af_quintuplet_v2024_01_13.h5', custom_objects=custom_dict)
+model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
 space_dict = defaultdict(list)
 
 def process_ukb_hd5(filepath, space_dict):
@@ -242,7 +257,7 @@ def main(directory):
             break
 
     df = pd.DataFrame.from_dict(space_dict)
-    df.to_csv('/output/ecg2af_quintuplet.csv', index=False)
+    df.to_csv('/output/ecg2hf_quintuplet.csv', index=False)
 
 if __name__ == "__main__":
     # Take directory path from command-line arguments
