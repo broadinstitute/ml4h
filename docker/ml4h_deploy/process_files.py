@@ -56,6 +56,7 @@ af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CAT
 output_tensormaps = {tm.output_name(): tm for tm in [hf_nlp_tmap, hf_primary_tmap, death_tmap, is_male_tmap, age_tmap]}
 custom_dict = get_custom_objects(list(output_tensormaps.values()))
 model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
+output_file = '/output/ecg2hf_quintuplet.csv'
 space_dict = defaultdict(list)
 
 def process_ukb_hd5(filepath, space_dict):
@@ -257,7 +258,8 @@ def main(directory):
             break
 
     df = pd.DataFrame.from_dict(space_dict)
-    df.to_csv('/output/ecg2hf_quintuplet.csv', index=False)
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    df.to_csv(output_file, index=False)
 
 if __name__ == "__main__":
     # Take directory path from command-line arguments
