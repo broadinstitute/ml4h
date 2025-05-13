@@ -56,7 +56,7 @@ af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CAT
 output_tensormaps = {tm.output_name(): tm for tm in [hf_nlp_tmap, hf_primary_tmap, death_tmap, is_male_tmap, age_tmap]}
 custom_dict = get_custom_objects(list(output_tensormaps.values()))
 model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
-output_file = './output/ecg2hf_quintuplet.csv'
+output_file = '/output/ecg2hf_quintuplet.csv'
 space_dict = defaultdict(list)
 
 def process_ukb_hd5(filepath, space_dict):
