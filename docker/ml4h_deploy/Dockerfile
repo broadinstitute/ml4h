@@ -1,4 +1,4 @@
-FROM us-central1-docker.pkg.dev/broad-ml4cvd/deeplearning/ml4h:tf2.19-latest-cpu
+FROM gcr.io/broad-ml4cvd/deeplearning:tf2.19-latest-cpu
 
 # Set the working directory
 WORKDIR /app
