@@ -205,6 +205,9 @@ def process_ge_muse_xml(filepath, space_dict):
     #             if leadname in (lead_order):
 
     for lead in dic['RestingECG']['Waveform']:
+        if not isinstance(lead, dict) or 'LeadData' not in lead:
+            print(f"Lead data is not a dictionary with LeadData key at {filepath}, returning.")
+            return
         for leadid in range(len(lead['LeadData'])):
             sample_length = len(decode_ekg_muse_to_array(lead['LeadData'][leadid]['WaveFormData']))
             # sample_length is equivalent to dic['RestingECG']['Waveform']['LeadData']['LeadSampleCountTotal']
