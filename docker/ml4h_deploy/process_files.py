@@ -158,8 +158,10 @@ def process_ge_muse_xml(filepath, space_dict):
 
     except xmltodict.expat.ExpatError as e:
         print(f"XML parsing error in file {filepath}: {e}")
+        return
     except Exception as e:
         print(f"Unexpected error processing {filepath}: {e}")
+        return
 
     try:
         patient_id = dic['RestingECG']['PatientDemographics']['PatientID']
