@@ -131,9 +131,6 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
     return np.array(byte_array)[::dwnsmpl]
 
 def process_ge_muse_xml(filepath, space_dict):
-    with open(filepath, 'rb') as fd:
-        dic = xmltodict.parse(fd.read().decode('utf8'))
-
     """
 
     Upload the ECG as numpy array with shape=[2500,12,1] ([time, leads, 1]).
@@ -143,6 +140,27 @@ def process_ge_muse_xml(filepath, space_dict):
     The leads should be ordered as follow I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6.
 
     """
+    try:
+        with open(filepath, 'rb') as fd:
+            content = fd.read()
+            if not content.strip():
+                print(f"Skipping empty file: {filepath}")
+                return
+            try:
+                decoded = content.decode('utf-8')
+            except UnicodeDecodeError:
+                print(f"Skipping non-UTF8 file: {filepath}")
+                return
+
+            dic = xmltodict.parse(decoded)
+            print(f"Successfully parsed XML from: {filepath}")
+            # continue processing dic...
+
+    except xmltodict.expat.ExpatError as e:
+        print(f"XML parsing error in file {filepath}: {e}")
+    except Exception as e:
+        print(f"Unexpected error processing {filepath}: {e}")
+
     try:
         patient_id = dic['RestingECG']['PatientDemographics']['PatientID']
     except:
@@ -250,12 +268,13 @@ def process_ge_muse_xml(filepath, space_dict):
 def main(directory):
     # Iterate over all files in the specified directory
     space_dict = defaultdict(list)
-    for i,filename in enumerate(os.listdir(directory)):
-        filepath = os.path.join(directory, filename)
-        if os.path.isfile(filepath):
-            process_ge_muse_xml(filepath, space_dict)
-        if i > 10000:
-            break
+    for root, _, files in os.walk(directory):
+        for i, filename in enumerate(files):
+            filepath = os.path.join(root, filename)
+            if os.path.isfile(filepath):
+                process_ge_muse_xml(filepath, space_dict)
+            # if i > 10000:
+            #     break
 
     df = pd.DataFrame.from_dict(space_dict)
     os.makedirs(os.path.dirname(output_file), exist_ok=True)

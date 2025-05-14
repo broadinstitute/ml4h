@@ -14,13 +14,13 @@ docker save ecg2hf_finngen_deploy:latest -o ecg2hf_finngen_deploy.tar
 ```
 
 ## Deploy to FinnGEN
-Download the tarball (maybe a huge 20GB+ file). Then split it into smaller files:
+Download the tarball (maybe a huge 20GB+ file). Then split it into smaller files, because FinnGEN has a limit of 5GB per file:
 ```bash
 split -b 2300M ecg2hf_finngen_deploy.tar ecg2hf_finngen_deploy_part_
 ```
 Login to your finngen account and navigate to the green bucket Google Console page. 
 The address depends on the sandbox version. Currently, it is at: [https://console.cloud.google.com/storage/browser/fg-production-sandbox-6_greenuploads/sam](https://console.cloud.google.com/storage/browser/fg-production-sandbox-6_greenuploads/sam).
-Upload all the parts here and then they will show up in your FinnGEN IVM at the path `/finngen/green/sam`.
+Upload all the parts here. Then after they pass the virus scan, which takes ~20 minutes, they will show up in your FinnGEN IVM at the path `/finngen/green/sam`.
 You can replace `sam` with any folder name you want, but must be consistent between the upload and the IVM path.
 
 
@@ -38,4 +38,6 @@ cd ~
 docker load -i ecg2hf_finngen_deploy.tar
 ```
 Then run the docker image:
+```
+docker run -v /finngen/library-red/EAS_HEART_FAILURE_1.0/data/ecg:/data -v /home/ivm/output:/output ecg2hf_finngen_deploy
 ```
