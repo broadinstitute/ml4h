@@ -10,4 +10,4 @@ echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select t
 #cp /var/cudnn-local-repo-ubuntu2204-9.8.0/cudnn-local-8138232B-keyring.gpg /usr/share/keyrings/
 apt-get update
 #apt-get -y install cudnn
-apt-get install -y wget unzip curl python3-pydot graphviz ttf-mscorefonts-installer git pip ffmpeg
+apt-get install -y wget unzip curl python3-pydot graphviz git pip ffmpeg
