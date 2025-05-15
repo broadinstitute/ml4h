@@ -203,7 +203,9 @@ def process_ge_muse_xml(filepath, space_dict):
     #         for single_lead_data in lead['LeadData']:
     #             leadname =  single_lead_data['LeadID']
     #             if leadname in (lead_order):
-
+    if 'RestingECG' not in dic or 'Waveform' not in dic['RestingECG']:
+        print(f"Missing 'RestingECG' or 'Waveform' in file {filepath}, returning.")
+        return
     for lead in dic['RestingECG']['Waveform']:
         if not isinstance(lead, dict) or 'LeadData' not in lead:
             print(f"Lead data is not a dictionary with LeadData key at {filepath}, returning.")
