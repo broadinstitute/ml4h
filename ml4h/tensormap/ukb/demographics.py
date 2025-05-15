@@ -299,6 +299,62 @@ age_1 = TensorMap(
     '21003_Age-when-attended-assessment-centre_1_0', Interpretation.CONTINUOUS, path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
     normalization={'mean': 61.4476555588322, 'std': 7.3992113757847005}, channel_map={'21003_Age-when-attended-assessment-centre_1_0': 0},
 )
+
+def random_age_tensor_from_file(tm, hd5, dependents, sample_idx, random_choice):
+    """
+    Custom tensor loader that uses dependents (TensorMaps) instead of direct HD5 access.
+    Randomly chooses between age_0 and age_1 if both exist.
+    """
+    def get_tensor_from_tm(tmap):
+        try:
+            key = tensor_path(path_prefix=tmap.path_prefix, name=tmap.name)
+            val = hd5[key][()]
+            return val.item() if isinstance(val, np.ndarray) else val
+        except Exception as e:
+            return None  # Skip if key missing or bad format
+    
+    values = []
+    for name, dep_tm  in dependents.items():
+        val = get_tensor_from_tm(dep_tm)
+        if val is not None:
+            values.append(val)
+
+    if not values:
+        raise ValueError("No dependent tensor is available in dependents.")
+
+    if sample_idx is not None and random_choice is not None:
+        choice = random_choice[sample_idx] % len(values)
+        selected_val = values[choice]
+    return np.array([selected_val], dtype=np.float32)
+
+random_age = TensorMap(
+    'random_age',
+    Interpretation.CONTINUOUS,
+    tensor_from_file=random_age_tensor_from_file,
+    normalization={'mean': 58.988, 'std': 7.747},  # Average or recomputed values
+    channel_map={'random_age': 0},
+    dependent_map=[age_0, age_1]
+)
+
+exercise_age_instance_0 = TensorMap(
+    'instance_0', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_bike/age', loss='log_cosh', validator=make_range_validator(1, 120),
+    normalization={'mean': 52.29705291359679, 'std': 5.697914167815245}, channel_map={'age_instance_0': 0},
+)
+
+exercise_age_instance_1 = TensorMap(
+    'instance_1', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_bike/age', loss='log_cosh', validator=make_range_validator(1, 120),
+    normalization={'mean': 55.50990980299074, 'std': 5.190275471920397}, channel_map={'age_instance_0': 0},
+)
+
+random_exercise_age = TensorMap(
+    'random_exercise_age',
+    Interpretation.CONTINUOUS,
+    tensor_from_file=random_age_tensor_from_file,
+    normalization={'mean': 53.903481358293746, 'std': 5.444094819867821},  # Average or recomputed values
+    channel_map={'random_age': 0},
+    dependent_map=[exercise_age_instance_0, exercise_age_instance_1]
+)
+
 age_2 = TensorMap(
     '21003_Age-when-attended-assessment-centre_2_0', Interpretation.CONTINUOUS,
     path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),

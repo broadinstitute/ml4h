@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import h5py
 import numpy as np
@@ -66,7 +66,7 @@ class TensorMapSampleGetter:
         self.augment = augment
         self.return_path = return_path
 
-    def __call__(self, path: str) -> Batch:
+    def __call__(self, path: str, sample_idx=None, random_choice=None) -> Batch:
         dependents = {}
         with h5py.File(path, 'r') as hd5:
             in_batch = {}
@@ -76,10 +76,12 @@ class TensorMapSampleGetter:
                         dependents = {dep.name: dep for dep in tm.dependent_map}
                     else:
                         dependents = {tm.dependent_map.name: tm.dependent_map}
-                    
+                    if tm.tensor_from_file.__code__.co_argcount >= 5:
+                        tensor = tm.tensor_from_file(tm, hd5, dependents, sample_idx, random_choice)
+                    else:
+                        tensor = tm.tensor_from_file(tm, hd5, dependents)
                 in_batch[tm.input_name()] = tm.postprocess_tensor(
-                    tm.tensor_from_file(tm, hd5, dependents),
-                    augment=self.augment, hd5=hd5,
+                    tensor, augment=self.augment, hd5=hd5,
                 )
             out_batch = {}
             for tm in self.tensor_maps_out:
@@ -88,9 +90,13 @@ class TensorMapSampleGetter:
                         dependents = {dep.name: dep for dep in tm.dependent_map}
                     else:
                         dependents = {tm.dependent_map.name: tm.dependent_map}
+                    if tm.tensor_from_file.__code__.co_argcount >= 5:
+                        tensor = tm.tensor_from_file(tm, hd5, dependents, sample_idx, random_choice)
+                    else:
+                        tensor = tm.tensor_from_file(tm, hd5, dependents)
+
                 out_batch[tm.output_name()] = tm.postprocess_tensor(
-                    tm.tensor_from_file(tm, hd5, dependents),
-                    augment=self.augment, hd5=hd5,
+                    tensor, augment=self.augment, hd5=hd5,
                 )
         if self.return_path:
             return in_batch, out_batch, path
