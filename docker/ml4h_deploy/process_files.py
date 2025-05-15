@@ -211,7 +211,11 @@ def process_ge_muse_xml(filepath, space_dict):
             print(f"Lead data is not a dictionary with LeadData key at {filepath}, returning.")
             return
         for leadid in range(len(lead['LeadData'])):
-            sample_length = len(decode_ekg_muse_to_array(lead['LeadData'][leadid]['WaveFormData']))
+            try:
+                sample_length = len(decode_ekg_muse_to_array(lead['LeadData'][leadid]['WaveFormData']))
+            except:
+                print("Failed to decode lead data to array, returning.")
+                return
             # sample_length is equivalent to dic['RestingECG']['Waveform']['LeadData']['LeadSampleCountTotal']
             if sample_length == 5000:
                 lead_data[lead['LeadData'][leadid]['LeadID']] = decode_ekg_muse_to_array(
