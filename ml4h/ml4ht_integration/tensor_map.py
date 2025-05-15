@@ -71,6 +71,7 @@ class TensorMapSampleGetter:
         with h5py.File(path, 'r') as hd5:
             in_batch = {}
             for tm in self.tensor_maps_in:
+                tensor = tm.tensor_from_file(tm, hd5, dependents)
                 if tm.tensor_from_file and tm.dependent_map:
                     if isinstance(tm.dependent_map, list):
                         dependents = {dep.name: dep for dep in tm.dependent_map}
@@ -85,6 +86,7 @@ class TensorMapSampleGetter:
                 )
             out_batch = {}
             for tm in self.tensor_maps_out:
+                tensor = tm.tensor_from_file(tm, hd5, dependents)
                 if tm.tensor_from_file and tm.dependent_map:
                     if isinstance(tm.dependent_map, list):
                         dependents = {dep.name: dep for dep in tm.dependent_map}
