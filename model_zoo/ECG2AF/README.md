@@ -4,8 +4,7 @@ This directory contains models and code for predicting incident atrial fibrillat
 
 The raw model files are stored using `git lfs` so you must have it installed and localize the full ~200MB files with:
 ```bash
-git lfs pull --include model_zoo/ECG2AF/ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5
-git lfs pull --include model_zoo/ECG2AF/strip_*
+git lfs pull --include model_zoo/ECG2AF/*keras
 ```
 
 To load the 12 lead model in a jupyter notebook (running with the ml4h docker or python library installed) see the [example](./ecg2af_infer.ipynb) or run:
@@ -13,13 +12,12 @@ To load the 12 lead model in a jupyter notebook (running with the ml4h docker or
 ```python
 import numpy as np
 from tensorflow.keras.models import load_model
-from ml4h.models.model_factory import get_custom_objects
-from ml4h.tensormap.ukb.survival import mgb_afib_wrt_instance2
-from ml4h.tensormap.ukb.demographics import age_2_wide, af_dummy, sex_dummy3
+from ml4h.tensormap.ukb.demographics import age_in_days, af_dummy2, sex_dummy1
+from ml4h.tensormap.ukb.survival import mgb_afib_wrt_instance2, mgb_death_wrt_instance2
 
-output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, age_2_wide, af_dummy, sex_dummy3]}
-custom_dict = get_custom_objects(list(output_tensormaps.values()))
-model = load_model('./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5', custom_objects=custom_dict)
+output_tensormaps = {tm.output_name(): tm for tm in [mgb_afib_wrt_instance2, mgb_death_wrt_instance2, 
+                                                     age_in_days, af_dummy2, sex_dummy1]}
+model = load_model('./ecg2af_quintuplet_v2024_01_13.keras')
 ecg = np.random.random((1, 5000, 12))
 prediction = model(ecg)
 ```
@@ -45,17 +43,20 @@ To perform command line inference with this model run:
     --mode infer \
     --tensors /path/to/tensors/ \
     --input_tensors ecg.ecg_rest_mgb \
-    --output_tensors survival.mgb_afib_wrt_instance2 demographics.age_2_wide \
-                     demographics.af_dummy demographics.sex_dummy \
+    --output_tensors survival.mgb_afib_wrt_instance2 survival.mgb_death_wrt_instance2 \
+                     demographics.age_in_days demographics.af_dummy demographics.sex_dummy \
      --tensormap_prefix ml4h.tensormap.ukb \
      --id ecg2afib_quadruple_task_inference \
      --output_folder /path/to/ml4h_runs/ \
-     --model_file /path/to/ml4h/model_zoo/ECG2AF/ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5
+     --model_file /path/to/ml4h/model_zoo/ECG2AF/ecg2af_quintuplet_v2024_01_13.keras'
 ```
 
-The model weights for the main model which performs incident atrial fibrillation prediction as well as the auxiliary tasks of
-age regression, sex classification and prevalent (at the time of ECG) atrial fibrillation:
+The model weights for the main model which performs incident atrial fibrillation prediction auxiliary tasks of
+as well as incident mortality prediction, age regression, sex classification and prevalent (at the time of ECG) atrial fibrillation.
+
+This model was updated in May 2025, the original model without mortality prediction was trained in 2021, and is still available here:
 [ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5](./ecg_5000_survival_curve_af_quadruple_task_mgh_v2021_05_21.h5)
+
 
 We also include single lead models for lead/strip I: [strip_I_survival_curve_af_v2021_06_15.h5](./strip_I_survival_curve_af_v2021_06_15.h5)
 and II: [strip_II_survival_curve_af_v2021_06_15.h5](./strip_II_survival_curve_af_v2021_06_15.h5)

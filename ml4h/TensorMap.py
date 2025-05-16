@@ -224,6 +224,9 @@ class TensorMap(object):
     def __repr__(self):
         return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
 
+    def __str__(self):
+        return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
+
     def __eq__(self, other):
         if not isinstance(other, TensorMap):
             return NotImplemented

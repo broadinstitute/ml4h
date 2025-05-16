@@ -126,7 +126,7 @@ def make_multimodal_multitask_model(
     )
 
     if kwargs.get('model_file', False):
-        return tf.keras.models.load_model(kwargs['model_file'])
+        return tf.keras.models.load_model(kwargs['model_file']), None, None, None
     if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
 
