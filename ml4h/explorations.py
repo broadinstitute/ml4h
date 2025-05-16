@@ -304,7 +304,7 @@ def predictions_to_pngs(
         vmax = np.max(data[input_map.input_name()])
         if tm.is_mesh():
             for i in range(y.shape[0]):
-                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                sample_id = i #os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if input_map.axes() == 4 and input_map.shape[-1] == 1:
                     sample_data = data[input_map.input_name()][i, ..., 0]
                     cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
@@ -327,7 +327,7 @@ def predictions_to_pngs(
         elif tm.axes() == 2:
             fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * 3))
             for i in range(y.shape[0]):
-                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                sample_id = i#os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 title = f'{tm.name}_{sample_id}_reconstruction'
                 for j in range(tm.shape[1]):
                     plt.subplot(tm.shape[1], 1, j + 1)
@@ -341,7 +341,7 @@ def predictions_to_pngs(
                 plt.clf()
         elif len(tm.shape) == 3:
             for i in range(y.shape[0]):
-                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                sample_id = i#os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical():
                     plt.imsave(f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1), cmap='plasma')
                     plt.imsave(f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='plasma')
@@ -350,7 +350,7 @@ def predictions_to_pngs(
                     plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', y[i, :, :, 0], cmap='gray')
         elif len(tm.shape) == 4:
             for i in range(y.shape[0]):
-                sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+                sample_id = i#os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 for j in range(y.shape[3]):
                     image_path_base = f'{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}'
                     if tm.is_categorical():
@@ -361,7 +361,7 @@ def predictions_to_pngs(
                     else:
                         plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
                         plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', y[i, :, :, j, :], cmap='gray')
-
+        plt.close()
 
 def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict[str, np.ndarray], paths, folder):
     for tm in tensor_maps_in:
@@ -369,7 +369,7 @@ def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict
         vmin = np.min(tensor)
         vmax = np.max(tensor)
         for i in range(tensor.shape[0]):
-            sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
+            sample_id = i#os.path.basename(paths[i]).replace(TENSOR_EXT, '')
             if len(tm.shape) not in [3, 4]:
                 continue
             for j in range(tensor.shape[3]):
@@ -377,7 +377,7 @@ def _save_tensor_map_tensors_as_pngs(tensor_maps_in: List[TensorMap], data: Dict
                     plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j], cmap='gray', vmin=vmin, vmax=vmax)
                 elif len(tm.shape) == 4:
                     plt.imsave(f"{folder}{sample_id}_input_{tm.name}_{i:02d}_{j:02d}{IMAGE_EXT}", tensor[i, :, :, j, 0], cmap='gray', vmin=vmin, vmax=vmax)
-
+    plt.close()
 
 def plot_while_learning(
     model, tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap],

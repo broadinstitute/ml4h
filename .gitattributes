@@ -43,3 +43,8 @@ model_zoo/registration_reveals_genetics/table2.png filter=lfs diff=lfs merge=lfs
 model_zoo/ECG_PheWAS/encoder_median.h5 filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG_PheWAS/mgh_biosppy_median_60bpm_autoencoder_256d_v2022_05_21.h5 filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG_PheWAS/decoder_median.h5 filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG2AF/ecg2af_quintuplet_v2024_01_13.keras filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG_PheWAS/decoder_median.keras filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG_PheWAS/encoder_median.keras filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG_PheWAS/mgh_biosppy_median_60bpm_autoencoder_256d_v2022_05_21.keras filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG2HF/ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras filter=lfs diff=lfs merge=lfs -text

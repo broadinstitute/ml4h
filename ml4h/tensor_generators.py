@@ -127,7 +127,7 @@ class TensorGenerator(TensorGeneratorABC):
             self.batch_size *= 2
             self.batch_function_kwargs = {'alpha': mixup_alpha}
         elif siamese:
-            self.batch_function = _make_batch_siamese
+            self.batch_function = _identity_batch #_make_batch_siamese
         else:
             self.batch_function = _identity_batch
 
