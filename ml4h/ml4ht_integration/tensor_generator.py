@@ -30,6 +30,12 @@ class TensorMapDataLoader(TensorGeneratorABC):
             input_maps, output_maps, augment,
             return_path=keep_paths,
         )
+        if self.any_tensor_map_uses_random_choice(self.output_maps) or self.any_tensor_map_uses_random_choice(self.input_maps):
+            self.random_choice = np.random.choice(len(output_maps[0].dependent_map), size=batch_size)
+            print("random choice of the batch is ",self.random_choice)
+            self.sample_getter = IndexedSampleGetter(
+                self.sample_getter, batch_size, self.random_choice
+            )
         self.dset = SampleGetterIterableDataset(
             paths, self.sample_getter,
             get_epoch=shuffle_get_epoch,
@@ -85,6 +91,24 @@ class TensorMapDataLoader(TensorGeneratorABC):
     def kill_workers(self):
         """necessary for legacy compatibility"""
         pass
+    def any_tensor_map_uses_random_choice(self, output_maps: List[TensorMap]) -> bool:
+        for tm in output_maps:
+            fn = tm.tensor_from_file
+            if fn and fn.__code__.co_argcount >= 5:  # tm, hd5, dependents, sample_idx, random_choice
+                return True
+        return False
+
+class IndexedSampleGetter:
+    def __init__(self, getter, batch_size, random_choice):
+        self.getter = getter
+        self.batch_size = batch_size
+        self.random_choice = random_choice
+        self.counter = 0
+
+    def __call__(self, path):
+        sample_idx = self.counter % self.batch_size
+        self.counter += 1
+        return self.getter(path, sample_idx=sample_idx, random_choice=self.random_choice)
 
 
 class TensorMapDataLoaderFromDataset(TensorGeneratorABC):
