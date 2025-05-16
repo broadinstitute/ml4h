@@ -28,19 +28,35 @@ af_tmap = TensorMap(
     shape=(n_intervals*2,),
 )
 
+hf_nlp_tmap = TensorMap(
+    'hf_nlp_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(n_intervals*2,),
+)
+
+hf_primary_tmap = TensorMap(
+    'hf_primary_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(n_intervals*2,),
+)
+
+
 death_tmap = TensorMap(
     'death_event',
     Interpretation.SURVIVAL_CURVE,
     shape=(n_intervals*2,),
 )
-
+is_male_tmap = TensorMap(
+    'is_male', Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1},
+)
 sex_tmap = TensorMap(name='sex', interpretation=Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male':1})
 age_tmap = TensorMap(name='age_in_days', interpretation=Interpretation.CONTINUOUS, channel_map={'age_in_days': 0})
 af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CATEGORICAL, channel_map={'no_af_in_read': 0, 'af_in_read':1})
 
-output_tensormaps = {tm.output_name(): tm for tm in [af_tmap, death_tmap, sex_tmap, age_tmap, af_in_read_tmap]}
+output_tensormaps = {tm.output_name(): tm for tm in [hf_nlp_tmap, hf_primary_tmap, death_tmap, is_male_tmap, age_tmap]}
 custom_dict = get_custom_objects(list(output_tensormaps.values()))
-model = load_model('ecg2af_quintuplet_v2024_01_13.h5', custom_objects=custom_dict)
+model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
+output_file = '/output/ecg2hf_quintuplet.csv'
 space_dict = defaultdict(list)
 
 def process_ukb_hd5(filepath, space_dict):
@@ -115,9 +131,6 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
     return np.array(byte_array)[::dwnsmpl]
 
 def process_ge_muse_xml(filepath, space_dict):
-    with open(filepath, 'rb') as fd:
-        dic = xmltodict.parse(fd.read().decode('utf8'))
-
     """
 
     Upload the ECG as numpy array with shape=[2500,12,1] ([time, leads, 1]).
@@ -127,6 +140,29 @@ def process_ge_muse_xml(filepath, space_dict):
     The leads should be ordered as follow I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6.
 
     """
+    try:
+        with open(filepath, 'rb') as fd:
+            content = fd.read()
+            if not content.strip():
+                print(f"Skipping empty file: {filepath}")
+                return
+            try:
+                decoded = content.decode('utf-8')
+            except UnicodeDecodeError:
+                print(f"Skipping non-UTF8 file: {filepath}")
+                return
+
+            dic = xmltodict.parse(decoded)
+            print(f"Successfully parsed XML from: {filepath}")
+            # continue processing dic...
+
+    except xmltodict.expat.ExpatError as e:
+        print(f"XML parsing error in file {filepath}: {e}")
+        return
+    except Exception as e:
+        print(f"Unexpected error processing {filepath}: {e}")
+        return
+
     try:
         patient_id = dic['RestingECG']['PatientDemographics']['PatientID']
     except:
@@ -167,10 +203,19 @@ def process_ge_muse_xml(filepath, space_dict):
     #         for single_lead_data in lead['LeadData']:
     #             leadname =  single_lead_data['LeadID']
     #             if leadname in (lead_order):
-
+    if 'RestingECG' not in dic or 'Waveform' not in dic['RestingECG']:
+        print(f"Missing 'RestingECG' or 'Waveform' in file {filepath}, returning.")
+        return
     for lead in dic['RestingECG']['Waveform']:
+        if not isinstance(lead, dict) or 'LeadData' not in lead:
+            print(f"Lead data is not a dictionary with LeadData key at {filepath}, returning.")
+            return
         for leadid in range(len(lead['LeadData'])):
-            sample_length = len(decode_ekg_muse_to_array(lead['LeadData'][leadid]['WaveFormData']))
+            try:
+                sample_length = len(decode_ekg_muse_to_array(lead['LeadData'][leadid]['WaveFormData']))
+            except:
+                print("Failed to decode lead data to array, returning.")
+                return
             # sample_length is equivalent to dic['RestingECG']['Waveform']['LeadData']['LeadSampleCountTotal']
             if sample_length == 5000:
                 lead_data[lead['LeadData'][leadid]['LeadID']] = decode_ekg_muse_to_array(
@@ -234,15 +279,17 @@ def process_ge_muse_xml(filepath, space_dict):
 def main(directory):
     # Iterate over all files in the specified directory
     space_dict = defaultdict(list)
-    for i,filename in enumerate(os.listdir(directory)):
-        filepath = os.path.join(directory, filename)
-        if os.path.isfile(filepath):
-            process_ge_muse_xml(filepath, space_dict)
-        if i > 10000:
-            break
+    for root, _, files in os.walk(directory):
+        for i, filename in enumerate(files):
+            filepath = os.path.join(root, filename)
+            if os.path.isfile(filepath):
+                process_ge_muse_xml(filepath, space_dict)
+            # if i > 10000:
+            #     break
 
     df = pd.DataFrame.from_dict(space_dict)
-    df.to_csv('/output/ecg2af_quintuplet.csv', index=False)
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    df.to_csv(output_file, index=False)
 
 if __name__ == "__main__":
     # Take directory path from command-line arguments

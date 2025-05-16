@@ -1,21 +1,19 @@
 import datetime
 import logging
 import os
-from typing import Dict, List, Tuple, Sequence
 import math
 
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from tensorflow import keras
+import keras
 from keras import layers
+from keras.saving import register_keras_serializable
 
 from ml4h.defines import IMAGE_EXT
-from ml4h.metrics import KernelInceptionDistance, InceptionScore, MultiScaleSSIM
-from ml4h.models.Block import Block
-from ml4h.TensorMap import TensorMap
-
+from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.metrics import KernelInceptionDistance, MultiScaleSSIM
 
 Tensor = tf.Tensor
 
@@ -33,7 +31,7 @@ ema = 0.999
 # plotting
 plot_diffusion_steps = 50
 
-
+@register_keras_serializable()
 def sinusoidal_embedding(x, dims=1):
     embedding_min_frequency = 1.0
     frequencies = tf.exp(
@@ -57,7 +55,7 @@ def sinusoidal_embedding(x, dims=1):
         raise ValueError(f'No support for 4d or more.')
     return embeddings
 
-
+@register_keras_serializable()
 def residual_block(width, conv, kernel_size, groups=32):
     def apply(x):
         # shortcut
@@ -82,7 +80,7 @@ def residual_block(width, conv, kernel_size, groups=32):
         return x
     return apply
 
-
+@register_keras_serializable()
 def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
     def apply(x):
         x, skips = x
@@ -93,7 +91,7 @@ def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
         return x
     return apply
 
-
+@register_keras_serializable()
 def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
     def apply(x):
         x, skips = x
@@ -104,7 +102,7 @@ def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
         return x
     return apply
 
-
+@register_keras_serializable()
 def get_network(input_shape, widths, block_depth, kernel_size):
     noisy_images = keras.Input(shape=input_shape)
     conv, upsample, pool, _ = layers_from_shape_control(input_shape)
@@ -130,8 +128,6 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     for width in reversed(widths[:-1]):
         x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
-    if len(input_shape) > 2:
-        x = conv(input_shape[-1], kernel_size=3, padding='same', kernel_initializer="ones")(x)
     x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances], x, name="residual_unet")
@@ -199,7 +195,6 @@ def residual_block_control(
         x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding='same')(x)
-
         x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding='same')(x)
@@ -348,8 +343,6 @@ def get_control_network(
             x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
 
     # ─── final convs ────────────────────────────────────────────
-    if len(input_shape) > 2:
-        x = conv(input_shape[-1], kernel_size=3, activation="linear", padding="same", kernel_initializer="ones")(x)
     x = conv(input_shape[-1], kernel_size=1, activation="linear", kernel_initializer="zeros")(x)
 
     return keras.Model([noisy_images, noise_variances, control], x, name="control_unet")
@@ -364,22 +357,56 @@ def get_control_embed_model(output_maps, control_size):
     c = layers.Dense(control_size, activation='linear')(c)
     return keras.Model(control_ins, c, name='control_embed')
 
-
+@register_keras_serializable()
 class DiffusionModel(keras.Model):
-    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model):
+    def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model,
+                 name=None,
+                 **kwargs):
         super().__init__()
 
-        self.tensor_map = tensor_map
-        self.batch_size = batch_size
+        self.tensor_map     = tensor_map
+        self.batch_size     = batch_size
+        self.widths         = widths
+        self.block_depth    = block_depth
+        self.kernel_size    = kernel_size
+        self.diffusion_loss = diffusion_loss
+        self.sigmoid_beta   = sigmoid_beta
+        self.inspect_model  = False #inspect_model
+
         self.normalizer = layers.Normalization()
         self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
         self.ema_network = keras.models.clone_model(self.network)
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
-        self.beta = sigmoid_beta
-        self.inspect_model = inspect_model
 
     def can_apply(self):
         return self.tensor_map.axes() > 1
+
+    def get_config(self):
+        config = super().get_config()
+        # pop out any Keras-internal stuff you don’t want to pass back
+        config.pop("layers", None)
+        config.pop("input_layers", None)
+        config.pop("output_layers", None)
+        # now re-inject exactly the args your __init__ needs:
+        logging.info(f'Saving tensormap as: {str(self.tensor_map)}')
+        config.update({
+            "tensor_map":     str(self.tensor_map),        # or .to_config() if needed
+            "batch_size":     self.batch_size,
+            "widths":         self.widths,
+            "block_depth":    self.block_depth,
+            "kernel_size":    self.kernel_size,
+            "diffusion_loss": self.diffusion_loss,
+            "sigmoid_beta":   self.sigmoid_beta,
+            "inspect_model":  self.inspect_model,
+            # name/trainable/dtype are already in super().get_config()
+        })
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        tm_string = config.pop("tensor_map")
+        config['tensor_map'] = TensorMap('lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1))
+        return cls(**config)
 
     def compile(self, **kwargs):
         super().compile(**kwargs)
@@ -401,11 +428,14 @@ class DiffusionModel(keras.Model):
         return m
 
     def denormalize(self, images):
-        # convert the pixel values back to 0-1 range
-        # images = images - tf.math.reduce_mean(images) + images * tf.math.reduce_std(images)
-        images = self.normalizer.mean + images * self.normalizer.variance ** 0.5
-        # print(f'images max min {images}')
-        return images  # tf.clip_by_value(images, 0.0, 1.0)
+        with tf.init_scope():
+            mean = self.normalizer.mean
+            var = self.normalizer.variance
+        std = tf.sqrt(var)
+        return images * std + mean
+        # images = self.normalizer.mean + images * self.normalizer.variance ** 0.5
+        # # print(f'images max min {images}')
+        # return images  # tf.clip_by_value(images, 0.0, 1.0)
 
     def diffusion_schedule(self, diffusion_times):
         # diffusion times -> angles
@@ -478,7 +508,7 @@ class DiffusionModel(keras.Model):
     def train_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.update_state(images)
+        #self.normalizer.adapt(images)
         # images = images['input_lax_4ch_diastole_slice0_224_3d_continuous']
         images = self.normalizer(images, training=True)
         # images = images.numpy() - images.numpy().mean() / images.numpy().std()
@@ -507,7 +537,7 @@ class DiffusionModel(keras.Model):
 
                 # Compute log-SNR (lambda_t)
                 lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
-                weight = tf.math.sigmoid(self.beta - lambda_t)
+                weight = tf.math.sigmoid(self.sigmoid_beta - lambda_t)
                 noise_loss = weight * noise_loss
 
         gradients = tape.gradient(noise_loss, self.network.trainable_weights)
@@ -528,7 +558,7 @@ class DiffusionModel(keras.Model):
     def test_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.update_state(images)
+        #self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         # images = images - tf.math.reduce_mean(images) / tf.math.reduce_std(images)
         noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
@@ -554,7 +584,7 @@ class DiffusionModel(keras.Model):
 
             # Compute log-SNR (lambda_t)
             lambda_t = tf.math.log(signal_rates_squared / noise_rates_squared)
-            weight = tf.math.sigmoid(self.beta - lambda_t)
+            weight = tf.math.sigmoid(self.sigmoid_beta - lambda_t)
             noise_loss = weight * noise_loss
 
         self.image_loss_tracker.update_state(image_loss)
@@ -573,6 +603,18 @@ class DiffusionModel(keras.Model):
             self.ms_ssim.update_state(images, generated_images, 255)
 
         return {m.name: m.result() for m in self.metrics}
+
+    def call(self, inputs, training=False):
+        """
+        A minimal forward pass so that:
+          1. Keras knows how to build() the model
+          2. You can use model((noisy_images, noise_rates)) for inference
+        """
+        noisy_images, noise_rates = inputs
+        # re-compute signal_rates
+        signal_rates = tf.sqrt(1.0 - tf.square(noise_rates))
+        # this returns (pred_noises, pred_images)
+        return self.denoise(noisy_images, noise_rates, signal_rates, training=training)
 
     def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         # plot random generated images for visual evaluation of generation quality
@@ -629,7 +671,7 @@ class DiffusionModel(keras.Model):
         self, images_original, diffusion_amount=0, epoch=None, logs=None, num_rows=2, num_cols=2, prefix='./figures/',
     ):
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.update_state(images)
+        self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(num_rows*num_cols,) + self.tensor_map.shape)
 
@@ -717,7 +759,7 @@ class DiffusionModel(keras.Model):
         plt.show()
         plt.close()
 
-
+@register_keras_serializable()
 class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
@@ -738,8 +780,12 @@ class DiffusionController(keras.Model):
         self.beta = sigmoid_beta
         self.supervisor = supervisor
         self.supervision_scalar = supervision_scalar
-        self.inspect_model = inspect_model
+        self.inspect_model = False# inspect_model
 
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'sigmoid_beta': self.beta, 'batch_size': self.batch_size})
+        return config
 
     def compile(self, **kwargs):
         super().compile(**kwargs)
@@ -764,11 +810,11 @@ class DiffusionController(keras.Model):
         return m
 
     def denormalize(self, images):
-        # convert the pixel values back to 0-1 range
-        # images = images - tf.math.reduce_mean(images) + images * tf.math.reduce_std(images)
-        images = self.normalizer.mean + images * self.normalizer.variance ** 0.5
-        # print(f'images max min {images}')
-        return images  # tf.clip_by_value(images, 0.0, 1.0)
+        with tf.init_scope():
+            mean = self.normalizer.mean
+            var = self.normalizer.variance
+        std = tf.sqrt(var)
+        return images * std + mean
 
     def diffusion_schedule(self, diffusion_times):
         # diffusion times -> angles
@@ -849,7 +895,7 @@ class DiffusionController(keras.Model):
     def train_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
         images = batch[0][self.input_map.input_name()]
-        self.normalizer.update_state(images)
+        #self.normalizer.adapt(images)
         images = self.normalizer(images, training=True)
 
         control_embed = self.control_embed_model(batch[1])
@@ -914,7 +960,7 @@ class DiffusionController(keras.Model):
     def test_step(self, batch):
         # normalize images to have standard deviation of 1, like the noises
         images = batch[0][self.input_map.input_name()]
-        self.normalizer.update_state(images)
+        #self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
 
         control_embed = self.control_embed_model(batch[1])
@@ -972,6 +1018,18 @@ class DiffusionController(keras.Model):
 
         return {m.name: m.result() for m in self.metrics}
 
+    def call(self, batch, training=False):
+        """
+        A minimal forward pass so that:
+          1. Keras knows how to build() the model
+          2. You can use model((noisy_images, noise_rates)) for inference
+        """
+        noisy_images, noise_rates = batch[0]
+        control_embed = self.control_embed_model(batch[1])
+        # re-compute signal_rates
+        signal_rates = tf.sqrt(1.0 - tf.square(noise_rates))
+        # this returns (pred_noises, pred_images)
+        return self.denoise(control_embed, noisy_images, noise_rates, signal_rates, training=training)
 
     def plot_images(self, epoch=None, logs=None, num_rows=1, num_cols=4, reseed=None, prefix='./figures/'):
         control_batch = {}
@@ -1009,7 +1067,7 @@ class DiffusionController(keras.Model):
         epoch=None, logs=None, num_rows=4, num_cols=4, prefix='./figures/',
     ):
         images = batch[0][self.input_map.input_name()]
-        self.normalizer.update_state(images)
+        self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
         diffusion_times = diffusion_amount * tf.ones(shape=[self.batch_size] + [1] * self.input_map.axes())

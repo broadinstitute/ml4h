@@ -20,28 +20,27 @@ from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
+from ml4h.models.train import train_model_from_generators
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
+from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, infer_stats_from_segmented_regions
+from ml4h.models.train_diffusion import train_diffusion_model, train_diffusion_control_model, \
+    test_diffusion_control_model
+from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
+from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter, plot_reconstruction
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
-from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter
 from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
 from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
-from ml4h.models.train import train_model_from_generators, train_diffusion_model, train_diffusion_control_model
+from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, infer_stats_from_segmented_regions
+from ml4h.models.legacy_models import embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
-from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients, concordance_index_censored
-
-from ml4h.plots import plot_reconstruction, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
-from ml4h.plots import plot_dice, plot_reconstruction, plot_hit_to_miss_transforms, plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
-
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
-from ml4h.models.legacy_models import embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
-from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
-from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
+from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients, concordance_index_censored
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
@@ -119,6 +118,10 @@ def run(args):
             train_diffusion_control_model(args)
         elif 'train_diffusion_supervise' == args.mode:
             train_diffusion_control_model(args, supervised=True)
+        elif 'test_diffusion' == args.mode:
+            test_diffusion_control_model(args, unconditioned=True)
+        elif 'test_diffusion_control' == args.mode:
+            test_diffusion_control_model(args)
         elif 'train_siamese' == args.mode:
             train_siamese_model(args)
         elif 'write_tensor_maps' == args.mode:
@@ -250,7 +253,6 @@ def train_multimodal_multitask(args):
         )
 
         predictions = model.predict(test_data)
-        predictions_dict = {}
 
         if isinstance(predictions, dict):
             predictions_dict = predictions
@@ -712,7 +714,7 @@ def infer_multimodal_multitask(args):
     inference_tsv = inference_file_name(args.output_folder, args.id)
     tsv_style_is_genetics = 'genetics' in args.tsv_style
 
-    model = legacy_multimodal_multitask_model(**args.__dict__)
+    model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
@@ -752,10 +754,21 @@ def infer_multimodal_multitask(args):
                 next(generate_test)  # this prints end of epoch info
                 logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
                 break
-            prediction = model.predict(input_data, verbose=0)
-            if len(no_fail_tmaps_out) == 1:
-                prediction = [prediction]
-            predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+            predictions = model.predict(input_data, verbose=0)
+            if isinstance(predictions, dict):
+                predictions_dict = predictions
+
+            elif isinstance(predictions, (list, tuple)):
+                # Map outputs by model.output_names (strings)
+                predictions_dict = {
+                    str(name): pred for name, pred in zip(model.output_names, predictions)
+                }
+            else:
+                # Single tensor output
+                predictions_dict = {
+                    model.output_names[0]: predictions
+                }
+
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
             csv_row = [sample_id]
             if tsv_style_is_genetics:
@@ -773,16 +786,16 @@ def infer_multimodal_multitask(args):
                 elif len(otm.shape) == 1 and otm.is_categorical():
                     for k, i in otm.channel_map.items():
                         try:
-                            csv_row.append(str(y[ot][0][otm.channel_map[k]]))
+                            csv_row.append(str(y[0][otm.channel_map[k]]))
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
-                        except IndexError:
-                            logging.debug(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
+                        except (IndexError, KeyError):
+                            logging.warning(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
                     days_per_bin = 1 + otm.days_window // intervals
-                    #predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
-                    predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
+                    predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                    #predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
                     csv_row.append(str(1 - predicted_survivals[0, -1]))
                     sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
                     follow_up = np.cumsum(output_data[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
@@ -1067,6 +1080,19 @@ def _predict_scalars_and_evaluate_from_generator(
             input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
             tensor_paths = None
         y_predictions = model.predict(input_data, verbose=0)
+        if isinstance(y_predictions, dict):
+            predictions_dict = y_predictions
+
+        elif isinstance(y_predictions, (list, tuple)):
+            # Map outputs by model.output_names (strings)
+            predictions_dict = {
+                str(name): pred for name, pred in zip(model.output_names, y_predictions)
+            }
+        else:
+            # Single tensor output
+            predictions_dict = {
+                model.output_names[0]: y_predictions
+        }
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
@@ -1076,11 +1102,9 @@ def _predict_scalars_and_evaluate_from_generator(
         for tm in tensor_maps_protected:
             protected_data[tm].extend(np.copy(output_data[tm.output_name()]))
 
-        for y, tm_output_name in zip(y_predictions, model_predictions):
-            if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
-                y = y_predictions
+        for tm_output_name, y in predictions_dict.items():
             if tm_output_name in scalar_predictions:
-                scalar_predictions[tm_output_name].extend(np.copy(y[tm_output_name]))
+                scalar_predictions[tm_output_name].extend(np.copy(y))
 
         if i % 100 == 0:
             logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')

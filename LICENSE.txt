@@ -1,6 +1,6 @@
 ML4H is released under the following BSD 3-Clause License:
 
-Copyright (c) 2020, Broad Institute, Inc. and The General Hospital Corporation. All rights reserved.
+Copyright (c) 2025, Broad Institute, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -12,7 +12,7 @@ modification, are permitted provided that the following conditions are met:
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
 
-* Neither the name Broad Institute, Inc. or The General Hospital Corporation 
+* Neither the name Broad Institute, Inc.
   nor the names of its contributors may be used to endorse or promote products 
   derived from this software without specific prior written permission.
 
