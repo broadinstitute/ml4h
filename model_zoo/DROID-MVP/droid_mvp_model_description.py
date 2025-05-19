@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
+from official.projects.movinet.modeling import movinet, movinet_model
+#from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
 
 hidden_units = 256
 dropout_rate = 0.5
@@ -40,6 +41,8 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
 
     inputs = tf.keras.Input(shape=input_shape, name='image')
     features = encoder(inputs)
+    if isinstance(features, (list, tuple)):
+        features = features[0]
     features = tf.keras.layers.Dropout(dropout_rate)(features)
     features = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
     features = tf.keras.layers.Dropout(dropout_rate)(features)

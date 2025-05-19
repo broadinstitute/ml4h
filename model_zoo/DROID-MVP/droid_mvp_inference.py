@@ -3,6 +3,7 @@
 
 import numpy as np
 import tensorflow as tf
+import keras
 from droid_mvp_model_description import create_movinet_classifier, create_regressor_classifier
 import logging 
 tf.get_logger().setLevel(logging.ERROR)
@@ -17,9 +18,12 @@ movinet_model, backbone = create_movinet_classifier(
     checkpoint_dir=movinet_chkp_dir,
 )
 
-backbone_output = backbone.layers[-1].output[0]
-flatten = tf.keras.layers.Flatten()(backbone_output)
-encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
+#backbone_output = backbone.layers[-1].output[0]
+#flatten = tf.keras.layers.Flatten()(backbone_output)
+#encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
+inputs = keras.Input(shape=(None, None, None, 3))
+outputs = keras.layers.Flatten()(inputs)
+encoder = keras.Model(inputs=[inputs], outputs=[outputs])
 
 func_args = {
     'input_shape': (16, 224, 224, 3),
@@ -30,7 +34,9 @@ func_args = {
 
 model_plus_head = create_regressor_classifier(encoder, **func_args)
 
-model_plus_head.load_weights(pretrained_chkp_dir)
+#model_plus_head.load_weights(pretrained_chkp_dir)
+ckpt = tf.train.Checkpoint(model=model_plus_head)
+ckpt.restore(pretrained_chkp_dir).expect_partial()
 
 random_video = np.random.random((1, 16, 224, 224, 3))
 

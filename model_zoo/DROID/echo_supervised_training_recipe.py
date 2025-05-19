@@ -339,7 +339,9 @@ def main(
                     'cls_output_order'] if cls_category_signature_len_dict else None,
                 add_dense={'regressor': sig_add_separate_dense_reg, 'classifier': sig_add_separate_dense_cls}
             )
-            model.load_weights(pretrained_chkp_dir)
+            #model.load_weights(pretrained_chkp_dir)
+            ckpt = tf.train.Checkpoint(model=model)
+            ckpt.restore(pretrained_chkp_dir).expect_partial()
 
             if (output_labels != output_signature_labels) or (output_signature_reg_len != output_reg_len) or (
                     cls_output_signature_names != cls_output_names) or define_new_heads:
