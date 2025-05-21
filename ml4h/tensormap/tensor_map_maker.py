@@ -261,7 +261,7 @@ def generate_categorical_tensor_map_from_file(
     delimiter = ',' if ext == 'csv' else '\t'
     df = pd.read_csv(file_name, delimiter=delimiter)
     channel_map = {}
-    for i, k in enumerate(df[column_name].value_counts().keys()):
+    for i, k in enumerate(sorted(df[column_name].value_counts().keys())):
         channel_map[k] = i
     logging.info(f'Creating categorical tensormap with channel_map {channel_map}')
     if len(label_weights) == 0:
