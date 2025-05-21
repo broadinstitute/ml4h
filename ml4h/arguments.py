@@ -104,7 +104,8 @@ def parse_args():
     parser.add_argument(
         '--categorical_file_label_weights', default=[], nargs='*', type=float,
         help='List of per-label weights for weighted categorical cross entropy for the categorical TensorMap(s). If provided, must map 1:1 to number of labels.'
-             'Currently implemented for only one categorical file column.',
+             'Weights should be listed according to the sorted order of the entries in the column of the categorical file being used.'
+             'Currently implemented for only one categorical file column. The order corresponds to the ',
     )
     parser.add_argument(
         '--latent_input_file', default=None, help=
