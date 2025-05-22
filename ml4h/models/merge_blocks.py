@@ -236,7 +236,7 @@ class GeometricLossBlock(Block):
         for tm in intermediates:
             intermediates[tm].append(self.loss_layer([intermediates[tm][0], intermediates[tm][-1]]))
             # y.append(self.loss_layer([intermediates[tm][0], intermediates[tm][-1]]))
-        return self.pair_block(x, intermediates)  # tf.math.reduce_mean(y) #Average()(y)
+        return intermediates[tm][-1] #self.pair_block(x, intermediates)  # tf.math.reduce_mean(y) #Average()(y)
 
         # for tm in intermediates:
         #     self.loss_layer(intermediates[tm][0], intermediates[tm][-1])
@@ -258,7 +258,7 @@ class GeometricLossLayer(Layer):
 
     def call(self, inputs):
         self.add_loss(self.weight * self.kernel_regularization(inputs[0], inputs[1]))
-        return inputs
+        return inputs[1]
 
     def kernel_regularization(self, emb_pre: Tensor, emb_post: Tensor) -> Tensor: # x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
 
@@ -274,10 +274,10 @@ class GeometricLossLayer(Layer):
         mean_dist_post = tf.reduce_mean(dist_post)
 
         kernel_pre = tf.exp(-dist_pre / (self.geom_kernel_sigma * mean_dist_pre + 1e-6))
-        kernel_pre /= tf.reduce_sum(kernel_pre, axis=1, keepdims=True)
+        kernel_pre /= (tf.reduce_sum(kernel_pre, axis=1, keepdims=True) + 1e-6)
 
         kernel_post = tf.exp(-dist_post / (self.geom_kernel_sigma * mean_dist_post + 1e-6))
-        kernel_post /= tf.reduce_sum(kernel_post, axis=1, keepdims=True)
+        kernel_post /= (tf.reduce_sum(kernel_post, axis=1, keepdims=True) + 1e-6)
 
         reg_loss = tf.reduce_sum(tf.norm(kernel_post - kernel_pre, ord='fro', axis=(-2, -1)))
 
