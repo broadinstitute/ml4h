@@ -223,10 +223,6 @@ class KLDivergenceBlock(Block):
         self.dimension = dense_layers[-1] // 2 # spleat into mean and log_var
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        # We expect x to be a list containing [z_mean, z_log_var]
-        if not isinstance(x, list) or len(x) != 2:
-            raise ValueError("KLDivergenceBlock expects a list with two inputs: z_mean and z_log_var")
-
         z_mean = x[:, :self.dimension]
         z_log_var = x[:, self.dimension:]
 
