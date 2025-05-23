@@ -358,7 +358,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         for obj in chain(
             ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
             ],
         )
