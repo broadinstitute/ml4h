@@ -218,11 +218,33 @@ class KLDivergenceBlock(Block):
 
     Returns z_mean as output to allow for further processing.
     """
-    def __init__(self, dense_layers: List[int] = [256], kl_weight:float = 1.0, **kwargs):
-        self.kl_weight = kl_weight
-        self.dimension = dense_layers[-1] // 2 # spleat into mean and log_var
+    def __init__(self, dense_layers: List[int] = [256], pair_loss_weight:float = 1.0, **kwargs):
+        self.dense_layer_size = dense_layers[-1]
+        self.loss_layer = KLLossLayer(pair_loss_weight, dimension=self.dense_layer_size//2)
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        y = self.loss_layer(x)
+        y = Dense(units=self.dense_layer_size)(y)
+        return y
+    
+@register_keras_serializable()
+class KLLossLayer(Layer):
+    """Layer that creates KL loss."""
+
+    def __init__(self, weight, dimension, **kwargs):
+        super(KLLossLayer, self).__init__(**kwargs)
+        self.weight = weight
+        self.dimension = dimension
+
+    def get_config(self):
+        config = super(KLDivergenceBlock, self).get_config()
+        config.update({
+            'kl_weight': self.kl_weight,
+            'dimension': self.dimension
+        })
+        return config
+
+    def call(self, x):
         z_mean = x[:, :self.dimension]
         z_log_var = x[:, self.dimension:]
 
@@ -232,7 +254,7 @@ class KLDivergenceBlock(Block):
         )
 
         # Add KL divergence regularization loss
-        self.add_loss(self.kl_weight * kl_loss)
+        tf.keras.backend.add_loss(self.kl_weight * kl_loss)
 
         # Sample z using reparameterization trick
         batch = tf.shape(z_mean)[0]
@@ -241,16 +263,6 @@ class KLDivergenceBlock(Block):
         z = z_mean + tf.exp(0.5 * z_log_var) * epsilon
         return z
 
-    def add_loss(self, loss):
-        tf.keras.backend.add_loss(loss)
-
-    def get_config(self):
-        config = super(KLDivergenceBlock, self).get_config()
-        config.update({
-            'kl_weight': self.kl_weight,
-            'dimension': self.dimension
-        })
-        return config
 
 class EncodeIdentityBlock(Block):
     """
