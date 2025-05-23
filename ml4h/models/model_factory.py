@@ -30,12 +30,10 @@ from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, La
     IdentityEncoderBlock, IdentityDecoderBlock
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 
-from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, \
-    VariationalDiagNormal, KroneckerBlock, DropoutBlock
+from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, KroneckerBlock, DropoutBlock
 
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
-from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
-
+from ml4h.models.merge_blocks import KLDivergenceBlock
 
 BLOCK_CLASSES = {
     'conv_encode': ConvEncoderBlock,
@@ -54,6 +52,7 @@ BLOCK_CLASSES = {
     'mean': ReduceMean,
     'pair': PairLossBlock,
     'gap': GlobalAveragePoolBlock,
+    'kl_divergence': KLDivergenceBlock,
     'lstm_encode': LSTMEncoderBlock,
     'language_decode': LanguageDecoderBlock,
     'language_predict': LanguagePredictionBlock,
@@ -357,7 +356,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         for obj in chain(
             ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
             ],
         )
