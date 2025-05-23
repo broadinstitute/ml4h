@@ -237,7 +237,7 @@ class KLLossLayer(Layer):
         self.dimension = dimension
 
     def get_config(self):
-        config = super(KLDivergenceBlock, self).get_config()
+        config = super(KLLossLayer, self).get_config()
         config.update({
             'kl_weight': self.kl_weight,
             'dimension': self.dimension
