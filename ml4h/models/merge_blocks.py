@@ -231,9 +231,9 @@ class KLDivergenceBlock(Block):
 class KLLossLayer(Layer):
     """Layer that creates KL loss."""
 
-    def __init__(self, weight, dimension, **kwargs):
+    def __init__(self, kl_weight, dimension, **kwargs):
         super(KLLossLayer, self).__init__(**kwargs)
-        self.kl_weight = weight
+        self.kl_weight = kl_weight
         self.dimension = dimension
 
     def get_config(self):
