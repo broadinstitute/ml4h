@@ -257,7 +257,6 @@ class KLLossLayer(Layer):
         # Add KL divergence regularization loss
         self.add_loss(self.kl_weight * kl_loss)
         self.kl_tracker.update_state(kl_loss)
-        self.add_metric(self.kl_tracker.result(), name="kl_loss")
         # Sample z using reparameterization trick
         batch = tf.shape(z_mean)[0]
         dim = tf.shape(z_mean)[1]
