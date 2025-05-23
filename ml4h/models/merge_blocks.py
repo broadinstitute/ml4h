@@ -466,26 +466,51 @@ class LinearTransform(tf.keras.layers.Layer):
     def call(self, inputs):
         return self.gamma * inputs[0] + self.beta
 
+class KLDivergenceBlock(Block):
+    """
+    Block that computes KL divergence loss for Variational Autoencoders.
 
-class VariationalDiagNormal(Layer):
-    def __init__(
-            self,
-            latent_size: int,
-            kl_divergence_weight: float = 1.,
-            **kwargs
-    ):
-        self.latent_size = latent_size
-        self.kl_divergence_weight = kl_divergence_weight
-        super(VariationalDiagNormal, self).__init__(**kwargs)
-        self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros([latent_size]), scale_identity_multiplier=1.0)
+    Takes a list containing [z_mean, z_log_var] as input and adds KL divergence
+    loss between the encoded latent distribution and a standard normal distribution.
+    This is used as a regularization term in VAEs.
 
-    def call(self, mu: Tensor, log_sigma: Tensor, **kwargs):
-        """mu and sigma must be shape (None, latent_size)"""
-        approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
-        kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
-        self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl, name='KL_divergence')
-        return approx_posterior.sample()
+    Returns z_mean as output to allow for further processing.
+    """
+    def __init__(self, dense_layers: List[int] = [256], kl_weight=1.0, **kwargs):
+        super(KLDivergenceBlock, self).__init__(**kwargs)
+        self.kl_weight = kl_weight
+        self.dimension = dense_layers[-1]
+
+    def __call__(self, x, intermediates=None):
+        # We expect x to be a list containing [z_mean, z_log_var]
+        if not isinstance(x, list) or len(x) != 2:
+            raise ValueError("KLDivergenceBlock expects a list with two inputs: z_mean and z_log_var")
+
+        z_mean = x[:, :self.dimension]
+        z_log_var = x[:, self.dimension:]
+
+        # KL divergence between the posterior and the prior (standard normal)
+        kl_loss = -0.5 * tf.reduce_mean(
+            1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
+        )
+
+        # Add KL divergence regularization loss
+        self.add_loss(self.kl_weight * kl_loss)
+
+        # Sample z using reparameterization trick
+        batch = tf.shape(z_mean)[0]
+        dim = tf.shape(z_mean)[1]
+        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+        z = z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        return z
+
+    def add_loss(self, loss):
+        tf.keras.backend.add_loss(loss)
 
     def get_config(self):
-        return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}
+        config = super(KLDivergenceBlock, self).get_config()
+        config.update({
+            'kl_weight': self.kl_weight,
+            'dimension': self.dimension
+        })
+        return config
