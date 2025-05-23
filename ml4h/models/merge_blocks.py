@@ -226,7 +226,7 @@ class KLDivergenceBlock(Block):
         y = self.loss_layer(x)
         y = Dense(units=self.dense_layer_size)(y)
         return y
-    
+
 @register_keras_serializable()
 class KLLossLayer(Layer):
     """Layer that creates KL loss."""
@@ -254,7 +254,7 @@ class KLLossLayer(Layer):
         )
 
         # Add KL divergence regularization loss
-        tf.keras.backend.add_loss(self.kl_weight * kl_loss)
+        self.add_loss(self.kl_weight * kl_loss)
 
         # Sample z using reparameterization trick
         batch = tf.shape(z_mean)[0]
