@@ -233,7 +233,7 @@ class KLLossLayer(Layer):
 
     def __init__(self, weight, dimension, **kwargs):
         super(KLLossLayer, self).__init__(**kwargs)
-        self.weight = weight
+        self.kl_weight = weight
         self.dimension = dimension
 
     def get_config(self):
