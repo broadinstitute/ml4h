@@ -334,13 +334,17 @@ def _load_model_encoders_and_decoders(
     merger = None
     try:
         for tm in tensor_maps_in:
-            encoders[tm] = load_model(f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+            model_path = f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras"
+            if os.path.exists(model_path):
+                encoders[tm] = load_model(model_path, custom_objects=custom_dict, compile=False)
         for tm in tensor_maps_out:
-            decoders[tm] = load_model(f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+            model_path = f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras"
+            if os.path.exists(model_path):
+                decoders[tm] = load_model(model_path, custom_objects=custom_dict, compile=False)
         merger = load_model(f"{os.path.dirname(model_file)}/merger.keras", custom_objects=custom_dict, compile=False)
-    except OSError as e:
+    except (ValueError, OSError) as e:
         logging.warning(f'Could not load some model modules, error: {e}')
-    logging.info(f"Attempting to load model file from: {model_file}")
+    logging.info(f"Attempting to load full model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
     m.compile(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
