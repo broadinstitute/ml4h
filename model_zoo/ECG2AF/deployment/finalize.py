@@ -36,3 +36,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, help="Path to final CSV with predictions")
     parser.add_argument("--predictions", required=True, help="Path to predictions JSON")
     args = parser.parse_args()
+    finalize(args.input, args.predictions, args.output)
