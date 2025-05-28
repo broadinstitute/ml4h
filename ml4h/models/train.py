@@ -153,11 +153,14 @@ class ModelCheckpointWithGCP(Callback):
             self.upload_to_gcp()
 
     def upload_to_gcp(self):
-        blob = self.bucket.blob(os.path.join(self.gcp_path,os.path.basename(self.local_checkpoint_path)))
-        blob.upload_from_filename(self.local_checkpoint_path)
-        print(f"Uploaded checkpoint to gs://{self.gcp_bucket}/{self.gcp_path}")
+        try:
+            blob = self.bucket.blob(os.path.join(self.gcp_path,os.path.basename(self.local_checkpoint_path)))
+            blob.upload_from_filename(self.local_checkpoint_path)
+            print(f"Uploaded checkpoint to gs://{self.gcp_bucket}/{self.gcp_path}")
 
-        if os.path.exists(os.path.join(os.path.dirname(self.local_checkpoint_path), 'training_log.csv')):
-            blob_log = self.bucket.blob(os.path.join(self.gcp_path,'training_log.csv'))
-            blob_log.upload_from_filename(os.path.join(os.path.dirname(self.local_checkpoint_path),'training_log.csv'))
-            print(f"Uploaded training log to gs://{self.gcp_bucket}/{self.gcp_path}/training_log.csv")
+            if os.path.exists(os.path.join(os.path.dirname(self.local_checkpoint_path), 'training_log.csv')):
+                blob_log = self.bucket.blob(os.path.join(self.gcp_path,'training_log.csv'))
+                blob_log.upload_from_filename(os.path.join(os.path.dirname(self.local_checkpoint_path),'training_log.csv'))
+                print(f"Uploaded training log to gs://{self.gcp_bucket}/{self.gcp_path}/training_log.csv")
+        except Exception as e:
+            print(f"Failed to upload checkpoint: {e}")
