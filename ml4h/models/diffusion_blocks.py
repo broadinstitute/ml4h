@@ -371,7 +371,7 @@ class DiffusionModel(keras.Model):
         self.kernel_size    = kernel_size
         self.diffusion_loss = diffusion_loss
         self.sigmoid_beta   = sigmoid_beta
-        self.inspect_model  = inspect_model
+        self.inspect_model  = False #inspect_model
 
         self.normalizer = layers.Normalization()
         self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
