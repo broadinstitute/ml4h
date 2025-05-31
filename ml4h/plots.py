@@ -425,6 +425,9 @@ def make_one_hot(y, num_labels):
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=3, height=3):
+    if len(history.history) < 2:
+        logging.info(f"Not enough history to plot metrics.")
+        return
     row = 0
     col = 0
     total_plots = int(
@@ -437,6 +440,9 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     )
 
     for k in sorted(history.history.keys()):
+        if len(history.history[k]) < 2:
+            logging.info(f"Not enough epochs to plot learning curves at:{k}")
+            return
         if not k.startswith("val_") or k in ['val_kid', 'val_supervised_loss']:
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [
@@ -461,9 +467,6 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 col += 1
                 if col >= cols:
                     break
-        if len(history.history[k]) < 2:
-            logging.info(f"Not enough epochs to plot learning curves at:{k}")
-            return
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
