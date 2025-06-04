@@ -2,9 +2,9 @@
 
 NAME=${1:-sam-p4}
 shift 1
-INSTANCE_TYPE=${1:-n1-standard-4}
+INSTANCE_TYPE=${1:-n1-highmem-32}
 shift 1
-DISK_SIZE=${1:-100GB}
+DISK_SIZE=${1:-200GB}
 shift 1
 ACCEL=${1:-nvidia-tesla-t4}
 shift 1
