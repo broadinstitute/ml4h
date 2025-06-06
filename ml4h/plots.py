@@ -2532,7 +2532,7 @@ def subplot_roc_per_class(
     )
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
-    for key in labels:
+    for key in ['top_20']: # TODO
         if "no_" in key and len(labels) == 2:
             continue
         labels_to_areas[key] = roc_auc[labels[key]]
@@ -2566,7 +2566,7 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.figure(figsize=(width, height), dpi=dpi)
 
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
-    for key in labels:
+    for key in ['top_20']:
         if "no_" in str(key) and len(labels) == 2:
             continue
         color = _hash_string_to_color(str(key))
@@ -2589,6 +2589,15 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")
+
+    # TODO take me out
+    tsv_path = os.path.join(prefix, f"per_class_roc_auc_{roc_auc[labels[key]]:0.3f}_{title}.tsv")
+    with open(tsv_path, mode='w') as tsv_file:
+        tsv_writer = csv.writer(tsv_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        tsv_writer.writerow(['fpr','tpr'])
+        for key in ['top_20']:
+            for i in range(len(fpr[labels[key]])):
+                tsv_writer.writerow([fpr[labels[key]][i], tpr[labels[key]][i]])
     return labels_to_areas
 
 
@@ -2686,7 +2695,7 @@ def plot_precision_recall_per_class(
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
-    for k in [labels[-1]]: # TODO
+    for k in ['top_20']: # TODO
         c = _hash_string_to_color(str(k))
         precision, recall, _ = precision_recall_curve(
             truth[:, labels[k]], prediction[:, labels[k]],
