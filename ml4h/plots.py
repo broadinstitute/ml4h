@@ -2686,7 +2686,7 @@ def plot_precision_recall_per_class(
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
-    for k in labels:
+    for k in [labels[-1]]: # TODO
         c = _hash_string_to_color(str(k))
         precision, recall, _ = precision_recall_curve(
             truth[:, labels[k]], prediction[:, labels[k]],
