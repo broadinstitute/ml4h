@@ -63,7 +63,7 @@ class MoviNetEncoder(Block):
         self.base_model.trainable = pretrain_trainable
 
     def can_apply(self):
-        return self.tensor_map.axes() == 4
+        return self.tensor_map.axes() == 3
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
