@@ -68,7 +68,7 @@ class MoviNetEncoder(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        x = self.base_model({'image': x}, training=True)
+        x = self.base_model({'image': x}, training=False)
         #x = keras.layers.GlobalAveragePooling2D()(x)
         intermediates[self.tensor_map].append(x)
         return x
