@@ -65,7 +65,7 @@ class MoviNetEncoder(Block):
         dummy_input = tf.random.uniform([1, 16, 224, 224, 3])
         backbone_output = self.base_model(dummy_input)
 
-        self.base_model.trainable = pretrain_trainable
+        #self.base_model.trainable = pretrain_trainable
 
     def can_apply(self):
         return self.tensor_map.axes() == 4
@@ -73,7 +73,8 @@ class MoviNetEncoder(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        y = self.base_model(x[0])
+        print(f'X is {x}')
+        y = self.base_model(x)
         encoding = tf.keras.layers.Flatten()(y[0]['head'])
         intermediates[self.tensor_map].append(encoding)
         return encoding
