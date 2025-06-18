@@ -73,7 +73,7 @@ class MoviNetEncoder(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        y = self.base_model(x, training=False)
+        y = self.base_model(x[0])
         encoding = tf.keras.layers.Flatten()(y[0]['head'])
         intermediates[self.tensor_map].append(encoding)
         return encoding
