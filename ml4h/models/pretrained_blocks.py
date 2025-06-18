@@ -74,6 +74,7 @@ class MoviNetEncoder(Block):
         if not self.can_apply():
             return x
         print(f'X is {x}')
+        inputs = self.base_model.input
         y = self.base_model(x)
         encoding = tf.keras.layers.Flatten()(y[0]['head'])
         intermediates[self.tensor_map].append(encoding)
