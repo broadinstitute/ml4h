@@ -474,7 +474,7 @@ class ContrastiveLossLayer(Layer):
             name='contrastive_temperature',
             shape=(1,), initializer="zeros", trainable=True,
         )
-        self.contrastive_loss_tracker = keras.metrics.Mean(name="contrastive_loss")
+        self.contrastive_loss_tracker = keras.metrics.Sum(name="contrastive_loss")
 
     def get_config(self):
         config = super().get_config().copy()
@@ -485,8 +485,8 @@ class ContrastiveLossLayer(Layer):
         # We use `add_loss` to create a regularization loss
         # that depends on the inputs.
         contrastive_loss = self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature)
-        self.add_loss(contrastive_loss)
         self.contrastive_loss_tracker.update_state(contrastive_loss)
+        self.add_loss(contrastive_loss)
         return inputs
 
 
