@@ -474,7 +474,7 @@ class ContrastiveLossLayer(Layer):
             name='contrastive_temperature',
             shape=(1,), initializer="zeros", trainable=True,
         )
-        self.contrastive_loss_tracker = keras.metrics.Sum(name="contrastive_loss")
+        self.contrastive_loss_tracker = keras.metrics.Mean(name="contrastive_loss")
 
     def get_config(self):
         config = super().get_config().copy()
