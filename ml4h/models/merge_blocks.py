@@ -91,17 +91,83 @@ class KroneckerBlock(Block):
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
-        eshape = tf.shape(intermediates.items()[0][-1])
+        #eshape = tf.shape(intermediates.items()[0][-1])
         if len(y) == 2:
             logging.info(f'********\n\n\n*********** Trying KRONECKER {self.encoding_size}\n*******************\n\n')
-            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', y[0], y[1]))
-            kron = kron_layer(y)
-            y = tf.reshape(kron, [eshape[0], self.encoding_size * self.encoding_size])
+            y = KroneckerProductLayer(self.encoding_size)(y)
 
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
 
 
+@register_keras_serializable()
+class KroneckerProductLayer(tf.keras.layers.Layer):
+    """
+    Keras Layer that computes the Kronecker product of two input tensors.
+
+    The Kronecker product is computed using tf.einsum('...i,...j->...ij', tensor1, tensor2)
+    which creates an outer product along the last dimensions of the input tensors.
+
+    Input: List of two tensors [tensor1, tensor2]
+    Output: Kronecker product tensor with shape [..., dim1, dim2] where dim1 and dim2
+            are the last dimensions of the input tensors
+    """
+
+    def __init__(self, flatten_output=True, **kwargs):
+        """
+        Args:
+            flatten_output (bool): If True, flattens the Kronecker product to shape [..., dim1*dim2].
+                                 If False, keeps the product shape [..., dim1, dim2].
+        """
+        super(KroneckerProductLayer, self).__init__(**kwargs)
+        self.flatten_output = flatten_output
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'flatten_output': self.flatten_output
+        })
+        return config
+
+    def call(self, inputs):
+        """
+        Compute Kronecker product of two input tensors.
+
+        Args:
+            inputs: List containing two tensors [tensor1, tensor2]
+
+        Returns:
+            Kronecker product tensor
+        """
+        if len(inputs) != 2:
+            raise ValueError(f"KroneckerProductLayer expects exactly 2 inputs, got {len(inputs)}")
+
+        tensor1, tensor2 = inputs
+
+        # Compute Kronecker product using einsum
+        kronecker_product = tf.einsum('...i,...j->...ij', tensor1, tensor2)
+
+        if self.flatten_output:
+            # Flatten the last two dimensions
+            batch_shape = tf.shape(kronecker_product)[:-2]
+            last_dim = tf.shape(kronecker_product)[-2] * tf.shape(kronecker_product)[-1]
+            kronecker_product = tf.reshape(kronecker_product, tf.concat([batch_shape, [last_dim]], axis=0))
+
+        return kronecker_product
+
+    def compute_output_shape(self, input_shape):
+        """Compute the output shape given input shapes."""
+        if len(input_shape) != 2:
+            raise ValueError(f"KroneckerProductLayer expects exactly 2 input shapes, got {len(input_shape)}")
+
+        shape1, shape2 = input_shape
+
+        if self.flatten_output:
+            # Output shape: [..., dim1 * dim2]
+            return shape1[:-1] + (shape1[-1] * shape2[-1],)
+        else:
+            # Output shape: [..., dim1, dim2]
+            return shape1[:-1] + (shape1[-1], shape2[-1])
 class DropoutBlock(Block):
     """
     Dropout from embeddings of different modalities
@@ -320,7 +386,6 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'kronecker':
             krons = []
             for left, right in self.pairs:
-                eshape = tf.shape(intermediates[left][-1])
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
                 kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
                 krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
