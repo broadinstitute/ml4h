@@ -91,9 +91,7 @@ class KroneckerBlock(Block):
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
-        #eshape = tf.shape(intermediates.items()[0][-1])
         if len(y) == 2:
-            logging.info(f'********\n\n\n*********** Trying KRONECKER {self.encoding_size}\n*******************\n\n')
             y = KroneckerProductLayer(self.encoding_size)(y)
 
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
@@ -386,9 +384,8 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'kronecker':
             krons = []
             for left, right in self.pairs:
-                kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-                kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
-                krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
+                kron = KroneckerProductLayer(self.encoding_size)([intermediates[left][-1], intermediates[right][-1]])
+                krons.append(kron)
             if len(self.pairs) > 1:
                 kron = concatenate(krons)
             else:
