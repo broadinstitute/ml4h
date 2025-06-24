@@ -384,7 +384,7 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'kronecker':
             krons = []
             for left, right in self.pairs:
-                kron = KroneckerProductLayer(self.encoding_size)([intermediates[left][-1], intermediates[right][-1]])
+                kron = KroneckerProductLayer(self.encoding_size)(y)
                 krons.append(kron)
             if len(self.pairs) > 1:
                 kron = concatenate(krons)
