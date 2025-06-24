@@ -322,8 +322,7 @@ class PairLossBlock(Block):
             for left, right in self.pairs:
                 eshape = tf.shape(intermediates[left][-1])
                 kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-                y = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
-                kron = kron_layer(y)
+                kron = kron_layer([intermediates[left][-1], intermediates[right][-1]])
                 krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
             if len(self.pairs) > 1:
                 kron = concatenate(krons)
