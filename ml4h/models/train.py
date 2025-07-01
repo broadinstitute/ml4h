@@ -106,7 +106,7 @@ def train_model_from_generators(
 
 
 def _get_callbacks(
-    patience: int, model_file: str, save_last_model: bool,
+    patience: int, model_file: str, save_last_model: bool, log_tensorboard: bool, gcp_bucket: str, gcp_path: str,
 ) -> List[Callback]:
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=patience * 3, verbose=1),
