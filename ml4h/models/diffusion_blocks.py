@@ -56,7 +56,7 @@ def sinusoidal_embedding(x, dims=1):
     return embeddings
 
 @register_keras_serializable()
-def residual_block(width, conv, kernel_size, groups=8):
+def residual_block(width, conv, kernel_size, groups=32):
     def apply(x):
         # shortcut
         input_channels = x.shape[-1]
@@ -81,7 +81,7 @@ def residual_block(width, conv, kernel_size, groups=8):
     return apply
 
 @register_keras_serializable()
-def down_block(width, block_depth, conv, pool, kernel_size, groups=8):
+def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
     def apply(x):
         x, skips = x
         for _ in range(block_depth):
@@ -92,7 +92,7 @@ def down_block(width, block_depth, conv, pool, kernel_size, groups=8):
     return apply
 
 @register_keras_serializable()
-def up_block(width, block_depth, conv, upsample, kernel_size, groups=8):
+def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
     def apply(x):
         x, skips = x
         x = upsample(size=2)(x)
