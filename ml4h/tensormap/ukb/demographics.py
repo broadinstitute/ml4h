@@ -849,5 +849,5 @@ categorical_phenotypes_134 = TensorMap(
 )
 
 target_bmi = TensorMap(
-    'target_bmi', Interpretation.CONTINUOUS,
+    'target_bmi', Interpretation.CONTINUOUS, shape=(1,),
 )
