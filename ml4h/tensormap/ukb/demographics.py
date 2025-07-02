@@ -847,3 +847,7 @@ categorical_phenotypes_134 = TensorMap(
             'Workplace-very-dusty_Rarelynever_0_0': 127, 'Workplace-very-dusty_Rarelynever_0_1': 128,
         },
 )
+
+target_bmi = TensorMap(
+    'target_bmi', Interpretation.CONTINUOUS,
+)

@@ -2900,3 +2900,9 @@ t1map_pancreas_segmentation_dice = TensorMap(
     loss=dice,
     metrics=['categorical_accuracy'] + per_class_dice(MRI_PANCREAS_SEGMENTED_CHANNEL_MAP),
 )
+
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
+
+
+synthetic_image = TensorMap('synthetic_image', shape=(160, 224, 1), tensor_from_file=image_from_hd5)
