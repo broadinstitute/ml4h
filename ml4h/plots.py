@@ -782,8 +782,8 @@ def plot_scatter(
     ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
-    sns.histplot(prediction, label="Predicted", ax=ax2, bins=min(64, len(prediction)))
-    sns.histplot(truth, label="Truth", ax=ax2, bins=min(64, len(prediction)))
+    sns.histplot(prediction, label="Predicted", ax=ax2, color="blue", edgecolor="blue", bins=min(64, len(prediction)))
+    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor="red", bins=min(64, len(prediction)))
     ax2.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, f"scatter_r_{pearson:0.4f}_{title}{IMAGE_EXT}")
