@@ -728,7 +728,7 @@ def bootstrap_confidence_interval(
 
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
-    bootstrap=True, dpi=300, width=4, height=4,
+    bootstrap=True, dpi=300, width=2, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
@@ -782,8 +782,8 @@ def plot_scatter(
     ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
-    sns.histplot(prediction, label="Predicted", color="blue", edgecolor=None, ax=ax2, bins=min(64, len(prediction)))
-    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor=None, bins=min(64, len(prediction)))
+    sns.histplot(prediction, label="Predicted", color="blue", edgecolor="blue", ax=ax2, bins=min(64, len(prediction)))
+    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor="red", bins=min(64, len(prediction)))
     ax2.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, f"scatter_r_{pearson:0.4f}_{title}{IMAGE_EXT}")
