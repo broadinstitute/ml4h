@@ -764,14 +764,17 @@ class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
         attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
-        inspect_model, supervisor = None, supervision_scalar = 0.01,
+        inspect_model, supervisor = None, supervision_scalar = 0.01, train_encoder = True, encoder_file = None,
     ):
         super().__init__()
 
         self.input_map = tensor_map
         self.batch_size = batch_size
         self.output_maps = output_maps
-        self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
+        if train_encoder:
+            self.control_embed_model = get_control_encoder(self.input_map, widths)
+        else:
+            self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
         self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size,
                                            attention_start, attention_heads, attention_modulo, condition_strategy)
