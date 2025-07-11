@@ -764,7 +764,7 @@ class DiffusionController(keras.Model):
     def __init__(
         self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
         attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
-        inspect_model, supervisor = None, supervision_scalar = 0.01, train_encoder = True, encoder_file = None,
+        inspect_model, supervisor = None, supervision_scalar = 0.01, train_encoder = False, encoder_file = None,
     ):
         super().__init__()
 
