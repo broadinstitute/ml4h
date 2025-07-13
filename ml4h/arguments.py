@@ -252,11 +252,11 @@ def parse_args():
         '--supervision_scalar', default=0.01, type=float,
         help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
     )
-    parser.add_argument('--interpolate_min', type=float, default =-4.0,
+    parser.add_argument('--interpolate_min', type=float, default =-2.0,
                         help='Diffusion model synthetic interpolation minimum continuous condition')
-    parser.add_argument('--interpolate_max', type=float, default =4.0,
+    parser.add_argument('--interpolate_max', type=float, default =2.01,
                         help='Diffusion model synthetic interpolation maximum continuous condition')
-    parser.add_argument('--interpolate_step', type=float, default =0.5,
+    parser.add_argument('--interpolate_step', type=float, default =1.0,
                         help='Diffusion model synthetic interpolation step size continuous condition')
 
 
