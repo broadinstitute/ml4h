@@ -172,10 +172,11 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
                  f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
 
 
-def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
+def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix,
+                                       interpolate_min, interpolate_max, interpolate_step):
     control_batch = {}
     if control_tm.is_continuous():
-        samples = np.arange(-2, 3, 1)
+        samples = np.arange(interpolate_min, interpolate_max, interpolate_step)
     elif control_tm.is_categorical():
         samples = np.arange(0, len(control_tm.channel_map), 1)
     num_rows = len(samples)
@@ -207,8 +208,8 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
                     plt.plot(generated_images[i_col, :, lead], label=lead)
             elif len(generated_images.shape) == 4:
                 plt.imshow(generated_images[i_col], cmap='gray')
-            plt.gca().set_title(f'{control_tm.name[:14]}: {pheno_scale:0.1f}')
             plt.axis("off")
+        #plt.gca().set_title(f'{control_tm.name[:14]}: {pheno_scale:0.1f}')
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -333,9 +334,11 @@ def train_diffusion_control_model(args, supervised=False):
                                            prefix=f'{args.output_folder}/{args.id}/reconstructions/')
 
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
-        predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
+        predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths,
+                            f'{args.output_folder}/{args.id}/reconstructions/')
         interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
-                                           f'{args.output_folder}/{args.id}/')
+                                           f'{args.output_folder}/{args.id}/', args.interpolate_min,
+                                           args.interpolate_max, args.interpolate_step)
 
         model.normalizer.adapt(images)
         if model.input_map.axes() == 2:
