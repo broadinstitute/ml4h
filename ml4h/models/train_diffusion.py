@@ -351,7 +351,8 @@ def train_diffusion_control_model(args, supervised=False):
             args.model_file = model_file
             eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
             regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size,
-                                              0.0,2.0,f'{args.output_folder}/{args.id}/')
+                                              mean=((args.interpolate_min + args.interpolate_max) / 2),
+                                              std=args.interpolate_step, prefix=f'{args.output_folder}/{args.id}/')
 
 
     return model
