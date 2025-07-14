@@ -273,7 +273,7 @@ def _random_slice_tensor(tensor_key, max_random=50):
                 tm.dependent_map.shape,
                 dtype=np.float32,
             )
-            dependents[tm.dependent_map][0] = float(slice_index)
+            dependents[tm.dependent_map][0] = (float(slice_index) - 25) / 10.0
         return tensor
 
     return _slice_tensor_from_file
