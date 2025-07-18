@@ -136,7 +136,7 @@ def make_multimodal_multitask_model(
         encoder_blocks, decoder_blocks, merge_blocks,
         custom_dict, u_connect, **kwargs
     )
-    losses = [tm.loss for tm in tensor_maps_out]
+    losses = {tm.output_name(): tm.loss for tm in tensor_maps_out}  # [tm.loss for tm in tensor_maps_out]
     if len(losses) == 0:
         logging.warning(f"No losses found, hoping there is contrastive loss merge block.")
         losses = None
