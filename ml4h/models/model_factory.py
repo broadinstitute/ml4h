@@ -142,6 +142,7 @@ def make_multimodal_multitask_model(
         losses = None
     full_model.compile(
         optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        loss_weights={tm.output_name(): tm.loss_weight for tm in tensor_maps_out},
     )
     full_model.summary()
     #full_model.summary(print_fn=logging.info, expand_nested=True)
