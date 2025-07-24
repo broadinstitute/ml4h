@@ -128,7 +128,7 @@ def make_multimodal_multitask_model(
     if kwargs.get('model_file', False):
         return tf.keras.models.load_model(kwargs['model_file']), None, None, None
     if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
-        return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
+        return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'], kwargs.get('named_outputs', False))
 
 
     full_model, encoders, decoders, merger = multimodal_multitask_model(
@@ -136,13 +136,21 @@ def make_multimodal_multitask_model(
         encoder_blocks, decoder_blocks, merge_blocks,
         custom_dict, u_connect, **kwargs
     )
-    losses = [tm.loss for tm in tensor_maps_out]
+
+    named_outputs = kwargs.get("named_outputs", False)
+    if named_outputs:
+        losses = {tm.output_name(): tm.loss for tm in tensor_maps_out}
+        loss_weights = {tm.output_name(): tm.loss_weight for tm in tensor_maps_out}
+        metrics = {tm.output_name(): tm.metrics for tm in tensor_maps_out}
+    else:
+        losses = [tm.loss for tm in tensor_maps_out]
+        loss_weights = [tm.loss_weight for tm in tensor_maps_out]
+        metrics = [tm.metrics for tm in tensor_maps_out]
     if len(losses) == 0:
         logging.warning(f"No losses found, hoping there is contrastive loss merge block.")
         losses = None
     full_model.compile(
-        optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
-        loss_weights=[tm.loss_weight for tm in tensor_maps_out],
+        optimizer=opt, loss=losses, metrics=metrics, loss_weights=loss_weights,
     )
     full_model.summary()
     #full_model.summary(print_fn=logging.info, expand_nested=True)
@@ -329,7 +337,7 @@ def make_multimodal_multitask_model_block(
 
 def _load_model_encoders_and_decoders(
     tensor_maps_in: List[TensorMap], tensor_maps_out: List[TensorMap], custom_dict: Dict[str, Any],
-    optimizer, model_file: str,
+    optimizer, model_file: str, named_outputs: bool,
 ):
     encoders = {}
     decoders = {}
@@ -344,9 +352,17 @@ def _load_model_encoders_and_decoders(
         logging.warning(f'Could not load some model modules, error: {e}')
     logging.info(f"Attempting to load model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
+
+    if named_outputs:
+        losses = {tm.output_name(): tm.loss for tm in tensor_maps_out}
+        loss_weights = {tm.output_name(): tm.loss_weight for tm in tensor_maps_out}
+        metrics = {tm.output_name(): tm.metrics for tm in tensor_maps_out}
+    else:
+        losses = [tm.loss for tm in tensor_maps_out]
+        loss_weights = [tm.loss_weight for tm in tensor_maps_out]
+        metrics = [tm.metrics for tm in tensor_maps_out]
     m.compile(
-        optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
-        metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        optimizer=optimizer, loss=losses, metrics=metrics, loss_weights=loss_weights,
     )
     m.summary()
     #m.summary(print_fn=logging.info, expand_nested=True)
