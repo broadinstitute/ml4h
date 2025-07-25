@@ -523,13 +523,16 @@ def _get_train_valid_test_discard_ratios(
         train_csv: str,
         valid_csv: str,
         test_csv: str,
+        train_set: List[str] = None,
+        valid_set: List[str] = None,
+        test_set: List[str] = None,
 ) -> Tuple[int, int, int, int]:
 
-    if valid_csv is not None:
+    if (valid_csv is not None) or (valid_set is not None):
         valid_ratio = 0
-    if test_csv is not None:
+    if (test_csv is not None) or (test_set is not None):
         test_ratio = 0
-    if train_csv is not None:
+    if (train_csv is not None) or (train_set is not None):
         train_ratio = 0
         discard_ratio = 1.0 - valid_ratio - test_ratio
     else:
@@ -590,6 +593,10 @@ def get_train_valid_test_paths(
         train_csv: str,
         valid_csv: str,
         test_csv: str,
+        train_set: List[str] = None,
+        valid_set: List[str] = None,
+        test_set: List[str] = None,
+
 ) -> Tuple[List[str], List[str], List[str]]:
     """
     Return 3 disjoint lists of tensor paths.
@@ -620,6 +627,9 @@ def get_train_valid_test_paths(
         train_csv=train_csv,
         valid_csv=valid_csv,
         test_csv=test_csv,
+        train_set=train_set,
+        valid_set=valid_set,
+        test_set=test_set,
     )
 
     choices = {
@@ -632,9 +642,12 @@ def get_train_valid_test_paths(
     # parse csv's to disjoint sets, None if csv was None
     sample_set = _sample_csv_to_set(sample_csv)
 
-    train_set = _sample_csv_to_set(train_csv)
-    valid_set = _sample_csv_to_set(valid_csv)
-    test_set = _sample_csv_to_set(test_csv)
+    if train_set is None:
+        train_set = _sample_csv_to_set(train_csv)
+    if valid_set is None:
+        valid_set = _sample_csv_to_set(valid_csv)
+    if test_set is None:
+        test_set = _sample_csv_to_set(test_csv)
 
     if train_set is not None and valid_set is not None and not train_set.isdisjoint(valid_set):
         raise ValueError('train and validation samples overlap')
@@ -685,6 +698,9 @@ def get_train_valid_test_paths_split_by_csvs(
         train_csv: str,
         valid_csv: str,
         test_csv: str,
+        train_set: List[str],
+        valid_set: List[str],
+        test_set: List[str],
 ) -> Tuple[List[List[str]], List[List[str]], List[List[str]]]:
     stats = Counter()
     sample2group = {}
@@ -710,6 +726,9 @@ def get_train_valid_test_paths_split_by_csvs(
         train_csv=train_csv,
         valid_csv=valid_csv,
         test_csv=test_csv,
+        train_set=train_set,
+        valid_set=valid_set,
+        test_set=test_set,
     )
 
     for paths, split_list in [(_train, train_paths), (_valid, valid_paths), (_test, test_paths)]:
@@ -819,6 +838,9 @@ def test_train_valid_tensor_generators(
     train_csv: str = None,
     valid_csv: str = None,
     test_csv: str = None,
+    train_set: List[str] = None,
+    valid_set: List[str] = None,
+    test_set: List[str] = None,
     siamese: bool = False,
     rotation_factor: float = 0,
     zoom_factor: float = 0,
@@ -849,6 +871,9 @@ def test_train_valid_tensor_generators(
     :param train_csv: CSV file of sample ids to use for training
     :param valid_csv: CSV file of sample ids to use for validation, mutually exclusive with valid_ratio
     :param test_csv: CSV file of sample ids to use for testing, mutually exclusive with test_ratio
+    :param train_set: list of sample ids to use for training, mutually exclusive with train_csv
+    :param valid_set: list of sample ids to use for validation, mutually exclusive with valid_csv
+    :param test_set: list of sample ids to use for testing, mutually exclusive with test_csv
     :param siamese: if True generate input for a siamese model i.e. a left and right input tensors for every input TensorMap
     :param rotation_factor: for data augmentation, a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
     :param zoom_factor: for data augmentation, a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
@@ -868,6 +893,9 @@ def test_train_valid_tensor_generators(
             train_csv=train_csv,
             valid_csv=valid_csv,
             test_csv=test_csv,
+            train_set=train_set,
+            valid_set=valid_set,
+            test_set=test_set,
         )
         weights = [1.0/(len(balance_csvs)+1) for _ in range(len(balance_csvs)+1)]
     else:
@@ -879,6 +907,9 @@ def test_train_valid_tensor_generators(
             train_csv=train_csv,
             valid_csv=valid_csv,
             test_csv=test_csv,
+            train_set=train_set,
+            valid_set=valid_set,
+            test_set=test_set,
         )
         weights = None
 
