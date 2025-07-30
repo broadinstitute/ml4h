@@ -10,6 +10,9 @@ from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 import tensorflow as tf
 
 import keras
+from tensorflow.keras.saving import register_keras_serializable
+from tensorflow.keras import regularizers
+
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer, Lambda
@@ -126,11 +129,11 @@ def make_multimodal_multitask_model(
     )
 
     if kwargs.get('model_file', False):
+        print("Model file loaded")
         return tf.keras.models.load_model(kwargs['model_file']), None, None, None
     if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
-
-
+    
     full_model, encoders, decoders, merger = multimodal_multitask_model(
         tensor_maps_in, tensor_maps_out,
         encoder_blocks, decoder_blocks, merge_blocks,
@@ -393,9 +396,9 @@ def add_prefix(model, prefix: str, custom_objects=None):
     '''Adds a prefix to layers and model name while keeping the pre-trained weights
     Arguments:
         model: a tf.keras model
-        prefix: a string that would be added to before each layer name
-        custom_objects: if your model consists of custom layers you shoud add them pass them as a dictionary.
-            For more information read the following:
+        prefix: a string that would be added before each layer name
+        custom_objects: if your model consists of custom layers, pass them as a dictionary.
+            For more information read:
             https://keras.io/guides/serialization_and_saving/#custom-objects
     Returns:
         new_model: a tf.keras model having same weights as the input model.
@@ -404,27 +407,42 @@ def add_prefix(model, prefix: str, custom_objects=None):
     config = model.get_config()
     old_to_new = {}
     new_to_old = {}
-
+ 
     for layer in config['layers']:
-        new_name = prefix + layer['name']
-        old_to_new[layer['name']], new_to_old[new_name] = new_name, layer['name']
+        old_name = layer['name']
+        new_name = prefix + old_name
+        old_to_new[old_name] = new_name
+        new_to_old[new_name] = old_name
         layer['name'] = new_name
         layer['config']['name'] = new_name
-
+        
         if len(layer['inbound_nodes']) > 0:
-            for in_node in layer['inbound_nodes'][0]:
-                in_node[0] = old_to_new[in_node[0]]
+            for in_node in layer['inbound_nodes']:
+                args = in_node.get('args', [])
+
+                if not args:
+                    continue
+
+                if isinstance(args[0], dict):
+                    name = in_node['args'][0]['config']['keras_history'][0]
+                    print(f"changing name from {name} to {old_to_new[name]}")
+                    in_node['args'][0]['config']['keras_history'][0] = old_to_new[name]
+                elif isinstance(args[0], list):
+                    for tensor in args[0]:
+                        history = tensor.get('config', {}).get('keras_history', [])
+                        name = history[0]
+                        history[0] = old_to_new[name]
 
     for input_layer in config['input_layers']:
-        input_layer[0] = old_to_new[input_layer[0]]
-
+        input_layer[0]  = old_to_new[input_layer[0]]
+    
     for output_layer in config['output_layers']:
         output_layer[0] = old_to_new[output_layer[0]]
 
     config['name'] = prefix + config['name']
-    new_model = tf.keras.Model().from_config(config, custom_objects)
-
+    new_model = tf.keras.Model.from_config(config, custom_objects)
+    
     for layer in new_model.layers:
         layer.set_weights(model.get_layer(new_to_old[layer.name]).get_weights())
-
+    
     return new_model
