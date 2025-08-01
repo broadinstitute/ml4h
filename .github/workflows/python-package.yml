@@ -34,7 +34,7 @@ jobs:
         pip cache purge
         python -m pip install --upgrade pip
         pip install "cython<3.0.0" wheel
-        pip install "pyyaml==5.4.1" --no-build-isolation --only-binary=pyyaml
+        pip install "pyyaml" --no-build-isolation --only-binary=pyyaml
         # Install the ml4h Python package.
         pip install .
     - name: Test with pytest and pytest-xdist
