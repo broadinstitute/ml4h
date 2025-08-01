@@ -1,0 +1,2 @@
+# constraints.txt
+PyYAML==6.0.1
