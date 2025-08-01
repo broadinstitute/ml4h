@@ -1,4 +1,3 @@
-PyYAML
 pydot
 nibabel==4.0.2
 pydicom==1.2.2
