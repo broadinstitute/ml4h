@@ -1,42 +1,66 @@
-# This workflow will install the ml4h Python package and run its tests.
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: Test ml4h Python package
 
 on:
   workflow_dispatch:
-    # Allows manually triggering workflow in GitHub UI on selected branch.
-    # GitHub doc: https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#workflow_dispatch.
-    # GitHub blog demo: https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/.
-
   push:
     branches: [ rr_test ]
-
   pull_request:
     branches: [ rr_test ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11, 3.12]
-    
+        python-version: ["3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        pip cache purge
-        python -m pip install --upgrade pip
-        # pip install --upgrade pip==23.3.1 setuptools==65.5.1 wheel==0.40.0
-        # Install the ml4h Python package.
-        pip install .
-    - name: Test with pytest and pytest-xdist
-      run: |
-        pytest tests -m "not slow" -n auto
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show Python and purge pip cache
+        run: |
+          python --version
+          pip cache purge || true
+
+      # Lock build tooling to a known-good set that avoids legacy build issues
+      - name: Stabilize pip/setuptools/wheel
+        run: |
+          python -m pip install --upgrade "pip==23.3.1" "setuptools==68.2.2" "wheel==0.41.2"
+
+      # Pre-pin the troublemakers so the resolver never picks PyYAML 5.4.1
+      - name: Preinstall guard versions (wheels only)
+        run: |
+          pip install --only-binary=:all: "PyYAML>=6,<7"
+          pip install --only-binary=:all: "numba>=0.61,<0.62" "llvmlite==0.44.*" || true
+          # ^ llvmlite pin matches numba 0.61.x. If 3.12 wheels lag on your runner, this step will noop (that's fine).
+          python - <<'PY'
+          import importlib.metadata as m
+          def v(p): 
+              try: print(p, m.version(p))
+              except: print(p, "not installed")
+          for p in ["PyYAML","numba","llvmlite"]:
+              v(p)
+          PY
+
+      - name: Install the ml4h Python package
+        run: |
+          # Now install your package; the above guards keep PyYAML at 6.x, etc.
+          pip install .
+
+      - name: Validate env
+        run: |
+          python - <<'PY'
+          import importlib.metadata as m
+          print("PyYAML", m.version("PyYAML"))
+          print("numba", m.version("numba"))
+          print("llvmlite", m.version("llvmlite"))
+          PY
+
+      - name: Test with pytest and pytest-xdist
+        run: |
+          pytest tests -m "not slow" -n auto
