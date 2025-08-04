@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: [3.11, 3.12]
     
 
     steps:
@@ -34,9 +34,9 @@ jobs:
       run: |
         pip cache purge
         python -m pip install --upgrade pip
+        pip install --upgrade pip==23.3.1 setuptools==65.5.1 wheel
         # Install the ml4h Python package.
-        pip install -r constraints.txt
-        pip install . -c constraints.txt
+        pip install .
     - name: Test with pytest and pytest-xdist
       run: |
         pytest tests -m "not slow" -n auto
