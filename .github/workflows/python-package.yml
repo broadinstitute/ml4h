@@ -21,19 +21,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip   # cache wheel downloads to speed up installs
+          cache: pip
 
       - name: Show Python
-        run: |
-          python --version
+        run: python --version
 
-      # Keep pip tooling recent (no legacy resolver issues), but don't pin hard
       - name: Upgrade pip tooling
-        run: |
-          python -m pip install -U pip wheel
+        run: python -m pip install -U pip wheel packaging
 
-      # --- YOUR RULE: install exactly what you listed, don't resolve deps ---
-      # If you also keep a requirements file, we'll install it first with --no-deps.
+      # Install anything you pin directly, but NEVER resolve deps or touch existing ones
       - name: Install listed requirements without dependency resolution (if present)
         run: |
           if [ -f "requirements.txt" ]; then
@@ -43,73 +39,120 @@ jobs:
             echo "No requirements.txt found; skipping."
           fi
 
-      # Install your package *without* pulling any of its dependencies.
+      # Install your package itself without pulling deps
       - name: Install ml4h package without deps
-        run: |
-          python -m pip install --no-deps .
+        run: python -m pip install --no-deps .
 
-      # --- Add ONLY missing dependencies, leave existing versions untouched ---
-      # We scan installed packages' Requires-Dist and install names that are missing.
-      # We intentionally ignore version pins and never uninstall anything.
-      - name: Add missing dependencies (ignore versions, don’t change existing)
+      # Add ONLY missing dependencies reachable from your roots (requirements + ml4h)
+      - name: Add missing dependencies (marker-aware; ignore versions; don’t change existing)
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import sys, subprocess, re, shlex, os
+          import sys, subprocess, shlex
+          import re
+          from pathlib import Path
           try:
-              from importlib.metadata import distributions
+              from importlib.metadata import distributions, distribution, PackageNotFoundError
           except Exception:
-              from importlib_metadata import distributions  # py3.7 backport if needed
+              from importlib_metadata import distributions, distribution, PackageNotFoundError  # py<3.8
+          from packaging.requirements import Requirement
+          from packaging.markers import default_environment
 
-          def norm(req: str) -> str:
-              # Strip version specifiers, markers, extras, and environment markers
-              # Examples: "numpy>=1.24; python_version<'3.12'" -> "numpy"
-              name = re.split(r"[;,(<>=\[]", req.strip())[0]
-              # handle extras like "package[extra]"
-              name = re.split(r"\[", name)[0]
-              return name.strip().lower()
+          env = default_environment()
 
-          def installed_set():
+          # --- helpers ---
+          def parse_req_line(line: str) -> str | None:
+              line = line.strip()
+              if not line or line.startswith("#") or line.startswith("-") or "@" in line:
+                  return None  # skip options, comments, VCS/URL refs
+              # Best-effort extract name before specs/extras/markers
+              try:
+                  return Requirement(line).name
+              except Exception:
+                  m = re.match(r"^[A-Za-z0-9_.-]+", line)
+                  return m.group(0) if m else None
+
+          # root set: names from requirements.txt (if present) + ml4h
+          roots = set()
+          reqf = Path("requirements.txt")
+          if reqf.exists():
+              for raw in reqf.read_text().splitlines():
+                  n = parse_req_line(raw)
+                  if n: roots.add(n.lower())
+          # Ensure ml4h is included if installed
+          try:
+              roots.add(distribution("ml4h").metadata["Name"].lower())
+          except PackageNotFoundError:
+              pass
+
+          if not roots:
+              print("No roots detected; nothing to resolve.")
+              sys.exit(0)
+
+          def installed_names():
               s = set()
               for d in distributions():
                   try:
                       n = d.metadata["Name"]
+                      if n: s.add(n.lower())
                   except Exception:
-                      n = None
-                  if n:
-                      s.add(n.lower())
+                      pass
               return s
 
-          # Bounded passes to catch shallow transitive gaps without risking loops
-          max_passes = 3
-          for i in range(max_passes):
-              installed = installed_set()
-              needed = set()
-              for d in distributions():
-                  meta = d.metadata
-                  if not meta:
+          # Build a graph view via BFS from roots, using Requires-Dist
+          def requires_of(pkg: str):
+              try:
+                  d = distribution(pkg)
+              except PackageNotFoundError:
+                  return []
+              reqs = d.metadata.get_all("Requires-Dist") or []
+              out = []
+              for r in reqs:
+                  try:
+                      req = Requirement(r)
+                  except Exception:
+                      continue  # skip unparsable
+                  # Skip optional extras (markers referencing "extra")
+                  if req.marker and "extra" in str(req.marker):
                       continue
-                  for r in (meta.get_all("Requires-Dist") or []):
-                      name = norm(r)
-                      if name and name not in installed:
-                          needed.add(name)
-              if not needed:
-                  print(f"No missing dependencies after pass {i}.")
-                  break
-              print(f"Pass {i}: installing {len(needed)} missing dependency names:", ", ".join(sorted(needed)))
-              # Install by names only, no deps, and prefer wheels to stay fast.
-              cmd = [sys.executable, "-m", "pip", "install", "--no-deps", "--prefer-binary", *sorted(needed)]
-              print("Running:", " ".join(shlex.quote(c) for c in cmd))
+                  # Respect environment markers (e.g., python_version, platform)
+                  if req.marker and not req.marker.evaluate(env):
+                      continue
+                  out.append(req.name.lower())
+              return out
+
+          missing = set()
+          frontier = set(roots)
+          visited = set()
+          passes = 3
+          for _ in range(passes):
+              if not frontier: break
+              new_frontier = set()
+              inst = installed_names()
+              for name in sorted(frontier):
+                  if name in visited: continue
+                  visited.add(name)
+                  for dep in requires_of(name):
+                      if dep not in inst:
+                          missing.add(dep)
+                          new_frontier.add(dep)
+                      else:
+                          new_frontier.add(dep)
+              frontier = new_frontier - visited
+
+          if missing:
+              cmd = [sys.executable, "-m", "pip", "install", "--no-deps", "--prefer-binary", *sorted(missing)]
+              print("Installing missing dependencies (names only):")
+              print("  ", " ".join(shlex.quote(x) for x in cmd))
               subprocess.check_call(cmd)
           else:
-              print("Finished maximum passes.")
+              print("No missing dependencies detected from roots.")
           PY
 
-      # Optional: show potential conflicts but do NOT fail the job on them
+      # Non-fatal report of issues; we intentionally allow version conflicts per your policy
       - name: Report potential dependency issues (non-fatal)
-        run: |
-          python -m pip check || true
+        run: python -m pip check || true
 
       - name: Test with pytest and pytest-xdist
         run: |
