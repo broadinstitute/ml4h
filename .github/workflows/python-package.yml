@@ -30,14 +30,24 @@ jobs:
         run: |
           python -m pip install -U pip setuptools wheel
 
-      # Avoid building old PyYAML (5.4.1) from source — force a modern wheel (6.x)
-      - name: Preinstall PyYAML wheel (avoid sdist build)
+      # Create a constraints file that *forces* a wheel-only PyYAML >=6
+      - name: Write constraints
         run: |
-          python -m pip install --only-binary=:all: "PyYAML>=6,<7"
+          echo "PyYAML>=6,<7" > constraints.txt
 
-      - name: Install package
+      # Preinstall PyYAML wheel so it's already satisfied before resolving ml4h deps
+      - name: Preinstall PyYAML wheel
+        env:
+          PIP_ONLY_BINARY: ":all:"
         run: |
-          python -m pip install --prefer-binary .
+          python -m pip install -c constraints.txt PyYAML
+
+      # Install your package with the same constraint + prefer wheels for all deps
+      - name: Install package with constraints (prefer wheels)
+        env:
+          PIP_PREFER_BINARY: "1"
+        run: |
+          python -m pip install -c constraints.txt --prefer-binary .
 
       - name: Run tests
         run: |
