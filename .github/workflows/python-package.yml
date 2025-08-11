@@ -9,152 +9,26 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: [3.11, 3.12]
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-
-      - name: Show Python
-        run: python --version
-
-      - name: Upgrade pip tooling
-        run: python -m pip install -U pip wheel packaging
-
-      # Install anything you pin directly, but NEVER resolve deps or touch existing ones
-      - name: Install listed requirements without dependency resolution (if present)
-        run: |
-          if [ -f "requirements.txt" ]; then
-            echo "Installing requirements.txt with --no-deps"
-            python -m pip install --no-deps -r requirements.txt
-          else
-            echo "No requirements.txt found; skipping."
-          fi
-
-      # Install your package itself without pulling deps
-      - name: Install ml4h package without deps
-        run: python -m pip install --no-deps .
-
-      # Add ONLY missing dependencies reachable from your roots (requirements + ml4h)
-      - name: Add missing dependencies (marker-aware; ignore versions; don’t change existing)
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import sys, subprocess, shlex
-          import re
-          from pathlib import Path
-          try:
-              from importlib.metadata import distributions, distribution, PackageNotFoundError
-          except Exception:
-              from importlib_metadata import distributions, distribution, PackageNotFoundError  # py<3.8
-          from packaging.requirements import Requirement
-          from packaging.markers import default_environment
-
-          env = default_environment()
-
-          # --- helpers ---
-          def parse_req_line(line: str) -> str | None:
-              line = line.strip()
-              if not line or line.startswith("#") or line.startswith("-") or "@" in line:
-                  return None  # skip options, comments, VCS/URL refs
-              # Best-effort extract name before specs/extras/markers
-              try:
-                  return Requirement(line).name
-              except Exception:
-                  m = re.match(r"^[A-Za-z0-9_.-]+", line)
-                  return m.group(0) if m else None
-
-          # root set: names from requirements.txt (if present) + ml4h
-          roots = set()
-          reqf = Path("requirements.txt")
-          if reqf.exists():
-              for raw in reqf.read_text().splitlines():
-                  n = parse_req_line(raw)
-                  if n: roots.add(n.lower())
-          # Ensure ml4h is included if installed
-          try:
-              roots.add(distribution("ml4h").metadata["Name"].lower())
-          except PackageNotFoundError:
-              pass
-
-          if not roots:
-              print("No roots detected; nothing to resolve.")
-              sys.exit(0)
-
-          def installed_names():
-              s = set()
-              for d in distributions():
-                  try:
-                      n = d.metadata["Name"]
-                      if n: s.add(n.lower())
-                  except Exception:
-                      pass
-              return s
-
-          # Build a graph view via BFS from roots, using Requires-Dist
-          def requires_of(pkg: str):
-              try:
-                  d = distribution(pkg)
-              except PackageNotFoundError:
-                  return []
-              reqs = d.metadata.get_all("Requires-Dist") or []
-              out = []
-              for r in reqs:
-                  try:
-                      req = Requirement(r)
-                  except Exception:
-                      continue  # skip unparsable
-                  # Skip optional extras (markers referencing "extra")
-                  if req.marker and "extra" in str(req.marker):
-                      continue
-                  # Respect environment markers (e.g., python_version, platform)
-                  if req.marker and not req.marker.evaluate(env):
-                      continue
-                  out.append(req.name.lower())
-              return out
-
-          missing = set()
-          frontier = set(roots)
-          visited = set()
-          passes = 3
-          for _ in range(passes):
-              if not frontier: break
-              new_frontier = set()
-              inst = installed_names()
-              for name in sorted(frontier):
-                  if name in visited: continue
-                  visited.add(name)
-                  for dep in requires_of(name):
-                      if dep not in inst:
-                          missing.add(dep)
-                          new_frontier.add(dep)
-                      else:
-                          new_frontier.add(dep)
-              frontier = new_frontier - visited
-
-          if missing:
-              cmd = [sys.executable, "-m", "pip", "install", "--no-deps", "--prefer-binary", *sorted(missing)]
-              print("Installing missing dependencies (names only):")
-              print("  ", " ".join(shlex.quote(x) for x in cmd))
-              subprocess.check_call(cmd)
-          else:
-              print("No missing dependencies detected from roots.")
-          PY
-
-      # Non-fatal report of issues; we intentionally allow version conflicts per your policy
-      - name: Report potential dependency issues (non-fatal)
-        run: python -m pip check || true
-
-      - name: Test with pytest and pytest-xdist
-        run: |
-          python -m pip install -U pytest pytest-xdist
-          pytest tests -m "not slow" -n auto
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        #pip cache purge
+        python -m pip install --upgrade pip
+        #python -m pip install --upgrade pip setuptools wheel "cython<3.0.0"
+        # pip install "PyYAML==6.0.1" --only-binary=PyYAML --no-build-isolation
+        # Install the ml4h Python package.
+        pip install .
+    - name: Test with pytest and pytest-xdist
+      run: |
+        pytest tests -m "not slow" -n auto
