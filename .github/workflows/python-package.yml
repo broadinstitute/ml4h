@@ -21,46 +21,97 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip   # cache wheel downloads to speed up installs
 
-      - name: Show Python and purge pip cache
+      - name: Show Python
         run: |
           python --version
-          pip cache purge || true
 
-      # Lock build tooling to a known-good set that avoids legacy build issues
-      - name: Stabilize pip/setuptools/wheel
+      # Keep pip tooling recent (no legacy resolver issues), but don't pin hard
+      - name: Upgrade pip tooling
         run: |
-          python -m pip install --upgrade "pip==23.3.1" "setuptools==68.2.2" "wheel==0.41.2"
+          python -m pip install -U pip wheel
 
-      # Pre-pin the troublemakers so the resolver never picks PyYAML 5.4.1
-      - name: Preinstall guard versions (wheels only)
+      # --- YOUR RULE: install exactly what you listed, don't resolve deps ---
+      # If you also keep a requirements file, we'll install it first with --no-deps.
+      - name: Install listed requirements without dependency resolution (if present)
         run: |
-          pip install --only-binary=:all: "PyYAML>=6,<7"
-          pip install --only-binary=:all: "numba>=0.61,<0.62" "llvmlite==0.44.*" || true
-          # ^ llvmlite pin matches numba 0.61.x. If 3.12 wheels lag on your runner, this step will noop (that's fine).
+          if [ -f "requirements.txt" ]; then
+            echo "Installing requirements.txt with --no-deps"
+            python -m pip install --no-deps -r requirements.txt
+          else
+            echo "No requirements.txt found; skipping."
+          fi
+
+      # Install your package *without* pulling any of its dependencies.
+      - name: Install ml4h package without deps
+        run: |
+          python -m pip install --no-deps .
+
+      # --- Add ONLY missing dependencies, leave existing versions untouched ---
+      # We scan installed packages' Requires-Dist and install names that are missing.
+      # We intentionally ignore version pins and never uninstall anything.
+      - name: Add missing dependencies (ignore versions, don’t change existing)
+        shell: bash
+        run: |
+          set -euo pipefail
           python - <<'PY'
-          import importlib.metadata as m
-          def v(p): 
-              try: print(p, m.version(p))
-              except: print(p, "not installed")
-          for p in ["PyYAML","numba","llvmlite"]:
-              v(p)
+          import sys, subprocess, re, shlex, os
+          try:
+              from importlib.metadata import distributions
+          except Exception:
+              from importlib_metadata import distributions  # py3.7 backport if needed
+
+          def norm(req: str) -> str:
+              # Strip version specifiers, markers, extras, and environment markers
+              # Examples: "numpy>=1.24; python_version<'3.12'" -> "numpy"
+              name = re.split(r"[;,(<>=\[]", req.strip())[0]
+              # handle extras like "package[extra]"
+              name = re.split(r"\[", name)[0]
+              return name.strip().lower()
+
+          def installed_set():
+              s = set()
+              for d in distributions():
+                  try:
+                      n = d.metadata["Name"]
+                  except Exception:
+                      n = None
+                  if n:
+                      s.add(n.lower())
+              return s
+
+          # Bounded passes to catch shallow transitive gaps without risking loops
+          max_passes = 3
+          for i in range(max_passes):
+              installed = installed_set()
+              needed = set()
+              for d in distributions():
+                  meta = d.metadata
+                  if not meta:
+                      continue
+                  for r in (meta.get_all("Requires-Dist") or []):
+                      name = norm(r)
+                      if name and name not in installed:
+                          needed.add(name)
+              if not needed:
+                  print(f"No missing dependencies after pass {i}.")
+                  break
+              print(f"Pass {i}: installing {len(needed)} missing dependency names:", ", ".join(sorted(needed)))
+              # Install by names only, no deps, and prefer wheels to stay fast.
+              cmd = [sys.executable, "-m", "pip", "install", "--no-deps", "--prefer-binary", *sorted(needed)]
+              print("Running:", " ".join(shlex.quote(c) for c in cmd))
+              subprocess.check_call(cmd)
+          else:
+              print("Finished maximum passes.")
           PY
 
-      - name: Install the ml4h Python package
+      # Optional: show potential conflicts but do NOT fail the job on them
+      - name: Report potential dependency issues (non-fatal)
         run: |
-          # Now install your package; the above guards keep PyYAML at 6.x, etc.
-          pip install .
-
-      - name: Validate env
-        run: |
-          python - <<'PY'
-          import importlib.metadata as m
-          print("PyYAML", m.version("PyYAML"))
-          print("numba", m.version("numba"))
-          print("llvmlite", m.version("llvmlite"))
-          PY
+          python -m pip check || true
 
       - name: Test with pytest and pytest-xdist
         run: |
+          python -m pip install -U pytest pytest-xdist
           pytest tests -m "not slow" -n auto
