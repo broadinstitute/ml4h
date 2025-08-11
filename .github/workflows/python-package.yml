@@ -9,26 +9,37 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.11, 3.12]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        #pip cache purge
-        python -m pip install --upgrade pip
-        #python -m pip install --upgrade pip setuptools wheel "cython<3.0.0"
-        # pip install "PyYAML==6.0.1" --only-binary=PyYAML --no-build-isolation
-        # Install the ml4h Python package.
-        pip install .
-    - name: Test with pytest and pytest-xdist
-      run: |
-        pytest tests -m "not slow" -n auto
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Show Python
+        run: python --version
+
+      - name: Upgrade pip tooling
+        run: |
+          python -m pip install -U pip setuptools wheel
+
+      # Avoid building old PyYAML (5.4.1) from source — force a modern wheel (6.x)
+      - name: Preinstall PyYAML wheel (avoid sdist build)
+        run: |
+          python -m pip install --only-binary=:all: "PyYAML>=6,<7"
+
+      - name: Install package
+        run: |
+          python -m pip install --prefer-binary .
+
+      - name: Run tests
+        run: |
+          python -m pip install -U pytest pytest-xdist
+          pytest tests -m "not slow" -n auto
