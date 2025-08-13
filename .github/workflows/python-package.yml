@@ -25,6 +25,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+        architecture: 'x64'     # explicit 64-bit
+        cache: pip
+        
+    - name: Show Python
+      run: |
+          python --version
+          python -c "import struct, platform; print('bitness', struct.calcsize('P')*8, 'arch', platform.machine())"
+
     - name: Install dependencies
       run: |
         #pip cache purge
