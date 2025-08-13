@@ -124,6 +124,8 @@ def build_tensor_from_file(
     target_column: str,
     normalization: bool = False,
     weight_column: str = None,
+    filter_column: str = None,
+    filter_value: int = None,
 ):
     """
     Build a tensor_from_file function from a column in a file.
@@ -133,6 +135,7 @@ def build_tensor_from_file(
     weighted_mse loss
     """
     error = None
+
     try:
         with open(file_name, 'r') as f:
             ext = file_name.split('.')[1]
@@ -142,10 +145,13 @@ def build_tensor_from_file(
             indices = [header.index(target_column)]
             if weight_column is not None:
                 indices.append(header.index(weight_column))
+            if filter_column is not None:
+                filter_index = header.index(filter_column)
             table = {}
             for row in reader:
                 try:
-                    table[row[0]] = np.array([float(row[i]) for i in indices])
+                    if (filter_column is None) or (row[filter_index] == str(filter_value)):
+                        table[row[0]] = np.array([float(row[i]) for i in indices])
                 except ValueError:
                     logging.debug(f'ValueError parsing: {[row[i] for i in indices]}')
             if normalization:
