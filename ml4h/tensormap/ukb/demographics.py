@@ -1,3 +1,4 @@
+import os
 import h5py
 import numpy as np
 from datetime import datetime
@@ -5,7 +6,7 @@ import logging
 from typing import List, Tuple
 
 from ml4h.normalizer import Standardize, ZeroMeanStd1
-from ml4h.tensormap.general import tensor_path
+from ml4h.tensormap.general import tensor_path, build_tensor_from_file
 from ml4h.TensorMap import TensorMap, Interpretation, str2date, make_range_validator
 from ml4h.defines import StorageType
 
@@ -284,6 +285,33 @@ bmi_21_0 = TensorMap(
     channel_map={'21001_Body-mass-index-BMI_0_0': 0}, validator=make_range_validator(0, 300),
     normalization=Standardize(mean=27.3397, std=4.7721),
 )
+
+def build_bmi_21001_from_instances_all_bmis_202401(tensors, instance):
+    return TensorMap(
+        f'21001_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'21001_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 300),
+        normalization = Standardize(mean=27.3397, std=4.7721),
+        tensor_from_file=build_tensor_from_file(
+            file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
+            target_column='bmi_21001',
+            filter_column='instance',
+            filter_value=instance,
+        ),
+    )
+
+def build_bmi_23104_from_instances_all_bmis_202401(tensors, instance):
+    return TensorMap(
+        f'23104_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'23104_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 100),
+        normalization={'mean': 27.432, 'std': 4.785},
+        tensor_from_file=build_tensor_from_file(
+            file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
+            target_column='bmi_23104',
+            filter_column='instance',
+            filter_value=instance,
+        ),
+    )
+
 birth_year = TensorMap(
     '22200_Year-of-birth_0_0', Interpretation.CONTINUOUS, path_prefix='continuous', channel_map={'22200_Year-of-birth_0_0': 0}, annotation_units=1, loss='logcosh',
     validator=make_range_validator(1901, 2025), normalization={'mean': 1952.0639129359386, 'std': 7.656326148519739},
@@ -332,6 +360,20 @@ age_2_patientage = TensorMap(
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
+
+def build_age_from_instances_all_ages_202401(tensors, instance):
+    return TensorMap(
+        f'age_{instance}_from_instances_all_ages_202401', Interpretation.CONTINUOUS,
+        path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
+        normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+        channel_map={f'21003_Age-when-attended-assessment-centre_{instance}_0': 0},
+        tensor_from_file=build_tensor_from_file(
+            file_name=os.path.join(tensors, 'instances_all_ages_202401.csv'),
+            target_column='instance_age',
+            filter_column='instance',
+            filter_value=instance,
+        ),
+    )
 
 af_dummy = TensorMap(
     'af_in_read', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_FLAG,

@@ -28,6 +28,7 @@ from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
+from ml4h.tensormap.ukb.dynamic import make_ukb_dynamic_tensor_maps
 from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
@@ -448,8 +449,12 @@ def parse_args():
     return args
 
 
-def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
+def tensormap_lookup(module_string: str, tensors: str, prefix: str = "ml4h.tensormap"):
     tm = make_mgb_dynamic_tensor_maps(module_string)
+    if isinstance(tm, TensorMap) == True:
+        return tm
+
+    tm = make_ukb_dynamic_tensor_maps(module_string, tensors)
     if isinstance(tm, TensorMap) == True:
         return tm
 
@@ -489,12 +494,12 @@ def tensormap_lookup(module_string: str, prefix: str = "ml4h.tensormap"):
     return tm
 
 
-def _process_u_connect_args(u_connect: Optional[List[List]], tensormap_prefix) -> Dict[TensorMap, Set[TensorMap]]:
+def _process_u_connect_args(u_connect: Optional[List[List]], tensors, tensormap_prefix) -> Dict[TensorMap, Set[TensorMap]]:
     u_connect = u_connect or []
     new_u_connect = defaultdict(set)
     for connect_pair in u_connect:
         tmap_key_in, tmap_key_out = connect_pair[0], connect_pair[1]
-        tmap_in, tmap_out = tensormap_lookup(tmap_key_in, tensormap_prefix), tensormap_lookup(tmap_key_out, tensormap_prefix)
+        tmap_in, tmap_out = tensormap_lookup(tmap_key_in, tensors, tensormap_prefix), tensormap_lookup(tmap_key_out, tensors, tensormap_prefix)
         if tmap_in.shape[:-1] != tmap_out.shape[:-1]:
             raise TypeError(f'u_connect of {tmap_in} {tmap_out} requires matching shapes besides channel dimension.')
         if tmap_in.axes() < 2 or tmap_out.axes() < 2:
@@ -503,11 +508,11 @@ def _process_u_connect_args(u_connect: Optional[List[List]], tensormap_prefix) -
     return new_u_connect
 
 
-def _process_pair_args(pairs: Optional[List[List]], tensormap_prefix) -> List[Tuple[TensorMap, TensorMap]]:
+def _process_pair_args(pairs: Optional[List[List]], tensors, tensormap_prefix) -> List[Tuple[TensorMap, TensorMap]]:
     pairs = pairs or []
     new_pairs = []
     for pair in pairs:
-        new_pairs.append((tensormap_lookup(pair[0], tensormap_prefix), tensormap_lookup(pair[1], tensormap_prefix)))
+        new_pairs.append((tensormap_lookup(pair[0], tensors, tensormap_prefix), tensormap_lookup(pair[1], tensors, tensormap_prefix)))
     return new_pairs
 
 
@@ -533,8 +538,8 @@ def _process_args(args):
         for k, v in sorted(args.__dict__.items(), key=operator.itemgetter(0)):
             f.write(k + ' = ' + str(v) + '\n')
     load_config(args.logging_level, os.path.join(args.output_folder, args.id), 'log_' + now_string, args.min_sample_id)
-    args.u_connect = _process_u_connect_args(args.u_connect, args.tensormap_prefix)
-    args.pairs = _process_pair_args(args.pairs, args.tensormap_prefix)
+    args.u_connect = _process_u_connect_args(args.u_connect, args.tensors, args.tensormap_prefix)
+    args.pairs = _process_pair_args(args.pairs, args.tensors, args.tensormap_prefix)
 
     args.tensor_maps_in = []
     args.tensor_maps_out = []
@@ -553,7 +558,7 @@ def _process_args(args):
         args.tensor_maps_in.append(
             generate_latent_tensor_map_from_file(args.latent_input_file, args.input_tensors.pop(0)),
         )
-    args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
+    args.tensor_maps_in.extend([tensormap_lookup(it, args.tensors, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
         # Continuous TensorMap(s) generated from file is given the name specified by the first output_tensors argument
@@ -600,9 +605,9 @@ def _process_args(args):
             args.tensor_maps_out.append(
                 generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
             )
-    args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
+    args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensors, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
-    args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
+    args.tensor_maps_protected = [tensormap_lookup(it, args.tensors, args.tensormap_prefix) for it in args.protected_tensors]
 
     check_no_bottleneck(args.u_connect, args.tensor_maps_out)
 
@@ -639,7 +644,8 @@ def _build_mgb_time_series_tensor_maps(
         return None
 
     base_name = needed_name.split(base_split)[0]
-    time_tmap = copy.deepcopy(tensormap_lookup(base_name, prefix="ml4h.tensormap.mgb.ecg"))
+    tensors = None # TODO will fail because needs args.tensors, but this function is never called anyways
+    time_tmap = copy.deepcopy(tensormap_lookup(base_name, tensors, prefix="ml4h.tensormap.mgb.ecg"))
     time_tmap.name = needed_name
     time_tmap.shape = time_tmap.shape[1:]
     time_tmap.time_series_limit = time_series_limit
