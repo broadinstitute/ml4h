@@ -32,6 +32,13 @@ jobs:
           python --version
           python -c "import struct, platform; print('bitness', struct.calcsize('P')*8, 'arch', platform.machine())"
 
+    - name: System deps for SciPy build (OpenBLAS + Fortran + build tools)
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gfortran libopenblas-dev liblapack-dev \
+            build-essential pkg-config
+            
     - name: Install dependencies
       run: |
         #pip cache purge
