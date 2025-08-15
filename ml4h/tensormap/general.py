@@ -126,6 +126,7 @@ def build_tensor_from_file(
     weight_column: str = None,
     filter_column: str = None,
     filter_value: int = None,
+    replacement_filter_value: int = None,
 ):
     """
     Build a tensor_from_file function from a column in a file.
@@ -133,28 +134,35 @@ def build_tensor_from_file(
     When normalization is True values will be normalized according to the mean and std of all of the values in the column.
     If weight_column is given, will return a 2D tensor that includes weight in the second column, to be used by the
     weighted_mse loss
+    If filter_column and filter_value are given, will drop all values where filter_column != filter_value. You can
+    optionally provide a replacement_filter_value to replace target_column entries that would be filtered out with
+    target_column entries from rows where filter_column = replacment_filter_value.
     """
     error = None
     try:
         ext = file_name.split('.')[1]
         delimiter = ',' if ext == 'csv' else '\t'
         df = pd.read_csv(file_name, delimiter=delimiter, dtype={0:str})
+        id_column = df.columns[0]
 
-        if filter_column is not None:
+        if (filter_column is not None) and (filter_value is not None):
+            # e.g., in UKB, to approximate null values from instance 2 with values from instance 0
+            lookup_map = df[df[filter_column] == replacement_filter_value].drop_duplicates(id_column).set_index(id_column)[target_column]
+            is_target_row = (df[filter_column] == filter_value) & (df[target_column].isna())
+            df.loc[is_target_row, target_column] = df.loc[is_target_row, id_column].map(lookup_map)
+
+            # now do the filtering
             df = df[df[filter_column] == filter_value]
 
-        id_col = df.columns[0]
         value_cols = [target_column]
         if weight_column is not None:
             value_cols.append(weight_column)
-
         for c in value_cols:
             df[c] = df[c].astype(float)
         df.dropna(subset=value_cols, inplace=True)
 
         # Set the ID column as the index and convert the remaining value columns to a dictionary of numpy arrays
-        table = df.set_index(id_col)[value_cols].apply(np.array, axis=1).to_dict()
-        logging.info(f'Continuous table from column {target_column} counts:\n{df[target_column].value_counts()}')
+        table = df.set_index(id_column)[value_cols].apply(np.array, axis=1).to_dict()
 
         if normalization:
             mean = df[target_column].mean()

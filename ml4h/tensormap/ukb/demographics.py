@@ -299,6 +299,20 @@ def build_bmi_21001_from_instances_all_bmis_202401(tensors, instance):
         ),
     )
 
+def build_bmi_21001_from_instances_all_bmis_202401_replace_with_instance_0(tensors, instance):
+    return TensorMap(
+        f'21001_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'21001_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 300),
+        normalization = Standardize(mean=27.3397, std=4.7721),
+        tensor_from_file=build_tensor_from_file(
+            file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
+            target_column='bmi_21001',
+            filter_column='instance',
+            filter_value=instance,
+            replacement_filter_value=0,
+        ),
+    )
+
 def build_bmi_23104_from_instances_all_bmis_202401(tensors, instance):
     return TensorMap(
         f'23104_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
@@ -309,6 +323,20 @@ def build_bmi_23104_from_instances_all_bmis_202401(tensors, instance):
             target_column='bmi_23104',
             filter_column='instance',
             filter_value=instance,
+        ),
+    )
+
+def build_bmi_23104_from_instances_all_bmis_202401_replace_with_instance_0(tensors, instance):
+    return TensorMap(
+        f'23104_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'23104_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 100),
+        normalization={'mean': 27.432, 'std': 4.785},
+        tensor_from_file=build_tensor_from_file(
+            file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
+            target_column='bmi_23104',
+            filter_column='instance',
+            filter_value=instance,
+            replacement_filter_value=0,
         ),
     )
 
