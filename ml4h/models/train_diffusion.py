@@ -323,6 +323,9 @@ def train_diffusion_control_model(args, supervised=False):
     )
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     model.load_weights(checkpoint_path)
+    if args.encoder_file is not None:
+        model.control_embed_model.save(args.encoder_file)
+        logging.info(f'Saved diffusion optimized encoder at: {args.encoder_file}')
 
     if args.inspect_model:
         metrics = model.evaluate(generate_test, batch_size=args.batch_size, steps=args.test_steps, return_dict=True)
