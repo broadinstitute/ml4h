@@ -252,6 +252,7 @@ def parse_args():
         '--supervision_scalar', default=0.01, type=float,
         help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
     )
+    parser.add_argument('--encoder_file', help='Diffusion model encoder path for DiffAE training.')
     parser.add_argument('--interpolate_min', type=float, default =-2.0,
                         help='Diffusion model synthetic interpolation minimum continuous condition')
     parser.add_argument('--interpolate_max', type=float, default =2.01,

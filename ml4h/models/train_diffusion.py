@@ -227,6 +227,7 @@ def train_diffusion_control_model(args, supervised=False):
             args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
             args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
             args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, supervised_model, args.supervision_scalar,
+            args.encoder_file,
         )
     else:
         model = DiffusionController(
