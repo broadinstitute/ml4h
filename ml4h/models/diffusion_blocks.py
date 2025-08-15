@@ -774,6 +774,7 @@ class DiffusionController(keras.Model):
         self.output_maps = output_maps
         if encoder_file:
             self.control_embed_model = load_model(encoder_file, compile=False)
+            logging.info(f'loaded encoder for DiffAE at: {encoder_file}')
         else:
             self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
