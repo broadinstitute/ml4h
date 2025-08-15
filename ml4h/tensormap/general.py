@@ -135,34 +135,33 @@ def build_tensor_from_file(
     weighted_mse loss
     """
     error = None
-
     try:
-        with open(file_name, 'r') as f:
-            ext = file_name.split('.')[1]
-            delimiter = ',' if ext == 'csv' else '\t'
-            reader = csv.reader(f, delimiter=delimiter)
-            header = next(reader)
-            indices = [header.index(target_column)]
-            if weight_column is not None:
-                indices.append(header.index(weight_column))
-            if filter_column is not None:
-                filter_index = header.index(filter_column)
-            table = {}
-            for row in reader:
-                try:
-                    if (filter_column is None) or (row[filter_index] == str(filter_value)):
-                        table[row[0]] = np.array([float(row[i]) for i in indices])
-                except ValueError:
-                    logging.debug(f'ValueError parsing: {[row[i] for i in indices]}')
-            if normalization:
-                value_array = np.array(
-                    [sub_array[0] for sub_array in table.values()],
-                )
-                mean = value_array.mean()
-                std = value_array.std()
-                logging.info(
-                    f'Normalizing TensorMap from file {file_name}, column {target_column} with mean: '
-                    f'{mean:.2f}, std: {std:.2f}', )
+        ext = file_name.split('.')[1]
+        delimiter = ',' if ext == 'csv' else '\t'
+        df = pd.read_csv(file_name, delimiter=delimiter, dtype={0:str})
+
+        if filter_column is not None:
+            df = df[df[filter_column] == filter_value]
+
+        id_col = df.columns[0]
+        value_cols = [target_column]
+        if weight_column is not None:
+            value_cols.append(weight_column)
+
+        for c in value_cols:
+            df[c] = df[c].astype(float)
+        df.dropna(subset=value_cols, inplace=True)
+
+        # Set the ID column as the index and convert the remaining value columns to a dictionary of numpy arrays
+        table = df.set_index(id_col)[value_cols].apply(np.array, axis=1).to_dict()
+        logging.info(f'Continuous table from column {target_column} counts:\n{df[target_column].value_counts()}')
+
+        if normalization:
+            mean = df[target_column].mean()
+            std = df[target_column].std(ddof=0)
+            logging.info(
+                f'Normalizing TensorMap from file {file_name}, column {target_column} with mean: '
+                f'{mean:.2f}, std: {std:.2f}', )
     except FileNotFoundError as e:
         error = e
 
@@ -178,8 +177,8 @@ def build_tensor_from_file(
             return table[
                 os.path.basename(hd5.filename).replace('.hd5', '')
             ].copy()
-        except KeyError:
-            raise KeyError(f'Sample id not in file {file_name}.')
+        except KeyError as e:
+            raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
 
