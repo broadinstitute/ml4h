@@ -1,6 +1,7 @@
 from ml4h.TensorMap import TensorMap
 from ml4h.tensormap.ukb.demographics import build_age_from_instances_all_ages_202401, \
-    build_bmi_21001_from_instances_all_bmis_202401, build_bmi_23104_from_instances_all_bmis_202401
+    build_bmi_21001_from_instances_all_bmis_202401, build_bmi_23104_from_instances_all_bmis_202401, \
+    build_bmi_21001_from_instances_all_bmis_202401_replace_with_instance_0, build_bmi_23104_from_instances_all_bmis_202401_replace_with_instance_0
 
 def make_ukb_dynamic_tensor_maps(desired_map_name: str, tensors: str) -> TensorMap:
     tensor_map_maker_fxns = [
@@ -23,6 +24,14 @@ def make_csv_maps(desired_map_name: str, tensors: str) -> TensorMap:
         if name == desired_map_name:
             return build_bmi_21001_from_instances_all_bmis_202401(tensors, instance)
 
+        name = f'bmi_21001_{instance}_from_instances_all_bmis_202401_replace_with_instance_0'
+        if name == desired_map_name:
+            return build_bmi_21001_from_instances_all_bmis_202401_replace_with_instance_0(tensors, instance)
+
         name = f'bmi_23104_{instance}_from_instances_all_bmis_202401'
         if name == desired_map_name:
             return build_bmi_23104_from_instances_all_bmis_202401(tensors, instance)
+
+        name = f'bmi_23104_{instance}_from_instances_all_bmis_202401_replace_with_instance_0'
+        if name == desired_map_name:
+            return build_bmi_23104_from_instances_all_bmis_202401_replace_with_instance_0(tensors, instance)
