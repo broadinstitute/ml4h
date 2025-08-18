@@ -4,10 +4,10 @@ pydicom==1.2.2
 seaborn
 scikit-image
 peakutils
-# biosppy
+biosppy
 imageio
 ipywidgets>=7.5.1
-# bokeh
+bokeh
 pillow
 notebook
 pytest
@@ -39,7 +39,7 @@ blosc
 boto3
 ml4ht==0.0.10
 google-cloud-storage
-# umap-learn[plot]
+umap-learn[plot]
 neurite
 voxelmorph
 pystrum
