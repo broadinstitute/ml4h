@@ -29,8 +29,8 @@ def test_tensor_map_from_data_description():
     )
     model, _, _, _ = make_multimodal_multitask_model(
         [tmap_in], [tmap_out],
-        encoder_blocks=['conv_encode'],
-        decoder_blocks=['conv_decode'],
+        encoder_blocks=['dense_encode'],
+        decoder_blocks=['dense_decode'],
         merge_blocks=[],
         learning_rate=1e-4,
         optimizer='sgd',
