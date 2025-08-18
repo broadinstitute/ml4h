@@ -51,11 +51,22 @@ def test_tensor_map_from_data_description():
         {'output_dd2_continuous': tf.TensorSpec(shape=(1, 1), dtype=tf.float32)}
         )
     )
+
+    # Squeeze trailing dim so inputs/targets are (None, 1)
+    def _squeeze(x, y):
+        x = {'input_dd1_continuous': tf.squeeze(x['input_dd1_continuous'], axis=-1)}
+        y = {'output_dd2_continuous': tf.squeeze(y['output_dd2_continuous'], axis=-1)}
+        return x, y
+
+    tf_dataset = tf_dataset.map(_squeeze)
+
     # model can train?
-    history = model.fit(tf_dataset).history
-    # metrics recorded?
-    assert 'mae' in history
-    assert 'mse' in history
+    history = model.fit(tf_dataset, epochs=1, steps_per_epoch=1).history
+
+    # metrics recorded? (Keras may prefix with output name when named_outputs=True)
+    keys = set(history.keys())
+    assert ('mae' in keys) or ('output_dd2_continuous_mae' in keys)
+    assert ('mse' in keys) or ('output_dd2_continuous_mse' in keys)
 
 
 class TestTensorMapSampleGetter:
