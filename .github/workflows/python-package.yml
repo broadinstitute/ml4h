@@ -32,11 +32,9 @@ jobs:
     - name: Install dependencies
       run: |
         pip cache purge
-        # python -m pip install --upgrade pip
-        python -m pip install --upgrade pip setuptools wheel "cython<3.0.0"
-        pip install "PyYAML==6.0.1" --only-binary=PyYAML --no-build-isolation
+        python -m pip install --upgrade pip
         # Install the ml4h Python package.
-        pip install .
+        pip install . -c constraints.txt
     - name: Test with pytest and pytest-xdist
       run: |
         pytest tests -m "not slow" -n auto
