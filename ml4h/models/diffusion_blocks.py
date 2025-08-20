@@ -773,9 +773,11 @@ class DiffusionController(keras.Model):
         self.batch_size = batch_size
         self.output_maps = output_maps
         if encoder_file:
+            self.autoencoder_control = True
             self.control_embed_model = load_model(encoder_file, compile=False)
             logging.info(f'loaded encoder for DiffAE at: {encoder_file}')
         else:
+            self.autoencoder_control = False
             self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
         self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size,
@@ -1030,7 +1032,7 @@ class DiffusionController(keras.Model):
           2. You can use model((noisy_images, noise_rates)) for inference
         """
         noisy_images, noise_rates = batch[0]
-        if self.encoder_file is not None:
+        if self.autoencoder_control:
             control_embed = self.control_embed_model(noisy_images)
         else:
             control_embed = self.control_embed_model(batch[1])
