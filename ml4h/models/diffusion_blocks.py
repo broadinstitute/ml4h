@@ -1030,7 +1030,10 @@ class DiffusionController(keras.Model):
           2. You can use model((noisy_images, noise_rates)) for inference
         """
         noisy_images, noise_rates = batch[0]
-        control_embed = self.control_embed_model(noisy_images)
+        if self.encoder_file is not None:
+            control_embed = self.control_embed_model(noisy_images)
+        else:
+            control_embed = self.control_embed_model(batch[1])
         # re-compute signal_rates
         signal_rates = tf.sqrt(1.0 - tf.square(noise_rates))
         # this returns (pred_noises, pred_images)
