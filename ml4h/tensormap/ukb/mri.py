@@ -436,6 +436,13 @@ lax_4ch_random_slice_3d = TensorMap(
     dependent_map=random_slice_index,
     tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0'),
 )
+lax_4ch_random_slice_3d_as_synthetic = TensorMap(
+    'synthetic_image', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    normalization=ZeroMeanStd1(),
+    dependent_map=random_slice_index,
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0'),
+)
+
 lax_3ch_random_slice_3d = TensorMap(
     'lax_3ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(224, 160, 1),
     normalization=ZeroMeanStd1(),
