@@ -146,10 +146,19 @@ def build_tensor_from_file(
         id_column = df.columns[0]
 
         if (filter_column is not None) and (filter_value is not None):
-            # e.g., in UKB, to approximate null values from instance 2 with values from instance 0
-            lookup_map = df[df[filter_column] == replacement_filter_value].drop_duplicates(id_column).set_index(id_column)[target_column]
-            is_target_row = (df[filter_column] == filter_value) & (df[target_column].isna())
-            df.loc[is_target_row, target_column] = df.loc[is_target_row, id_column].map(lookup_map)
+
+            # Remove all null values from e.g., instance 2
+            condition_to_drop = (df[filter_column] == filter_value) & (df[target_column].isna())
+            df = df[~condition_to_drop]
+
+            # Find IDs that have the source instance (e.g., instance 0) but not the target instance (e.g., instance 2),
+            # and use those instead
+            source_ids = set(df.loc[df[filter_column] == replacement_filter_value, id_column].unique())
+            target_ids = set(df.loc[df[filter_column] == filter_value, id_column].unique())
+            ids_to_replace = list(source_ids - target_ids)
+            if ids_to_replace:
+                mask_to_relabel = (df[id_column].isin(ids_to_replace)) & (df[filter_column] == replacement_filter_value)
+                df.loc[mask_to_relabel, filter_column] = filter_value
 
             # now do the filtering
             df = df[df[filter_column] == filter_value]
