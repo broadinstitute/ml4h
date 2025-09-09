@@ -161,15 +161,13 @@ def _make_ecg_rest(
                     tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
         return tensor
     return ecg_rest_from_file
-def _make_ecg_random_beats(
-        instance: int = 0, num_beats: int = 1, filter_ecg=False, median_and_std=False,
+
+
+def _make_ecg_rest_random_beats(
+        instance: int = 0, ref_strip='strip_I', num_beats: int = 1, filter_ecg=False,
         skip_poor: bool = False, len_before=200, len_after=350, sampling_rate=500,
 ):
-    if median_and_std:
-        assert (num_beats == 1)
-        assert (filter_ecg)
-
-    def ecg_random_beats_from_file(tm, hd5, dependents={}):
+    def ecg_rest_random_beats_from_file(tm, hd5, dependents={}):
         if skip_poor:
             ecg_interpretation = str(
                 tm.hd5_first_dataset_in_group(
@@ -179,19 +177,18 @@ def _make_ecg_random_beats(
             if 'Poor data quality' in ecg_interpretation:
                 raise ValueError(f'Poor data quality skipped by {tm.name}.')
 
-        # split based on strip_I
-        k = 'strip_I'
-        strip_I = tm.hd5_first_dataset_in_group(
-            hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
+        # split based on the given strip
+        strip = tm.hd5_first_dataset_in_group(
+            hd5, f'{tm.path_prefix}/{ref_strip}/instance_{instance}',
         )
-        strip_I = np.array(strip_I, dtype=np.float32)
+        strip = np.array(strip, dtype=np.float32)
         try:
-            out = biosppy.signals.ecg.ecg(strip_I, sampling_rate=500, show=False)
-            peaks = out[2]
+            out = biosppy.signals.ecg.ecg(strip, sampling_rate=sampling_rate, show=False)
+            peaks = out[2]  # rpeaks (array) – R-peak location indices.
         except ValueError:
-            raise ValueError(f'Error finding QRS peaks at lead {k}')
+            raise ValueError(f'Error finding QRS peaks at lead {ref_strip}')
 
-        peaks = [p for p in peaks if (p - len_before) >= 0 and (p + len_after) <= len(strip_I)]
+        peaks = [p for p in peaks if (p - len_before) >= 0 and (p + len_after) <= len(strip)]
         peaks = np.random.choice(peaks, num_beats, replace=False)
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -207,7 +204,7 @@ def _make_ecg_random_beats(
                 if filter_ecg:
                     try:
                         out = biosppy.signals.ecg.ecg(data, sampling_rate=sampling_rate, show=False)
-                        data = out[1]
+                        data = out[1]  # filtered (array) – Filtered ECG signal.
                     except ValueError:
                         raise ValueError(f'Error ecg filtering at lead {k}')
                 for i in range(num_beats):
@@ -219,7 +216,7 @@ def _make_ecg_random_beats(
             tensor = tensor[0]
         return tensor
 
-    return ecg_random_beats_from_file
+    return ecg_rest_random_beats_from_file
 
 def _get_lead_cm(length):
     lead_cm = {}
@@ -644,7 +641,6 @@ ecg_rest_median_raw_10 = TensorMap(
     metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
 
-
 ecg_rest_median_576 = TensorMap(
     'ecg_rest_median_576', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(576, 12), loss='logcosh',
     activation='linear', tensor_from_file=_make_ecg_rest(), channel_map=ECG_REST_MEDIAN_LEADS,
@@ -678,27 +674,27 @@ ecg_rest_median_raw_10_prediction = TensorMap(
     channel_map=ECG_REST_MEDIAN_LEADS,
 )
 
-ecg_rest_random_beat = TensorMap(
+ecg_rest_random_beat_no_poor = TensorMap(
     'ecg_rest_random_beat', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_random_beats(),
+    tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
-ecg_rest_random_beat_filtered = TensorMap(
+ecg_rest_random_beat_filtered_no_poor = TensorMap(
     'ecg_rest_random_beat_filtered', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_random_beats(filter_ecg=True),
+    tensor_from_file=_make_ecg_rest_random_beats(filter_ecg=True, skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
-ecg_rest_5_random_beats = TensorMap(
+ecg_rest_5_random_beats_no_poor = TensorMap(
     'ecg_rest_5_random_beats', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_random_beats(num_beats=5),
+    tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
-ecg_rest_5_random_beats_filtered = TensorMap(
+ecg_rest_5_random_beats_filtered_no_poor = TensorMap(
     'ecg_rest_5_random_beats_filtered', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_random_beats(num_beats=5, filter_ecg=True),
+    tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, filter_ecg=True, skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
