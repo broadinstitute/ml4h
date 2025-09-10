@@ -162,6 +162,8 @@ def _make_ecg_rest(
         return tensor
     return ecg_rest_from_file
 
+def _create_ecg_rest_random_beats(name, data):
+    pass
 
 def _make_ecg_rest_random_beats(
         instance: int = 0, ref_strip='strip_I', num_beats: int = 1, filter_ecg=False,
