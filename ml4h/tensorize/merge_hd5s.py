@@ -4,6 +4,7 @@ import logging
 import argparse
 import traceback
 from collections import Counter
+import numpy as np
 
 from ml4h.defines import TENSOR_EXT, HD5_GROUP_CHAR
 from ml4h.tensormap.ukb.ecg import _check_valid_ecg_rest_random_beats, _create_ecg_rest_random_beats
@@ -17,6 +18,10 @@ gsutil -m cp -r <gcs bucket with tensors> <local directory>
 
 If the destination directory and/or file(s) don't exist, it creates them.
 If any of the source files contain the same dataset at the same group path, it errors out.
+
+You can optionally add --derived_data_fn_name, which specifies a function to use to derive
+new data from the source hd5s and save them to the destination hd5s. In this case, only
+the derived data will be created, and no other hd5 datasets will be copied from the sources.
 
 Example command line:
 python .merge_hd5s.py \
@@ -86,6 +91,7 @@ def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, v
             except (OSError, KeyError, RuntimeError, ValueError) as e:
                 logging.debug(f"Error trying to write:{k} at group path:{group_path} error:{e}\n{traceback.format_exc()}\n")
         if not is_dataset:
+            logging.debug(f"copying group {name}")
             _copy_hd5_datasets(source_hd5, destination_hd5, group_path=name + HD5_GROUP_CHAR, valid_fn=valid_fn, derived_data_fn=derived_data_fn, stats=stats)
 
 VALID_MAP = {
@@ -115,11 +121,11 @@ if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
     if args.derived_data_fn_name:
-        derived_data_fn = DEF_MAP[args.derived_data_fn_name]
         valid_fn = VALID_MAP[args.derived_data_fn_name]
+        derived_data_fn = DEF_MAP[args.derived_data_fn_name]
     else:
-        derived_data_fn = None
         valid_fn = None
+        derived_data_fn = None
 
     merge_hd5s_into_destination(
         args.destination, args.sources, args.min_sample_id, args.max_sample_id, args.intersect,
