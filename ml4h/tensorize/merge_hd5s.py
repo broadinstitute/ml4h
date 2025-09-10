@@ -6,6 +6,7 @@ import traceback
 from collections import Counter
 
 from ml4h.defines import TENSOR_EXT, HD5_GROUP_CHAR
+from ml4h.tensormap.ukb.ecg import _create_ecg_rest_random_beats
 
 """
 This script copies all the hd5 datasets from all hd5 files within the 'sources'
@@ -24,7 +25,7 @@ python .merge_hd5s.py \
 """
 
 
-def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_id, intersect, inplace):
+def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_id, intersect, inplace, derived_data_fn):
     stats = Counter()
     if not os.path.exists(os.path.dirname(destination)):
         os.makedirs(os.path.dirname(destination))
@@ -46,28 +47,39 @@ def merge_hd5s_into_destination(destination, sources, min_sample_id, max_sample_
 
             with h5py.File(os.path.join(destination, source_file), 'a') as destination_hd5:
                 with h5py.File(os.path.join(source_folder, source_file), 'r') as source_hd5:
-                    _copy_hd5_datasets(source_hd5, destination_hd5, stats=stats)
+                    _copy_hd5_datasets(source_hd5, destination_hd5, derived_data_fn=derived_data_fn, stats=stats)
         logging.info(f"Done copying source folder {source_folder}")
 
     for k in stats:
         logging.info(f"{k} has {stats[k]} tensors")
 
 
-def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, stats=None):
+def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, derived_data_fn=None, stats=None):
     for k in source_hd5[group_path]:
-        if isinstance(source_hd5[group_path][k], h5py.Dataset):
+        data = source_hd5[group_path][k]
+        if isinstance(data, h5py.Dataset):
             try:
-                if source_hd5[group_path][k].chunks is None:
-                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k])
+                if derived_data_fn:
+                    out_dict = derived_data_fn(group_path+k, data)
                 else:
-                    destination_hd5.create_dataset(group_path + k, data=source_hd5[group_path][k], compression='gzip')
-                stats[group_path + k] += 1
+                    out_dict = {group_path + k:data}
+
+                for out_name, out_data in out_dict.items():
+                    if out_data.chunks is None:
+                        destination_hd5.create_dataset(out_name, data=out_data)
+                    else:
+                        destination_hd5.create_dataset(out_name, data=out_data, compression='gzip')
+
+                    stats[out_name] += 1
             except (OSError, KeyError, RuntimeError, ValueError) as e:
                 logging.debug(f"Error trying to write:{k} at group path:{group_path} error:{e}\n{traceback.format_exc()}\n")
         else:
             logging.debug(f"copying group {group_path + k}")
-            _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR, stats=stats)
+            _copy_hd5_datasets(source_hd5, destination_hd5, group_path=group_path + k + HD5_GROUP_CHAR, derived_data_fn=derived_data_fn, stats=stats)
 
+DEF_MAP = {
+    'ecg_rest_random_beats': _create_ecg_rest_random_beats,
+}
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -79,12 +91,17 @@ def parse_args():
     parser.add_argument('--inplace', default=False, action='store_true', help='Merge into pre-existing destination tensors')
     parser.add_argument(
         '--intersect', default=False, action='store_true',
-        help='Only merge files if the sample id is in every source directory (and if destination if destination is not empty',
+        help='Only merge files if the sample id is in every source directory (and if destination if destination is not empty)',
     )
+    parser.add_argument('--derived_data_fn_name', default=None, help='Name of the function with which to derive data from the source directories, only the derived data is transferred')
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     args = parse_args()
     logging.getLogger().setLevel(args.logging_level)
-    merge_hd5s_into_destination(args.destination, args.sources, args.min_sample_id, args.max_sample_id, args.intersect, args.inplace)
+    if args.derived_data_fn_name:
+        derived_data_fn = DEF_MAP[args.derived_data_fn_name]
+    else:
+        derived_data_fn = None
+
+    merge_hd5s_into_destination(args.destination, args.sources, args.min_sample_id, args.max_sample_id, args.intersect, args.inplace, derived_data_fn)
