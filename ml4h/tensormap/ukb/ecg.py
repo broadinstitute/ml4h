@@ -13,6 +13,7 @@ from ml4h.metrics import weighted_crossentropy, ignore_zeros_logcosh, mse_10x
 from ml4h.TensorMap import TensorMap, Interpretation, no_nans, make_range_validator
 from ml4h.defines import ECG_CHAR_2_IDX, ECG_REST_MGB_LEADS, ECG_REST_AMP_LEADS_UKB, ECG_BIKE_LEADS
 from ml4h.defines import ECG_REST_LEADS, ECG_REST_MEDIAN_LEADS, ECG_REST_AMP_LEADS, ECG_SEGMENTED_CHANNEL_MAP
+from ml4h.defines import HD5_GROUP_CHAR, FILTERED_ECG_REST_LEADS
 from ml4h.tensormap.general import tensor_path, pad_or_crop_array_to_shape, tensor_from_hd5, named_tensor_from_hd5
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pass_nan, build_tensor_from_file
 
@@ -162,12 +163,72 @@ def _make_ecg_rest(
         return tensor
     return ecg_rest_from_file
 
-def _create_ecg_rest_random_beats(name, data):
-    pass
+def _check_valid_ecg_rest_random_beats(name):
+    return name in [
+        '/categorical/Genetic-sex_Female_0_0',
+        '/ukb_ecg_rest/ecg_rest_text/instance_0',
+        '/ukb_ecg_rest/strip_I/instance_0',
+        '/ukb_ecg_rest/strip_II/instance_0',
+        '/ukb_ecg_rest/strip_III/instance_0',
+        '/ukb_ecg_rest/strip_V1/instance_0',
+        '/ukb_ecg_rest/strip_V2/instance_0',
+        '/ukb_ecg_rest/strip_V3/instance_0',
+        '/ukb_ecg_rest/strip_V4/instance_0',
+        '/ukb_ecg_rest/strip_V5/instance_0',
+        '/ukb_ecg_rest/strip_V6/instance_0',
+        '/ukb_ecg_rest/strip_aVF/instance_0',
+        '/ukb_ecg_rest/strip_aVL/instance_0',
+        '/ukb_ecg_rest/strip_aVR/instance_0',
+        '/ukb_ecg_rest', # does the filtering and beat detection
+    ]
+
+
+def _create_ecg_rest_random_beats(name, source_hd5, sampling_rate=500):
+    if name in [
+        '/categorical/Genetic-sex_Female_0_0',
+        '/ukb_ecg_rest/ecg_rest_text/instance_0',
+        '/ukb_ecg_rest/strip_I/instance_0',
+        '/ukb_ecg_rest/strip_II/instance_0',
+        '/ukb_ecg_rest/strip_III/instance_0',
+        '/ukb_ecg_rest/strip_V1/instance_0',
+        '/ukb_ecg_rest/strip_V2/instance_0',
+        '/ukb_ecg_rest/strip_V3/instance_0',
+        '/ukb_ecg_rest/strip_V4/instance_0',
+        '/ukb_ecg_rest/strip_V5/instance_0',
+        '/ukb_ecg_rest/strip_V6/instance_0',
+        '/ukb_ecg_rest/strip_aVF/instance_0',
+        '/ukb_ecg_rest/strip_aVL/instance_0',
+        '/ukb_ecg_rest/strip_aVR/instance_0',
+    ]:
+        data = source_hd5[name]
+        return {name: data}
+
+    if name == '/ukb_ecg_rest':
+        instance = 0
+        res_dict = {}
+        for k in ECG_REST_LEADS.keys():
+            strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
+            strip_data = source_hd5[strip_name]
+            strip = np.array(strip_data, dtype=np.float32)
+            try:
+                out = biosppy.signals.ecg.ecg(strip, sampling_rate=sampling_rate, show=False)
+                filtered_strip = out[1]  # filtered (array) – Filtered ECG signal.
+                peaks = out[2]  # rpeaks (array) – R-peak location indices.
+            except ValueError:
+                raise ValueError(f'Error finding QRS peaks at lead {k}')
+
+            filtered_strip_name = name + HD5_GROUP_CHAR + f'filtered_{k}' + HD5_GROUP_CHAR + f'instance_{instance}'
+            res_dict[filtered_strip_name] = filtered_strip
+
+            peaks_name = name + HD5_GROUP_CHAR + f'peaks_{k}' + HD5_GROUP_CHAR + f'instance_{instance}'
+            res_dict[peaks_name] = peaks
+
+        return res_dict
+
 
 def _make_ecg_rest_random_beats(
-        instance: int = 0, ref_strip='strip_I', num_beats: int = 1, filter_ecg=False,
-        skip_poor: bool = False, len_before=200, len_after=350, sampling_rate=500,
+        instance: int = 0, num_beats: int = 1,
+        skip_poor: bool = False, strip_len=5000, len_before=200, len_after=350, sampling_rate=500,
 ):
     def ecg_rest_random_beats_from_file(tm, hd5, dependents={}):
         if skip_poor:
@@ -179,18 +240,10 @@ def _make_ecg_rest_random_beats(
             if 'Poor data quality' in ecg_interpretation:
                 raise ValueError(f'Poor data quality skipped by {tm.name}.')
 
-        # split based on the given strip
-        strip = tm.hd5_first_dataset_in_group(
-            hd5, f'{tm.path_prefix}/{ref_strip}/instance_{instance}',
+        peaks = tm.hd5_first_dataset_in_group(
+            hd5, f'{tm.path_prefix}/peaks_strip_I/instance_{instance}',
         )
-        strip = np.array(strip, dtype=np.float32)
-        try:
-            out = biosppy.signals.ecg.ecg(strip, sampling_rate=sampling_rate, show=False)
-            peaks = out[2]  # rpeaks (array) – R-peak location indices.
-        except ValueError:
-            raise ValueError(f'Error finding QRS peaks at lead {ref_strip}')
-
-        peaks = [p for p in peaks if (p - len_before) >= 0 and (p + len_after) <= len(strip)]
+        peaks = [p for p in peaks if (p - len_before) >= 0 and (p + len_after) <= strip_len]
         peaks = np.random.choice(peaks, num_beats, replace=False)
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
@@ -202,13 +255,6 @@ def _make_ecg_rest_random_beats(
                 data = tm.hd5_first_dataset_in_group(
                     hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
                 )
-                data = np.array(data, dtype=np.float32)
-                if filter_ecg:
-                    try:
-                        out = biosppy.signals.ecg.ecg(data, sampling_rate=sampling_rate, show=False)
-                        data = out[1]  # filtered (array) – Filtered ECG signal.
-                    except ValueError:
-                        raise ValueError(f'Error ecg filtering at lead {k}')
                 for i in range(num_beats):
                     peak_loc = peaks[i]
                     p0, p1 = peak_loc - len_before, peak_loc + len_after
@@ -676,6 +722,11 @@ ecg_rest_median_raw_10_prediction = TensorMap(
     channel_map=ECG_REST_MEDIAN_LEADS,
 )
 
+ecg_rest_filtered_no_poor = TensorMap(
+    'strip_filtered', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+
 ecg_rest_random_beat_no_poor = TensorMap(
     'ecg_rest_random_beat', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
@@ -684,8 +735,8 @@ ecg_rest_random_beat_no_poor = TensorMap(
 
 ecg_rest_random_beat_filtered_no_poor = TensorMap(
     'ecg_rest_random_beat_filtered', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_rest_random_beats(filter_ecg=True, skip_poor=True),
-    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+    tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
+    channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
 ecg_rest_5_random_beats_no_poor = TensorMap(
@@ -696,8 +747,8 @@ ecg_rest_5_random_beats_no_poor = TensorMap(
 
 ecg_rest_5_random_beats_filtered_no_poor = TensorMap(
     'ecg_rest_5_random_beats_filtered', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
-    tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, filter_ecg=True, skip_poor=True),
-    channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+    tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
+    channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 
 def stretch_ecg(x, n=0):
