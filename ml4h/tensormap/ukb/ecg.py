@@ -1408,7 +1408,6 @@ def get_instance_0(tm: TensorMap, hd5: h5py.File, dependents=None):
     return pad_or_crop_array_to_shape(tm.shape, tensor)
 
 
-
 ecg_bike_median_instance_0 = TensorMap(
     'median', Interpretation.CONTINUOUS, shape=(5500, 3), path_prefix='ukb_ecg_bike',
     tensor_from_file=get_instance_0, normalization=ZeroMeanStd1(), channel_map=ECG_BIKE_LEADS,

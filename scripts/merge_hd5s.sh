@@ -11,6 +11,7 @@ INTERSECT=""
 INPLACE=""
 SAMPLE_IDS_START=1000000
 SAMPLE_IDS_END=6030000
+DERIVED_DATA_FN_NAME=""
 
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
 
@@ -21,15 +22,14 @@ usage()
 {
     cat <<USAGE_MESSAGE
 
-    This script can be used to create tensors from the UKBB data.
+    This script can be used to merge tensors from the UKBB data.
 
-    Usage: ${SCRIPT_NAME}    -t <tensor_path>
-                          [-i <id_string>] [-n <num_jobs>]
-                          [-s <sample_id_start>] [-e <sample_id_end>]
-                          [-x <xml_field_id>] [-m <mri_field_id>] [-c <CONTINUOUS_FIELD_IDS>] [-a <CATEGORICAL_FIELD_IDS>]
+    Usage: ${SCRIPT_NAME}    -d <destination_path> -s "<source_paths>"
+                          [-n <num_jobs>] [-b <sample_id_start>] [-e <sample_id_end>]
+                          [-i] [-p] [-f <derived_data_fn_name>]
                           [-h]
 
-    Example: ./${SCRIPT_NAME} -t /mnt/disks/data/generated/tensors/test/2019-02-05/ -i my_run -n 96 -s 1000000 -e 6030000 -x "20205 6025" -m "20208 20209"
+    Example: ./${SCRIPT_NAME} -d /mnt/disks/destination_data -s /mnt/disks/source_data -n 96 -b 1000000 -e 6030000 -p
 
         -d      <path>      (Required) Absolute path to directory to write output tensors to.
 
@@ -44,6 +44,8 @@ usage()
         -b      <id>        Smallest sample ID to start with. Default: 1000000.
 
         -e      <id>        Largest sample ID to end with. Default: 6030000.
+
+        -f      <str>       The name of a function to generate derived data. Default: None.
 
         -h                  Print this help text
 
@@ -71,7 +73,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-while getopts ":d:s:n:b:e:hip" opt ; do
+while getopts ":d:s:n:b:e:hipf:" opt ; do
     case ${opt} in
         h)
             usage
@@ -97,6 +99,9 @@ while getopts ":d:s:n:b:e:hip" opt ; do
             ;;
         p)
             INPLACE="--inplace"
+            ;;
+        f)
+            DERIVED_DATA_FN_NAME=$OPTARG
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -133,7 +138,8 @@ while [[ $COUNTER -lt $(( $NUM_JOBS + 1 )) ]]; do
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
 		--max_sample_id $MAX_SAMPLE_ID \
-		$INTERSECT $INPLACE &
+		$INTERSECT $INPLACE \
+		--derived_data_fn_name $DERIVED_DATA_FN_NAME &
 LAUNCH_CMDLINE_MESSAGE
 
     $HOME/ml4h/scripts/tf.sh -c $HOME/ml4h/ml4h/tensorize/merge_hd5s.py \
@@ -141,7 +147,8 @@ LAUNCH_CMDLINE_MESSAGE
 		--sources $SOURCES \
 		--min_sample_id $MIN_SAMPLE_ID \
 		--max_sample_id $MAX_SAMPLE_ID \
-		$INTERSECT $INPLACE &
+		$INTERSECT $INPLACE \
+		--derived_data_fn_name $DERIVED_DATA_FN_NAME &
 
     let COUNTER=COUNTER+1
     let MIN_SAMPLE_ID=MIN_SAMPLE_ID+INCREMENT
