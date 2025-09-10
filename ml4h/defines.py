@@ -117,6 +117,10 @@ ECG_REST_MEDIAN_LEADS = {
     'median_I': 0, 'median_II': 1, 'median_III': 2, 'median_V1': 3, 'median_V2': 4, 'median_V3': 5,
     'median_V4': 6, 'median_V5': 7, 'median_V6': 8, 'median_aVF': 9, 'median_aVL': 10, 'median_aVR': 11,
 }
+FILTERED_ECG_REST_LEADS = {
+    'filtered_strip_I': 0, 'filtered_strip_II': 1, 'filtered_strip_III': 2, 'filtered_strip_V1': 3, 'filtered_strip_V2': 4, 'filtered_strip_V3': 5,
+    'filtered_strip_V4': 6, 'filtered_strip_V5': 7, 'filtered_strip_V6': 8, 'filtered_strip_aVF': 9, 'filtered_strip_aVL': 10, 'filtered_strip_aVR': 11,
+}
 ECG_REST_AMP_LEADS = {
     'I': 0, 'II': 1, 'III': 2, 'aVR': 3, 'aVL': 4, 'aVF': 5,
     'V1': 6, 'V2': 7, 'V3': 8, 'V4': 9, 'V5': 10, 'V6': 11,
