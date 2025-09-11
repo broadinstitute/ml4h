@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 import keras
 import tensorflow_hub as hub
+from official.projects.movinet.modeling import movinet
 from tensorflow.keras.layers import Dense, Flatten, Reshape, LayerNormalization, DepthwiseConv2D, concatenate, Concatenate, Add
 
 from ml4h.models.Block import Block
@@ -59,7 +60,11 @@ class MoviNetEncoder(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
-        self.base_model = hub.KerasLayer(path, trainable=pretrain_trainable)
+        self.base_model = movinet.Movinet(model_id='a2')
+        self.base_model.build([None, 16, 224, 224, 3])
+        dummy_input = tf.random.uniform([1, 16, 224, 224, 3])
+        backbone_output = self.base_model(dummy_input)
+
         self.base_model.trainable = pretrain_trainable
 
     def can_apply(self):
@@ -68,10 +73,11 @@ class MoviNetEncoder(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        x = self.base_model({'image': x}, training=True)
-        #x = keras.layers.GlobalAveragePooling2D()(x)
-        intermediates[self.tensor_map].append(x)
-        return x
+        inputs = self.base_model.input
+        y = self.base_model(x)
+        encoding = tf.keras.layers.Flatten()(y[0]['head'])
+        intermediates[self.tensor_map].append(encoding)
+        return encoding
 
 
 class BertEncoder(Block):
