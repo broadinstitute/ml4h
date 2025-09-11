@@ -25,8 +25,8 @@ jobs:
         pip cache purge
         python -m pip install --upgrade pip
         # Install the ml4h Python package.
-        pip install .
-        pip install -r docker/vm_boot_images/config/tensorflow-requirements.txt
+        pip install . -c constraints.txt
+        pip install -r docker/vm_boot_images/config/tensorflow-requirements.txt -c constraints.txt
     - name: Install pypa/build
       run: >-
         python -m pip install build --user
