@@ -425,6 +425,9 @@ def make_one_hot(y, num_labels):
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=3, height=3):
+    if len(history.history) < 2:
+        logging.info(f"Not enough history to plot metrics.")
+        return
     row = 0
     col = 0
     total_plots = int(
@@ -437,6 +440,9 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     )
 
     for k in sorted(history.history.keys()):
+        if len(history.history[k]) < 2:
+            logging.info(f"Not enough epochs to plot learning curves at:{k}")
+            return
         if not k.startswith("val_") or k in ['val_kid', 'val_supervised_loss']:
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [
@@ -461,9 +467,6 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
                 col += 1
                 if col >= cols:
                     break
-        if len(history.history[k]) < 2:
-            logging.info(f"Not enough epochs to plot learning curves at:{k}")
-            return
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -725,7 +728,7 @@ def bootstrap_confidence_interval(
 
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
-    bootstrap=True, dpi=300, width=4, height=4,
+    bootstrap=True, dpi=300, width=2, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
@@ -779,8 +782,8 @@ def plot_scatter(
     ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
-    sns.histplot(prediction, label="Predicted", color="blue", edgecolor=None, ax=ax2, bins=min(64, len(prediction)))
-    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor=None, bins=min(64, len(prediction)))
+    sns.histplot(prediction, label="Predicted", ax=ax2, color="blue", edgecolor="blue", bins=min(64, len(prediction)))
+    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor="red", bins=min(64, len(prediction)))
     ax2.legend(loc="upper left")
 
     figure_path = os.path.join(prefix, f"scatter_r_{pearson:0.4f}_{title}{IMAGE_EXT}")
@@ -3171,11 +3174,11 @@ def plot_reconstruction(
     height: int = 7,
 ):
     logging.info(f"Plotting {num_samples} reconstructions of {tm}.")
-    if None in tm.shape or paths is None or len(paths) == 0:  # can't handle dynamic shapes
+    if None in tm.shape:  # can't handle dynamic shapes
         return
     os.makedirs(os.path.dirname(folder), exist_ok=True)
     for i in range(num_samples):
-        sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
+        sample_id = i#os.path.basename(paths[i]).replace(TENSOR_EXT, "")
         title = f"{tm.name}_{sample_id}_reconstruction"
         y = y_true[i]
         yp = y_pred[i]
