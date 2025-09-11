@@ -244,7 +244,8 @@ def _make_ecg_rest_random_beats(
             hd5, f'{tm.path_prefix}/peaks_strip_I/instance_{instance}',
         )
         peaks = [p for p in peaks if (p - len_before) >= 0 and (p + len_after) <= strip_len]
-        peaks = np.random.choice(peaks, num_beats, replace=False)
+        start_idx = np.random.choice(len(peaks) - num_beats + 1, replace=False)
+        peaks = peaks[start_idx:start_idx + num_beats]
 
         tensor = np.zeros(tm.shape, dtype=np.float32)
         if tm.axes() == 2:
