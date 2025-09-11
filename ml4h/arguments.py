@@ -252,6 +252,15 @@ def parse_args():
         '--supervision_scalar', default=0.01, type=float,
         help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
     )
+    parser.add_argument('--encoder_file', help='Diffusion model encoder path for DiffAE training.')
+    parser.add_argument('--interpolate_min', type=float, default =-2.0,
+                        help='Diffusion model synthetic interpolation minimum continuous condition')
+    parser.add_argument('--interpolate_max', type=float, default =2.01,
+                        help='Diffusion model synthetic interpolation maximum continuous condition')
+    parser.add_argument('--interpolate_step', type=float, default =1.0,
+                        help='Diffusion model synthetic interpolation step size continuous condition')
+
+
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
@@ -437,7 +446,8 @@ def parse_args():
     #Parent Sort enable or disable
     parser.add_argument('--parent_sort', default=True, type=lambda x: x.lower() == 'true', help='disable or enable parent_sort on output tmaps')
     #Dictionary outputs
-    parser.add_argument('--named_outputs', default=False, type=lambda x: x.lower() == 'true', help='pass output tmaps as dictionaries if true else pass as list')
+    parser.add_argument('--named_outputs', default=True, type=lambda x: x.lower() == 'true', help='pass output tmaps as dictionaries if true else pass as list')
+
     args = parser.parse_args()
     _process_args(args)
     return args

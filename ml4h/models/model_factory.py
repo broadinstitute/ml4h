@@ -34,7 +34,7 @@ from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, La
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, \
-    VariationalDiagNormal, KroneckerBlock, DropoutBlock
+    KroneckerBlock, DropoutBlock, KLDivergenceBlock
 
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
@@ -65,6 +65,7 @@ BLOCK_CLASSES = {
     'linear_decode': LinearDecoder,
     'partitioned_linear_decode': PartitionedLinearDecoder,
     'identity': EncodeIdentityBlock,
+    'kl_divergence': KLDivergenceBlock,
     'transformer_encoder': TransformerEncoder,
     'perceiver_encoder': PerceiverEncoder,
     'transformer_encoder_embedding': TransformerEncoderEmbedding,
@@ -129,11 +130,8 @@ def make_multimodal_multitask_model(
     )
 
     if kwargs.get('model_file', False):
-        print("Model file loaded")
-        return tf.keras.models.load_model(kwargs['model_file']), None, None, None
-    if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'])
-    
+
     full_model, encoders, decoders, merger = multimodal_multitask_model(
         tensor_maps_in, tensor_maps_out,
         encoder_blocks, decoder_blocks, merge_blocks,
@@ -338,13 +336,17 @@ def _load_model_encoders_and_decoders(
     merger = None
     try:
         for tm in tensor_maps_in:
-            encoders[tm] = load_model(f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+            model_path = f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras"
+            if os.path.exists(model_path):
+                encoders[tm] = load_model(model_path, custom_objects=custom_dict, compile=False)
         for tm in tensor_maps_out:
-            decoders[tm] = load_model(f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+            model_path = f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras"
+            if os.path.exists(model_path):
+                decoders[tm] = load_model(model_path, custom_objects=custom_dict, compile=False)
         merger = load_model(f"{os.path.dirname(model_file)}/merger.keras", custom_objects=custom_dict, compile=False)
-    except OSError as e:
+    except (ValueError, OSError) as e:
         logging.warning(f'Could not load some model modules, error: {e}')
-    logging.info(f"Attempting to load model file from: {model_file}")
+    logging.info(f"Attempting to load full model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
     m.compile(
         optimizer=optimizer, loss=[tm.loss for tm in tensor_maps_out],
@@ -362,7 +364,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         for obj in chain(
             ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
             ],
         )

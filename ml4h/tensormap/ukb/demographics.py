@@ -273,6 +273,11 @@ bmi_2 = TensorMap(
     channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
     normalization=Standardize(mean=27.3397, std=4.7721),
 )
+bmi_as_target = TensorMap(
+    'target_bmi', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='log_cosh',
+    channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
+    normalization=Standardize(mean=27.3397, std=4.7721),
+)
 bmi_2_partition = TensorMap(
     '21001_Body-mass-index-BMI_2_0', Interpretation.CONTINUOUS, path_prefix='continuous',  loss='log_cosh',
     channel_map={'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
@@ -846,4 +851,8 @@ categorical_phenotypes_134 = TensorMap(
             'Workplace-had-a-lot-of-diesel-exhaust_Rarelynever_0_1': 91,
             'Workplace-very-dusty_Rarelynever_0_0': 127, 'Workplace-very-dusty_Rarelynever_0_1': 128,
         },
+)
+
+target_bmi = TensorMap(
+    'target_bmi', Interpretation.CONTINUOUS, shape=(1,),
 )
