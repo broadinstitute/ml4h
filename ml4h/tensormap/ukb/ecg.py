@@ -163,7 +163,7 @@ def _make_ecg_rest(
         return tensor
     return ecg_rest_from_file
 
-def _check_valid_ecg_rest_random_beats(name):
+def _check_valid_ecg_rest_filter_and_extract_peaks(name):
     return name in [
         '/categorical/Genetic-sex_Female_0_0',
         '/ukb_ecg_rest/ecg_rest_text/instance_0',
@@ -183,7 +183,7 @@ def _check_valid_ecg_rest_random_beats(name):
     ]
 
 
-def _create_ecg_rest_random_beats(name, source_hd5, sampling_rate=500):
+def _create_ecg_rest_filter_and_extract_peaks(name, source_hd5, sampling_rate=500):
     if name in [
         '/categorical/Genetic-sex_Female_0_0',
         '/ukb_ecg_rest/ecg_rest_text/instance_0',
