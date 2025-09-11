@@ -209,7 +209,6 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
             elif len(generated_images.shape) == 4:
                 plt.imshow(generated_images[i_col], cmap='gray')
             plt.axis("off")
-        #plt.gca().set_title(f'{control_tm.name[:14]}: {pheno_scale:0.1f}')
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
