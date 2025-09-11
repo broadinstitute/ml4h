@@ -7,7 +7,7 @@ from collections import Counter
 import numpy as np
 
 from ml4h.defines import TENSOR_EXT, HD5_GROUP_CHAR
-from ml4h.tensormap.ukb.ecg import _check_valid_ecg_rest_random_beats, _create_ecg_rest_random_beats
+from ml4h.tensormap.ukb.ecg import _check_valid_ecg_rest_filter_and_extract_peaks, _create_ecg_rest_filter_and_extract_peaks
 
 """
 This script copies all the hd5 datasets from all hd5 files within the 'sources'
@@ -95,11 +95,11 @@ def _copy_hd5_datasets(source_hd5, destination_hd5, group_path=HD5_GROUP_CHAR, v
             _copy_hd5_datasets(source_hd5, destination_hd5, group_path=name + HD5_GROUP_CHAR, valid_fn=valid_fn, derived_data_fn=derived_data_fn, stats=stats)
 
 VALID_MAP = {
-    'ecg_rest_random_beats': _check_valid_ecg_rest_random_beats,
+    'ecg_rest_filter_and_extract_peaks': _check_valid_ecg_rest_filter_and_extract_peaks,
 }
 
 DEF_MAP = {
-    'ecg_rest_random_beats': _create_ecg_rest_random_beats,
+    'ecg_rest_filter_and_extract_peaks': _create_ecg_rest_filter_and_extract_peaks,
 }
 
 def parse_args():
