@@ -558,6 +558,10 @@ ecg_rest_no_poor = TensorMap(
     'strip', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
+ecg_rest_no_poor_strip_I = TensorMap(
+    'strip_I', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
 
 ecg_rest_mgb = TensorMap(
     'ecg_5000_std', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
@@ -706,6 +710,10 @@ ecg_rest_median_raw_10_no_poor = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
+ecg_rest_median_raw_10_no_poor_strip_I = TensorMap(
+    'ecg_rest_median_raw_10_strip_I', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 1), loss='logcosh', activation='linear',
+    tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map={'median_I': 0}, normalization=Standardize(mean=0, std=10),
+)
 ecg_rest_median_raw_10_random_norm = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
     tensor_from_file=_make_ecg_rest(skip_poor=True),
@@ -727,11 +735,20 @@ ecg_rest_filtered_no_poor = TensorMap(
     'strip_filtered', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
     channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
+ecg_rest_filtered_no_poor_strip_I = TensorMap(
+    'strip_I_filtered', Interpretation.CONTINUOUS, shape=(5000, 1), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(skip_poor=True),
+    channel_map={'filtered_strip_I': 0}, normalization=ZeroMeanStd1(),
+)
 
 ecg_rest_random_beat_no_poor = TensorMap(
     'ecg_rest_random_beat', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_rest_random_beat_no_poor_strip_I = TensorMap(
+    'ecg_rest_random_beat_strip_I', Interpretation.CONTINUOUS, shape=(550, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
 )
 
 ecg_rest_random_beat_filtered_no_poor = TensorMap(
@@ -739,17 +756,32 @@ ecg_rest_random_beat_filtered_no_poor = TensorMap(
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
+ecg_rest_random_beat_filtered_no_poor_strip_I = TensorMap(
+    'ecg_rest_random_beat_filtered_strip_I', Interpretation.CONTINUOUS, shape=(550, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
+    channel_map={'filtered_strip_I': 0}, normalization=ZeroMeanStd1(),
+)
 
 ecg_rest_5_random_beats_no_poor = TensorMap(
     'ecg_rest_5_random_beats', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
+ecg_rest_5_random_beats_no_poor_strip_I = TensorMap(
+    'ecg_rest_5_random_beats_strip_I', Interpretation.CONTINUOUS, shape=(5, 550, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
+    channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
+)
 
 ecg_rest_5_random_beats_filtered_no_poor = TensorMap(
     'ecg_rest_5_random_beats_filtered', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
+)
+ecg_rest_5_random_beats_filtered_no_poor_strip_I = TensorMap(
+    'ecg_rest_5_random_beats_filtered_strip_I', Interpretation.CONTINUOUS, shape=(5, 550, 1), path_prefix='ukb_ecg_rest',
+    tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
+    channel_map={'filtered_strip_I': 0}, normalization=ZeroMeanStd1(),
 )
 
 def stretch_ecg(x, n=0):
