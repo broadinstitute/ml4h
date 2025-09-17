@@ -182,8 +182,11 @@ def _check_valid_ecg_rest_filter_and_extract_peaks(name):
         '/ukb_ecg_rest', # does the filtering and beat detection
     ]
 
-
-def _create_ecg_rest_filter_and_extract_peaks(name, source_hd5, sampling_rate=500):
+# Create filtered ECGs, detected peaks, filtered median beat and standard deviation from filtered beats
+def _create_ecg_rest_filter_and_extract_peaks(
+    name, source_hd5, instance=0,
+    sampling_rate=500, search_radius=50,
+):
     if name in [
         '/categorical/Genetic-sex_Female_0_0',
         '/ukb_ecg_rest/ecg_rest_text/instance_0',
@@ -204,12 +207,39 @@ def _create_ecg_rest_filter_and_extract_peaks(name, source_hd5, sampling_rate=50
         return {name: data}
 
     if name == '/ukb_ecg_rest':
-        instance = 0
         res_dict = {}
-        for k in ECG_REST_LEADS.keys():
+
+        # Initial ROI for where the peak of the median ECG could be, needed because of drift
+        # Would ideally get this from a filtered median ECG, but they are too short for biosppy
+        median_peaks = []
+        for i,k in enumerate(ECG_REST_MEDIAN_LEADS):
             strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
             strip_data = source_hd5[strip_name]
             strip = np.array(strip_data, dtype=np.float32)
+            median_peaks.append(np.argmax(np.abs(strip-np.mean(strip))))
+        center_of_median_peaks = np.median(median_peaks)
+        roi = [int(center_of_median_peaks-search_radius), int(center_of_median_peaks+search_radius)]
+
+        # Find the peak for each median ECG strip, to be used for later alignment.
+        # Could be a min or a max.
+        median_peaks = []
+        peaks_from_max = []
+        for i,k in enumerate(ECG_REST_MEDIAN_LEADS):
+            strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
+            strip_data = source_hd5[strip_name]
+            strip = np.array(strip_data, dtype=np.float32)
+            median_peaks.append(np.argmax(np.abs(strip-np.mean(strip))[roi[0]:roi[1]]) + roi[0])
+            peak_from_max = np.argmax(strip[roi[0]:roi[1]]) + roi[0]
+            peak_from_min = np.argmin(strip[roi[0]:roi[1]]) + roi[0]
+            assert(median_peaks[i] in [peak_from_max, peak_from_min])
+            peaks_from_max.append(median_peaks[i] == peak_from_max)
+
+        for i,k in enumerate(ECG_REST_LEADS):
+            strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
+            strip_data = source_hd5[strip_name]
+            strip = np.array(strip_data, dtype=np.float32)
+
+            # Create filtered ECGs and detected peaks
             try:
                 out = biosppy.signals.ecg.ecg(strip, sampling_rate=sampling_rate, show=False)
                 filtered_strip = out[1]  # filtered (array) – Filtered ECG signal.
@@ -223,12 +253,26 @@ def _create_ecg_rest_filter_and_extract_peaks(name, source_hd5, sampling_rate=50
             peaks_name = name + HD5_GROUP_CHAR + f'peaks_{k}' + HD5_GROUP_CHAR + f'instance_{instance}'
             res_dict[peaks_name] = peaks
 
-        return res_dict
+            # Create filtered median beat and standard deviation from filtered beats
+            # For each detected peak, align to the UKBB median beat by aligning the max/min locations
+            peaks = [p for p in peaks if (p-median_peaks[i]-search_radius)>=0 and (p+600-median_peaks[i]+search_radius)<=5000]
+            segmented_beats = np.zeros((600, len(peaks)))
+            for p, peak in enumerate(peaks):
+                filtered_strip_segment = filtered_strip[peak-search_radius:peak+search_radius]
+                filtered_strip_peak = np.argmax(filtered_strip_segment) if peaks_from_max[i] else np.argmin(filtered_strip_segment)
+                segmented_beats[...,p] = filtered_strip[peak-search_radius-(median_peaks[i]-filtered_strip_peak):peak-search_radius-(median_peaks[i]-filtered_strip_peak)+600,i]
 
+            filtered_median_beat_name = name + HD5_GROUP_CHAR + f'filtered_median_{k}' + HD5_GROUP_CHAR + f'instance_{instance}'
+            res_dict[filtered_median_beat_name] =  np.median(segmented_beats, axis=1)
+
+            filtered_median_beat_std_name = name + HD5_GROUP_CHAR + f'filtered_median_std_{k}' + HD5_GROUP_CHAR + f'instance_{instance}'
+            res_dict[filtered_median_beat_std_name] = segmented_beats.std(axis=1)
+
+        return res_dict
 
 def _make_ecg_rest_random_beats(
         instance: int = 0, num_beats: int = 1,
-        skip_poor: bool = False, strip_len=5000, len_before=200, len_after=350, sampling_rate=500,
+        skip_poor: bool = False, strip_len=5000, len_before=240, len_after=360, sampling_rate=500,
 ):
     def ecg_rest_random_beats_from_file(tm, hd5, dependents={}):
         if skip_poor:
@@ -741,45 +785,45 @@ ecg_rest_filtered_no_poor_strip_I = TensorMap(
 )
 
 ecg_rest_random_beat_no_poor = TensorMap(
-    'ecg_rest_random_beat', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
+    'ecg_rest_random_beat', Interpretation.CONTINUOUS, shape=(600, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_random_beat_no_poor_strip_I = TensorMap(
-    'ecg_rest_random_beat_strip_I', Interpretation.CONTINUOUS, shape=(550, 1), path_prefix='ukb_ecg_rest',
+    'ecg_rest_random_beat_strip_I', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
 )
 
 ecg_rest_random_beat_filtered_no_poor = TensorMap(
-    'ecg_rest_random_beat_filtered', Interpretation.CONTINUOUS, shape=(550, 12), path_prefix='ukb_ecg_rest',
+    'ecg_rest_random_beat_filtered', Interpretation.CONTINUOUS, shape=(600, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_random_beat_filtered_no_poor_strip_I = TensorMap(
-    'ecg_rest_random_beat_filtered_strip_I', Interpretation.CONTINUOUS, shape=(550, 1), path_prefix='ukb_ecg_rest',
+    'ecg_rest_random_beat_filtered_strip_I', Interpretation.CONTINUOUS, shape=(600, 1), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(skip_poor=True),
     channel_map={'filtered_strip_I': 0}, normalization=ZeroMeanStd1(),
 )
 
 ecg_rest_5_random_beats_no_poor = TensorMap(
-    'ecg_rest_5_random_beats', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
+    'ecg_rest_5_random_beats', Interpretation.CONTINUOUS, shape=(5, 600, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map=ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_5_random_beats_no_poor_strip_I = TensorMap(
-    'ecg_rest_5_random_beats_strip_I', Interpretation.CONTINUOUS, shape=(5, 550, 1), path_prefix='ukb_ecg_rest',
+    'ecg_rest_5_random_beats_strip_I', Interpretation.CONTINUOUS, shape=(5, 600, 1), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map={'strip_I': 0}, normalization=ZeroMeanStd1(),
 )
 
 ecg_rest_5_random_beats_filtered_no_poor = TensorMap(
-    'ecg_rest_5_random_beats_filtered', Interpretation.CONTINUOUS, shape=(5, 550, 12), path_prefix='ukb_ecg_rest',
+    'ecg_rest_5_random_beats_filtered', Interpretation.CONTINUOUS, shape=(5, 600, 12), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map=FILTERED_ECG_REST_LEADS, normalization=ZeroMeanStd1(),
 )
 ecg_rest_5_random_beats_filtered_no_poor_strip_I = TensorMap(
-    'ecg_rest_5_random_beats_filtered_strip_I', Interpretation.CONTINUOUS, shape=(5, 550, 1), path_prefix='ukb_ecg_rest',
+    'ecg_rest_5_random_beats_filtered_strip_I', Interpretation.CONTINUOUS, shape=(5, 600, 1), path_prefix='ukb_ecg_rest',
     tensor_from_file=_make_ecg_rest_random_beats(num_beats=5, skip_poor=True),
     channel_map={'filtered_strip_I': 0}, normalization=ZeroMeanStd1(),
 )
