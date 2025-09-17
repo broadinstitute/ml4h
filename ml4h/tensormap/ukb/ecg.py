@@ -213,31 +213,29 @@ def _create_ecg_rest_filter_and_extract_peaks(
         # Would ideally get this from a filtered median ECG, but they are too short for biosppy
         median_peaks = []
         for i,k in enumerate(ECG_REST_MEDIAN_LEADS):
-            strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
-            strip_data = source_hd5[strip_name]
-            strip = np.array(strip_data, dtype=np.float32)
-            median_peaks.append(np.argmax(np.abs(strip-np.mean(strip))))
+            median_strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
+            median_strip_data = source_hd5[median_strip_name]
+            median_strip = np.array(median_strip_data, dtype=np.float32)
+            median_peaks.append(np.argmax(np.abs(median_strip-np.mean(median_strip))))
         center_of_median_peaks = np.median(median_peaks)
         roi = [int(center_of_median_peaks-search_radius), int(center_of_median_peaks+search_radius)]
-
-        # Find the peak for each median ECG strip, to be used for later alignment.
-        # Could be a min or a max.
-        median_peaks = []
-        peaks_from_max = []
-        for i,k in enumerate(ECG_REST_MEDIAN_LEADS):
-            strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
-            strip_data = source_hd5[strip_name]
-            strip = np.array(strip_data, dtype=np.float32)
-            median_peaks.append(np.argmax(np.abs(strip-np.mean(strip))[roi[0]:roi[1]]) + roi[0])
-            peak_from_max = np.argmax(strip[roi[0]:roi[1]]) + roi[0]
-            peak_from_min = np.argmin(strip[roi[0]:roi[1]]) + roi[0]
-            assert(median_peaks[i] in [peak_from_max, peak_from_min])
-            peaks_from_max.append(median_peaks[i] == peak_from_max)
 
         for i,k in enumerate(ECG_REST_LEADS):
             strip_name = name + HD5_GROUP_CHAR + k + HD5_GROUP_CHAR + f'instance_{instance}'
             strip_data = source_hd5[strip_name]
             strip = np.array(strip_data, dtype=np.float32)
+
+            median_strip_name = name + HD5_GROUP_CHAR + k.replace('strip', 'median') + HD5_GROUP_CHAR + f'instance_{instance}'
+            median_strip_data = source_hd5[median_strip_name]
+            median_strip = np.array(median_strip_data, dtype=np.float32)
+
+            # Find the peak for each median ECG strip, to be used for later alignment.
+            # Could be a min or a max.
+            median_peak = np.argmax(np.abs(median_strip - np.mean(median_strip))[roi[0]:roi[1]]) + roi[0]
+            median_peak_from_max = np.argmax(median_strip[roi[0]:roi[1]]) + roi[0]
+            median_peak_from_min = np.argmin(median_strip[roi[0]:roi[1]]) + roi[0]
+            assert(median_peak in [median_peak_from_max, median_peak_from_min])
+            median_peak_from_max = (median_peak == median_peak_from_max)
 
             # Create filtered ECGs and detected peaks
             try:
@@ -255,12 +253,15 @@ def _create_ecg_rest_filter_and_extract_peaks(
 
             # Create filtered median beat and standard deviation from filtered beats
             # For each detected peak, align to the UKBB median beat by aligning the max/min locations
-            peaks = [p for p in peaks if (p-median_peaks[i]-search_radius)>=0 and (p+600-median_peaks[i]+search_radius)<=5000]
+            peaks = [p for p in peaks if (p-median_peak-search_radius)>=0 and (p+600-median_peak+search_radius)<=5000]
             segmented_beats = np.zeros((600, len(peaks)))
             for p, peak in enumerate(peaks):
                 filtered_strip_segment = filtered_strip[peak-search_radius:peak+search_radius]
-                filtered_strip_peak = np.argmax(filtered_strip_segment) if peaks_from_max[i] else np.argmin(filtered_strip_segment)
-                segmented_beats[...,p] = filtered_strip[peak-search_radius-(median_peaks[i]-filtered_strip_peak):peak-search_radius-(median_peaks[i]-filtered_strip_peak)+600,i]
+                filtered_strip_peak = np.argmax(filtered_strip_segment) if median_peak_from_max else np.argmin(filtered_strip_segment)
+                segmented_beats[...,p] = filtered_strip[peak-search_radius-(median_peak-filtered_strip_peak):peak-search_radius-(median_peak-filtered_strip_peak)+600,i]
+                # if heart rate is too high, the next heart beat can bleed through
+                # the original median ECG has 0 values in this situation, so let's use them
+                segmented_beats[...,p][median_strip == 0] = 0
 
             filtered_median_beat_name = name + HD5_GROUP_CHAR + f'filtered_median_{k}' + HD5_GROUP_CHAR + f'instance_{instance}'
             res_dict[filtered_median_beat_name] =  np.median(segmented_beats, axis=1)
