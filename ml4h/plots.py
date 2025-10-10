@@ -1240,29 +1240,6 @@ def plot_noise(noise):
     return pearson, pearson2, ratio_pearson
 
 
-def plot_noisy():
-    samples = 140
-    p1s = []
-    p2s = []
-    prats = []
-    noises = np.linspace(0.0, 0.01, samples)
-    for n in noises:
-        p1, p2, prat = plot_noise(n)
-        p1s.append(1.0 - p1)
-        p2s.append(1.0 - p2)
-        prats.append(1.0 - prat)
-
-    plt.figure(figsize=(28, 42))
-    matplotlib.rcParams.update({"font.size": 36})
-    plt.xlabel("Noise")
-    plt.ylabel("Error")
-    plt.scatter(noises, p1s, color="cyan", label="p1")
-    plt.scatter(noises, p2s, color="green", label="p2")
-    plt.scatter(noises, prats, color="red", label="p_ratio")
-    plt.legend(loc="lower right")
-    plt.savefig("./figures/noise_fxn.png")
-
-
 def plot_value_counter(categories, counts, title, prefix="./figures/"):
     matplotlib.rcParams.update({"font.size": 14})
     counters = defaultdict(Counter)
