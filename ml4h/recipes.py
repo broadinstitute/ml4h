@@ -643,7 +643,7 @@ def train_transformer_on_parquet(args):
         callbacks=callbacks,
         verbose=1
     )
-    evaluate_multitask_on_dataset(model, val_ds, REGRESSION_TARGETS, BINARY_TARGETS, steps=250)
+    evaluate_multitask_on_dataset(model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=250)
 
 def datetime_to_float(d):
     return pd.to_datetime(d, utc=True).timestamp()
