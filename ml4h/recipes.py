@@ -592,7 +592,7 @@ def train_transformer_on_parquet(args):
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
 
-    VIEW_COL           = args.input_categorical_columns[0]
+    input_categorical_column            = args.input_categorical_columns[0]
     MAX_LEN = 128 #int(seq_len.max())
 
     BATCH = 64
@@ -603,13 +603,13 @@ def train_transformer_on_parquet(args):
     NUM_HEADS = 4
     NUM_LAYERS = 2
     DROPOUT = 0.2
-    view_vocab = pd.Series(df[VIEW_COL].astype(str).unique())
+    view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
     view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
 
     train_ds, val_ds = build_datasets(
         df,
         input_numeric_columns,
-        VIEW_COL,
+        input_categorical_column,
         args.target_regression_columns,
         args.target_binary_columns,
         args.group_column,

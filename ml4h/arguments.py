@@ -579,14 +579,14 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
-    if len(args.latent_input_files) > 0:
-        new_pairs = []
-        for lif in args.latent_input_files:
-            tm = generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0))
-            args.tensor_maps_in.append(tm)
-            new_pairs.append(tm)
-        if len(args.pairs) > 0:
-            args.pairs = [new_pairs]
+    # if len(args.latent_input_files) > 0:
+    #     new_pairs = []
+    #     for lif in args.latent_input_files:
+    #         tm = generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0))
+    #         args.tensor_maps_in.append(tm)
+    #         new_pairs.append(tm)
+    #     if len(args.pairs) > 0:
+    #         args.pairs = [new_pairs]
 
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
@@ -613,11 +613,11 @@ def _process_args(args):
                 ),
             )
 
-    if len(args.latent_output_files) > 0:
-        for lof in args.latent_output_files:
-            args.tensor_maps_out.append(
-                generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
-            )
+    # if len(args.latent_output_files) > 0:
+    #     for lof in args.latent_output_files:
+    #         args.tensor_maps_out.append(
+    #             generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
+    #         )
 
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
