@@ -572,11 +572,9 @@ def train_xdl_af(args):
 
 
 def train_transformer_on_parquet(args):
-    echo_df = pd.read_parquet(
-        '/home/sam/ecg_echo_multitask/infer_mgh_pretrained_echo_ecg_cnn_contrast_26task_v2025_08_08_all_videos_latent_space.pq')
+    echo_df = pd.read_parquet(args.latent_input_files[0])
 
-    echo_wide = '/home/sam/dfs/echo_views_with_ecgs_v2025_08_04.pq'
-    df = pd.read_parquet(echo_wide)
+    df = pd.read_parquet(args.latent_output_files[0])
     echo_df = pd.merge(echo_df, df, on=['mrn', 'view'], how='inner')
     echo_df['echo_age'] = echo_df.StudyAge
     echo_df['echo_age'] -= echo_df['echo_age'].mean()
@@ -590,70 +588,11 @@ def train_transformer_on_parquet(args):
      'view_prediction_x':'view_prediction',
      'view_prediction_probability_x': 'view_prediction_probability'})
 
-    TARGETS_ALL = [
-     'output_ecg_age_continuous',
-     'output_lbbb_categorical',
-     'output_rbbb_categorical',
-     'output_avb_categorical',
-     'output_af_in_read_categorical',
-     'output_is_male_categorical',
-     'output_lvh_categorical',
-     'output_aortic_stenosis_categorical',
-     'output_dm_categorical',
-     'output_cad_categorical',
-     'output_mi_categorical',
-     'output_htn_categorical',
-     'output_valve_dz_categorical',
-     'output_hypertension_med_categorical',
-     'output_afib_categorical',
-     'output_obesity_categorical',
-     'output_ckd_categorical',
-     'output_echo_age_continuous',
-     'output_lvef_continuous',
-     'output_lvef_lt_30_categorical',
-     'output_lvef_lt_35_categorical',
-     'output_lvef_lt_40_categorical',
-     'output_lvef_lt_45_categorical',
-     'output_lvef_lt_50_categorical',
-     'output_lvef_lt_55_categorical',
+    all_targets = args.target_regression_columns + args.target_binary_columns
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
 
-    ]
-
-    INPUT_NUMERIC_COLS = [
-     'view_prediction_probability',
-     'predicted_output_valve_dz_categorical',
-     'predicted_output_rbbb_categorical',
-     'predicted_output_obesity_categorical',
-     'predicted_output_nlp_as_label_categorical',
-     'predicted_output_mi_categorical',
-     'predicted_output_lvh_categorical',
-     'predicted_output_lvef_lt_55_categorical',
-     'predicted_output_lvef_lt_50_categorical',
-     'predicted_output_lvef_lt_45_categorical',
-     'predicted_output_lvef_lt_40_categorical',
-     'predicted_output_lvef_lt_35_categorical',
-     'predicted_output_lvef_lt_30_categorical',
-     'predicted_output_lvef_continuous',
-     'predicted_output_lbbb_categorical',
-     'predicted_output_is_male_categorical',
-     'predicted_output_hypertension_med_categorical',
-     'predicted_output_htn_categorical',
-     'predicted_output_echo_age_continuous',
-     'predicted_output_ecg_age_continuous',
-     'predicted_output_dm_categorical',
-     'predicted_output_ckd_categorical',
-     'predicted_output_cad_categorical',
-     'predicted_output_avb_categorical',
-     'predicted_output_aortic_stenosis_categorical',
-     'predicted_output_afib_categorical',
-     'predicted_output_af_in_read_categorical'
-    ]
-    REGRESSION_TARGETS = [ 'output_ecg_age_continuous', 'output_echo_age_continuous', 'output_lvef_continuous']
-    BINARY_TARGETS     = [t for t in TARGETS_ALL if t not in REGRESSION_TARGETS]
-
-    INPUT_NUMERIC_COLS += [f'latent_{i}' for i in range(1024)]
-    AGGREGATE_COLUMN   = 'echo_study_id'
-    VIEW_COL           = 'view_prediction'
+    VIEW_COL           = args.input_categorical_columns[0]
     MAX_LEN = 128 #int(seq_len.max())
 
     BATCH = 64
@@ -669,18 +608,18 @@ def train_transformer_on_parquet(args):
 
     train_ds, val_ds = build_datasets(
         df,
-        INPUT_NUMERIC_COLS,
+        input_numeric_columns,
         VIEW_COL,
-        REGRESSION_TARGETS,
-        BINARY_TARGETS,
-        AGGREGATE_COLUMN,
+        args.target_regression_columns,
+        args.target_binary_columns,
+        args.group_column,
         MAX_LEN,
         BATCH,
     )
     model = build_embedding_transformer(
-        INPUT_NUMERIC_COLS,
-        REGRESSION_TARGETS,
-        BINARY_TARGETS,
+        input_numeric_columns,
+        args.target_regression_columns,
+        args.target_binary_columns,
         MAX_LEN,
         EMB_DIM,
         TOKEN_HIDDEN,

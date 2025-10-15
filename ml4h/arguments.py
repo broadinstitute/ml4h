@@ -107,10 +107,35 @@ def parse_args():
         'argument to the TensorMap made from this file.',
     )
     parser.add_argument(
+        '--latent_dimensions', default=256, type=int, help='Dimensionality (size) of latent space',
+    )
+    parser.add_argument(
         '--latent_output_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--input_numeric_columns', nargs='*', default=[], help=
+        'List of columns with continuous numeric values to use as Transformer inputs.'
+    )
+    parser.add_argument(
+        '--input_categorical_columns', nargs='*', default=[], help=
+        'List of columns with categorical values to learn an embed as input into Transformer.'
+    )
+    parser.add_argument(
+        '--target_regression_columns', nargs='*', default=[], help=
+        'List of columns with continuous numeric values to predict.'
+    )
+    parser.add_argument(
+        '--target_binary_columns', nargs='*', default=[], help=
+        'List of columns with binary values to predict.'
+    )
+    parser.add_argument(
+        '--group_column', default=None, help='Column to group on for embedding transformer.'
+    )
+    parser.add_argument(
+        '--sort_column', default=None, help='Column to sort on for embedding transformer.'
     )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
