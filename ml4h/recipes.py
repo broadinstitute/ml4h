@@ -11,6 +11,7 @@ import datetime
 import numpy as np
 import pandas as pd
 
+import keras
 from functools import reduce
 from google.cloud import storage
 from timeit import default_timer as timer
@@ -18,6 +19,7 @@ from collections import Counter, defaultdict
 
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
+from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.models.train import train_model_from_generators
@@ -27,7 +29,7 @@ from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
 from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
-from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX
+from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
 from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter, plot_reconstruction
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
@@ -73,6 +75,8 @@ def run(args):
             train_xdl(args)
         elif 'train_xdl_af' == args.mode:
             train_xdl_af(args)
+        elif 'train_transformer_on_parquet' == args.mode:
+            train_transformer_on_parquet(args)
         elif 'test' == args.mode:
             test_multimodal_multitask(args)
         elif 'compare' == args.mode:
@@ -566,6 +570,141 @@ def train_xdl_af(args):
         elif otm.is_continuous():
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
 
+
+def train_transformer_on_parquet(args):
+    echo_df = pd.read_parquet(
+        '/home/sam/ecg_echo_multitask/infer_mgh_pretrained_echo_ecg_cnn_contrast_26task_v2025_08_08_all_videos_latent_space.pq')
+
+    echo_wide = '/home/sam/dfs/echo_views_with_ecgs_v2025_08_04.pq'
+    df = pd.read_parquet(echo_wide)
+    echo_df = pd.merge(echo_df, df, on=['mrn', 'view'], how='inner')
+    echo_df['echo_age'] = echo_df.StudyAge
+    echo_df['echo_age'] -= echo_df['echo_age'].mean()
+    echo_df['echo_age'] /= echo_df['echo_age'].std()
+    echo_df.nlp_as_label = echo_df.nlp_as_label.astype(int)
+    df = echo_df
+    df = df.rename(columns={'mrn_x':'mrn',
+     'view_x': 'view',
+     'sample_id_x': 'sample_id',
+     'echo_age':'output_echo_age_continuous',
+     'view_prediction_x':'view_prediction',
+     'view_prediction_probability_x': 'view_prediction_probability'})
+
+    TARGETS_ALL = [
+     'output_ecg_age_continuous',
+     'output_lbbb_categorical',
+     'output_rbbb_categorical',
+     'output_avb_categorical',
+     'output_af_in_read_categorical',
+     'output_is_male_categorical',
+     'output_lvh_categorical',
+     'output_aortic_stenosis_categorical',
+     'output_dm_categorical',
+     'output_cad_categorical',
+     'output_mi_categorical',
+     'output_htn_categorical',
+     'output_valve_dz_categorical',
+     'output_hypertension_med_categorical',
+     'output_afib_categorical',
+     'output_obesity_categorical',
+     'output_ckd_categorical',
+     'output_echo_age_continuous',
+     'output_lvef_continuous',
+     'output_lvef_lt_30_categorical',
+     'output_lvef_lt_35_categorical',
+     'output_lvef_lt_40_categorical',
+     'output_lvef_lt_45_categorical',
+     'output_lvef_lt_50_categorical',
+     'output_lvef_lt_55_categorical',
+
+    ]
+
+    INPUT_NUMERIC_COLS = [
+     'view_prediction_probability',
+     'predicted_output_valve_dz_categorical',
+     'predicted_output_rbbb_categorical',
+     'predicted_output_obesity_categorical',
+     'predicted_output_nlp_as_label_categorical',
+     'predicted_output_mi_categorical',
+     'predicted_output_lvh_categorical',
+     'predicted_output_lvef_lt_55_categorical',
+     'predicted_output_lvef_lt_50_categorical',
+     'predicted_output_lvef_lt_45_categorical',
+     'predicted_output_lvef_lt_40_categorical',
+     'predicted_output_lvef_lt_35_categorical',
+     'predicted_output_lvef_lt_30_categorical',
+     'predicted_output_lvef_continuous',
+     'predicted_output_lbbb_categorical',
+     'predicted_output_is_male_categorical',
+     'predicted_output_hypertension_med_categorical',
+     'predicted_output_htn_categorical',
+     'predicted_output_echo_age_continuous',
+     'predicted_output_ecg_age_continuous',
+     'predicted_output_dm_categorical',
+     'predicted_output_ckd_categorical',
+     'predicted_output_cad_categorical',
+     'predicted_output_avb_categorical',
+     'predicted_output_aortic_stenosis_categorical',
+     'predicted_output_afib_categorical',
+     'predicted_output_af_in_read_categorical'
+    ]
+    REGRESSION_TARGETS = [ 'output_ecg_age_continuous', 'output_echo_age_continuous', 'output_lvef_continuous']
+    BINARY_TARGETS     = [t for t in TARGETS_ALL if t not in REGRESSION_TARGETS]
+
+    INPUT_NUMERIC_COLS += [f'latent_{i}' for i in range(1024)]
+    AGGREGATE_COLUMN   = 'echo_study_id'
+    VIEW_COL           = 'view_prediction'
+    MAX_LEN = 128 #int(seq_len.max())
+
+    BATCH = 64
+
+    EMB_DIM = 4
+    TOKEN_HIDDEN = 16
+    TRANSFORMER_DIM = 128
+    NUM_HEADS = 4
+    NUM_LAYERS = 2
+    DROPOUT = 0.2
+    view_vocab = pd.Series(df[VIEW_COL].astype(str).unique())
+    view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+
+    train_ds, val_ds = build_datasets(
+        df,
+        INPUT_NUMERIC_COLS,
+        VIEW_COL,
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
+        AGGREGATE_COLUMN,
+        MAX_LEN,
+        BATCH,
+    )
+    model = build_embedding_transformer(
+        INPUT_NUMERIC_COLS,
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
+        MAX_LEN,
+        EMB_DIM,
+        TOKEN_HIDDEN,
+        TRANSFORMER_DIM,
+        NUM_HEADS,
+        NUM_LAYERS,
+        DROPOUT,
+        view2id,
+    )
+
+    callbacks = [
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True)
+    ]
+
+    history = model.fit(
+        train_ds,
+        steps_per_epoch=200,
+        validation_data=val_ds,
+        validation_steps=50,
+        epochs=32,
+        callbacks=callbacks,
+        verbose=1
+    )
+    evaluate_multitask_on_dataset(model, val_ds, REGRESSION_TARGETS, BINARY_TARGETS, steps=250)
 
 def datetime_to_float(d):
     return pd.to_datetime(d, utc=True).timestamp()

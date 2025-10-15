@@ -1,5 +1,8 @@
 from typing import Dict, List
+import numpy as np
 
+import keras
+from keras import layers
 import tensorflow as tf
 
 from ml4h.models.Block import Block
@@ -243,3 +246,212 @@ def encoder(
     return tf.keras.Model(
         inputs=[inputs, padding_mask], outputs=outputs, name=name,
     )
+
+
+def build_embedding_transformer(
+        INPUT_NUMERIC_COLS,
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
+        MAX_LEN,
+        EMB_DIM,
+        TOKEN_HIDDEN,
+        TRANSFORMER_DIM,
+        NUM_HEADS,
+        NUM_LAYERS,
+        DROPOUT,
+        view2id,
+):
+    Feat = len(INPUT_NUMERIC_COLS)
+
+    inp_view = keras.Input(shape=(MAX_LEN,), dtype='int32', name='view')
+    inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
+    inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
+
+    # View embedding
+    view_emb = layers.Embedding(
+        input_dim=int(max(view2id.values())) + 1,  # include PAD
+        output_dim=EMB_DIM,
+        mask_zero=True,
+        name='view_embedding'
+    )(inp_view)  # (B,T,EMB_DIM)
+
+    # Token features: [embed(view) || numeric features]
+    x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,EMB_DIM+F)
+    x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(x)
+    x = layers.Dropout(DROPOUT)(x)
+
+    # Positional embedding (learnable)
+    def make_pos_idx(v):
+        b = keras.ops.shape(v)[0]
+        pos = keras.ops.arange(0, MAX_LEN)
+        pos = keras.ops.tile(keras.ops.expand_dims(pos, 0), (b, 1))
+        return pos
+
+    pos_idx = layers.Lambda(make_pos_idx, name='pos_idx', output_shape=(MAX_LEN,))(inp_view)
+    pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
+    x = layers.Add(name='add_pos')([x, pos_emb])
+
+    # Build (B,T,T) attention mask from (B,T)
+    m_q = layers.Lambda(lambda m: keras.ops.expand_dims(m, 2), name='mask_q', output_shape=(MAX_LEN, 1))(inp_mask)
+    m_k = layers.Lambda(lambda m: keras.ops.expand_dims(m, 1), name='mask_k', output_shape=(1, MAX_LEN))(inp_mask)
+    mask_2d = layers.Lambda(lambda z: keras.ops.logical_and(z[0], z[1]), name='mask_qk',
+                            output_shape=(MAX_LEN, MAX_LEN))([m_q, m_k])
+
+    # Transformer blocks
+    for i in range(NUM_LAYERS):
+        attn = layers.MultiHeadAttention(num_heads=NUM_HEADS, key_dim=TRANSFORMER_DIM // NUM_HEADS,
+                                         dropout=DROPOUT, name=f'mha_{i}')(x, x, attention_mask=mask_2d)
+        attn = layers.Dropout(DROPOUT)(attn)
+        x = layers.LayerNormalization(epsilon=1e-6, name=f'ln1_{i}')(layers.Add()([x, attn]))
+
+        ff = layers.Dense(TRANSFORMER_DIM, activation='relu', name=f'ff1_{i}')(x)
+        ff = layers.Dropout(DROPOUT)(ff)
+        ff = layers.Dense(TOKEN_HIDDEN, name=f'ff2_{i}')(ff)
+        x = layers.LayerNormalization(epsilon=1e-6, name=f'ln2_{i}')(layers.Add()([x, ff]))
+
+    # Attention pooling over time (mask-aware via very negative)
+    score_h = layers.Dense(TOKEN_HIDDEN, activation='tanh', name='attn_h')(x)  # (B,T,D)
+    score = layers.Dense(1, name='attn_score')(score_h)  # (B,T,1)
+    score = layers.Reshape((MAX_LEN,), name='attn_score_squeeze')(score)  # (B,T)
+
+    mask_f = layers.Lambda(lambda m: keras.ops.cast(m, 'float32'), name='mask_cast', output_shape=(MAX_LEN,))(inp_mask)
+    very_neg = layers.Lambda(lambda m: (1.0 - m) * (-1e9), name='veryneg', output_shape=(MAX_LEN,))(mask_f)
+    score_m = layers.Add(name='score_masked')([score, very_neg])
+    wts = layers.Softmax(axis=-1, name='attn_wts')(score_m)  # (B,T)
+    wts_e = layers.Reshape((MAX_LEN, 1), name='wts_e')(wts)
+    ctx = layers.Multiply(name='apply_wts')([x, wts_e])  # (B,T,D)
+    ctx = layers.Lambda(lambda t: keras.ops.sum(t, axis=1), name='pool', output_shape=(TOKEN_HIDDEN,))(ctx)  # (B,D)
+
+    # Shared tower
+    h = layers.Dense(128, activation='relu')(ctx)
+    h = layers.Dropout(DROPOUT)(h)
+
+    # Task heads (names must match keys used in y/sample_weight dicts)
+    outputs = {}
+    for t in REGRESSION_TARGETS:
+        outputs[t] = layers.Dense(1, name=t)(h)  # linear
+    for t in BINARY_TARGETS:
+        outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
+
+    model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
+
+    # Losses / metrics
+    losses = {t: 'mse' for t in REGRESSION_TARGETS}
+    losses.update({t: 'binary_crossentropy' for t in BINARY_TARGETS})
+
+    metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),
+                   keras.metrics.MeanSquaredError(name='mse')] for t in REGRESSION_TARGETS}
+    metrics.update({t: [keras.metrics.AUC(name='auroc', curve='ROC'),
+                        keras.metrics.AUC(name='auprc', curve='PR'),
+                        keras.metrics.BinaryAccuracy(name='acc')] for t in BINARY_TARGETS})
+
+    model.compile(
+        optimizer=keras.optimizers.Adam(1e-3),
+        loss=losses,
+        metrics=metrics
+    )
+
+    model.summary()
+    return model
+
+from sklearn.metrics import r2_score, roc_auc_score, average_precision_score, accuracy_score
+
+def evaluate_multitask_on_dataset(
+    model,
+    dataset,
+    REGRESSION_TARGETS,
+    BINARY_TARGETS,
+    steps=None,   # if dataset is repeated(), pass the number of batches to consume
+    verbose=True,
+):
+    # Accumulators
+    y_true = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
+    y_pred = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
+    w      = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
+
+    def _consume():
+        if steps is None:
+            for x, y, sw in dataset:
+                outs = model(x, training=False)
+                for t in y_true.keys():
+                    y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
+                    w[t].append(tf.convert_to_tensor(sw[t]).numpy())
+                    # model outputs dict of tensors; ensure 1D
+                    yp = tf.convert_to_tensor(outs[t]).numpy().reshape(-1)
+                    y_pred[t].append(yp)
+        else:
+            it = iter(dataset)
+            for _ in range(int(steps)):
+                try:
+                    x, y, sw = next(it)
+                except StopIteration:
+                    break
+                outs = model(x, training=False)
+                for t in y_true.keys():
+                    y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
+                    w[t].append(tf.convert_to_tensor(sw[t]).numpy())
+                    yp = tf.convert_to_tensor(outs[t]).numpy().reshape(-1)
+                    y_pred[t].append(yp)
+
+    _consume()
+
+    # Concatenate
+    for t in y_true.keys():
+        y_true[t] = np.concatenate(y_true[t], axis=0) if len(y_true[t]) else np.array([])
+        y_pred[t] = np.concatenate(y_pred[t], axis=0) if len(y_pred[t]) else np.array([])
+        w[t]      = np.concatenate(w[t],      axis=0) if len(w[t])      else np.array([])
+
+    # Metrics
+    results = {}
+
+    # Regression tasks
+    for t in REGRESSION_TARGETS:
+        if y_true[t].size == 0:
+            results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
+            continue
+        msk = w[t] > 0
+        if msk.sum() == 0:
+            results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
+            continue
+        yt = y_true[t][msk].astype("float32")
+        yp = y_pred[t][msk].astype("float32")
+        mae = float(np.mean(np.abs(yp - yt)))
+        mse = float(np.mean((yp - yt) ** 2))
+        try:
+            r2  = float(r2_score(yt, yp))
+        except ValueError:
+            r2 = float("nan")
+        results[t] = {"MAE": mae, "MSE": mse, "R2": r2}
+
+    # Binary tasks
+    for t in BINARY_TARGETS:
+        if y_true[t].size == 0:
+            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan}
+            continue
+        msk = w[t] > 0
+        if msk.sum() == 0:
+            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan}
+            continue
+        yt = (y_true[t][msk] > 0.5).astype("int32")
+        prob = y_pred[t][msk].astype("float32")
+        try:
+            auroc = float(roc_auc_score(yt, prob))
+        except ValueError:
+            auroc = float("nan")
+        try:
+            auprc = float(average_precision_score(yt, prob))
+        except ValueError:
+            auprc = float("nan")
+        acc = float(accuracy_score(yt, (prob >= 0.5).astype("int32")))
+        results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc}
+
+    if verbose:
+        print("\n=== Evaluation on dataset ===")
+        for t in REGRESSION_TARGETS:
+            r = results[t]
+            print(f"{t:30s}  MAE: {r['MAE']:.4f}  MSE: {r['MSE']:.4f}  R^2: {r['R2']:.4f}")
+        for t in BINARY_TARGETS:
+            r = results[t]
+            print(f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}")
+
+    return results

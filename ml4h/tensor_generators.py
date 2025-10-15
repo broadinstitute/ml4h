@@ -25,6 +25,8 @@ from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
 
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
 from ml4h.defines import TENSOR_EXT, TensorGeneratorABC
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader
 from ml4h.TensorMap import TensorMap
@@ -1009,3 +1011,124 @@ def _make_batch_siamese(in_batch: Batch, out_batch: Batch, return_paths: bool, p
 
 def _weighted_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
     return (in_batch, out_batch, paths) if return_paths else (in_batch, out_batch)
+
+
+def pad_1d(list_of_arrays, max_len, pad_value=0, dtype='int32'):
+    out = np.full((len(list_of_arrays), max_len), pad_value, dtype=dtype)
+    for i, a in enumerate(list_of_arrays):
+        L = min(len(a), max_len)
+        out[i, :L] = a[:L]
+    return out
+
+
+def pad_2d(list_of_arrays, max_len, feat, pad_value=0.0, dtype='float32'):
+    out = np.full((len(list_of_arrays), max_len, feat), pad_value, dtype=dtype)
+    for i, a in enumerate(list_of_arrays):
+        L = min(len(a), max_len)
+        out[i, :L, :] = a[:L]
+    return out
+
+
+def make_ds(Xv, Xn, m, y, w, BATCH, shuffle=False):
+    ds = tf.data.Dataset.from_tensor_slices((
+        {'view': Xv, 'num': Xn, 'mask': m},
+        y,
+        w
+    ))
+    if shuffle:
+        ds = ds.shuffle(buffer_size=len(m), seed=42)
+    return ds.batch(BATCH).prefetch(tf.data.AUTOTUNE)
+
+
+def build_datasets(
+        df,
+        INPUT_NUMERIC_COLS,
+        VIEW_COL,
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
+        AGGREGATE_COLUMN,
+        MAX_LEN,
+        BATCH,
+):
+    TARGETS_ALL = REGRESSION_TARGETS + BINARY_TARGETS
+    # ---------- Checks ----------
+    required_cols = set(['mrn', VIEW_COL] + INPUT_NUMERIC_COLS + TARGETS_ALL)
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise ValueError(f"df is missing required columns: {missing}")
+
+    # ============ Build MRN sequences ============
+    # Encode view_prediction to ids (0=PAD)
+    view_vocab = pd.Series(df[VIEW_COL].astype(str).unique())
+    view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+    df['_view_id'] = df[VIEW_COL].astype(str).map(view2id).fillna(0).astype(int)
+
+    # Sort rows per MRN by confidence then by view for reproducibility (feel free to change)
+    df = df.sort_values([AGGREGATE_COLUMN, 'view_prediction_probability'], ascending=[True, False]).reset_index(
+        drop=True)
+
+    grouped = df.groupby(AGGREGATE_COLUMN, sort=False)
+    mrn_list = list(grouped.groups.keys())
+
+    # Collect sequences & MRN-level targets
+    seq_view_ids = []
+    seq_numeric = []
+    seq_len = []
+    y_dict = {t: [] for t in TARGETS_ALL}
+
+    for mrn, g in grouped:
+        seq_view_ids.append(g['_view_id'].values.astype('int32'))
+        seq_numeric.append(g[INPUT_NUMERIC_COLS].values.astype('float32'))  # (L, F)
+        seq_len.append(len(g))
+
+        # One MRN-level label per task (take first; or assert all equal)
+        for t in TARGETS_ALL:
+            y_dict[t].append(g[t].iloc[0] if t in g.columns else np.nan)
+
+    seq_len = np.array(seq_len, dtype='int32')
+    N = len(seq_len)
+    Feat = len(INPUT_NUMERIC_COLS)
+
+    X_view = pad_1d(seq_view_ids, MAX_LEN, pad_value=0, dtype='int32')  # (N, T)
+    X_num = pad_2d(seq_numeric, MAX_LEN, Feat, pad_value=0.0, dtype='float32')  # (N, T, F)
+    mask_bt = (np.arange(MAX_LEN)[None, :] < seq_len[:, None])  # (N, T) True=real
+
+    # Targets as arrays + sample weights (1 if present, 0 if NaN)
+    y_arrays = {}
+    sw_arrays = {}
+    for t in TARGETS_ALL:
+        y = np.array(y_dict[t], dtype='float32')
+        sw = (~pd.Series(y).isna()).astype('float32').values
+        # replace NaN with 0 to keep shape; weights will drop them
+        y[np.isnan(y)] = 0.0
+        y_arrays[t] = y
+        sw_arrays[t] = sw
+
+    # ============ Train/Val split by MRN ============
+    # To keep distributions similar for continuous targets, stratify on binned LVEF if present
+    if np.unique(y_arrays['output_lvef_continuous']).size > 1:
+        bins = pd.qcut(y_arrays['output_lvef_continuous'],
+                       q=min(10, len(np.unique(y_arrays['output_lvef_continuous']))),
+                       duplicates='drop', labels=False)
+    else:
+        bins = None
+
+    idx_train, idx_val = train_test_split(
+        np.arange(N), test_size=0.2, random_state=42, stratify=bins
+    )
+
+    def sel(idx):
+        Xv = X_view[idx]
+        Xn = X_num[idx]
+        m = mask_bt[idx]
+        ys = {t: y_arrays[t][idx] for t in TARGETS_ALL}
+        sw = {t: sw_arrays[t][idx] for t in TARGETS_ALL}
+        return Xv, Xn, m, ys, sw
+
+    Xv_tr, Xn_tr, m_tr, y_tr, w_tr = sel(idx_train)
+    Xv_va, Xn_va, m_va, y_va, w_va = sel(idx_val)
+
+    train_ds = make_ds(Xv_tr, Xn_tr, m_tr, y_tr, w_tr, BATCH, shuffle=True)
+    val_ds = make_ds(Xv_va, Xn_va, m_va, y_va, w_va, BATCH, shuffle=False)
+    return train_ds, val_ds
+
