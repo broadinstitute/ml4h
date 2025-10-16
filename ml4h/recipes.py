@@ -588,21 +588,11 @@ def train_transformer_on_parquet(args):
      'view_prediction_x':'view_prediction',
      'view_prediction_probability_x': 'view_prediction_probability'})
 
-    all_targets = args.target_regression_columns + args.target_binary_columns
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
 
     input_categorical_column            = args.input_categorical_columns[0]
-    MAX_LEN = 128 #int(seq_len.max())
 
-    BATCH = 64
-
-    EMB_DIM = 4
-    TOKEN_HIDDEN = 16
-    TRANSFORMER_DIM = 128
-    NUM_HEADS = 4
-    NUM_LAYERS = 2
-    DROPOUT = 0.2
     view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
     view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
 
@@ -613,20 +603,20 @@ def train_transformer_on_parquet(args):
         args.target_regression_columns,
         args.target_binary_columns,
         args.group_column,
-        MAX_LEN,
-        BATCH,
+        args.transformer_max_size,
+        args.batch_size,
     )
     model = build_embedding_transformer(
         input_numeric_columns,
         args.target_regression_columns,
         args.target_binary_columns,
-        MAX_LEN,
-        EMB_DIM,
-        TOKEN_HIDDEN,
-        TRANSFORMER_DIM,
-        NUM_HEADS,
-        NUM_LAYERS,
-        DROPOUT,
+        args.transformer_max_size,
+        args.transformer_categorical_embed,
+        args.transformer_token_embed,
+        args.transformer_size,
+        args.attention_heads,
+        args.transformer_layers,
+        args.dropout_rate,
         view2id,
     )
 

@@ -291,6 +291,18 @@ def parse_args():
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
     )
+    parser.add_argument(
+         '--transformer_layers', default=4, type=int, help='Number of residual attention layers in transformers',
+    )
+    parser.add_argument(
+         '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
+    )
+    parser.add_argument(
+         '--transformer_categorical_embed', default=4, type=int, help='Size of embedding of input categorical data',
+    )
+    parser.add_argument(
+         '--transformer_token_embed', default=32, type=int, help='Size of embedding of transformer input tokens',
+    )
     parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
 
     # Training and Hyper-Parameter Optimization Parameters
