@@ -27,7 +27,7 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
-from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp
+from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
@@ -621,18 +621,19 @@ def train_transformer_on_parquet(args):
     )
 
     callbacks = [
-        keras.callbacks.EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True)
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True)
     ]
 
     history = model.fit(
         train_ds,
-        steps_per_epoch=args.train_steps,
+        steps_per_epoch=args.training_steps,
         validation_data=val_ds,
         validation_steps=args.validation_steps,
         epochs=args.epochs,
         callbacks=callbacks,
         verbose=1
     )
+    plot_metric_history(history, args.training_steps, args.id, args.output_folder)
     evaluate_multitask_on_dataset(model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
 
 def datetime_to_float(d):
