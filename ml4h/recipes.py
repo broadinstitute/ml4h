@@ -603,6 +603,7 @@ def train_transformer_on_parquet(args):
         args.target_regression_columns,
         args.target_binary_columns,
         args.group_column,
+        args.sort_column,
         args.transformer_max_size,
         args.batch_size,
     )

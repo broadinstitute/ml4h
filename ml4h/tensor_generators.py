@@ -1043,29 +1043,28 @@ def make_ds(Xv, Xn, m, y, w, BATCH, shuffle=False):
 def build_datasets(
         df,
         INPUT_NUMERIC_COLS,
-        VIEW_COL,
+        input_categorical_column,
         REGRESSION_TARGETS,
         BINARY_TARGETS,
         AGGREGATE_COLUMN,
+        sort_column,
         MAX_LEN,
         BATCH,
 ):
     TARGETS_ALL = REGRESSION_TARGETS + BINARY_TARGETS
     # ---------- Checks ----------
-    required_cols = set(['mrn', VIEW_COL] + INPUT_NUMERIC_COLS + TARGETS_ALL)
+    required_cols = set(['mrn', input_categorical_column] + INPUT_NUMERIC_COLS + TARGETS_ALL)
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"df is missing required columns: {missing}")
 
     # ============ Build MRN sequences ============
     # Encode view_prediction to ids (0=PAD)
-    view_vocab = pd.Series(df[VIEW_COL].astype(str).unique())
+    view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
     view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
-    df['_view_id'] = df[VIEW_COL].astype(str).map(view2id).fillna(0).astype(int)
+    df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
 
-    # Sort rows per MRN by confidence then by view for reproducibility (feel free to change)
-    df = df.sort_values([AGGREGATE_COLUMN, 'view_prediction_probability'], ascending=[True, False]).reset_index(
-        drop=True)
+    df = df.sort_values([AGGREGATE_COLUMN, sort_column], ascending=[True, True]).reset_index(drop=True)
 
     grouped = df.groupby(AGGREGATE_COLUMN, sort=False)
     mrn_list = list(grouped.groups.keys())
@@ -1105,17 +1104,7 @@ def build_datasets(
         sw_arrays[t] = sw
 
     # ============ Train/Val split by MRN ============
-    # To keep distributions similar for continuous targets, stratify on binned LVEF if present
-    if np.unique(y_arrays['output_lvef_continuous']).size > 1:
-        bins = pd.qcut(y_arrays['output_lvef_continuous'],
-                       q=min(10, len(np.unique(y_arrays['output_lvef_continuous']))),
-                       duplicates='drop', labels=False)
-    else:
-        bins = None
-
-    idx_train, idx_val = train_test_split(
-        np.arange(N), test_size=0.2, random_state=42, stratify=bins
-    )
+    idx_train, idx_val = train_test_split(np.arange(N), test_size=0.2, random_state=42)
 
     def sel(idx):
         Xv = X_view[idx]
