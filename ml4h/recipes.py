@@ -619,7 +619,20 @@ def train_transformer_on_parquet(args):
         args.transformer_dropout_rate,
         view2id,
     )
-
+    if args.inspect_model:
+        model.network.summary(print_fn=logging.info, expand_nested=True)
+        keras.utils.plot_model(
+            model.network,
+            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}_unet.svg",
+            show_shapes=True,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
+            expand_nested=True,
+            dpi=args.dpi,
+            layer_range=None,
+            show_layer_activations=False,
+        )
     callbacks = [
         keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True)
     ]
@@ -633,7 +646,7 @@ def train_transformer_on_parquet(args):
         callbacks=callbacks,
         verbose=1
     )
-    plot_metric_history(history, args.training_steps, args.id, args.output_folder)
+    plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
     evaluate_multitask_on_dataset(model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
 
 def datetime_to_float(d):
