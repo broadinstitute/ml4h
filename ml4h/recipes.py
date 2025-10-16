@@ -622,8 +622,8 @@ def train_transformer_on_parquet(args):
     if args.inspect_model:
         model.network.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
-            model.network,
-            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}_unet.svg",
+            model,
+            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}.png",
             show_shapes=True,
             show_dtype=False,
             show_layer_names=True,
