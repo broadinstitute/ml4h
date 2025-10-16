@@ -303,6 +303,9 @@ def parse_args():
     parser.add_argument(
          '--transformer_token_embed', default=32, type=int, help='Size of embedding of transformer input tokens',
     )
+    parser.add_argument(
+         '--transformer_dropout_rate', default=0.1, type=float, help='Dropout rate for the longitudinal/embedding transformer.',
+    )
     parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
 
     # Training and Hyper-Parameter Optimization Parameters

@@ -616,7 +616,7 @@ def train_transformer_on_parquet(args):
         args.transformer_size,
         args.attention_heads,
         args.transformer_layers,
-        args.dropout_rate,
+        args.transformer_dropout_rate,
         view2id,
     )
 
@@ -626,14 +626,14 @@ def train_transformer_on_parquet(args):
 
     history = model.fit(
         train_ds,
-        steps_per_epoch=200,
+        steps_per_epoch=args.train_steps,
         validation_data=val_ds,
-        validation_steps=50,
-        epochs=32,
+        validation_steps=args.validation_steps,
+        epochs=args.epochs,
         callbacks=callbacks,
         verbose=1
     )
-    evaluate_multitask_on_dataset(model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=250)
+    evaluate_multitask_on_dataset(model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
 
 def datetime_to_float(d):
     return pd.to_datetime(d, utc=True).timestamp()
