@@ -620,7 +620,7 @@ def train_transformer_on_parquet(args):
         view2id,
     )
     if args.inspect_model:
-        model.network.summary(print_fn=logging.info, expand_nested=True)
+        model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
             model,
             to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}.png",
