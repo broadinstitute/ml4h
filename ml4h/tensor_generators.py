@@ -1171,16 +1171,8 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
     # ----- Train/Val split by group id (optionally stratify on a regression target if available) -----
     group_ids = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
 
-    # Optional stratify: use 'lvef' if present and has variation
-    strat = None
-    if 'LV_LVEF_Measurement' in df_sorted.columns:
-        mrn_lvef = df_sorted.groupby(AGGREGATE_COLUMN)['LV_LVEF_Measurement'].first()
-        if mrn_lvef.nunique() > 1:
-            bins = pd.qcut(mrn_lvef, q=min(10, mrn_lvef.nunique()), duplicates='drop', labels=False)
-            strat = bins.loc[group_ids].values if hasattr(bins, 'loc') else None
-
     idx_train, idx_val = train_test_split(
-        np.arange(len(group_ids)), test_size=0.2, random_state=42,  # stratify=strat
+        np.arange(len(group_ids)), test_size=0.2, random_state=42,
     )
     train_ids = set(group_ids[idx_train])
     val_ids = set(group_ids[idx_val])
