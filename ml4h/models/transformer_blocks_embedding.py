@@ -267,7 +267,7 @@ def build_embedding_transformer(
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
     inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
 
-    if view2id:
+    if view2id is not None:
         inp_view = keras.Input(shape=(MAX_LEN,), dtype='int32', name='view')
         view_emb = layers.Embedding(
             input_dim=int(max(view2id.values())) + 1,  # include PAD
@@ -288,7 +288,7 @@ def build_embedding_transformer(
         pos = keras.ops.tile(keras.ops.expand_dims(pos, 0), (b, 1))
         return pos
 
-    if view2id:
+    if view2id is not None:
         pos_idx = layers.Lambda(make_pos_idx, name='pos_idx', output_shape=(MAX_LEN,))(inp_view)
         pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
         x = layers.Add(name='add_pos')([x, pos_emb])
@@ -335,7 +335,7 @@ def build_embedding_transformer(
     for t in BINARY_TARGETS:
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
 
-    if view2id:
+    if view2id is not None:
         model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     else:
         model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)

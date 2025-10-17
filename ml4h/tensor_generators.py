@@ -1030,7 +1030,7 @@ def pad_2d(list_of_arrays, max_len, feat, pad_value=0.0, dtype='float32'):
 
 
 def make_ds(Xv, Xn, m, y, w, BATCH, shuffle=False):
-    if Xv:
+    if Xv is not None:
         ds = tf.data.Dataset.from_tensor_slices((
             {'view': Xv, 'num': Xn, 'mask': m},
             y,
