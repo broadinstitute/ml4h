@@ -582,7 +582,7 @@ def train_transformer_on_parquet(args):
     else:
         df = pd.read_csv(args.transformer_label_file, sep='\t')
 
-    if 'ecg_datetime' in echo_df:
+    if 'ecg_datetime' in args.merge_columns:
         df['ecg_datetime'] = pd.to_datetime(df.datetime_x)
         df['mrn'] = df.MRN
         echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
@@ -598,7 +598,7 @@ def train_transformer_on_parquet(args):
          'echo_age':'output_echo_age_continuous',
          'view_prediction_x':'view_prediction',
          'view_prediction_probability_x': 'view_prediction_probability'})
-    elif 'ecg_datetime' in df:
+    elif 'ecg_datetime' in args.merge_columns:
         df['age_years'] = (df['ecg_datetime'] - pd.to_datetime(df['DOB'])).dt.days / 365.25
         df['ecg_age'] = df.age_years.astype(float)
         df = df[df['ecg_age'].notna()]
