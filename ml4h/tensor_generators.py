@@ -1134,43 +1134,6 @@ def build_datasets(
     val_ds = make_ds(Xv_va, Xn_va, m_va, y_va, w_va, BATCH, shuffle=False)
     return train_ds, val_ds
 
-# ---------- Generator WITHOUT VIEW_COL ----------
-def group_generator(selected_ids):
-    # Preload numeric block for fast slicing
-    arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
-
-    # MRN-level targets (first value per group); None if target missing in df
-    arr_tgts = {
-        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].first() if t in df_sorted.columns else None)
-        for t in TARGETS_ALL
-    }
-
-    for gid in selected_ids:
-        span = group_index.get(gid)
-        if span is None:
-            continue
-        start, last = span
-        end = last + 1
-
-        # Features: ONLY numeric + mask
-        num  = arr_num[start:end, :]              # (T, F)
-        T    = num.shape[0]
-        mask = np.ones((T,), dtype=bool)          # (T,)
-
-        # Labels + sample weights (one scalar per task)
-        y, sw = {}, {}
-        for t in TARGETS_ALL:
-            if arr_tgts[t] is not None:
-                v = arr_tgts[t].get(gid, np.nan)
-                has = not pd.isna(v)
-                y[t]  = np.float32(v if has else 0.0)
-                sw[t] = np.float32(1.0 if has else 0.0)
-            else:
-                y[t]  = np.float32(0.0)
-                sw[t] = np.float32(0.0)
-
-        # No 'view' in the features anymore
-        yield {'num': num, 'mask': mask}, y, sw
 
 
 def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMERIC_COLS, BATCH):
@@ -1209,6 +1172,44 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
     }
     label_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
     weight_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
+
+    # ---------- Generator WITHOUT VIEW_COL ----------
+    def group_generator(selected_ids):
+        # Preload numeric block for fast slicing
+        arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
+
+        # MRN-level targets (first value per group); None if target missing in df
+        arr_tgts = {
+            t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].first() if t in df_sorted.columns else None)
+            for t in TARGETS_ALL
+        }
+
+        for gid in selected_ids:
+            span = group_index.get(gid)
+            if span is None:
+                continue
+            start, last = span
+            end = last + 1
+
+            # Features: ONLY numeric + mask
+            num = arr_num[start:end, :]  # (T, F)
+            T = num.shape[0]
+            mask = np.ones((T,), dtype=bool)  # (T,)
+
+            # Labels + sample weights (one scalar per task)
+            y, sw = {}, {}
+            for t in TARGETS_ALL:
+                if arr_tgts[t] is not None:
+                    v = arr_tgts[t].get(gid, np.nan)
+                    has = not pd.isna(v)
+                    y[t] = np.float32(v if has else 0.0)
+                    sw[t] = np.float32(1.0 if has else 0.0)
+                else:
+                    y[t] = np.float32(0.0)
+                    sw[t] = np.float32(0.0)
+
+            # No 'view' in the features anymore
+            yield {'num': num, 'mask': mask}, y, sw
 
     def make_tf_dataset_from_generator(id_set, shuffle=False):
         ds = tf.data.Dataset.from_generator(
