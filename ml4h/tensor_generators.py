@@ -1221,11 +1221,15 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
             # Features: ONLY numeric + mask (truncated to MAX_LEN if needed)
             num = arr_num[start:end, :]  # (T, F)
+            if input_categorical_column:
+                view = arr_view[start:end]  # (T,)
             T = num.shape[0]
 
             # Truncate to MAX_LEN if sequence is longer
             if T > MAX_LEN:
                 num = num[:MAX_LEN, :]
+                if input_categorical_column:
+                    view = view[:MAX_LEN]
                 T = MAX_LEN
 
             mask = np.ones((T,), dtype=bool)  # (T,)
@@ -1243,9 +1247,6 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
                     sw[t] = np.float32(0.0)
 
             if input_categorical_column:
-                view = arr_view[start:end]  # (T,)
-                if T > MAX_LEN:
-                    view = view[:MAX_LEN]
                 yield {'view': view, 'num': num, 'mask': mask}, y, sw
             else:
                 yield {'num': num, 'mask': mask}, y, sw
