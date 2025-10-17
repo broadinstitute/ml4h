@@ -263,7 +263,6 @@ def build_embedding_transformer(
 ):
     Feat = len(INPUT_NUMERIC_COLS)
 
-
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
     inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
 
@@ -277,6 +276,7 @@ def build_embedding_transformer(
         )(inp_view)  # (B,T,EMB_DIM)
         # Token features: [embed(view) || numeric features]
         x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,EMB_DIM+F)
+        x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(x)
     else:
         x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
     x = layers.Dropout(DROPOUT)(x)
