@@ -1164,7 +1164,7 @@ def build_datasets(
 
 
 
-def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMERIC_COLS, BATCH):
+def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMERIC_COLS, MAX_LEN, BATCH):
     # Reproducible ordering
     df_sorted = df.sort_values([AGGREGATE_COLUMN]).reset_index(drop=True)
 
@@ -1211,9 +1211,15 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
             start, last = span
             end = last + 1
 
-            # Features: ONLY numeric + mask
+            # Features: ONLY numeric + mask (truncated to MAX_LEN if needed)
             num = arr_num[start:end, :]  # (T, F)
             T = num.shape[0]
+
+            # Truncate to MAX_LEN if sequence is longer
+            if T > MAX_LEN:
+                num = num[:MAX_LEN, :]
+                T = MAX_LEN
+
             mask = np.ones((T,), dtype=bool)  # (T,)
 
             # Labels + sample weights (one scalar per task)
@@ -1238,11 +1244,11 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
         )
         if shuffle:
             ds = ds.shuffle(buffer_size=len(id_set), reshuffle_each_iteration=True)
-        # Pad sequences to max length *in the batch* (not global):
+        # Pad sequences to max length *in the batch* (capped at MAX_LEN):
         ds = ds.padded_batch(
             BATCH,
             padded_shapes=(
-                {'num': [None, Feat], 'mask': [None]},
+                {'num': [MAX_LEN, Feat], 'mask': [MAX_LEN]},
                 {t: [] for t in TARGETS_ALL},
                 {t: [] for t in TARGETS_ALL},
             ),
