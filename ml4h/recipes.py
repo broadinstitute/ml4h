@@ -572,21 +572,38 @@ def train_xdl_af(args):
 
 
 def train_transformer_on_parquet(args):
-    echo_df = pd.read_parquet(args.latent_input_files[0])
+    if args.transformer_input_file.endswith('.pq'):
+        echo_df = pd.read_parquet(args.transformer_input_file)
+    else:
+        echo_df = pd.read_csv(args.transformer_input_file, sep='\t')
 
-    df = pd.read_parquet(args.latent_output_files[0])
-    echo_df = pd.merge(echo_df, df, on=['mrn', 'view'], how='inner')
-    echo_df['echo_age'] = echo_df.StudyAge
-    echo_df['echo_age'] -= echo_df['echo_age'].mean()
-    echo_df['echo_age'] /= echo_df['echo_age'].std()
-    echo_df.nlp_as_label = echo_df.nlp_as_label.astype(int)
-    df = echo_df
-    df = df.rename(columns={'mrn_x':'mrn',
-     'view_x': 'view',
-     'sample_id_x': 'sample_id',
-     'echo_age':'output_echo_age_continuous',
-     'view_prediction_x':'view_prediction',
-     'view_prediction_probability_x': 'view_prediction_probability'})
+    if args.transformer_label_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_label_file)
+    else:
+        df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+    if 'ecg_datetime' in echo_df:
+        df['ecg_datetime'] = pd.to_datetime(df.datetime_x)
+        df['mrn'] = df.MRN
+        echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
+
+    df = pd.merge(echo_df, df, on=args.merge_columns, how='inner')
+
+    if 'StudyAge' in df:
+        df['echo_age'] = df.StudyAge
+        df['echo_age'] -= df['echo_age'].mean()
+        df['echo_age'] /= df['echo_age'].std()
+        df.nlp_as_label = df.nlp_as_label.astype(int)
+        df = df.rename(columns={
+         'echo_age':'output_echo_age_continuous',
+         'view_prediction_x':'view_prediction',
+         'view_prediction_probability_x': 'view_prediction_probability'})
+    elif 'ecg_datetime' in df:
+        df['age_years'] = (df['ecg_datetime'] - pd.to_datetime(df['DOB'])).dt.days / 365.25
+        df['ecg_age'] = df.age_years.astype(float)
+        df = df[df['ecg_age'].notna()]
+        df['ecg_age'] -= df.ecg_age.mean()
+        df['ecg_age'] /= df.ecg_age.std()
 
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]

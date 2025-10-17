@@ -138,6 +138,10 @@ def parse_args():
         '--sort_column', default=None, help='Column to sort on for embedding transformer.'
     )
     parser.add_argument(
+        '--merge_columns', nargs='*', default=['mrn', 'view'], help=
+        'List of columns to merge on for input and labels Transformer.'
+    )
+    parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
     )
@@ -285,7 +289,12 @@ def parse_args():
     parser.add_argument('--interpolate_step', type=float, default =1.0,
                         help='Diffusion model synthetic interpolation step size continuous condition')
 
-
+    parser.add_argument(
+         '--transformer_input_file', help='File with latent space input for transformers',
+    )
+    parser.add_argument(
+         '--transformer_label_file', help='File with target labels for transformers',
+    )
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
