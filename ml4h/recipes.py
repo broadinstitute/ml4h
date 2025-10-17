@@ -29,7 +29,8 @@ from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
 from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
-from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets
+from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets, \
+    df_to_datasets_from_generator
 from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
 from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter, plot_reconstruction
 from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
@@ -600,17 +601,20 @@ def train_transformer_on_parquet(args):
         input_categorical_column = None
         view2id = None
 
-    train_ds, val_ds = build_datasets(
-        df,
-        input_numeric_columns,
-        input_categorical_column,
-        args.target_regression_columns,
-        args.target_binary_columns,
-        args.group_column,
-        args.sort_column,
-        args.transformer_max_size,
-        args.batch_size,
-    )
+    # train_ds, val_ds = build_datasets(
+    #     df,
+    #     input_numeric_columns,
+    #     input_categorical_column,
+    #     args.target_regression_columns,
+    #     args.target_binary_columns,
+    #     args.group_column,
+    #     args.sort_column,
+    #     args.transformer_max_size,
+    #     args.batch_size,
+    # )
+    train_ds, val_ds = df_to_datasets_from_generator(df, args.group_column,
+                                                     args.target_regression_columns + args.target_binary_columns,
+                                                     input_numeric_columns, args.batch_size)
     model = build_embedding_transformer(
         input_numeric_columns,
         args.target_regression_columns,

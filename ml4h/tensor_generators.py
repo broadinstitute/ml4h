@@ -1134,3 +1134,106 @@ def build_datasets(
     val_ds = make_ds(Xv_va, Xn_va, m_va, y_va, w_va, BATCH, shuffle=False)
     return train_ds, val_ds
 
+# ---------- Generator WITHOUT VIEW_COL ----------
+def group_generator(selected_ids):
+    # Preload numeric block for fast slicing
+    arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
+
+    # MRN-level targets (first value per group); None if target missing in df
+    arr_tgts = {
+        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].first() if t in df_sorted.columns else None)
+        for t in TARGETS_ALL
+    }
+
+    for gid in selected_ids:
+        span = group_index.get(gid)
+        if span is None:
+            continue
+        start, last = span
+        end = last + 1
+
+        # Features: ONLY numeric + mask
+        num  = arr_num[start:end, :]              # (T, F)
+        T    = num.shape[0]
+        mask = np.ones((T,), dtype=bool)          # (T,)
+
+        # Labels + sample weights (one scalar per task)
+        y, sw = {}, {}
+        for t in TARGETS_ALL:
+            if arr_tgts[t] is not None:
+                v = arr_tgts[t].get(gid, np.nan)
+                has = not pd.isna(v)
+                y[t]  = np.float32(v if has else 0.0)
+                sw[t] = np.float32(1.0 if has else 0.0)
+            else:
+                y[t]  = np.float32(0.0)
+                sw[t] = np.float32(0.0)
+
+        # No 'view' in the features anymore
+        yield {'num': num, 'mask': mask}, y, sw
+
+
+def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMERIC_COLS, BATCH):
+    # Reproducible ordering
+    df_sorted = df.sort_values([AGGREGATE_COLUMN]).reset_index(drop=True)
+
+    # ----- Train/Val split by group id (optionally stratify on a regression target if available) -----
+    group_ids = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
+
+    # Optional stratify: use 'lvef' if present and has variation
+    strat = None
+    if 'LV_LVEF_Measurement' in df_sorted.columns:
+        mrn_lvef = df_sorted.groupby(AGGREGATE_COLUMN)['LV_LVEF_Measurement'].first()
+        if mrn_lvef.nunique() > 1:
+            bins = pd.qcut(mrn_lvef, q=min(10, mrn_lvef.nunique()), duplicates='drop', labels=False)
+            strat = bins.loc[group_ids].values if hasattr(bins, 'loc') else None
+
+    idx_train, idx_val = train_test_split(
+        np.arange(len(group_ids)), test_size=0.2, random_state=42,  # stratify=strat
+    )
+    train_ids = set(group_ids[idx_train])
+    val_ids = set(group_ids[idx_val])
+
+    Feat = len(INPUT_NUMERIC_COLS)
+
+    # ---------- Build once (unchanged index, no view used) ----------
+    group_index = {}
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        first = g.index[0]
+        last = g.index[-1]
+        group_index[gid] = (first, last)  # inclusive row-span within df_sorted
+    # ----- tf.data from_generator + padded_batch (no giant tensors) -----
+    feature_sig = {
+        'num' : tf.TensorSpec(shape=(None, Feat), dtype=tf.float32),
+        'mask': tf.TensorSpec(shape=(None,), dtype=tf.bool),
+    }
+    label_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
+    weight_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
+
+    def make_tf_dataset_from_generator(id_set, shuffle=False):
+        ds = tf.data.Dataset.from_generator(
+            lambda: group_generator(id_set),
+            output_signature=(feature_sig, label_sig, weight_sig)
+        )
+        if shuffle:
+            ds = ds.shuffle(buffer_size=len(id_set), reshuffle_each_iteration=True)
+        # Pad sequences to max length *in the batch* (not global):
+        ds = ds.padded_batch(
+            BATCH,
+            padded_shapes=(
+                {'num': [None, Feat], 'mask': [None]},
+                {t: [] for t in TARGETS_ALL},
+                {t: [] for t in TARGETS_ALL},
+            ),
+            padding_values=(
+                {'num': np.float32(0.0), 'mask': False},
+                {t: np.float32(0.0) for t in TARGETS_ALL},   # labels
+                {t: np.float32(0.0) for t in TARGETS_ALL},   # weights
+            ),
+            drop_remainder=False,
+        )
+        return ds.prefetch(tf.data.AUTOTUNE)
+
+    train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True).repeat()
+    val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False).repeat()
+    return train_ds, val_ds
