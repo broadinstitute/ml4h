@@ -1164,7 +1164,11 @@ def build_datasets(
 
 
 
-def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMERIC_COLS, MAX_LEN, BATCH):
+def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, TARGETS_ALL, MAX_LEN, BATCH):
+    if input_categorical_column:
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
     # Reproducible ordering
     df_sorted = df.sort_values([AGGREGATE_COLUMN]).reset_index(drop=True)
 
@@ -1190,6 +1194,8 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
         'num' : tf.TensorSpec(shape=(None, Feat), dtype=tf.float32),
         'mask': tf.TensorSpec(shape=(None,), dtype=tf.bool),
     }
+    if input_categorical_column:
+        feature_sig['view'] = tf.TensorSpec(shape=(None,), dtype=tf.int32)
     label_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
     weight_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
 
@@ -1197,6 +1203,8 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
     def group_generator(selected_ids):
         # Preload numeric block for fast slicing
         arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
+        if input_categorical_column:
+            arr_view = df_sorted['_view_id'].to_numpy(np.int32)
 
         # MRN-level targets (first value per group); None if target missing in df
         arr_tgts = {
@@ -1234,8 +1242,13 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
                     y[t] = np.float32(0.0)
                     sw[t] = np.float32(0.0)
 
-            # No 'view' in the features anymore
-            yield {'num': num, 'mask': mask}, y, sw
+            if input_categorical_column:
+                view = arr_view[start:end]  # (T,)
+                if T > MAX_LEN:
+                    view = view[:MAX_LEN]
+                yield {'view': view, 'num': num, 'mask': mask}, y, sw
+            else:
+                yield {'num': num, 'mask': mask}, y, sw
 
     def make_tf_dataset_from_generator(id_set, shuffle=False):
         ds = tf.data.Dataset.from_generator(
