@@ -1030,11 +1030,18 @@ def pad_2d(list_of_arrays, max_len, feat, pad_value=0.0, dtype='float32'):
 
 
 def make_ds(Xv, Xn, m, y, w, BATCH, shuffle=False):
-    ds = tf.data.Dataset.from_tensor_slices((
-        {'view': Xv, 'num': Xn, 'mask': m},
-        y,
-        w
-    ))
+    if Xv:
+        ds = tf.data.Dataset.from_tensor_slices((
+            {'view': Xv, 'num': Xn, 'mask': m},
+            y,
+            w
+        ))
+    else:
+        ds = tf.data.Dataset.from_tensor_slices((
+            {'num': Xn, 'mask': m},
+            y,
+            w
+        ))
     if shuffle:
         ds = ds.shuffle(buffer_size=len(m), seed=42)
     return ds.batch(BATCH).prefetch(tf.data.AUTOTUNE)
@@ -1053,16 +1060,17 @@ def build_datasets(
 ):
     TARGETS_ALL = REGRESSION_TARGETS + BINARY_TARGETS
     # ---------- Checks ----------
-    required_cols = set(['mrn', input_categorical_column] + INPUT_NUMERIC_COLS + TARGETS_ALL)
+    required_cols = set(['mrn'] + INPUT_NUMERIC_COLS + TARGETS_ALL)
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"df is missing required columns: {missing}")
 
     # ============ Build MRN sequences ============
     # Encode view_prediction to ids (0=PAD)
-    view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
-    view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
-    df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+    if input_categorical_column:
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
 
     df = df.sort_values([AGGREGATE_COLUMN, sort_column], ascending=[True, True]).reset_index(drop=True)
 
@@ -1076,7 +1084,8 @@ def build_datasets(
     y_dict = {t: [] for t in TARGETS_ALL}
 
     for mrn, g in grouped:
-        seq_view_ids.append(g['_view_id'].values.astype('int32'))
+        if input_categorical_column:
+            seq_view_ids.append(g['_view_id'].values.astype('int32'))
         seq_numeric.append(g[INPUT_NUMERIC_COLS].values.astype('float32'))  # (L, F)
         seq_len.append(len(g))
 
@@ -1088,7 +1097,8 @@ def build_datasets(
     N = len(seq_len)
     Feat = len(INPUT_NUMERIC_COLS)
 
-    X_view = pad_1d(seq_view_ids, MAX_LEN, pad_value=0, dtype='int32')  # (N, T)
+    if input_categorical_column:
+        X_view = pad_1d(seq_view_ids, MAX_LEN, pad_value=0, dtype='int32')  # (N, T)
     X_num = pad_2d(seq_numeric, MAX_LEN, Feat, pad_value=0.0, dtype='float32')  # (N, T, F)
     mask_bt = (np.arange(MAX_LEN)[None, :] < seq_len[:, None])  # (N, T) True=real
 
@@ -1107,7 +1117,10 @@ def build_datasets(
     idx_train, idx_val = train_test_split(np.arange(N), test_size=0.2, random_state=42)
 
     def sel(idx):
-        Xv = X_view[idx]
+        if input_categorical_column:
+            Xv = X_view[idx]
+        else:
+            Xv = None
         Xn = X_num[idx]
         m = mask_bt[idx]
         ys = {t: y_arrays[t][idx] for t in TARGETS_ALL}

@@ -263,21 +263,22 @@ def build_embedding_transformer(
 ):
     Feat = len(INPUT_NUMERIC_COLS)
 
-    inp_view = keras.Input(shape=(MAX_LEN,), dtype='int32', name='view')
+
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
     inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
 
-    # View embedding
-    view_emb = layers.Embedding(
-        input_dim=int(max(view2id.values())) + 1,  # include PAD
-        output_dim=EMB_DIM,
-        mask_zero=True,
-        name='view_embedding'
-    )(inp_view)  # (B,T,EMB_DIM)
-
-    # Token features: [embed(view) || numeric features]
-    x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,EMB_DIM+F)
-    x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(x)
+    if view2id:
+        inp_view = keras.Input(shape=(MAX_LEN,), dtype='int32', name='view')
+        view_emb = layers.Embedding(
+            input_dim=int(max(view2id.values())) + 1,  # include PAD
+            output_dim=EMB_DIM,
+            mask_zero=True,
+            name='view_embedding'
+        )(inp_view)  # (B,T,EMB_DIM)
+        # Token features: [embed(view) || numeric features]
+        x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,EMB_DIM+F)
+    else:
+        x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
     x = layers.Dropout(DROPOUT)(x)
 
     # Positional embedding (learnable)
@@ -287,9 +288,10 @@ def build_embedding_transformer(
         pos = keras.ops.tile(keras.ops.expand_dims(pos, 0), (b, 1))
         return pos
 
-    pos_idx = layers.Lambda(make_pos_idx, name='pos_idx', output_shape=(MAX_LEN,))(inp_view)
-    pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
-    x = layers.Add(name='add_pos')([x, pos_emb])
+    if view2id:
+        pos_idx = layers.Lambda(make_pos_idx, name='pos_idx', output_shape=(MAX_LEN,))(inp_view)
+        pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
+        x = layers.Add(name='add_pos')([x, pos_emb])
 
     # Build (B,T,T) attention mask from (B,T)
     m_q = layers.Lambda(lambda m: keras.ops.expand_dims(m, 2), name='mask_q', output_shape=(MAX_LEN, 1))(inp_mask)
@@ -333,8 +335,10 @@ def build_embedding_transformer(
     for t in BINARY_TARGETS:
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
 
-    model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
-
+    if view2id:
+        model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
+    else:
+        model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     # Losses / metrics
     losses = {t: 'mse' for t in REGRESSION_TARGETS}
     losses.update({t: 'binary_crossentropy' for t in BINARY_TARGETS})
