@@ -1077,6 +1077,9 @@ def build_datasets(
     grouped = df.groupby(AGGREGATE_COLUMN, sort=False)
     mrn_list = list(grouped.groups.keys())
 
+    # Log number of groups found
+    logging.info(f"Found {len(mrn_list)} groups (unique {AGGREGATE_COLUMN}s)")
+
     # Collect sequences & MRN-level targets
     seq_view_ids = []
     seq_numeric = []
@@ -1097,6 +1100,14 @@ def build_datasets(
     N = len(seq_len)
     Feat = len(INPUT_NUMERIC_COLS)
 
+    # Log sequence length statistics
+    logging.info(f"Sequence length statistics across {N} groups:")
+    logging.info(f"  Mean: {seq_len.mean():.2f}")
+    logging.info(f"  Std:  {seq_len.std():.2f}")
+    logging.info(f"  Min:  {seq_len.min()}")
+    logging.info(f"  Max:  {seq_len.max()}")
+    logging.info(f"  Median: {np.median(seq_len):.2f}")
+
     if input_categorical_column:
         X_view = pad_1d(seq_view_ids, MAX_LEN, pad_value=0, dtype='int32')  # (N, T)
     X_num = pad_2d(seq_numeric, MAX_LEN, Feat, pad_value=0.0, dtype='float32')  # (N, T, F)
@@ -1112,6 +1123,23 @@ def build_datasets(
         y[np.isnan(y)] = 0.0
         y_arrays[t] = y
         sw_arrays[t] = sw
+
+    # Log summary statistics for each target
+    logging.info("Target summary statistics:")
+    for t in TARGETS_ALL:
+        y = y_arrays[t]
+        sw = sw_arrays[t]
+        valid_mask = sw > 0
+        if valid_mask.sum() > 0:
+            valid_y = y[valid_mask]
+            logging.info(f"  {t}:")
+            logging.info(f"    Valid samples: {valid_mask.sum()}/{len(y)} ({valid_mask.mean()*100:.1f}%)")
+            logging.info(f"    Mean: {valid_y.mean():.4f}")
+            logging.info(f"    Std:  {valid_y.std():.4f}")
+            logging.info(f"    Min:  {valid_y.min():.4f}")
+            logging.info(f"    Max:  {valid_y.max():.4f}")
+        else:
+            logging.info(f"  {t}: No valid samples")
 
     # ============ Train/Val split by MRN ============
     idx_train, idx_val = train_test_split(np.arange(N), test_size=0.2, random_state=42)
@@ -1233,8 +1261,8 @@ def df_to_datasets_from_generator(df, AGGREGATE_COLUMN, TARGETS_ALL, INPUT_NUMER
             ),
             drop_remainder=False,
         )
-        return ds.prefetch(tf.data.AUTOTUNE)
+        return ds.prefetch(tf.data.AUTOTUNE).repeat()
 
-    train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True).repeat()
-    val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False).repeat()
+    train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
+    val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
     return train_ds, val_ds
