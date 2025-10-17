@@ -1258,20 +1258,36 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
         if shuffle:
             ds = ds.shuffle(buffer_size=len(id_set), reshuffle_each_iteration=True)
         # Pad sequences to max length *in the batch* (capped at MAX_LEN):
-        ds = ds.padded_batch(
-            BATCH,
-            padded_shapes=(
-                {'num': [MAX_LEN, Feat], 'mask': [MAX_LEN]},
-                {t: [] for t in TARGETS_ALL},
-                {t: [] for t in TARGETS_ALL},
-            ),
-            padding_values=(
-                {'num': np.float32(0.0), 'mask': False},
-                {t: np.float32(0.0) for t in TARGETS_ALL},   # labels
-                {t: np.float32(0.0) for t in TARGETS_ALL},   # weights
-            ),
-            drop_remainder=False,
-        )
+        if 'view' in feature_sig:
+            ds = ds.padded_batch(
+                BATCH,
+                padded_shapes=(
+                    {'view': [MAX_LEN], 'num': [MAX_LEN, Feat], 'mask': [MAX_LEN]},
+                    {t: [] for t in TARGETS_ALL},
+                    {t: [] for t in TARGETS_ALL},
+                ),
+                padding_values=(
+                    {'view': np.int32(0), 'num': np.float32(0.0), 'mask': False},
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # labels
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # weights
+                ),
+                drop_remainder=False,
+            )
+        else:
+            ds = ds.padded_batch(
+                BATCH,
+                padded_shapes=(
+                    {'num': [MAX_LEN, Feat], 'mask': [MAX_LEN]},
+                    {t: [] for t in TARGETS_ALL},
+                    {t: [] for t in TARGETS_ALL},
+                ),
+                padding_values=(
+                    {'num': np.float32(0.0), 'mask': False},
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # labels
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # weights
+                ),
+                drop_remainder=False,
+            )
         return ds.prefetch(tf.data.AUTOTUNE).repeat()
 
     train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
