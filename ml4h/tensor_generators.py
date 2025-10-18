@@ -1175,6 +1175,9 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     # ----- Train/Val split by group id (optionally stratify on a regression target if available) -----
     group_ids = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
 
+    # Log number of groups found
+    logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
+
     idx_train, idx_val = train_test_split(
         np.arange(len(group_ids)), test_size=0.2, random_state=42,
     )
@@ -1185,10 +1188,22 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
     # ---------- Build once (unchanged index, no view used) ----------
     group_index = {}
+    seq_lengths = []
     for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
         first = g.index[0]
         last = g.index[-1]
         group_index[gid] = (first, last)  # inclusive row-span within df_sorted
+        seq_lengths.append(len(g))
+
+    # Log sequence length statistics
+    seq_lengths = np.array(seq_lengths)
+    logging.info(f"Sequence length statistics across {len(seq_lengths)} groups:")
+    logging.info(f"  Mean: {seq_lengths.mean():.2f}")
+    logging.info(f"  Std:  {seq_lengths.std():.2f}")
+    logging.info(f"  Min:  {seq_lengths.min()}")
+    logging.info(f"  Max:  {seq_lengths.max()}")
+    logging.info(f"  Median: {np.median(seq_lengths):.2f}")
+
     # ----- tf.data from_generator + padded_batch (no giant tensors) -----
     feature_sig = {
         'num' : tf.TensorSpec(shape=(None, Feat), dtype=tf.float32),
@@ -1211,6 +1226,27 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].first() if t in df_sorted.columns else None)
             for t in TARGETS_ALL
         }
+
+        # Log summary statistics for each target (only once per generator call)
+        if not hasattr(group_generator, '_logged_targets'):
+            logging.info("Target summary statistics:")
+            for t in TARGETS_ALL:
+                if arr_tgts[t] is not None:
+                    target_values = arr_tgts[t].values
+                    valid_mask = ~pd.isna(target_values)
+                    if valid_mask.sum() > 0:
+                        valid_values = target_values[valid_mask]
+                        logging.info(f"  {t}:")
+                        logging.info(f"    Valid samples: {valid_mask.sum()}/{len(target_values)} ({valid_mask.mean()*100:.1f}%)")
+                        logging.info(f"    Mean: {valid_values.mean():.4f}")
+                        logging.info(f"    Std:  {valid_values.std():.4f}")
+                        logging.info(f"    Min:  {valid_values.min():.4f}")
+                        logging.info(f"    Max:  {valid_values.max():.4f}")
+                    else:
+                        logging.info(f"  {t}: No valid samples")
+                else:
+                    logging.info(f"  {t}: Target not found in dataframe")
+            group_generator._logged_targets = True
 
         for gid in selected_ids:
             span = group_index.get(gid)
