@@ -1,5 +1,5 @@
 # recipes.py
-
+import json
 # Imports
 import os
 import csv
@@ -660,7 +660,8 @@ def train_transformer_on_parquet(args):
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
     metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
     radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-
+    with open(f'{args.output_folder}/{args.id}/metrics.json', "w") as f:
+        json.dump(metrics, f)
 
 def datetime_to_float(d):
     return pd.to_datetime(d, utc=True).timestamp()

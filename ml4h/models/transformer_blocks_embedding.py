@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List
 import numpy as np
 
@@ -462,12 +463,12 @@ def evaluate_multitask_on_dataset(
                 "Score": auroc
             })
     if verbose:
-        print("\n=== Evaluation on dataset ===")
+        logging.info("\n=== Evaluation on dataset ===")
         for t in REGRESSION_TARGETS:
             r = results[t]
-            print(f"{t:30s}  MAE: {r['MAE']:.4f}  MSE: {r['MSE']:.4f}  R^2: {r['R2']:.4f}")
+            logging.info(f"{t:30s}  MAE: {r['MAE']:.4f}  MSE: {r['MSE']:.4f}  R^2: {r['R2']:.4f}")
         for t in BINARY_TARGETS:
             r = results[t]
-            print(f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}")
+            logging.info(f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}")
 
     return performance_data
