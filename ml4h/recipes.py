@@ -4,6 +4,7 @@
 import os
 import csv
 import copy
+import time
 import h5py
 import glob
 import logging
@@ -27,7 +28,7 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
-from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history
+from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history, radar_performance
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets, \
     df_to_datasets_from_generator
@@ -655,8 +656,11 @@ def train_transformer_on_parquet(args):
         callbacks=callbacks,
         verbose=1
     )
+    model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
-    evaluate_multitask_on_dataset(model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+
 
 def datetime_to_float(d):
     return pd.to_datetime(d, utc=True).timestamp()

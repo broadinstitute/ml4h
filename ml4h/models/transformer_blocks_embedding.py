@@ -361,6 +361,7 @@ def build_embedding_transformer(
 from sklearn.metrics import r2_score, roc_auc_score, average_precision_score, accuracy_score
 
 def evaluate_multitask_on_dataset(
+    name,
     model,
     dataset,
     REGRESSION_TARGETS,
@@ -372,6 +373,7 @@ def evaluate_multitask_on_dataset(
     y_true = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
     y_pred = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
     w      = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
+    performance_data = []
 
     def _consume():
         if steps is None:
@@ -411,11 +413,11 @@ def evaluate_multitask_on_dataset(
     # Regression tasks
     for t in REGRESSION_TARGETS:
         if y_true[t].size == 0:
-            results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
+            #results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
             continue
         msk = w[t] > 0
         if msk.sum() == 0:
-            results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
+            #results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
             continue
         yt = y_true[t][msk].astype("float32")
         yp = y_pred[t][msk].astype("float32")
@@ -426,7 +428,12 @@ def evaluate_multitask_on_dataset(
         except ValueError:
             r2 = float("nan")
         results[t] = {"MAE": mae, "MSE": mse, "R2": r2}
-
+        performance_data.append({
+                "Model": name,
+                "Task": t,
+                "Metric": 'metric',
+                "Score": r2
+            })
     # Binary tasks
     for t in BINARY_TARGETS:
         if y_true[t].size == 0:
@@ -448,7 +455,12 @@ def evaluate_multitask_on_dataset(
             auprc = float("nan")
         acc = float(accuracy_score(yt, (prob >= 0.5).astype("int32")))
         results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc}
-
+        performance_data.append({
+                "Model": name,
+                "Task": t,
+                "Metric": 'metric',
+                "Score": auroc
+            })
     if verbose:
         print("\n=== Evaluation on dataset ===")
         for t in REGRESSION_TARGETS:
@@ -458,4 +470,4 @@ def evaluate_multitask_on_dataset(
             r = results[t]
             print(f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}")
 
-    return results
+    return performance_data
