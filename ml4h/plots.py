@@ -3478,7 +3478,7 @@ def regplot(
     return res
 
 
-def radar_performance(df, prefix):
+def radar_performance(df, prefix, show=False):
     # Group by metric and generate radar plot for each
     for metric_type, metric_df in df.groupby("Metric"):
         # Keep best score per model-task pair
@@ -3529,12 +3529,14 @@ def radar_performance(df, prefix):
         # ax.set_title(f'Model Performance by Task ({metric_type.upper()})', size=14, pad=20)
         ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=16)
         #plt.tight_layout()
+        if show:
+            plt.show()
         figure_path = f"{prefix}/radar_performance.png"
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path)
 
-def heatmap_performance(df, prefix="./figures/"):
+def heatmap_performance(df, prefix="./figures/", show=False):
 
     for metric_type, metric_df in df.groupby("Metric"):
         metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
@@ -3554,6 +3556,8 @@ def heatmap_performance(df, prefix="./figures/"):
         plt.colorbar(im, label="Score")
         plt.title(f"Model Performance by Task ({metric_type.upper()})")
         plt.tight_layout()
+        if show:
+            plt.show()
         figure_path = f"{prefix}/heatmap_performance.png"
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
