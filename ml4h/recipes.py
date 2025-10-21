@@ -28,7 +28,8 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
-from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history, radar_performance
+from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history, radar_performance, \
+    heatmap_performance
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
 from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets, \
     df_to_datasets_from_generator
@@ -660,6 +661,7 @@ def train_transformer_on_parquet(args):
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
     metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
     radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     with open(f'{args.output_folder}/{args.id}/metrics.json', "w") as f:
         json.dump(metrics, f)
 
