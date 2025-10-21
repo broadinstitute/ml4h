@@ -3547,14 +3547,14 @@ def heatmap_performance(df, prefix="./figures/"):
             for j in range(pivot_df.shape[1]):
                 value = pivot_df.iloc[i, j]
                 if not pd.isna(value):
-                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontweight="bold", fontsize=14)
+                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14)
 
         plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=pivot_df.columns, rotation=45, ha="right")
         plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=pivot_df.index)
         plt.colorbar(im, label="Score")
         plt.title(f"Model Performance by Task ({metric_type.upper()})")
-        #plt.tight_layout()
-        figure_path = f"{prefix}/radar_performance.png"
+        plt.tight_layout()
+        figure_path = f"{prefix}/heatmap_performance.png"
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path)
