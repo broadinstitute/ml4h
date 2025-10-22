@@ -586,8 +586,8 @@ def train_transformer_on_parquet(args):
         df = pd.read_csv(args.transformer_label_file, sep='\t')
 
     if 'ecg_datetime' in args.merge_columns:
-        df['ecg_datetime'] = pd.to_datetime(df.datetime_x)
-        df['mrn'] = df.MRN
+        # df['ecg_datetime'] = pd.to_datetime(df.datetime_x)
+        # df['mrn'] = df.MRN
         echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
 
     df = pd.merge(echo_df, df, on=args.merge_columns, how='inner')
