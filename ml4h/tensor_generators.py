@@ -1184,6 +1184,22 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     train_ids = set(group_ids[idx_train])
     val_ids = set(group_ids[idx_val])
 
+    # Log training and validation set sizes
+    train_groups = len(train_ids)
+    val_groups = len(val_ids)
+
+    # Calculate total rows for train and validation sets
+    train_rows = 0
+    val_rows = 0
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        if gid in train_ids:
+            train_rows += len(g)
+        elif gid in val_ids:
+            val_rows += len(g)
+
+    logging.info(f"Training set: {train_groups} groups, {train_rows} total rows")
+    logging.info(f"Validation set: {val_groups} groups, {val_rows} total rows")
+
     Feat = len(INPUT_NUMERIC_COLS)
 
     # ---------- Build once (unchanged index, no view used) ----------
