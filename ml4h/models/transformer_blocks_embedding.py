@@ -390,7 +390,7 @@ def build_embedding_transformer(
     score = layers.Reshape((MAX_LEN,), name='attn_score_squeeze')(score)  # (B,T)
 
     mask_f = CastToFloatLayer(name='mask_cast')(inp_mask)
-    
+
     very_neg = ApplyVeryNegativeLayer(name='veryneg')(mask_f)
     score_m = layers.Add(name='score_masked')([score, very_neg])
     wts = layers.Softmax(axis=-1, name='attn_wts')(score_m)  # (B,T)
@@ -502,12 +502,7 @@ def evaluate_multitask_on_dataset(
         except ValueError:
             r2 = float("nan")
         results[t] = {"MAE": mae, "MSE": mse, "R2": r2}
-        performance_data.append({
-                "Model": name,
-                "Task": t,
-                "Metric": 'metric',
-                "Score": r2
-            })
+        performance_data.append({"Model": name, "Task": t, "Metric": 'R^2', "Score": r2})
     # Binary tasks
     for t in BINARY_TARGETS:
         if y_true[t].size == 0:
@@ -529,12 +524,8 @@ def evaluate_multitask_on_dataset(
             auprc = float("nan")
         acc = float(accuracy_score(yt, (prob >= 0.5).astype("int32")))
         results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc}
-        performance_data.append({
-                "Model": name,
-                "Task": t,
-                "Metric": 'metric',
-                "Score": auroc
-            })
+        performance_data.append({"Model": name, "Task": t, "Metric": 'auROC', "Score": auroc})
+        performance_data.append({"Model": name, "Task": t, "Metric": 'auPRC', "Score": auprc})
     if verbose:
         logging.info("\n=== Evaluation on dataset ===")
         for t in REGRESSION_TARGETS:
