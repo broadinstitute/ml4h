@@ -283,6 +283,7 @@ def build_embedding_transformer(
     x = layers.Dropout(DROPOUT)(x)
 
     # Positional embedding (learnable)
+    @keras.saving.register_keras_serializable()
     def make_pos_idx(v):
         b = keras.ops.shape(v)[0]
         pos = keras.ops.arange(0, MAX_LEN)
