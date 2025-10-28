@@ -390,6 +390,7 @@ def build_embedding_transformer(
     score = layers.Reshape((MAX_LEN,), name='attn_score_squeeze')(score)  # (B,T)
 
     mask_f = CastToFloatLayer(name='mask_cast')(inp_mask)
+    
     very_neg = ApplyVeryNegativeLayer(name='veryneg')(mask_f)
     score_m = layers.Add(name='score_masked')([score, very_neg])
     wts = layers.Softmax(axis=-1, name='attn_wts')(score_m)  # (B,T)
