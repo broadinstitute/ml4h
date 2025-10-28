@@ -80,6 +80,8 @@ def run(args):
             train_xdl_af(args)
         elif 'train_transformer_on_parquet' == args.mode:
             train_transformer_on_parquet(args)
+        elif 'test_transformer_on_parquet' == args.mode:
+            test_transformer_on_parquet(args)
         elif 'test' == args.mode:
             test_multimodal_multitask(args)
         elif 'compare' == args.mode:
@@ -663,6 +665,42 @@ def train_transformer_on_parquet(args):
     heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     with open(f'{args.output_folder}/{args.id}/metrics.json', "w") as f:
         json.dump(metrics, f)
+
+def test_transformer_on_parquet(args):
+    if args.transformer_input_file.endswith('.pq'):
+        echo_df = pd.read_parquet(args.transformer_input_file)
+    else:
+        echo_df = pd.read_csv(args.transformer_input_file, sep='\t')
+
+    if args.transformer_label_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_label_file)
+    else:
+        df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+    if 'ecg_datetime' in args.merge_columns:
+        df['ecg_datetime'] = pd.to_datetime(df.ecg_datetime)
+        echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
+
+    df = pd.merge(echo_df, df, on=args.merge_columns, how='inner')
+
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
+
+    if len(args.input_categorical_columns) == 1:
+        input_categorical_column = args.input_categorical_columns[0]
+    else:
+        input_categorical_column = None
+
+    model = keras.models.load_model(args.model_file)
+    train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
+                                                     args.target_regression_columns + args.target_binary_columns,
+                                                     args.transformer_max_size, args.batch_size)
+    metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    with open(f'{args.output_folder}/{args.id}/metrics.json', "w") as f:
+        json.dump(metrics, f)
+
 
 def datetime_to_float(d):
     return pd.to_datetime(d, utc=True).timestamp()
