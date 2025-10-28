@@ -13,6 +13,85 @@ tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
+# Register serializable functions at module level
+@keras.saving.register_keras_serializable(package='ml4h')
+class PositionIndexLayer(keras.layers.Layer):
+    """Custom layer to generate position indices for positional encoding."""
+
+    def __init__(self, max_len, **kwargs):
+        super().__init__(**kwargs)
+        self.max_len = max_len
+
+    def call(self, inputs):
+        """Generate position indices."""
+        b = keras.ops.shape(inputs)[0]
+        pos = keras.ops.arange(0, self.max_len)
+        pos = keras.ops.tile(keras.ops.expand_dims(pos, 0), (b, 1))
+        return pos
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'max_len': self.max_len})
+        return config
+
+
+@keras.saving.register_keras_serializable(package='ml4h')
+class ExpandDimsLayer(keras.layers.Layer):
+    """Custom layer to expand dimensions with specified axis."""
+
+    def __init__(self, axis, **kwargs):
+        super().__init__(**kwargs)
+        self.axis = axis
+
+    def call(self, inputs):
+        """Expand dimensions."""
+        return keras.ops.expand_dims(inputs, self.axis)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'axis': self.axis})
+        return config
+
+
+@keras.saving.register_keras_serializable(package='ml4h')
+class LogicalAndLayer(keras.layers.Layer):
+    """Custom layer to apply logical AND to two inputs."""
+
+    def call(self, inputs):
+        """Apply logical AND."""
+        return keras.ops.logical_and(inputs[0], inputs[1])
+
+
+@keras.saving.register_keras_serializable(package='ml4h')
+class CastToFloatLayer(keras.layers.Layer):
+    """Custom layer to cast boolean to float32."""
+
+    def call(self, inputs):
+        """Cast to float32."""
+        return keras.ops.cast(inputs, 'float32')
+
+
+@keras.saving.register_keras_serializable(package='ml4h')
+class ApplyVeryNegativeLayer(keras.layers.Layer):
+    """Custom layer to apply very negative values to masked positions."""
+
+    def call(self, inputs):
+        """Apply very negative values."""
+        return (1.0 - inputs) * (-1e9)
+
+
+@keras.saving.register_keras_serializable(package='ml4h')
+class SumOverTimeLayer(keras.layers.Layer):
+    """Custom layer to sum over time dimension."""
+
+    def call(self, inputs):
+        """Sum over axis 1."""
+        return keras.ops.sum(inputs, axis=1)
+
+
+
+
+
 class TransformerEncoderEmbedding(Block):
     #this version directly intakes in tokens in the shape of (batch_size, N_tokens,embedim)
     def __init__(
@@ -283,23 +362,15 @@ def build_embedding_transformer(
     x = layers.Dropout(DROPOUT)(x)
 
     # Positional embedding (learnable)
-    @keras.saving.register_keras_serializable()
-    def make_pos_idx(v):
-        b = keras.ops.shape(v)[0]
-        pos = keras.ops.arange(0, MAX_LEN)
-        pos = keras.ops.tile(keras.ops.expand_dims(pos, 0), (b, 1))
-        return pos
-
     if view2id is not None:
-        pos_idx = layers.Lambda(make_pos_idx, name='pos_idx', output_shape=(MAX_LEN,))(inp_view)
+        pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_view)
         pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
         x = layers.Add(name='add_pos')([x, pos_emb])
 
     # Build (B,T,T) attention mask from (B,T)
-    m_q = layers.Lambda(lambda m: keras.ops.expand_dims(m, 2), name='mask_q', output_shape=(MAX_LEN, 1))(inp_mask)
-    m_k = layers.Lambda(lambda m: keras.ops.expand_dims(m, 1), name='mask_k', output_shape=(1, MAX_LEN))(inp_mask)
-    mask_2d = layers.Lambda(lambda z: keras.ops.logical_and(z[0], z[1]), name='mask_qk',
-                            output_shape=(MAX_LEN, MAX_LEN))([m_q, m_k])
+    m_q = ExpandDimsLayer(axis=2, name='mask_q')(inp_mask)
+    m_k = ExpandDimsLayer(axis=1, name='mask_k')(inp_mask)
+    mask_2d = LogicalAndLayer(name='mask_qk')([m_q, m_k])
 
     # Transformer blocks
     for i in range(NUM_LAYERS):
@@ -318,13 +389,13 @@ def build_embedding_transformer(
     score = layers.Dense(1, name='attn_score')(score_h)  # (B,T,1)
     score = layers.Reshape((MAX_LEN,), name='attn_score_squeeze')(score)  # (B,T)
 
-    mask_f = layers.Lambda(lambda m: keras.ops.cast(m, 'float32'), name='mask_cast', output_shape=(MAX_LEN,))(inp_mask)
-    very_neg = layers.Lambda(lambda m: (1.0 - m) * (-1e9), name='veryneg', output_shape=(MAX_LEN,))(mask_f)
+    mask_f = CastToFloatLayer(name='mask_cast')(inp_mask)
+    very_neg = ApplyVeryNegativeLayer(name='veryneg')(mask_f)
     score_m = layers.Add(name='score_masked')([score, very_neg])
     wts = layers.Softmax(axis=-1, name='attn_wts')(score_m)  # (B,T)
     wts_e = layers.Reshape((MAX_LEN, 1), name='wts_e')(wts)
     ctx = layers.Multiply(name='apply_wts')([x, wts_e])  # (B,T,D)
-    ctx = layers.Lambda(lambda t: keras.ops.sum(t, axis=1), name='pool', output_shape=(TOKEN_HIDDEN,))(ctx)  # (B,D)
+    ctx = SumOverTimeLayer(name='pool')(ctx)  # (B,D)
 
     # Shared tower
     h = layers.Dense(128, activation='relu')(ctx)
