@@ -3531,7 +3531,7 @@ def radar_performance(df, prefix, show=False):
         #plt.tight_layout()
         if show:
             plt.show()
-        figure_path = f"{prefix}/radar_performance.png"
+        figure_path = f"{prefix}/heatmap_performance_{metric_type.lower()}.png"
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path)
@@ -3558,7 +3558,7 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         plt.tight_layout()
         if show:
             plt.show()
-        figure_path = f"{prefix}/heatmap_performance.png"
+        figure_path = f"{prefix}/heatmap_performance_{metric_type.lower()}.png"
         if not os.path.exists(os.path.dirname(figure_path)):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path)
