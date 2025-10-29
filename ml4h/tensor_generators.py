@@ -1237,9 +1237,9 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
         if input_categorical_column:
             arr_view = df_sorted['_view_id'].to_numpy(np.int32)
 
-        # MRN-level targets (first value per group); None if target missing in df
+        # MRN-level targets (mean of non-NA values per group); None if target missing in df
         arr_tgts = {
-            t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].first() if t in df_sorted.columns else None)
+            t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].mean() if t in df_sorted.columns else None)
             for t in TARGETS_ALL
         }
 
