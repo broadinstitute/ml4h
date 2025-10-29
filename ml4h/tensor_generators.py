@@ -1161,15 +1161,14 @@ def build_datasets(
     train_ds = make_ds(Xv_tr, Xn_tr, m_tr, y_tr, w_tr, BATCH, shuffle=True)
     val_ds = make_ds(Xv_va, Xn_va, m_va, y_va, w_va, BATCH, shuffle=False)
     return train_ds, val_ds
-
-
-
+    
 def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, TARGETS_ALL, MAX_LEN, BATCH):
     if input_categorical_column:
         view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
         view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
         df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
     # Reproducible ordering
+    print("Aggregate column is ", AGGREGATE_COLUMN, df.columns)
     df_sorted = df.sort_values([AGGREGATE_COLUMN]).reset_index(drop=True)
 
     # ----- Train/Val split by group id (optionally stratify on a regression target if available) -----

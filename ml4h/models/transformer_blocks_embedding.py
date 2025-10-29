@@ -327,7 +327,97 @@ def encoder(
         inputs=[inputs, padding_mask], outputs=outputs, name=name,
     )
 
+from keras import layers, ops, Model, Input, metrics, optimizers
 
+def build_transformer(
+    input_dim,                   # e.g. 19968
+    REGRESSION_TARGETS,          # e.g. ["age"]
+    BINARY_TARGETS,              # e.g. []
+    TOKEN_HIDDEN,                # e.g. 256
+    TRANSFORMER_DIM,             # e.g. 256
+    NUM_HEADS,                   # e.g. 4
+    NUM_LAYERS,                  # e.g. 4
+    DROPOUT                      # e.g. 0.1
+):
+    """
+    Minimal transformer encoder (Keras 3 native ops only).
+    Input:
+      num  : (B, T, input_dim)
+      mask : (B, T)
+    Output:
+      regression / binary targets
+    """
+
+    # --- Inputs ---
+    inp_num  = Input(shape=(None, input_dim), dtype="float32", name="num")  # (B, T, input_dim)
+    inp_mask = Input(shape=(None,), dtype="bool", name="mask")              # (B, T)
+
+    # --- Project to token dim ---
+    x = layers.Dense(TOKEN_HIDDEN, activation="relu", name="token_proj")(inp_num)
+    x = layers.Dropout(DROPOUT)(x)
+
+    # --- Transformer encoder blocks ---
+    for i in range(NUM_LAYERS):
+        # make attention mask shape (B, 1, 1, T)
+        mask_4d = layers.Lambda(
+            lambda m: ops.expand_dims(ops.expand_dims(m, 1), 1),
+            name=f"mask4d_{i}"
+        )(inp_mask)
+
+        attn_out = layers.MultiHeadAttention(
+            num_heads=NUM_HEADS,
+            key_dim=max(1, TOKEN_HIDDEN // NUM_HEADS),
+            dropout=DROPOUT,
+            name=f"mha_{i}"
+        )(x, x, attention_mask=mask_4d)
+
+        x = layers.Add(name=f"add_attn_{i}")([x, attn_out])
+        x = layers.LayerNormalization(epsilon=1e-6, name=f"ln_attn_{i}")(x)
+
+        ff = layers.Dense(TRANSFORMER_DIM, activation="relu", name=f"ff1_{i}")(x)
+        ff = layers.Dropout(DROPOUT)(ff)
+        ff = layers.Dense(TOKEN_HIDDEN, name=f"ff2_{i}")(ff)
+        x = layers.Add(name=f"add_ff_{i}")([x, ff])
+        x = layers.LayerNormalization(epsilon=1e-6, name=f"ln_ff_{i}")(x)
+
+    # --- Mask-aware mean pooling ---
+    mask_f = layers.Lambda(lambda m: ops.cast(m, "float32")[..., None], name="mask_cast")(inp_mask)
+    x_masked = layers.Multiply(name="mask_apply")([x, mask_f])
+
+    summed = layers.Lambda(lambda t: ops.sum(t, axis=1), name="sum_time")(x_masked)
+    denom = layers.Lambda(lambda m: ops.sum(m, axis=1) + 1e-6, name="mask_sum")(mask_f)
+    pooled = layers.Lambda(lambda z: z[0] / z[1], name="mean_pool")([summed, denom])  # (B, D)
+
+    # --- Output head ---
+    h = layers.Dense(128, activation="relu", name="head_pre")(pooled)
+    h = layers.Dropout(DROPOUT)(h)
+
+    outputs = {}
+    for t in REGRESSION_TARGETS:
+        outputs[t] = layers.Dense(1, name=t)(h)
+    for t in BINARY_TARGETS:
+        outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
+
+    model = Model(inputs={"num": inp_num, "mask": inp_mask}, outputs=outputs)
+
+    # --- Compile ---
+    losses = {t: "mse" for t in REGRESSION_TARGETS}
+    losses.update({t: "binary_crossentropy" for t in BINARY_TARGETS})
+    metrics_dict = {
+        t: [metrics.MeanAbsoluteError(name="mae"), metrics.MeanSquaredError(name="mse")]
+        for t in REGRESSION_TARGETS
+    }
+
+    model.compile(
+        optimizer=optimizers.Adam(1e-3),
+        loss=losses,
+        metrics=metrics_dict
+    )
+
+    model.summary()
+    return model
+    
+    
 def build_embedding_transformer(
         INPUT_NUMERIC_COLS,
         REGRESSION_TARGETS,
@@ -341,8 +431,8 @@ def build_embedding_transformer(
         DROPOUT,
         view2id,
 ):
-    Feat = len(INPUT_NUMERIC_COLS)
-
+    Feat = 64 #len(INPUT_NUMERIC_COLS)
+    print(MAX_LEN, EMB_DIM, TOKEN_HIDDEN, TRANSFORMER_DIM, NUM_HEADS, NUM_LAYERS)
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
     inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
 

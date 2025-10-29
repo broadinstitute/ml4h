@@ -20,7 +20,7 @@ from collections import Counter, defaultdict
 
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
-from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset
+from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset, build_transformer
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.models.train import train_model_from_generators
@@ -575,21 +575,465 @@ def train_xdl_af(args):
         elif otm.is_continuous():
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
 
+import os
+import hashlib
+from typing import Iterator, List, Optional, Tuple, Dict
+
+import os
+import hashlib
+from typing import Iterator, List, Optional, Tuple, Dict
+
+import numpy as np
+import tensorflow as tf
+import pyarrow as pa
+import pyarrow.csv as pa_csv
+import pyarrow.dataset as ds
+import pandas as pd
+    
+class StreamingLatentLoader:
+    """
+    Truly streaming dataloader for huge latent matrices (CSV/TSV/Parquet) + small labels.
+
+    Key improvements vs. previous version
+    -------------------------------------
+    - **No per-row re-opens**: reads latents in **batches** once; no O(N^2) I/O
+    - **No pandas conversions**: operates on Arrow arrays → NumPy directly
+    - **Robust header detection** for CSV/TSV; clear error if no `latents_` columns found
+    - **Supports Parquet, CSV, TSV** with dedicated streaming code paths
+
+    Yields (latents[D], labels[L]) where D = #latent columns, L = #label columns.
+    Deterministic split by hashing join key tuple.
+    """
+
+    def __init__(
+        self,
+        input_path: str,
+        label_path: str,
+        join_keys: List[str],
+        label_columns: List[str],
+        batch_size: int = 128,
+        train_percent: float = 80.0,
+    ):
+        self.input_path = input_path
+        self.label_path = label_path
+        self.join_keys = list(join_keys)
+        self.label_columns = list(label_columns)
+        self.batch_size = int(batch_size)
+        self.train_percent = float(train_percent)
+
+        # Infer formats
+        self.input_fmt, self.input_delim = self._infer_format(self.input_path)
+        self.label_fmt, self.label_delim = self._infer_format(self.label_path)
+
+        # Load labels fully (small)
+        self.label_df = self._load_labels()
+        # Fast lookup structures
+        self.label_map: Dict[Tuple, np.ndarray] = {
+            tuple(getattr(r, k) for k in self.join_keys): np.array([getattr(r, c) for c in self.label_columns], dtype=np.float32)
+            for r in self.label_df.itertuples(index=False)
+        }
+        self.label_keyset = set(self.label_map.keys())
+
+        # Discover latent columns robustly
+        all_cols = self._list_input_columns()
+        if not set(self.join_keys).issubset(all_cols):
+            missing = sorted(set(self.join_keys) - set(all_cols))
+            raise ValueError(f"Join keys missing from input file: {missing}. Columns available: {list(all_cols)[:20]}…")
+        self.latent_cols = [c for c in all_cols if c.startswith("latent_")]
+        if not self.latent_cols:
+            hint = "Check delimiter and header row; expected columns like 'latent_0'."
+            raise ValueError(f"No latent columns found matching prefix 'latent_'. {hint}\nFirst columns seen: {list(all_cols)[:20]}")
+
+    # ------------------
+    # Utilities
+    # ------------------
+    @staticmethod
+    def _infer_format(path: str) -> Tuple[str, Optional[str]]:
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".parquet":
+            return "parquet", None
+        if ext == ".csv":
+            return "csv", ","
+        if ext in (".tsv", ".txt"):
+            return "csv", "\t"
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+    def _load_labels(self):
+        if self.label_fmt == "parquet":
+            dset = ds.dataset(self.label_path, format="parquet")
+            df = dset.to_table().to_pandas()
+        else:
+            # Default CSV reader assumes comma; TSV handled by explicit parse later.
+            if self.label_delim == ",":
+                dset = ds.dataset(self.label_path, format="csv")
+                return dset.to_table().to_pandas()
+            # Non-comma delimiter: read via pa_csv
+            table = pa_csv.read_csv(
+                self.label_path,
+                read_options=pa_csv.ReadOptions(block_size=1 << 22),
+                parse_options=pa_csv.ParseOptions(delimiter=self.label_delim),
+                convert_options=pa_csv.ConvertOptions(check_utf8=False),
+            )
+            df =  table.to_pandas()
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.dropna(subset=self.label_columns)
+        df[self.label_columns] = df[self.label_columns].astype(np.float32)
+        return df #dset.to_table().to_pandas()
+
+    def _list_input_columns(self) -> List[str]:
+        if self.input_fmt == "parquet":
+            dset = ds.dataset(self.input_path, format="parquet")
+            return [f.name for f in dset.schema]
+        # CSV/TSV: read header line for robust, cheap column listing
+        with open(self.input_path, "r", encoding="utf-8", errors="ignore") as f:
+            header = f.readline().rstrip("\n\r")
+        cols = header.split(self.input_delim or ",")
+        return cols
+
+    # ------------------
+    # Streaming core
+    # ------------------
+    def _iter_input_batches(self) -> Iterator[pa.RecordBatch]:
+        """Yield RecordBatch with join keys, timestamp, and latent columns only."""
+        need_cols = self.join_keys + ["timestamp"] + self.latent_cols
+        if self.input_fmt == "parquet":
+            dset = ds.dataset(self.input_path, format="parquet")
+            # Use a reasonable batch_size to balance I/O and memory
+            scanner = dset.scanner(columns=need_cols, batch_size=max(1024, self.batch_size), use_threads=True)
+            for b in scanner.to_batches():
+                yield b
+        else:
+            # CSV/TSV streaming
+            reader = pa_csv.open_csv(
+                self.input_path,
+                read_options=pa_csv.ReadOptions(block_size=1 << 22),  # ~4MB
+                parse_options=pa_csv.ParseOptions(delimiter=self.input_delim or ","),
+                convert_options=pa_csv.ConvertOptions(check_utf8=False),
+            )
+            while True:
+                batch = reader.read_next_batch()
+                if batch is None:
+                    break
+                # Select only needed columns; fall back if some missing
+                select_cols = [c for c in need_cols if c in [f.name for f in batch.schema]]
+                yield batch.select(select_cols)
+
+    @staticmethod
+    def _hash_is_train(key_tuple: Tuple, train_percent: float) -> bool:
+        h = hashlib.sha1("||".join(map(str, key_tuple)).encode()).hexdigest()
+        return int(h[:8], 16) % 100 < int(train_percent)
+
+    def _stream_examples(self, split: str) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
+        for batch in self._iter_input_batches():
+            # Build a [rows, D] latent matrix for the whole batch at once
+            latent_cols_arrays = [batch.column(c).to_numpy(zero_copy_only=False) for c in self.latent_cols]
+            if not latent_cols_arrays:
+                # Defensive: avoid ValueError: need at least one array to stack
+                continue
+            lat_mat = np.column_stack(latent_cols_arrays).astype(np.float32, copy=False)
+
+            # Prepare join key tuples per row
+            key_arrays = [batch.column(k).to_numpy(zero_copy_only=False) for k in self.join_keys]
+            n = batch.num_rows
+            for i in range(n):
+                key = tuple(str(key_arrays[j][i]) for j in range(len(self.join_keys)))
+
+                # Split filter
+                if split != "all":
+                    is_tr = self._hash_is_train(key, self.train_percent)
+                    if (split == "train" and not is_tr) or (split == "test" and is_tr):
+                        continue
+
+                # Label lookup
+                lab = self.label_map.get(key)
+                if lab is None:
+                    continue
+
+                seq_len, embed_dim = 312, 64  # 👈 match your transformer
+                x = lat_mat[i].reshape(seq_len, embed_dim)
+
+                # --- ✅ create mask
+                mask = np.ones((seq_len,), dtype=bool)
+                yield x, lab
+
+    # ------------------
+    # TensorFlow API
+    # ------------------
+    def as_tf_dataset(self, split: str = "train") -> tf.data.Dataset:
+        if split not in ("train", "test", "all"):
+            raise ValueError("split must be 'train', 'test', or 'all'")
+
+        def gen():
+            for x, y in self._stream_examples(split):
+                # Build a mask of valid entries (all True, since no sequence truncation here)
+                mask = np.ones((x.shape[0],), dtype=bool)
+                # Package features into a dict to match model inputs
+                features = {"num": x, "mask": mask}
+                yield features, {"age": y}  # if label_columns = ["age"]
+
+        d = len(self.latent_cols)
+        
+        output_sig = (
+            {
+                "num": tf.TensorSpec(shape=(312, 64), dtype=tf.float32),
+                "mask": tf.TensorSpec(shape=(312, ), dtype=tf.bool),
+            },
+            {"age": tf.TensorSpec(shape=(len(self.label_columns),), dtype=tf.float32)},
+        )
+
+        ds_tf = tf.data.Dataset.from_generator(gen, output_signature=output_sig)
+        ds_tf = ds_tf.batch(self.batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
+        return ds_tf
+
+
+
+import os
+import hashlib
+from typing import Iterator, List, Optional, Tuple, Dict
+
+import numpy as np
+import tensorflow as tf
+import pyarrow as pa
+import pyarrow.csv as pa_csv
+import pyarrow.dataset as ds
+import pandas as pd
+
+class ParquetDataloader:
+    def __init__(self,
+                 input_file_path,
+                 label_file_path,
+                 key_columns,
+                 label_columns,
+                 model_batch_size = 4,
+                 batch_size=1024,
+                 split = 0.7):
+        self.input_file_path = input_file_path
+        self.label_file_path = label_file_path
+        self.key_columns = key_columns
+        self.label_columns = label_columns
+        self.batch_size = batch_size
+        self.split = split
+        self.model_batch_size = model_batch_size
+
+        
+
+        self.labels_df = self._load_labels()
+        self.label_key_set = set(self.labels_df.index)
+
+        dset = ds.dataset(self.input_file_path, format="parquet")
+        
+        all_columns = dset.schema.names
+        self.latent_columns = [c for c in all_columns if c.startswith("latent_")]
+
+
+    def _load_labels(self):
+        dset = ds.dataset(self.label_file_path, format="parquet")
+        df = dset.to_table().to_pandas()
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.dropna(subset=self.label_columns)
+        df[self.label_columns] = df[self.label_columns].astype(np.float32)
+
+        df["key"] = df[self.key_columns].astype(str).agg("_".join, axis=1)
+        return df.set_index("key")
+        #return df
+    
+    def _iter_input_batches(self, split = "train") -> Iterator[pa.RecordBatch]:
+        
+        dset = ds.dataset(self.input_file_path, format="parquet")
+        
+        all_columns = dset.schema.names
+        self.latent_columns = [c for c in all_columns if c.startswith("latent_")]
+        meta_columns = [c for c in all_columns if c not in self.latent_columns]
+        scanner = dset.scanner(columns = meta_columns + self.latent_columns, batch_size=self.batch_size, use_threads=True)
+        for b in scanner.to_batches():
+            keys_df = pd.DataFrame({k: b.column(k).to_numpy(zero_copy_only=False) for k in self.key_columns})
+            keys_df["timestamp"] = keys_df["timestamp"].astype(str).str.replace(" ", "T")
+
+
+            keys = keys_df.astype(str).agg("_".join, axis=1).to_numpy()
+
+            #mask = np.array([self._hashsplit(k) == split for k in keys])
+
+            hashes = np.fromiter(
+                (int(hashlib.md5(k.encode()).hexdigest(), 16) % 1000 for k in keys),
+                dtype=np.int64
+            )
+        
+            mask = (hashes < self.split * 1000)
+            
+            #mask = (np.array([hash(k) % 1000 for k in keys]) < self.split * 1000)
+
+
+            latent_arr = np.stack([b.column(c).to_numpy(zero_copy_only=False) for c in self.latent_columns], axis=1)
+            latent_arr = latent_arr[mask]
+
+            filtered_keys = keys[mask]
+
+            #valid_keys = [k for k in filtered_keys if k in self.labels_df.index]
+            mask_valid = np.fromiter((k in self.label_key_set for k in filtered_keys), dtype=bool)
+
+            valid_keys = filtered_keys[mask_valid]
+
+            if len(valid_keys) == 0:
+                continue
+
+            latent_arr = latent_arr[np.isin(filtered_keys, valid_keys)]
+            y = self.labels_df.loc[valid_keys, self.label_columns].values
+
+            #yield latent_arr.astype(np.float32), y.astype(np.float32)
+            for i in range(0, len(latent_arr), self.model_batch_size):
+                yield latent_arr[i:i + self.model_batch_size].astype(np.float32), y[i:i + self.model_batch_size].astype(np.float32), valid_keys[i:i + self.model_batch_size]
+
+
+    def _hashsplit(self, sample_id):
+        h = int(hashlib.md5(sample_id.encode()).hexdigest(), 16)
+        frac = h/ float(16 ** 32)
+        if frac < self.split:
+            return "train"
+        else:
+            return "val"
+
+    def get_tf_dataset(self, split: str = "train") -> tf.data.Dataset:
+        def gen():
+            for X, y, keys in self._iter_input_batches(split):
+                yield X, y, keys
+
+        return tf.data.Dataset.from_generator(
+                gen,
+                output_signature=(
+                    tf.TensorSpec(shape=(None, len(self.latent_columns)), dtype=tf.float32),
+                    tf.TensorSpec(shape=(None, len(self.label_columns)), dtype=tf.float32),
+                    tf.TensorSpec(shape=(None,), dtype=tf.string)
+                )
+            ).prefetch(tf.data.AUTOTUNE)
+
+
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+
+class LongitudinalDatasetWrapper:
+    """
+    Wraps a ParquetDataloader to yield longitudinal sequences grouped by `group_column`
+    (e.g., sample_id), sorted by timestamp, and padded to (B, Seq_len, *input_shape).
+    """
+
+    def __init__(self, parquet_loader, group_column="sample_id", max_seq_len=None):
+        self.loader = parquet_loader
+        self.group_column = group_column
+        self.max_seq_len = max_seq_len  # optional truncation for very long sequences
+
+    def _group_by_subject(self, X_batch, y_batch, key_batch):
+        """
+        Group a flat batch of samples into subject-level sequences.
+        Expects keys in the format '{sample_id}_{timestamp}'.
+        """
+        decoded_keys = [k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else k for k in key_batch]
+        df = pd.DataFrame({"key": decoded_keys})
+        df[self.group_column] = df["key"].str.split("_").str[0]
+        df["idx"] = np.arange(len(df))
+
+        seqs_X, seqs_y = [], []
+
+        for pid, g in df.groupby(self.group_column, sort=False):
+            idxs = g["idx"].values
+            seq_X = X_batch[idxs]
+            seq_y = y_batch[idxs]
+
+            # Optionally truncate very long sequences
+            if self.max_seq_len is not None and len(seq_X) > self.max_seq_len:
+                seq_X = seq_X[:self.max_seq_len]
+                seq_y = seq_y[:self.max_seq_len]
+
+            latest_y = seq_y[-1].reshape(-1)
+            seqs_X.append(seq_X)
+            seqs_y.append(latest_y)
+
+        return seqs_X, seqs_y
+
+    def get_tf_dataset(self, split="train"):
+        """
+        Converts the base ParquetDataloader dataset into a longitudinal one
+        grouped and padded by sequence length.
+        """
+        base_ds = self.loader.get_tf_dataset(split)
+
+        def gen():
+            for X, y, keys in base_ds:
+                # ⚠️ Need keys for grouping → add this in your loader if not already
+                # For now, create synthetic keys for demonstration (replace with real)
+                seqs_X, seqs_y = self._group_by_subject(X.numpy(), y.numpy(), keys.numpy())
+                for X_seq, y_seq in zip(seqs_X, seqs_y):
+                    mask = np.any(X_seq != 0.0, axis=1)
+                    yield X_seq, mask, y_seq
+
+        return (
+            tf.data.Dataset.from_generator(
+                gen,
+                output_signature=(
+                    tf.TensorSpec(shape=(None, len(self.loader.latent_columns)), dtype=tf.float32),
+                    tf.TensorSpec(shape=(None,), dtype=tf.bool),
+                    tf.TensorSpec(shape=(len(self.loader.label_columns),), dtype=tf.float32),  #len(self.loader.label_columns)
+                ),
+            )
+            .padded_batch(
+                self.loader.model_batch_size,
+                padded_shapes=(
+                    [None, len(self.loader.latent_columns)],   # pad along Seq_len
+                    [None],
+                    [len(self.loader.label_columns)],
+                ),
+                padding_values=(
+                    np.float32(0.0),
+                    False,
+                    np.float32(0.0),
+                ),
+                drop_remainder=False,
+            )
+            .prefetch(tf.data.AUTOTUNE)
+        )
+
+
+import os
+import hashlib
+from typing import Iterator, List, Optional, Tuple, Dict
+import multiprocessing as mp
+from functools import partial
+
+import numpy as np
+import tensorflow as tf
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pyarrow.dataset as ds
+import pandas as pd
+
 
 def train_transformer_on_parquet(args):
-    if args.transformer_input_file.endswith('.pq'):
+    
+    '''
+    if args.transformer_input_file.endswith(('.pq', '.parquet')):
         echo_df = pd.read_parquet(args.transformer_input_file)
     else:
         echo_df = pd.read_csv(args.transformer_input_file, sep='\t')
 
-    if args.transformer_label_file.endswith('.pq'):
+    if args.transformer_label_file.endswith(('.pq', '.parquet')):
         df = pd.read_parquet(args.transformer_label_file)
     else:
         df = pd.read_csv(args.transformer_label_file, sep='\t')
 
+<<<<<<< Updated upstream
     if 'ecg_datetime' in args.merge_columns:
         df['ecg_datetime'] = pd.to_datetime(df.ecg_datetime)
         echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
+=======
+    input_numeric_columns = args.input_numeric_columns + [f'latent_{i}' for i in range(args.latent_dimensions)]
+
+# include merge keys for safety (since you merge later)
+    if 'timestamp' in args.merge_columns:
+        df['timestamp'] = pd.to_datetime(df.timestamp)
+        df['sample_id'] = df.sample_id
+        echo_df.timestamp = pd.to_datetime(echo_df.timestamp)
+>>>>>>> Stashed changes
 
     df = pd.merge(echo_df, df, on=args.merge_columns, how='inner')
 
@@ -615,9 +1059,52 @@ def train_transformer_on_parquet(args):
     #     args.transformer_max_size,
     #     args.batch_size,
     # )
+    args.group_column = "sample_id_x"
     train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
-                                                     args.target_regression_columns + args.target_binary_columns,
-                                                     args.transformer_max_size, args.batch_size)
+                                                    args.target_regression_columns + args.target_binary_columns,
+                                                   args.transformer_max_size, args.batch_size)
+    '''
+    '''loader = StreamingLatentLoader(
+        input_path="/home/rrathod3/ecg_latents_19968.parquet",
+        label_path="/home/rrathod3/ecg2age_wide_file.parquet",
+        join_keys=["sample_id"],
+        label_columns=["age"],
+        batch_size=8,
+    )'''
+    base_loader = StreamingParallelParquetDataloader(
+        input_file_path="/home/rrathod3/ecg_latents_19968.parquet",
+        label_file_path="/home/rrathod3/ecg2age_wide_file.parquet",
+        key_columns=["sample_id", "timestamp"],
+        label_columns=["age"],
+        model_batch_size=16,
+        num_workers=4,  # Adjust based on CPU cores
+        queue_size=50
+    )
+    long_loader = LongitudinalDatasetWrapper(base_loader, group_column="sample_id", max_seq_len=10)
+
+    train_ds = long_loader.get_tf_dataset("train")
+    val_ds = long_loader.get_tf_dataset("test")
+
+    train_ds = train_ds.map(lambda X, mask, y: ({'num': X, 'mask': mask}, y))
+    val_ds = val_ds.map(lambda X, mask, y: ({'num': X, 'mask': mask}, y))
+
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
+
+    input_categorical_column = None
+    view2id = None
+
+    model = build_transformer(
+        19968,                      # positional arg 1
+        args.target_regression_columns, # positional arg 2
+        [],
+        args.transformer_token_embed,
+        args.transformer_size,
+        args.attention_heads,
+        args.transformer_layers,
+        args.transformer_dropout_rate
+    )
+    '''
     model = build_embedding_transformer(
         input_numeric_columns,
         args.target_regression_columns,
@@ -631,6 +1118,7 @@ def train_transformer_on_parquet(args):
         args.transformer_dropout_rate,
         view2id,
     )
+    '''
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
