@@ -3479,6 +3479,12 @@ def regplot(
 
 
 def radar_performance(df, prefix, show=False):
+    df['Metric'] = (
+        df['Metric']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+    )
     # Group by metric and generate radar plot for each
     for metric_type, metric_df in df.groupby("Metric"):
         # Keep best score per model-task pair
@@ -3537,7 +3543,12 @@ def radar_performance(df, prefix, show=False):
         plt.savefig(figure_path)
 
 def heatmap_performance(df, prefix="./figures/", show=False):
-
+    df['Metric'] = (
+        df['Metric']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+    )
     for metric_type, metric_df in df.groupby("Metric"):
         metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
