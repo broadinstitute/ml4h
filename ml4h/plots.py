@@ -3479,8 +3479,8 @@ def regplot(
 
 
 def radar_performance(df, prefix, show=False):
-    df['Metric'] = (
-        df['Metric']
+    df['Task'] = (
+        df['Task']
         .str.replace('output_', '', regex=False)
         .str.replace('_continuous', '', regex=False)
         .str.replace('_categorical', '', regex=False)
@@ -3543,8 +3543,8 @@ def radar_performance(df, prefix, show=False):
         plt.savefig(figure_path)
 
 def heatmap_performance(df, prefix="./figures/", show=False):
-    df['Metric'] = (
-        df['Metric']
+    df['Task'] = (
+        df['Task']
         .str.replace('output_', '', regex=False)
         .str.replace('_continuous', '', regex=False)
         .str.replace('_categorical', '', regex=False)
