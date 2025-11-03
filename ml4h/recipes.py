@@ -663,7 +663,7 @@ def train_transformer_on_parquet(args):
     metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
     radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    with open(f'{args.output_folder}/{args.id}/metrics.json', "w") as f:
+    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 
 def test_transformer_on_parquet(args):
@@ -698,7 +698,7 @@ def test_transformer_on_parquet(args):
     metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
     radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    with open(f'{args.output_folder}/{args.id}/metrics.json', "w") as f:
+    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 
 
