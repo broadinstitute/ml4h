@@ -268,6 +268,12 @@ def _random_slice_tensor(tensor_key, max_random=50):
                 tm.shape,
                 np.array(hd5[tensor_key][..., slice_index], dtype=np.float32),
             )
+        if tm.dependent_map is not None:
+            dependents[tm.dependent_map] = np.zeros(
+                tm.dependent_map.shape,
+                dtype=np.float32,
+            )
+            dependents[tm.dependent_map][0] = (float(slice_index) - (max_random/2)) / (max_random/3.4641) # std of uniform
         return tensor
 
     return _slice_tensor_from_file
@@ -420,12 +426,23 @@ lax_4ch_diastole_slice0_256_256_3d = TensorMap(
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
+random_slice_index = TensorMap(
+    'random_slice_index', Interpretation.CONTINUOUS, shape=(1,), channel_map={'random_slice_index':0},
+)
 
 lax_4ch_random_slice_3d = TensorMap(
     'lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     normalization=ZeroMeanStd1(),
+    dependent_map=random_slice_index,
     tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0'),
 )
+lax_4ch_random_slice_3d_as_synthetic = TensorMap(
+    'synthetic_image', Interpretation.CONTINUOUS, shape=(160, 224, 1),
+    normalization=ZeroMeanStd1(),
+    dependent_map=random_slice_index,
+    tensor_from_file=_random_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0'),
+)
+
 lax_3ch_random_slice_3d = TensorMap(
     'lax_3ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(224, 160, 1),
     normalization=ZeroMeanStd1(),
@@ -2900,3 +2917,9 @@ t1map_pancreas_segmentation_dice = TensorMap(
     loss=dice,
     metrics=['categorical_accuracy'] + per_class_dice(MRI_PANCREAS_SEGMENTED_CHANNEL_MAP),
 )
+
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array(hd5[tm.name][:tm.shape[0], :tm.shape[1], :tm.shape[2]], dtype=np.float32)
+
+
+synthetic_image = TensorMap('synthetic_image', shape=(160, 224, 1), tensor_from_file=image_from_hd5)
