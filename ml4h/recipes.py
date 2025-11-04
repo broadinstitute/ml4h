@@ -668,20 +668,20 @@ def train_transformer_on_parquet(args):
 
 def test_transformer_on_parquet(args):
     if args.transformer_input_file.endswith('.pq'):
-        echo_df = pd.read_parquet(args.transformer_input_file)
+        df = pd.read_parquet(args.transformer_input_file)
     else:
-        echo_df = pd.read_csv(args.transformer_input_file, sep='\t')
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
 
-    if args.transformer_label_file.endswith('.pq'):
-        df = pd.read_parquet(args.transformer_label_file)
-    else:
-        df = pd.read_csv(args.transformer_label_file, sep='\t')
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
 
-    if 'ecg_datetime' in args.merge_columns:
-        df['ecg_datetime'] = pd.to_datetime(df.ecg_datetime)
-        echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
-
-    df = pd.merge(echo_df, df, on=args.merge_columns, how='inner')
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
 
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
