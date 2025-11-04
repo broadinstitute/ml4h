@@ -131,7 +131,7 @@ def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
         diffusion_steps=50,
     )
     control_predictions = regressor.predict(generated_images, verbose=0)
-    return control_predictions[tm_out.output_name()][:, 0] if tm_out.is_continuous() else control_predictions
+    return control_predictions[tm_out.output_name()][:, 0] if tm_out.is_continuous() else control_predictions[tm_out.output_name()]
 
 
 def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batch_size, mean, std, prefix):
@@ -172,10 +172,11 @@ def regress_on_controlled_generations(diffuser, regressor, tm_out, batches, batc
                  f'Diffusion Phenotype: {tm_out.name} Control vs Predictions', prefix)
 
 
-def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix):
+def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, batch_size, prefix,
+                                       interpolate_min, interpolate_max, interpolate_step):
     control_batch = {}
     if control_tm.is_continuous():
-        samples = np.arange(-2, 3, 1)
+        samples = np.arange(interpolate_min, interpolate_max, interpolate_step)
     elif control_tm.is_categorical():
         samples = np.arange(0, len(control_tm.channel_map), 1)
     num_rows = len(samples)
@@ -207,7 +208,6 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
                     plt.plot(generated_images[i_col, :, lead], label=lead)
             elif len(generated_images.shape) == 4:
                 plt.imshow(generated_images[i_col], cmap='gray')
-            plt.gca().set_title(f'{control_tm.name[:14]}: {pheno_scale:0.1f}')
             plt.axis("off")
 
     plt.tight_layout()
@@ -226,12 +226,13 @@ def train_diffusion_control_model(args, supervised=False):
             args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
             args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
             args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, supervised_model, args.supervision_scalar,
+            args.encoder_file,
         )
     else:
         model = DiffusionController(
             args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
             args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
-            args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model,
+            args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, encoder_file = args.encoder_file,
         )
 
     loss = keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError()
@@ -321,6 +322,9 @@ def train_diffusion_control_model(args, supervised=False):
     )
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
     model.load_weights(checkpoint_path)
+    if args.encoder_file is not None:
+        model.control_embed_model.save(args.encoder_file)
+        logging.info(f'Saved diffusion optimized encoder at: {args.encoder_file}')
 
     if args.inspect_model:
         metrics = model.evaluate(generate_test, batch_size=args.batch_size, steps=args.test_steps, return_dict=True)
@@ -333,9 +337,11 @@ def train_diffusion_control_model(args, supervised=False):
                                            prefix=f'{args.output_folder}/{args.id}/reconstructions/')
 
         image_out = {args.tensor_maps_in[0].output_name(): data[args.tensor_maps_in[0].input_name()]}
-        predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths, f'{args.output_folder}/{args.id}/reconstructions/')
+        predictions_to_pngs(preds, args.tensor_maps_in, args.tensor_maps_in, data, image_out, paths,
+                            f'{args.output_folder}/{args.id}/reconstructions/')
         interpolate_controlled_generations(model, args.tensor_maps_out, args.tensor_maps_out[0], args.batch_size,
-                                           f'{args.output_folder}/{args.id}/')
+                                           f'{args.output_folder}/{args.id}/', args.interpolate_min,
+                                           args.interpolate_max, args.interpolate_step)
 
         model.normalizer.adapt(images)
         if model.input_map.axes() == 2:
@@ -348,7 +354,8 @@ def train_diffusion_control_model(args, supervised=False):
             args.model_file = model_file
             eval_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
             regress_on_controlled_generations(model, eval_model, tm_out, args.test_steps, args.batch_size,
-                                              0.0,2.0,f'{args.output_folder}/{args.id}/')
+                                              mean=((args.interpolate_min + args.interpolate_max) / 2),
+                                              std=args.interpolate_step, prefix=f'{args.output_folder}/{args.id}/')
 
 
     return model

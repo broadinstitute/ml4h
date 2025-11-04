@@ -91,17 +91,81 @@ class KroneckerBlock(Block):
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
-        eshape = tf.shape(intermediates.items()[0][-1])
         if len(y) == 2:
-            logging.info(f'********\n\n\n*********** Trying KRONECKER {self.encoding_size}\n*******************\n\n')
-            kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', y[0], y[1]))
-            kron = kron_layer(y)
-            y = tf.reshape(kron, [eshape[0], self.encoding_size * self.encoding_size])
+            y = KroneckerProductLayer(self.encoding_size)(y)
 
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
 
 
+@register_keras_serializable()
+class KroneckerProductLayer(tf.keras.layers.Layer):
+    """
+    Keras Layer that computes the Kronecker product of two input tensors.
+
+    The Kronecker product is computed using tf.einsum('...i,...j->...ij', tensor1, tensor2)
+    which creates an outer product along the last dimensions of the input tensors.
+
+    Input: List of two tensors [tensor1, tensor2]
+    Output: Kronecker product tensor with shape [..., dim1, dim2] where dim1 and dim2
+            are the last dimensions of the input tensors
+    """
+
+    def __init__(self, flatten_output=True, **kwargs):
+        """
+        Args:
+            flatten_output (bool): If True, flattens the Kronecker product to shape [..., dim1*dim2].
+                                 If False, keeps the product shape [..., dim1, dim2].
+        """
+        super(KroneckerProductLayer, self).__init__(**kwargs)
+        self.flatten_output = flatten_output
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'flatten_output': self.flatten_output
+        })
+        return config
+
+    def call(self, inputs):
+        """
+        Compute Kronecker product of two input tensors.
+
+        Args:
+            inputs: List containing two tensors [tensor1, tensor2]
+
+        Returns:
+            Kronecker product tensor
+        """
+        if len(inputs) != 2:
+            raise ValueError(f"KroneckerProductLayer expects exactly 2 inputs, got {len(inputs)}")
+
+        tensor1, tensor2 = inputs
+
+        # Compute Kronecker product using einsum
+        kronecker_product = tf.einsum('...i,...j->...ij', tensor1, tensor2)
+
+        if self.flatten_output:
+            # Flatten the last two dimensions
+            batch_shape = tf.shape(kronecker_product)[:-2]
+            last_dim = tf.shape(kronecker_product)[-2] * tf.shape(kronecker_product)[-1]
+            kronecker_product = tf.reshape(kronecker_product, tf.concat([batch_shape, [last_dim]], axis=0))
+
+        return kronecker_product
+
+    def compute_output_shape(self, input_shape):
+        """Compute the output shape given input shapes."""
+        if len(input_shape) != 2:
+            raise ValueError(f"KroneckerProductLayer expects exactly 2 input shapes, got {len(input_shape)}")
+
+        shape1, shape2 = input_shape
+
+        if self.flatten_output:
+            # Output shape: [..., dim1 * dim2]
+            return shape1[:-1] + (shape1[-1] * shape2[-1],)
+        else:
+            # Output shape: [..., dim1, dim2]
+            return shape1[:-1] + (shape1[-1], shape2[-1])
 class DropoutBlock(Block):
     """
     Dropout from embeddings of different modalities
@@ -208,6 +272,62 @@ class ReduceMean(Block):
         y = tf.math.reduce_mean(y, axis=0)
         return y
 
+class KLDivergenceBlock(Block):
+    """
+    Block that computes KL divergence loss for Variational Autoencoders.
+
+    Takes a list containing [z_mean, z_log_var] as input and adds KL divergence
+    loss between the encoded latent distribution and a standard normal distribution.
+    This is used as a regularization term in VAEs.
+
+    Returns z_mean as output to allow for further processing.
+    """
+    def __init__(self, dense_layers: List[int] = [256], pair_loss_weight:float = 1.0, **kwargs):
+        self.dense_layer_size = dense_layers[-1]
+        self.loss_layer = KLLossLayer(pair_loss_weight, dimension=self.dense_layer_size//2)
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        y = self.loss_layer(x)
+        y = Dense(units=self.dense_layer_size)(y)
+        return y
+
+@register_keras_serializable()
+class KLLossLayer(Layer):
+    """Layer that creates KL loss."""
+
+    def __init__(self, kl_weight, dimension, **kwargs):
+        super(KLLossLayer, self).__init__(**kwargs)
+        self.kl_weight = kl_weight
+        self.dimension = dimension
+        self.kl_tracker = keras.metrics.Mean(name="kl_loss")
+
+    def get_config(self):
+        config = super(KLLossLayer, self).get_config()
+        config.update({
+            'kl_weight': self.kl_weight,
+            'dimension': self.dimension
+        })
+        return config
+
+    def call(self, x):
+        z_mean = x[:, :self.dimension]
+        z_log_var = x[:, self.dimension:]
+
+        # KL divergence between the posterior and the prior (standard normal)
+        kl_loss = -0.5 * tf.reduce_mean(
+            1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
+        )
+
+        # Add KL divergence regularization loss
+        self.add_loss(self.kl_weight * kl_loss)
+        self.kl_tracker.update_state(kl_loss)
+        # Sample z using reparameterization trick
+        batch = tf.shape(z_mean)[0]
+        dim = tf.shape(z_mean)[1]
+        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+        z = z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        return z
+
 
 class EncodeIdentityBlock(Block):
     """
@@ -264,11 +384,8 @@ class PairLossBlock(Block):
         elif self.pair_merge == 'kronecker':
             krons = []
             for left, right in self.pairs:
-                eshape = tf.shape(intermediates[left][-1])
-                kron_layer = Lambda(lambda tensors: tf.einsum('...i,...j->...ij', tensors[0], tensors[1]))
-                y = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
-                kron = kron_layer(y)
-                krons.append(tf.reshape(kron, [eshape[0], self.encoding_size*self.encoding_size]))
+                kron = KroneckerProductLayer(self.encoding_size)(y)
+                krons.append(kron)
             if len(self.pairs) > 1:
                 kron = concatenate(krons)
             else:
@@ -418,6 +535,7 @@ class ContrastiveLossLayer(Layer):
             name='contrastive_temperature',
             shape=(1,), initializer="zeros", trainable=True,
         )
+        self.contrastive_loss_tracker = keras.metrics.Mean(name="contrastive_loss")
 
     def get_config(self):
         config = super().get_config().copy()
@@ -428,8 +546,8 @@ class ContrastiveLossLayer(Layer):
         # We use `add_loss` to create a regularization loss
         # that depends on the inputs.
         contrastive_loss = self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature)
+        self.contrastive_loss_tracker.update_state(contrastive_loss)
         self.add_loss(contrastive_loss)
-        #self.add_metric(contrastive_loss)
         return inputs
 
 
@@ -465,27 +583,3 @@ class LinearTransform(tf.keras.layers.Layer):
 
     def call(self, inputs):
         return self.gamma * inputs[0] + self.beta
-
-
-class VariationalDiagNormal(Layer):
-    def __init__(
-            self,
-            latent_size: int,
-            kl_divergence_weight: float = 1.,
-            **kwargs
-    ):
-        self.latent_size = latent_size
-        self.kl_divergence_weight = kl_divergence_weight
-        super(VariationalDiagNormal, self).__init__(**kwargs)
-        self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros([latent_size]), scale_identity_multiplier=1.0)
-
-    def call(self, mu: Tensor, log_sigma: Tensor, **kwargs):
-        """mu and sigma must be shape (None, latent_size)"""
-        approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
-        kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
-        self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl, name='KL_divergence')
-        return approx_posterior.sample()
-
-    def get_config(self):
-        return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}

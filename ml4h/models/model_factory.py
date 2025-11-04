@@ -10,6 +10,9 @@ from typing import Dict, List, Tuple, Set, DefaultDict, Any, Union
 import tensorflow as tf
 
 import keras
+from tensorflow.keras.saving import register_keras_serializable
+from tensorflow.keras import regularizers
+
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Layer, Lambda
@@ -31,7 +34,7 @@ from ml4h.models.basic_blocks import LinearDecoder, PartitionedLinearDecoder, La
 from ml4h.models.basic_blocks import ModelAsBlock, LSTMEncoderBlock, LanguageDecoderBlock, DenseEncoder, DenseDecoder
 
 from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock, L2LossLayer, CosineLossLayer, \
-    VariationalDiagNormal, KroneckerBlock, DropoutBlock
+    KroneckerBlock, DropoutBlock, KLDivergenceBlock
 
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
@@ -62,6 +65,7 @@ BLOCK_CLASSES = {
     'linear_decode': LinearDecoder,
     'partitioned_linear_decode': PartitionedLinearDecoder,
     'identity': EncodeIdentityBlock,
+    'kl_divergence': KLDivergenceBlock,
     'transformer_encoder': TransformerEncoder,
     'perceiver_encoder': PerceiverEncoder,
     'transformer_encoder_embedding': TransformerEncoderEmbedding,
@@ -124,11 +128,10 @@ def make_multimodal_multitask_model(
         optimizer, learning_rate, steps_per_epoch=training_steps, learning_rate_schedule=learning_rate_schedule,
         optimizer_kwargs=kwargs.get('optimizer_kwargs'),
     )
-
-    if kwargs.get('model_file', False):
-        return tf.keras.models.load_model(kwargs['model_file']), None, None, None
     if kwargs.get('model_file', False) and kwargs.get('load_enc_dec', False):
         return _load_model_encoders_and_decoders(tensor_maps_in, tensor_maps_out, custom_dict, opt, kwargs['model_file'], kwargs.get('named_outputs', False))
+    if kwargs.get('model_file', False):
+        return tf.keras.models.load_model(kwargs['model_file']), None, None, None
 
 
     full_model, encoders, decoders, merger = multimodal_multitask_model(
@@ -344,13 +347,17 @@ def _load_model_encoders_and_decoders(
     merger = None
     try:
         for tm in tensor_maps_in:
-            encoders[tm] = load_model(f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+            model_path = f"{os.path.dirname(model_file)}/encoder_{tm.name}.keras"
+            if os.path.exists(model_path):
+                encoders[tm] = load_model(model_path, custom_objects=custom_dict, compile=False)
         for tm in tensor_maps_out:
-            decoders[tm] = load_model(f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras", custom_objects=custom_dict, compile=False)
+            model_path = f"{os.path.dirname(model_file)}/decoder_{tm.name}.keras"
+            if os.path.exists(model_path):
+                decoders[tm] = load_model(model_path, custom_objects=custom_dict, compile=False)
         merger = load_model(f"{os.path.dirname(model_file)}/merger.keras", custom_objects=custom_dict, compile=False)
-    except OSError as e:
+    except (ValueError, OSError) as e:
         logging.warning(f'Could not load some model modules, error: {e}')
-    logging.info(f"Attempting to load model file from: {model_file}")
+    logging.info(f"Attempting to load full model file from: {model_file}")
     m = load_model(model_file, custom_objects=custom_dict, compile=False)
 
     if named_outputs:
@@ -376,7 +383,7 @@ def get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
         for obj in chain(
             ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
             [
-                VariationalDiagNormal, CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
+                CosineLossLayer, ContrastiveLossLayer, PositionalEncoding,
                 MultiHeadAttention, RandomGauss, KerasLayer, PerceiverLatentLayer, L2LossLayer,
             ],
         )
@@ -410,9 +417,9 @@ def add_prefix(model, prefix: str, custom_objects=None):
     '''Adds a prefix to layers and model name while keeping the pre-trained weights
     Arguments:
         model: a tf.keras model
-        prefix: a string that would be added to before each layer name
-        custom_objects: if your model consists of custom layers you shoud add them pass them as a dictionary.
-            For more information read the following:
+        prefix: a string that would be added before each layer name
+        custom_objects: if your model consists of custom layers, pass them as a dictionary.
+            For more information read:
             https://keras.io/guides/serialization_and_saving/#custom-objects
     Returns:
         new_model: a tf.keras model having same weights as the input model.
@@ -421,27 +428,42 @@ def add_prefix(model, prefix: str, custom_objects=None):
     config = model.get_config()
     old_to_new = {}
     new_to_old = {}
-
+ 
     for layer in config['layers']:
-        new_name = prefix + layer['name']
-        old_to_new[layer['name']], new_to_old[new_name] = new_name, layer['name']
+        old_name = layer['name']
+        new_name = prefix + old_name
+        old_to_new[old_name] = new_name
+        new_to_old[new_name] = old_name
         layer['name'] = new_name
         layer['config']['name'] = new_name
-
+        
         if len(layer['inbound_nodes']) > 0:
-            for in_node in layer['inbound_nodes'][0]:
-                in_node[0] = old_to_new[in_node[0]]
+            for in_node in layer['inbound_nodes']:
+                args = in_node.get('args', [])
+
+                if not args:
+                    continue
+
+                if isinstance(args[0], dict):
+                    name = in_node['args'][0]['config']['keras_history'][0]
+                    print(f"changing name from {name} to {old_to_new[name]}")
+                    in_node['args'][0]['config']['keras_history'][0] = old_to_new[name]
+                elif isinstance(args[0], list):
+                    for tensor in args[0]:
+                        history = tensor.get('config', {}).get('keras_history', [])
+                        name = history[0]
+                        history[0] = old_to_new[name]
 
     for input_layer in config['input_layers']:
-        input_layer[0] = old_to_new[input_layer[0]]
-
+        input_layer[0]  = old_to_new[input_layer[0]]
+    
     for output_layer in config['output_layers']:
         output_layer[0] = old_to_new[output_layer[0]]
 
     config['name'] = prefix + config['name']
-    new_model = tf.keras.Model().from_config(config, custom_objects)
-
+    new_model = tf.keras.Model.from_config(config, custom_objects)
+    
     for layer in new_model.layers:
         layer.set_weights(model.get_layer(new_to_old[layer.name]).get_weights())
-
+    
     return new_model
