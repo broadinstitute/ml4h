@@ -259,7 +259,7 @@ def generate_categorical_tensor_map_from_file(
     df = pd.read_csv(file_name, delimiter=delimiter)
     channel_map = {}
     for i, k in enumerate(df[column_name].value_counts().keys()):
-        channel_map[k] = i
+        channel_map[f'val_{k}'] = i
     return TensorMap(
             f'{tensor_map_name}', Interpretation.CATEGORICAL, channel_map=channel_map,
             tensor_from_file=build_categorical_tensor_from_file(file_name, column_name),
