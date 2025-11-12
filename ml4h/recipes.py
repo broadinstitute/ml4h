@@ -615,7 +615,8 @@ def train_transformer_on_parquet(args):
     #     args.transformer_max_size,
     #     args.batch_size,
     # )
-    train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
+    train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
+                                                     args.group_column, args.sort_column,
                                                      args.target_regression_columns + args.target_binary_columns,
                                                      args.transformer_max_size, args.batch_size)
     if args.model_file:
@@ -696,6 +697,7 @@ def test_transformer_on_parquet(args):
 
     model = keras.models.load_model(args.model_file)
     train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
+                                                     args.sort_column,
                                                      args.target_regression_columns + args.target_binary_columns,
                                                      args.transformer_max_size, args.batch_size)
     metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
