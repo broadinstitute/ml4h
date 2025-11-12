@@ -618,19 +618,22 @@ def train_transformer_on_parquet(args):
     train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
                                                      args.target_regression_columns + args.target_binary_columns,
                                                      args.transformer_max_size, args.batch_size)
-    model = build_embedding_transformer(
-        input_numeric_columns,
-        args.target_regression_columns,
-        args.target_binary_columns,
-        args.transformer_max_size,
-        args.transformer_categorical_embed,
-        args.transformer_token_embed,
-        args.transformer_size,
-        args.attention_heads,
-        args.transformer_layers,
-        args.transformer_dropout_rate,
-        view2id,
-    )
+    if args.model_file:
+        model = keras.models.load_model(args.model_file)
+    else:
+        model = build_embedding_transformer(
+            input_numeric_columns,
+            args.target_regression_columns,
+            args.target_binary_columns,
+            args.transformer_max_size,
+            args.transformer_categorical_embed,
+            args.transformer_token_embed,
+            args.transformer_size,
+            args.attention_heads,
+            args.transformer_layers,
+            args.transformer_dropout_rate,
+            view2id,
+        )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(

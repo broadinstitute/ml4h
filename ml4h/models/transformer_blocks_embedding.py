@@ -429,7 +429,6 @@ def build_embedding_transformer(
         metrics=metrics
     )
 
-    model.summary()
     return model
 
 from sklearn.metrics import r2_score, roc_auc_score, average_precision_score, accuracy_score
