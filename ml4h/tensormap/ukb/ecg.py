@@ -753,8 +753,15 @@ ecg_rest_median_512 = TensorMap(
 
 ecg_rest_median_raw_10_no_poor = TensorMap(
     'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
-    tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
+    tensor_from_file=_make_ecg_rest(skip_poor=True),
+    metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
 )
+ecg_rest_median_raw_10_no_poor_instance3 = TensorMap(
+    'ecg_rest_median_raw_10', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 12), loss='logcosh', activation='linear',
+    tensor_from_file=_make_ecg_rest(instance=1, skip_poor=True), # known issue where instance 3 ecgs were accidentally saved as instance 1
+    metrics=['mse', 'mae'], channel_map=ECG_REST_MEDIAN_LEADS, normalization=Standardize(mean=0, std=10),
+)
+
 ecg_rest_median_raw_10_no_poor_strip_I = TensorMap(
     'ecg_rest_median_raw_10_strip_I', Interpretation.CONTINUOUS, path_prefix='ukb_ecg_rest', shape=(600, 1), loss='logcosh', activation='linear',
     tensor_from_file=_make_ecg_rest(skip_poor=True), metrics=['mse', 'mae'], channel_map={'median_I': 0}, normalization=Standardize(mean=0, std=10),
