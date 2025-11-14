@@ -797,8 +797,6 @@ import pandas as pd
 
 
 def train_transformer_on_parquet(args):
-    
-    '''
     if args.transformer_input_file.endswith(('.pq', '.parquet')):
         echo_df = pd.read_parquet(args.transformer_input_file)
     else:
@@ -809,19 +807,6 @@ def train_transformer_on_parquet(args):
     else:
         df = pd.read_csv(args.transformer_label_file, sep='\t')
 
-<<<<<<< Updated upstream
-    if 'ecg_datetime' in args.merge_columns:
-        df['ecg_datetime'] = pd.to_datetime(df.ecg_datetime)
-        echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
-=======
-    input_numeric_columns = args.input_numeric_columns + [f'latent_{i}' for i in range(args.latent_dimensions)]
-
-# include merge keys for safety (since you merge later)
-    if 'timestamp' in args.merge_columns:
-        df['timestamp'] = pd.to_datetime(df.timestamp)
-        df['sample_id'] = df.sample_id
-        echo_df.timestamp = pd.to_datetime(echo_df.timestamp)
->>>>>>> Stashed changes
 
     df = pd.merge(echo_df, df, on=args.merge_columns, how='inner')
 
@@ -851,22 +836,13 @@ def train_transformer_on_parquet(args):
     train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
                                                     args.target_regression_columns + args.target_binary_columns,
                                                    args.transformer_max_size, args.batch_size)
-    '''
-    '''loader = StreamingLatentLoader(
-        input_path="/home/rrathod3/ecg_latents_19968.parquet",
-        label_path="/home/rrathod3/ecg2age_wide_file.parquet",
-        join_keys=["sample_id"],
-        label_columns=["age"],
-        batch_size=8,
-    )'''
-    base_loader = StreamingParallelParquetDataloader(
+
+    base_loader = ParquetDataloader(
         input_file_path="/home/rrathod3/ecg_latents_19968.parquet",
         label_file_path="/home/rrathod3/ecg2age_wide_file.parquet",
         key_columns=["sample_id", "timestamp"],
         label_columns=["age"],
         model_batch_size=16,
-        num_workers=4,  # Adjust based on CPU cores
-        queue_size=50
     )
     long_loader = LongitudinalDatasetWrapper(base_loader, group_column="sample_id", max_seq_len=10)
 
