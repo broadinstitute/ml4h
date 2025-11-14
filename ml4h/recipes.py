@@ -838,13 +838,13 @@ def train_transformer_on_parquet(args):
     #                                                args.transformer_max_size, args.batch_size)
 
     base_loader = ParquetDataloader(
-        input_file_path="/home/rrathod3/ecg_latents_19968.parquet",
-        label_file_path="/home/rrathod3/ecg2age_wide_file.parquet",
-        key_columns=["sample_id", "timestamp"],
-        label_columns=["age"],
-        model_batch_size=16,
+        input_file_path=args.transformer_input_file,
+        label_file_path=args.transformer_label_file,
+        key_columns=[args.group_column, args.sort_column],
+        label_columns=args.target_regression_columns + args.target_binary_columns,
+        model_batch_size=args.batch_size,
     )
-    long_loader = LongitudinalDatasetWrapper(base_loader, group_column="sample_id", max_seq_len=10)
+    long_loader = LongitudinalDatasetWrapper(base_loader, group_column=args.group_column, max_seq_len=args.transformer_max_size)
 
     train_ds = long_loader.get_tf_dataset("train")
     val_ds = long_loader.get_tf_dataset("test")
@@ -859,30 +859,16 @@ def train_transformer_on_parquet(args):
     view2id = None
 
     model = build_transformer(
-        19968,                      # positional arg 1
-        args.target_regression_columns, # positional arg 2
-        [],
+        args.latent_dimensions,                      # positional arg 1
+        args.target_regression_columns,
+        args.target_binary_columns,
         args.transformer_token_embed,
         args.transformer_size,
         args.attention_heads,
         args.transformer_layers,
         args.transformer_dropout_rate
     )
-    '''
-    model = build_embedding_transformer(
-        input_numeric_columns,
-        args.target_regression_columns,
-        args.target_binary_columns,
-        args.transformer_max_size,
-        args.transformer_categorical_embed,
-        args.transformer_token_embed,
-        args.transformer_size,
-        args.attention_heads,
-        args.transformer_layers,
-        args.transformer_dropout_rate,
-        view2id,
-    )
-    '''
+
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
