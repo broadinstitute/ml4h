@@ -94,6 +94,10 @@ def parse_args():
         help = 'Column headers in file from which weights for weighted mse loss will be made.',
     )
     parser.add_argument(
+        '--continuous_file_loss_weights', default=[], nargs='*', type=float,
+        help='List of loss weights for the loss functions corresponding to each continuous file column',
+    )
+    parser.add_argument(
         '--categorical_file', default=None, help='Path to a file containing categorical values from which a output TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file (or the second one if there is a continuous_file as well).',
@@ -106,7 +110,11 @@ def parse_args():
         '--categorical_file_label_weights', default=[], nargs='*', type=float,
         help='List of per-label weights for weighted categorical cross entropy for the categorical TensorMap(s). If provided, must map 1:1 to number of labels.'
              'Weights should be listed according to the sorted order of the entries in the column of the categorical file being used.'
-             'Currently implemented for only one categorical file column. The order corresponds to the ',
+             'Currently implemented for only one categorical file column. The order corresponds to the channel_map',
+    )
+    parser.add_argument(
+        '--categorical_file_loss_weights', default=[], nargs='*', type=float,
+        help='List of loss weights for the loss functions corresponding to each categorical file column',
     )
     parser.add_argument(
         '--latent_input_file', default=None, help=
@@ -573,7 +581,22 @@ def _process_args(args):
                 not args.continuous_file_discretization_bounds,
                 'cannot use continuous_file_weight_columns with discretization bounds',
             )
-        for column in args.continuous_file_columns:
+
+        # Loss weights for the loss function corresponding to each continuous file column
+        if len(args.continuous_file_loss_weights) == 0:
+            args.continuous_file_loss_weights = [None] * len(args.continuous_file_columns)
+        else:
+            assert(
+                len(args.continuous_file_loss_weights) == len(args.continuous_file_columns),
+                'number of continuous_file_loss_weights must match number of continuous_file_columns',
+            )
+
+        # Create the output tensor maps for the continuous file
+        for column, weight_column, loss_weight in zip(
+            args.continuous_file_columns,
+            args.continuous_file_weight_columns,
+            args.continuous_file_loss_weights,
+        ):
             args.tensor_maps_out.append(
                 generate_continuous_tensor_map_from_file(
                     args.continuous_file,
@@ -581,9 +604,11 @@ def _process_args(args):
                     args.output_tensors.pop(0),
                     args.continuous_file_normalize,
                     args.continuous_file_discretization_bounds,
-                    args.continuous_file_weight_columns.pop(0),
+                    weight_column,
+                    loss_weight,
                 ),
             )
+
     if args.categorical_file is not None:
         # Categorical TensorMap(s) generated from file is given the name specified by the first output_tensors argument
         if len(args.categorical_file_label_weights) > 0:
@@ -591,15 +616,31 @@ def _process_args(args):
                 len(args.categorical_file_columns) == 1,
                 'categorical_file_label_weights only implemented for a single categorical_file_column',
             )
-        for column in args.categorical_file_columns:
+
+        # Loss weights for the loss function corresponding to each categorical file column
+        if len(args.categorical_file_loss_weights) == 0:
+            args.categorical_file_loss_weights = [None] * len(args.categorical_file_columns)
+        else:
+            assert (
+                len(args.categorical_file_loss_weights) == len(args.categorical_file_columns),
+                'number of categorical_file_loss_weights must match number of categorical_file_columns',
+            )
+
+        # Create the output tensor maps for the categorical file
+        for column, loss_weight in zip(
+            args.categorical_file_columns,
+            args.categorical_file_loss_weights,
+        ):
             args.tensor_maps_out.append(
                 generate_categorical_tensor_map_from_file(
                     args.categorical_file,
                     column,
                     args.output_tensors.pop(0),
                     args.categorical_file_label_weights,
+                    loss_weight,
                 ),
             )
+
     if len(args.latent_output_files) > 0:
         for lof in args.latent_output_files:
             args.tensor_maps_out.append(
