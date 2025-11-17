@@ -128,12 +128,13 @@ def make_multimodal_multitask_model(
         custom_dict, u_connect, **kwargs
     )
     losses = [tm.loss for tm in tensor_maps_out]
+    loss_weights = [tm.loss_weight for tm in tensor_maps_out]
     if len(losses) == 0:
         logging.info(f"No losses found adding MAE")
         losses = [keras.losses.mean_absolute_error]
         full_model.add_loss(keras.losses.mean_absolute_error)
     full_model.compile(
-        optimizer=opt, loss=losses, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
+        optimizer=opt, loss=losses, loss_weights=loss_weights, metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out},
     )
     full_model.summary(print_fn=logging.info, expand_nested=True)
     if kwargs.get('model_layers', False):
