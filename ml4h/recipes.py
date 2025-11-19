@@ -616,7 +616,7 @@ def train_transformer_on_parquet(args):
     #     args.batch_size,
     # )
     train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
-                                                     args.group_column, args.sort_column,
+                                                     args.group_column, args.sort_column, args.sort_column_ascend,
                                                      args.target_regression_columns + args.target_binary_columns,
                                                      args.transformer_max_size, args.batch_size)
     if args.model_file:

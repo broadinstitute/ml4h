@@ -141,6 +141,9 @@ def parse_args():
         '--sort_column', default=None, help='Column to sort on for embedding transformer.'
     )
     parser.add_argument(
+        '--sort_column_ascend', default=False, action='store_true', help='Sort on for embedding transformer.',
+    )
+    parser.add_argument(
         '--merge_columns', nargs='*', default=['mrn', 'view'], help=
         'List of columns to merge on for input and labels Transformer.'
     )
