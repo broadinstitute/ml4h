@@ -110,6 +110,9 @@ def parse_args():
         '--latent_dimensions', default=256, type=int, help='Dimensionality (size) of latent space',
     )
     parser.add_argument(
+        '--latent_dimensions_start', default=0, type=int, help='Starting dimension of latent space',
+    )
+    parser.add_argument(
         '--latent_output_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
