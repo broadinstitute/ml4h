@@ -594,7 +594,7 @@ def train_transformer_on_parquet(args):
         df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
 
     input_numeric_columns = args.input_numeric_columns
-    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions)]
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions+args.latent_dimensions_start)]
 
     if len(args.input_categorical_columns) == 1:
         input_categorical_column = args.input_categorical_columns[0]
