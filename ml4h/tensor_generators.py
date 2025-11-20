@@ -1164,7 +1164,8 @@ def build_datasets(
 
 
 
-def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, sort_column, sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH):
+def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, sort_column,
+                                  sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH, train_csv, valid_csv, test_csv):
     if input_categorical_column:
         view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
         view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
@@ -1173,33 +1174,72 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
-    # ----- Train/Val split by group id (optionally stratify on a regression target if available) -----
+    # ----- Train/Val/Test split by MRN based on CSV files -----
     group_ids = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
 
     # Log number of groups found
     logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
 
-    idx_train, idx_val = train_test_split(
-        np.arange(len(group_ids)), test_size=0.2, random_state=42,
-    )
-    train_ids = set(group_ids[idx_train])
-    val_ids = set(group_ids[idx_val])
+    # Read MRNs from CSV files
+    train_mrns = _sample_csv_to_set(train_csv) if train_csv else set()
+    valid_mrns = _sample_csv_to_set(valid_csv) if valid_csv else set()
+    test_mrns = _sample_csv_to_set(test_csv) if test_csv else set()
 
-    # Log training and validation set sizes
+    # Get unique MRNs from the dataframe
+    unique_mrns = df_sorted['mrn'].drop_duplicates().to_numpy()
+    logging.info(f"Found {len(unique_mrns)} unique MRNs")
+
+    # Split MRNs into train/val/test based on CSV membership
+    train_mrn_set = set()
+    val_mrn_set = set()
+    test_mrn_set = set()
+
+    for mrn in unique_mrns:
+        mrn_str = str(mrn)
+        if train_mrns and mrn_str in train_mrns:
+            train_mrn_set.add(mrn)
+        elif valid_mrns and mrn_str in valid_mrns:
+            val_mrn_set.add(mrn)
+        elif test_mrns and mrn_str in test_mrns:
+            test_mrn_set.add(mrn)
+
+    # Now map group_ids to train/val/test based on their MRN
+    # Build a mapping from group_id to mrn
+    group_to_mrn = df_sorted.groupby(AGGREGATE_COLUMN)['mrn'].first().to_dict()
+
+    train_ids = set()
+    val_ids = set()
+    test_ids = set()
+
+    for gid in group_ids:
+        mrn = group_to_mrn.get(gid)
+        if mrn in train_mrn_set:
+            train_ids.add(gid)
+        elif mrn in val_mrn_set:
+            val_ids.add(gid)
+        elif mrn in test_mrn_set:
+            test_ids.add(gid)
+
+    # Log training, validation, and test set sizes
     train_groups = len(train_ids)
     val_groups = len(val_ids)
+    test_groups = len(test_ids)
 
-    # Calculate total rows for train and validation sets
+    # Calculate total rows for train, validation, and test sets
     train_rows = 0
     val_rows = 0
+    test_rows = 0
     for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
         if gid in train_ids:
             train_rows += len(g)
         elif gid in val_ids:
             val_rows += len(g)
+        elif gid in test_ids:
+            test_rows += len(g)
 
     logging.info(f"Training set: {train_groups} groups, {train_rows} total rows")
     logging.info(f"Validation set: {val_groups} groups, {val_rows} total rows")
+    logging.info(f"Test set: {test_groups} groups, {test_rows} total rows")
 
     Feat = len(INPUT_NUMERIC_COLS)
 
@@ -1346,4 +1386,5 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
     train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
     val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
-    return train_ds, val_ds
+    test_ds = make_tf_dataset_from_generator(test_ids, shuffle=False)
+    return train_ds, val_ds, test_ds

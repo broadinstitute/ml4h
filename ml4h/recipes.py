@@ -615,11 +615,13 @@ def train_transformer_on_parquet(args):
     #     args.transformer_max_size,
     #     args.batch_size,
     # )
-    train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
+    train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
                                                      args.group_column, args.sort_column, args.sort_column_ascend,
                                                      args.target_regression_columns + args.target_binary_columns,
-                                                     args.transformer_max_size, args.batch_size)
+                                                     args.transformer_max_size, args.batch_size,
+                                                     args.train_csv, args.valid_csv, args.test_csv)
     if args.model_file:
+        logging.info(f"Loading model from {args.model_file}")
         model = keras.models.load_model(args.model_file)
     else:
         model = build_embedding_transformer(
@@ -650,7 +652,9 @@ def train_transformer_on_parquet(args):
             show_layer_activations=False,
         )
     callbacks = [
-        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True)
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
+        keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
+                                        save_best_only=not args.save_last_model),
     ]
 
     history = model.fit(
@@ -664,7 +668,7 @@ def train_transformer_on_parquet(args):
     )
     model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
-    metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
     radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
