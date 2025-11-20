@@ -1187,7 +1187,14 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
     # Get unique MRNs from the dataframe
     unique_mrns = df_sorted['mrn'].drop_duplicates().to_numpy()
-    logging.info(f"Found {len(unique_mrns)} unique MRNs")
+    logging.info(f"Found {len(unique_mrns)} unique MRNs in dataframe")
+    logging.info(f"CSV files contain: {len(train_mrns)} train MRNs, {len(valid_mrns)} valid MRNs, {len(test_mrns)} test MRNs")
+
+    # Log sample MRNs for debugging
+    if len(unique_mrns) > 0:
+        logging.info(f"Sample dataframe MRNs: {list(unique_mrns[:3])}")
+    if len(train_mrns) > 0:
+        logging.info(f"Sample train CSV MRNs: {list(list(train_mrns)[:3])}")
 
     # Split MRNs into train/val/test based on CSV membership
     train_mrn_set = set()
@@ -1202,6 +1209,8 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             val_mrn_set.add(mrn)
         elif test_mrns and mrn_str in test_mrns:
             test_mrn_set.add(mrn)
+
+    logging.info(f"Matched MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test")
 
     # Now map group_ids to train/val/test based on their MRN
     # Build a mapping from group_id to mrn
@@ -1240,6 +1249,14 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     logging.info(f"Training set: {train_groups} groups, {train_rows} total rows")
     logging.info(f"Validation set: {val_groups} groups, {val_rows} total rows")
     logging.info(f"Test set: {test_groups} groups, {test_rows} total rows")
+
+    # Validate that we have at least some data in train set
+    if train_groups == 0:
+        raise ValueError(
+            f"Training set is empty! No MRNs from train_csv matched the dataframe. "
+            f"Check that MRN formats match between CSV and dataframe. "
+            f"Dataframe has {len(unique_mrns)} unique MRNs, train_csv has {len(train_mrns)} MRNs."
+        )
 
     Feat = len(INPUT_NUMERIC_COLS)
 
@@ -1349,7 +1366,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             lambda: group_generator(id_set),
             output_signature=(feature_sig, label_sig, weight_sig)
         )
-        if shuffle:
+        if shuffle and len(id_set) > 0:
             ds = ds.shuffle(buffer_size=len(id_set), reshuffle_each_iteration=True)
         # Pad sequences to max length *in the batch* (capped at MAX_LEN):
         if 'view' in feature_sig:
