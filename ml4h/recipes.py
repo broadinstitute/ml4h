@@ -603,7 +603,6 @@ class ParquetDataloader:
         self.split = split
         self.model_batch_size = model_batch_size
 
-        
 
         self.labels_df = self._load_labels()
         self.label_key_set = set(self.labels_df.index)
@@ -618,7 +617,7 @@ class ParquetDataloader:
         dset = ds.dataset(self.label_file_path, format="parquet")
         df = dset.to_table().to_pandas()
         df = df.replace([np.inf, -np.inf], np.nan)
-        df = df.dropna(subset=self.label_columns)
+        #df = df.dropna(subset=self.label_columns)
         df[self.label_columns] = df[self.label_columns].astype(np.float32)
 
         df["key"] = df[self.key_columns].astype(str).agg("_".join, axis=1)
@@ -678,8 +677,11 @@ class ParquetDataloader:
                     label_name: y_batch_all[:, idx:idx+1]
                     for idx, label_name in enumerate(self.label_columns)
                 }
-
-                yield X_batch, y_batch_dict, key_batch
+                sw_batch_dict = {
+                    label_name: (~np.isnan(y_batch_all[:, idx:idx+1])).astype(np.float32)
+                    for idx, label_name in enumerate(self.label_columns)
+                }
+                yield X_batch, y_batch_dict, sw_batch_dict, key_batch
 
             '''
             #yield latent_arr.astype(np.float32), y.astype(np.float32)
@@ -700,15 +702,20 @@ class ParquetDataloader:
             label: tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
             for label in self.label_columns
         }
+        sw_output_spec = {
+            label: tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
+            for label in self.label_columns
+        }
         def gen():
-            for X, y, keys in self._iter_input_batches(split):
-                yield X, y, keys
+            for X, y, sw, keys in self._iter_input_batches(split):
+                yield X, y, sw, keys
 
         return tf.data.Dataset.from_generator(
                 gen,
                 output_signature=(
                     tf.TensorSpec(shape=(None, len(self.latent_columns)), dtype=tf.float32),
                     label_output_spec,
+                    sw_output_spec,
                     tf.TensorSpec(shape=(None,), dtype=tf.string)
                 )
             ).prefetch(tf.data.AUTOTUNE)
@@ -731,7 +738,7 @@ class LongitudinalDatasetWrapper:
 
         self.label_columns = parquet_loader.label_columns
 
-    def _group_by_subject(self, X_batch, y_batch, key_batch):
+    def _group_by_subject(self, X_batch, y_batch, sw_batch, key_batch):
         """
         Group a flat batch of samples into subject-level sequences.
         Expects keys in the format '{sample_id}_{timestamp}'.
@@ -741,7 +748,7 @@ class LongitudinalDatasetWrapper:
         df[self.group_column] = df["key"].str.split("_").str[0]
         df["idx"] = np.arange(len(df))
 
-        seqs_X, seqs_y = [], []
+        seqs_X, seqs_y, seqs_sw = [], [], []
 
         for pid, g in df.groupby(self.group_column, sort=False):
             idxs = g["idx"].values
@@ -754,17 +761,21 @@ class LongitudinalDatasetWrapper:
                 seq_y = seq_y[:self.max_seq_len]
 
             seq_y_dict = {label: y_batch[label][idxs] for label in self.label_columns}
-
+            seq_sw_dict = {label: sw_batch[label][idxs] for label in self.label_columns}
             latest_label_dict = {
                 label: seq_y_dict[label][-1]   # last timestamp’s value
                 for label in self.label_columns
             }
-
+            latest_sw_dict = {
+                label: np.array(seq_sw_dict[label][-1], dtype=np.float32)
+                for label in self.label_columns
+            }
             #latest_y = seq_y[-1].reshape(-1)
             seqs_X.append(seq_X)
             seqs_y.append(latest_label_dict)
+            seqs_sw.append(latest_sw_dict)
 
-        return seqs_X, seqs_y
+        return seqs_X, seqs_y, seqs_sw
 
     def get_tf_dataset(self, split="train"):
         """
@@ -777,20 +788,26 @@ class LongitudinalDatasetWrapper:
             label: tf.TensorSpec(shape=(1,), dtype=tf.float32)
             for label in self.label_columns
         }
-
+        sw_output_spec = {
+            label: tf.TensorSpec(shape=(1,), dtype=tf.float32)
+            for label in self.label_columns
+        }
         def gen():
-            for X, y, keys in base_ds:
+            for X, y, sw, keys in base_ds:
                 # ⚠️ Need keys for grouping → add this in your loader if not already
                 # For now, create synthetic keys for demonstration (replace with real)
                 X_np = X.numpy()
                 y_np_dict = {k: v.numpy() for k, v in y.items()}
+                sw_np = {k: v.numpy() for k, v in sw.items()}
                 keys_np = keys.numpy()
 
-                seqs_X, seqs_y = self._group_by_subject(X_np, y_np_dict, keys_np)
+                seqs_X, seqs_y, seqs_sw = self._group_by_subject(X_np, y_np_dict, sw_np, keys_np)
                 #seqs_X, seqs_y = self._group_by_subject(X.numpy(), y.numpy(), keys.numpy())
-                for X_seq, y_seq in zip(seqs_X, seqs_y):
+                for X_seq, y_seq, seqs_sw in zip(seqs_X, seqs_y, seqs_sw):
                     mask = np.any(X_seq != 0.0, axis=1)
-                    yield X_seq, mask, {k: np.array(v, dtype=np.float32) for k, v in y_seq.items()}
+                    sw_seq = {k: np.array(v, dtype=np.float32).reshape(1,) for k, v in seqs_sw.items()}
+                    y_seq = {k: np.array(v, dtype=np.float32) for k, v in y_seq.items()}
+                    yield X_seq, mask, y_seq, sw_seq
 
         return (
             tf.data.Dataset.from_generator(
@@ -798,7 +815,8 @@ class LongitudinalDatasetWrapper:
                 output_signature=(
                     tf.TensorSpec(shape=(None, len(self.loader.latent_columns)), dtype=tf.float32),
                     tf.TensorSpec(shape=(None,), dtype=tf.bool),
-                    label_output_spec
+                    label_output_spec,
+                    sw_output_spec
                     #tf.TensorSpec(shape=(len(self.loader.label_columns),), dtype=tf.float32),  #len(self.loader.label_columns)
                 ),
             )
@@ -808,11 +826,13 @@ class LongitudinalDatasetWrapper:
                     [None, len(self.loader.latent_columns)],   # pad along Seq_len
                     [None],
                     {k: [1] for k in self.label_columns}, 
+                    {k: [1] for k in self.label_columns},
                     #[len(self.loader.label_columns)],
                 ),
                 padding_values=(
                     np.float32(0.0),
                     False,
+                    {k: np.float32(0.0) for k in self.label_columns},
                     {k: np.float32(0.0) for k in self.label_columns},
                     #np.float32(0.0),
                 ),
@@ -890,8 +910,8 @@ def train_transformer_on_parquet(args):
     train_ds = long_loader.get_tf_dataset("train")
     val_ds = long_loader.get_tf_dataset("test")
 
-    train_ds = train_ds.map(lambda X, mask, y: ({'num': X, 'mask': mask}, y))
-    val_ds = val_ds.map(lambda X, mask, y: ({'num': X, 'mask': mask}, y))
+    train_ds = train_ds.map(lambda X, mask, y, sw: ({'num': X, 'mask': mask}, y, sw))
+    val_ds = val_ds.map(lambda X, mask, y, sw: ({'num': X, 'mask': mask}, y, sw))
 
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]

@@ -547,7 +547,7 @@ def evaluate_multitask_on_dataset(
                     y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
                     w[t].append(tf.convert_to_tensor(sw[t]).numpy())
                     # model outputs dict of tensors; ensure 1D
-                    yp = tf.convert_to_tensor(outs[t]).numpy().reshape(-1)
+                    yp = tf.convert_to_tensor(outs[t]).numpy() #.reshape(-1)
                     y_pred[t].append(yp)
         else:
             it = iter(dataset)
@@ -560,7 +560,7 @@ def evaluate_multitask_on_dataset(
                 for t in y_true.keys():
                     y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
                     w[t].append(tf.convert_to_tensor(sw[t]).numpy())
-                    yp = tf.convert_to_tensor(outs[t]).numpy().reshape(-1)
+                    yp = tf.convert_to_tensor(outs[t]).numpy() #.reshape(-1)
                     y_pred[t].append(yp)
 
     _consume()
