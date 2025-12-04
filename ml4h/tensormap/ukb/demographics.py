@@ -288,8 +288,8 @@ bmi_21_0 = TensorMap(
 
 def build_bmi_21001_from_instances_all_bmis_202401(tensors, instance):
     return TensorMap(
-        f'21001_bmi_2_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
-        channel_map={f'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
+        f'21001_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'21001_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 300),
         normalization = Standardize(mean=27.3397, std=4.7721),
         tensor_from_file=build_tensor_from_file(
             file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
@@ -301,8 +301,8 @@ def build_bmi_21001_from_instances_all_bmis_202401(tensors, instance):
 
 def build_bmi_21001_from_instances_all_bmis_202401_replace_with_instance_0(tensors, instance):
     return TensorMap(
-        f'21001_bmi_2_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
-        channel_map={f'21001_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 300),
+        f'21001_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'21001_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 300),
         normalization = Standardize(mean=27.3397, std=4.7721),
         tensor_from_file=build_tensor_from_file(
             file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
@@ -315,8 +315,8 @@ def build_bmi_21001_from_instances_all_bmis_202401_replace_with_instance_0(tenso
 
 def build_bmi_23104_from_instances_all_bmis_202401(tensors, instance):
     return TensorMap(
-        f'23104_bmi_2_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
-        channel_map={f'23104_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 100),
+        f'23104_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'23104_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 100),
         normalization={'mean': 27.432, 'std': 4.785},
         tensor_from_file=build_tensor_from_file(
             file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
@@ -328,8 +328,8 @@ def build_bmi_23104_from_instances_all_bmis_202401(tensors, instance):
 
 def build_bmi_23104_from_instances_all_bmis_202401_replace_with_instance_0(tensors, instance):
     return TensorMap(
-        f'23104_bmi_2_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
-        channel_map={f'23104_Body-mass-index-BMI_2_0': 0}, validator=make_range_validator(0, 100),
+        f'23104_bmi_{instance}_from_instances_all_bmis_202401', Interpretation.CONTINUOUS, path_prefix='continuous', loss='logcosh',
+        channel_map={f'23104_Body-mass-index-BMI_{instance}_0': 0}, validator=make_range_validator(0, 100),
         normalization={'mean': 27.432, 'std': 4.785},
         tensor_from_file=build_tensor_from_file(
             file_name=os.path.join(tensors, 'instances_all_bmis_202401.csv'),
@@ -391,10 +391,10 @@ age_2_patientage = TensorMap(
 
 def build_age_from_instances_all_ages_202401(tensors, instance):
     return TensorMap(
-        f'age_2_from_instances_all_ages_202401', Interpretation.CONTINUOUS,
+        f'age_{instance}_from_instances_all_ages_202401', Interpretation.CONTINUOUS,
         path_prefix='continuous', loss='logcosh', validator=make_range_validator(1, 120),
         normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
-        channel_map={f'21003_Age-when-attended-assessment-centre_2_0': 0},
+        channel_map={f'21003_Age-when-attended-assessment-centre_{instance}_0': 0},
         tensor_from_file=build_tensor_from_file(
             file_name=os.path.join(tensors, 'instances_all_ages_202401.csv'),
             target_column='instance_age',
