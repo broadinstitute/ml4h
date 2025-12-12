@@ -267,7 +267,8 @@ def generate_categorical_tensor_map_from_file(
     if weighted_loss:
         total_samples = len(df)
         # Weights are inverse of class prevalence, ordered by channel_map index
-        weights = [10*max(0.001, 1-(value_counts.iloc[i]/total_samples)) for i in range(len(value_counts))]
+        #weights = [10*max(0.001, 1-(value_counts.iloc[i]/total_samples)) for i in range(len(value_counts))]
+        weights = [0.2, 10.0, 0.5]
         loss = weighted_crossentropy(weights, tensor_map_name)
         logging.info(f"Weighted loss for {tensor_map_name} with weights: {weights}")
 
