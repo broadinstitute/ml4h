@@ -90,7 +90,7 @@ def make_brain_volume_tensor_fxn(steps = 1):
         end_slice = int(tm.name.split('_')[-1])
         for i in range(begin_slice, end_slice, steps):
             slicer = get_tensor_at_first_date(hd5, tm.path_prefix, f'axial_{i}')
-            tensor[..., i-begin_slice] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
+            tensor[..., (i-begin_slice)//steps] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
         return tensor
     return _brain_volume_from_file
 
