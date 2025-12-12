@@ -83,22 +83,23 @@ t1_slice_160 = TensorMap(
     normalization=ZeroMeanStd1(),
 )
 
-
-def _brain_volume_from_file(tm, hd5, dependents={}):
-    tensor = np.zeros(tm.shape, dtype=np.float32)
-    begin_slice = int(tm.name.split('_')[-2])
-    end_slice = int(tm.name.split('_')[-1])
-    for i in range(begin_slice, end_slice):
-        slicer = get_tensor_at_first_date(hd5, tm.path_prefix, f'axial_{i}')
-        tensor[..., i-begin_slice] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
-    return tensor
+def make_brain_volume_tensor_fxn(steps = 1):
+    def _brain_volume_from_file(tm, hd5, dependents={}):
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        begin_slice = int(tm.name.split('_')[-2])
+        end_slice = int(tm.name.split('_')[-1])
+        for i in range(begin_slice, end_slice, steps):
+            slicer = get_tensor_at_first_date(hd5, tm.path_prefix, f'axial_{i}')
+            tensor[..., i-begin_slice] = pad_or_crop_array_to_shape((tm.shape[0], tm.shape[1]), slicer)
+        return tensor
+    return _brain_volume_from_file
 
 
 t1_slices_68_100 = TensorMap(
     'axial_68_100',
     shape=(216, 256, 32),
     path_prefix='ukb_brain_mri/T1/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 
@@ -106,35 +107,35 @@ t1_slices_68_100 = TensorMap(
     'axial_68_100',
     shape=(216, 256, 32),
     path_prefix='ukb_brain_mri/T1/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_slices_32_64 = TensorMap(
     't1_axial_32_64',
     shape=(216, 256, 32),
     path_prefix='ukb_brain_mri/T1/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_slices_64_96 = TensorMap(
     't1_axial_64_96',
     shape=(216, 256, 32),
     path_prefix='ukb_brain_mri/T1/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_slices_96_128 = TensorMap(
     't1_axial_96_128',
     shape=(216, 256, 32),
     path_prefix='ukb_brain_mri/T1/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_slices_96_99 = TensorMap(
     't1_axial_96_99',
     shape=(216, 256, 3),
     path_prefix='ukb_brain_mri/T1/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 
@@ -142,42 +143,51 @@ t1_mni_slices_96_99 = TensorMap(
     'axial_96_99',
     shape=(176, 216, 3),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_16_48 = TensorMap(
     'axial_16_48',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_48_80 = TensorMap(
     'axial_48_80',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_80_144 = TensorMap(
     'axial_80_144',
     shape=(176, 216, 64),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_0_182 = TensorMap(
     'axial_0_182',
     shape=(176, 216, 182),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
+
+t1_mni_slices_32_160_step4 = TensorMap(
+    'axial_32_160',
+    shape=(176, 216, 32),
+    path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
+    tensor_from_file=make_brain_volume_tensor_fxn(steps=4),
+    normalization=ZeroMeanStd1(),
+)
+
 t1_mni_slices_0_32 = TensorMap(
     'axial_0_32',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 
@@ -185,28 +195,28 @@ t1_mni_slices_32_64 = TensorMap(
     'axial_32_64',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_64_96 = TensorMap(
     'axial_64_96',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_96_128 = TensorMap(
     'axial_96_128',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_128_160 = TensorMap(
     'axial_128_160',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 
@@ -214,63 +224,63 @@ t1_mni_slices_160_192 = TensorMap(
     'axial_160_192',
     shape=(176, 216, 32),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_30_60 = TensorMap(
     'axial_30_60',
     shape=(176, 216, 30),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t1_mni_slices_10_73 = TensorMap(
     'axial_10_73',
     shape=(176, 216, 63),
     path_prefix='ukb_brain_mri/T1_brain_to_MNI/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t2_flair_orig_defaced_slices_0_32 = TensorMap(
     't2_flair_axial_0_32',
     shape=(192, 256, 32),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t2_flair_orig_defaced_slices_32_64 = TensorMap(
     't2_flair_axial_32_64',
     shape=(192, 256, 32),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t2_flair_orig_defaced_slices_64_96 = TensorMap(
     't2_flair_axial_64_96',
     shape=(192, 256, 32),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t2_flair_orig_defaced_slices_96_128 = TensorMap(
     't2_flair_axial_96_128',
     shape=(192, 256, 32),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t2_flair_orig_defaced_slices_128_160 = TensorMap(
     't2_flair_axial_128_160',
     shape=(192, 256, 32),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 t2_flair_orig_defaced_slices_160_192 = TensorMap(
     't2_flair_axial_160_192',
     shape=(192, 256, 32),
     path_prefix='ukb_brain_mri/T2_FLAIR_orig_defaced/',
-    tensor_from_file=_brain_volume_from_file,
+    tensor_from_file=make_brain_volume_tensor_fxn(),
     normalization=ZeroMeanStd1(),
 )
 
