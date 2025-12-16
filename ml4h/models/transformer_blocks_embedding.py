@@ -329,6 +329,32 @@ def encoder(
 
 from keras import layers, ops, Model, Input, metrics, optimizers
 
+import keras
+from keras import layers, Input, Model, metrics, optimizers
+import keras.ops as ops
+
+
+from keras import layers, metrics, optimizers, Model, Input, ops
+
+class LearnablePositionalEmbedding(layers.Layer):
+    def __init__(self, max_len, embed_dim, **kwargs):
+        super().__init__(**kwargs)
+        self.max_len = max_len
+        self.embed_dim = embed_dim
+        self.pos_embedding = layers.Embedding(input_dim=max_len, output_dim=embed_dim)
+
+    def call(self, inputs):
+        length = ops.shape(inputs)[1]
+        positions = ops.arange(start=0, stop=length, step=1)
+        #positions = ops.expand_dims(positions, 0)
+        pos_embeddings = self.pos_embedding(positions)
+        return inputs + pos_embeddings
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'max_len': self.max_len, 'embed_dim': self.embed_dim})
+        return config
+    
 def build_transformer(
     input_dim,                   # e.g. 19968
     REGRESSION_TARGETS,          # e.g. ["age"]
@@ -337,13 +363,14 @@ def build_transformer(
     TRANSFORMER_DIM,             # e.g. 256
     NUM_HEADS,                   # e.g. 4
     NUM_LAYERS,                  # e.g. 4
-    DROPOUT                      # e.g. 0.1
+    DROPOUT,                     # e.g. 0.1
+    MAX_LEN=50
 ):
     """
     Minimal transformer encoder (Keras 3 native ops only).
     Input:
       num  : (B, T, input_dim)
-      mask : (B, T)
+      mask : (B, T)  True=valid token, False=pad
     Output:
       regression / binary targets
     """
@@ -352,45 +379,62 @@ def build_transformer(
     inp_num  = Input(shape=(None, input_dim), dtype="float32", name="num")  # (B, T, input_dim)
     inp_mask = Input(shape=(None,), dtype="bool", name="mask")              # (B, T)
 
-    # --- Project to token dim ---
-    x = layers.Dense(TOKEN_HIDDEN, activation="relu", name="token_proj")(inp_num)
+    x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
     x = layers.Dropout(DROPOUT)(x)
+    # --- Positional embedding (learnable) ---
+    x =    LearnablePositionalEmbedding(
+        MAX_LEN,
+        TOKEN_HIDDEN
+    )(x)
+
+    # --- Build (B, T, T) attention mask ONCE from (B, T) ---
+    # True means "keep/attend", False means "mask out"
+    m_q = layers.Lambda(lambda m: ops.expand_dims(m, axis=2), name="mask_q")(inp_mask)  # (B, T, 1)
+    m_k = layers.Lambda(lambda m: ops.expand_dims(m, axis=1), name="mask_k")(inp_mask)  # (B, 1, T)
+    attn_mask = layers.Lambda(lambda mk: ops.logical_and(mk[0], mk[1]), name="mask_qk")([m_q, m_k])  # (B, T, T)
 
     # --- Transformer encoder blocks ---
     for i in range(NUM_LAYERS):
-        # make attention mask shape (B, 1, 1, T)
-        mask_4d = layers.Lambda(
-            lambda m: ops.expand_dims(ops.expand_dims(m, 1), 1),
-            name=f"mask4d_{i}"
-        )(inp_mask)
-
+        # MHA
         attn_out = layers.MultiHeadAttention(
             num_heads=NUM_HEADS,
             key_dim=max(1, TOKEN_HIDDEN // NUM_HEADS),
             dropout=DROPOUT,
             name=f"mha_{i}"
-        )(x, x, attention_mask=mask_4d)
+        )(x, x, attention_mask=attn_mask)
 
+        attn_out = layers.Dropout(DROPOUT, name=f"drop_attn_{i}")(attn_out)
         x = layers.Add(name=f"add_attn_{i}")([x, attn_out])
         x = layers.LayerNormalization(epsilon=1e-6, name=f"ln_attn_{i}")(x)
 
+        # FFN
         ff = layers.Dense(TRANSFORMER_DIM, activation="relu", name=f"ff1_{i}")(x)
-        ff = layers.Dropout(DROPOUT)(ff)
+        ff = layers.Dropout(DROPOUT, name=f"drop_ff1_{i}")(ff)
         ff = layers.Dense(TOKEN_HIDDEN, name=f"ff2_{i}")(ff)
+        ff = layers.Dropout(DROPOUT, name=f"drop_ff2_{i}")(ff)
+
         x = layers.Add(name=f"add_ff_{i}")([x, ff])
         x = layers.LayerNormalization(epsilon=1e-6, name=f"ln_ff_{i}")(x)
 
-    # --- Mask-aware mean pooling ---
-    mask_f = layers.Lambda(lambda m: ops.cast(m, "float32")[..., None], name="mask_cast")(inp_mask)
-    x_masked = layers.Multiply(name="mask_apply")([x, mask_f])
+    # --- Mask-aware attention pooling over time ---
+    # score: (B,T) then apply very negative to padded positions before softmax
+    score_h = layers.Dense(TOKEN_HIDDEN, activation="tanh", name="pool_h")(x)   # (B,T,D)
+    score = layers.Dense(1, name="pool_score")(score_h)                        # (B,T,1)
+    score = layers.Lambda(lambda s: ops.squeeze(s, axis=-1), name="pool_squeeze")(score)  # (B,T)
 
-    summed = layers.Lambda(lambda t: ops.sum(t, axis=1), name="sum_time")(x_masked)
-    denom = layers.Lambda(lambda m: ops.sum(m, axis=1) + 1e-6, name="mask_sum")(mask_f)
-    pooled = layers.Lambda(lambda z: z[0] / z[1], name="mean_pool")([summed, denom])  # (B, D)
+    mask_f = layers.Lambda(lambda m: ops.cast(m, "float32"), name="mask_cast")(inp_mask)  # (B,T)
+    very_neg = layers.Lambda(lambda mf: (1.0 - mf) * (-1e9), name="pool_veryneg")(mask_f) # (B,T)
+    score_m = layers.Add(name="pool_score_masked")([score, very_neg])                      # (B,T)
+
+    wts = layers.Softmax(axis=-1, name="pool_wts")(score_m)                                # (B,T)
+    wts_e = layers.Lambda(lambda w: ops.expand_dims(w, axis=-1), name="pool_wts_expand")(wts)  # (B,T,1)
+
+    ctx = layers.Multiply(name="pool_apply")([x, wts_e])                                   # (B,T,D)
+    pooled = layers.Lambda(lambda t: ops.sum(t, axis=1), name="pool_sum")(ctx)             # (B,D)
 
     # --- Output head ---
     h = layers.Dense(128, activation="relu", name="head_pre")(pooled)
-    h = layers.Dropout(DROPOUT)(h)
+    h = layers.Dropout(DROPOUT, name="head_drop")(h)
 
     outputs = {}
     for t in REGRESSION_TARGETS:
@@ -403,10 +447,16 @@ def build_transformer(
     # --- Compile ---
     losses = {t: "mse" for t in REGRESSION_TARGETS}
     losses.update({t: "binary_crossentropy" for t in BINARY_TARGETS})
+
     metrics_dict = {
         t: [metrics.MeanAbsoluteError(name="mae"), metrics.MeanSquaredError(name="mse")]
         for t in REGRESSION_TARGETS
     }
+    # (optional) binary metrics if you ever use BINARY_TARGETS
+    for t in BINARY_TARGETS:
+        metrics_dict[t] = [
+            metrics.BinaryAccuracy(name="acc"),
+        ]
 
     model.compile(
         optimizer=optimizers.Adam(1e-3),
@@ -414,9 +464,9 @@ def build_transformer(
         metrics=metrics_dict
     )
 
-    model.summary()
     return model
-    
+
+
     
 def build_embedding_transformer(
         INPUT_NUMERIC_COLS,

@@ -916,9 +916,10 @@ def train_transformer_on_parquet(args):
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
 
+
     input_categorical_column = None
     view2id = None
-
+    
     model = build_transformer(
         args.latent_dimensions,                      # positional arg 1
         args.target_regression_columns,
