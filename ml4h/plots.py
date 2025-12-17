@@ -3484,6 +3484,7 @@ def radar_performance(df, prefix, show=False, legend=True):
         .str.replace('output_', '', regex=False)
         .str.replace('_continuous', '', regex=False)
         .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
     )
     # Group by metric and generate radar plot for each
     for metric_type, metric_df in df.groupby("Metric"):
@@ -3549,6 +3550,7 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         .str.replace('output_', '', regex=False)
         .str.replace('_continuous', '', regex=False)
         .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
     )
     for metric_type, metric_df in df.groupby("Metric"):
         metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
