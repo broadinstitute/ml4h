@@ -44,7 +44,8 @@ from ml4h.models.train_diffusion import train_diffusion_model, train_diffusion_c
 from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
-from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, log_pearson_coefficients, concordance_index_censored
+from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, \
+    log_pearson_coefficients, concordance_index_censored, JsonlMetricsCallback
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
@@ -616,10 +617,10 @@ def train_transformer_on_parquet(args):
     #     args.batch_size,
     # )
     train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
-                                                     args.group_column, args.sort_column, args.sort_column_ascend,
-                                                     args.target_regression_columns + args.target_binary_columns,
-                                                     args.transformer_max_size, args.batch_size,
-                                                     args.train_csv, args.valid_csv, args.test_csv)
+                                                              args.group_column, args.sort_column, args.sort_column_ascend,
+                                                              args.target_regression_columns + args.target_binary_columns,
+                                                              args.transformer_max_size, args.batch_size,
+                                                              args.train_csv, args.valid_csv, args.test_csv)
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
         model = keras.models.load_model(args.model_file)
@@ -651,7 +652,9 @@ def train_transformer_on_parquet(args):
             layer_range=None,
             show_layer_activations=False,
         )
+
     callbacks = [
+        JsonlMetricsCallback(f'{args.output_folder}/{args.id}/'),
         keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
         keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
                                         save_best_only=not args.save_last_model),
