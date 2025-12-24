@@ -1012,6 +1012,14 @@ def calculate_fid(real, generated):
     fid = diff_squared + np.trace(sigma_real) + np.trace(sigma_generated) - 2 * np.trace(covmean)
     return fid
 
+
+def _register_all(module_globals):
+    for name, obj in module_globals.items():
+        if callable(obj) and not name.startswith("_"):
+            module_globals[name] = register_keras_serializable()(obj)
+
+_register_all(globals())
+
 class JsonlMetricsCallback(tf.keras.callbacks.Callback):
     """
     Writes one JSON line per epoch with training + validation metrics.
@@ -1057,12 +1065,3 @@ class JsonlMetricsCallback(tf.keras.callbacks.Callback):
                 f.flush()
                 os.fsync(f.fileno())
 
-
-
-
-def _register_all(module_globals):
-    for name, obj in module_globals.items():
-        if callable(obj) and not name.startswith("_"):
-            module_globals[name] = register_keras_serializable()(obj)
-
-_register_all(globals())
