@@ -340,6 +340,7 @@ def build_embedding_transformer(
         NUM_LAYERS,
         DROPOUT,
         view2id,
+        learning_rate,
 ):
     Feat = len(INPUT_NUMERIC_COLS)
 
@@ -424,7 +425,7 @@ def build_embedding_transformer(
                         keras.metrics.BinaryAccuracy(name='acc')] for t in BINARY_TARGETS})
 
     model.compile(
-        optimizer=keras.optimizers.Adam(1e-3),
+        optimizer=keras.optimizers.Adam(learning_rate),
         loss=losses,
         metrics=metrics
     )

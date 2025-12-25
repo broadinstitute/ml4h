@@ -45,7 +45,7 @@ from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_gene
 from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
 from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
 from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, \
-    log_pearson_coefficients, concordance_index_censored, JsonlMetricsCallback
+    log_pearson_coefficients, concordance_index_censored, JsonLossMetricsCallback
 from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
 
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
@@ -637,6 +637,7 @@ def train_transformer_on_parquet(args):
             args.transformer_layers,
             args.transformer_dropout_rate,
             view2id,
+            args.learning_rate,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
@@ -654,7 +655,7 @@ def train_transformer_on_parquet(args):
         )
 
     callbacks = [
-        JsonlMetricsCallback(f'{args.output_folder}/{args.id}/'),
+        JsonLossMetricsCallback(f'{args.output_folder}/{args.id}/'),
         keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
         keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
                                         save_best_only=not args.save_last_model),

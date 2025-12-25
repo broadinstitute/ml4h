@@ -1020,7 +1020,7 @@ def _register_all(module_globals):
 
 _register_all(globals())
 
-class JsonlMetricsCallback(tf.keras.callbacks.Callback):
+class JsonLossMetricsCallback(tf.keras.callbacks.Callback):
     """
     Writes one JSON line per epoch with training + validation metrics.
 
