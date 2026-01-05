@@ -20,7 +20,7 @@ from collections import Counter, defaultdict
 
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
-from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset, build_transformer
+from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset, build_transformer, build_general_embedding_transformer
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.models.train import train_model_from_generators
@@ -585,7 +585,7 @@ import pyarrow as pa
 import pyarrow.csv as pa_csv
 import pyarrow.dataset as ds
 import pandas as pd
-
+'''
 class ParquetDataloader:
     def __init__(self,
                  input_file_path,
@@ -593,8 +593,10 @@ class ParquetDataloader:
                  key_columns,
                  label_columns,
                  model_batch_size = 4,
-                 batch_size=1024,
-                 split = 0.7):
+                 batch_size=512,
+                 split = 0.7,
+                 numeric_columns = None,
+                 categorical_columns = None):
         self.input_file_path = input_file_path
         self.label_file_path = label_file_path
         self.key_columns = key_columns
@@ -603,6 +605,8 @@ class ParquetDataloader:
         self.split = split
         self.model_batch_size = model_batch_size
 
+        self.numeric_columns = numeric_columns or []
+        self.categorical_columns = categorical_columns or []
 
         self.labels_df = self._load_labels()
         self.label_key_set = set(self.labels_df.index)
@@ -611,11 +615,15 @@ class ParquetDataloader:
         
         all_columns = dset.schema.names
         self.latent_columns = [c for c in all_columns if c.startswith("latent_")]
-        print()
+
+        self._load_categorical_vocabs()
+
+        
 
     def _load_labels(self):
         dset = ds.dataset(self.label_file_path, format="parquet")
-        df = dset.to_table().to_pandas()
+        cols = self.key_columns + self.label_columns
+        df = dset.to_table(columns=cols).to_pandas()
         df = df.replace([np.inf, -np.inf], np.nan)
         #df = df.dropna(subset=self.label_columns)
         df[self.label_columns] = df[self.label_columns].astype(np.float32)
@@ -624,6 +632,17 @@ class ParquetDataloader:
         return df.set_index("key")
         #return df
     
+    def _load_categorical_vocabs(self):
+        self.cat_cardinalities = {}
+
+        dset = ds.dataset(self.input_file_path, format="parquet")
+
+        for col in self.categorical_columns:
+            tbl = dset.to_table(columns=[col])
+            uniq = pd.Series(tbl[col].to_numpy()).astype(str).unique()
+            vocab = {v: i+1 for i, v in enumerate(uniq)}  # 0 = PAD
+            self.cat_cardinalities[col] = vocab
+
     def _iter_input_batches(self, split = "train") -> Iterator[pa.RecordBatch]:
         
         dset = ds.dataset(self.input_file_path, format="parquet")
@@ -645,8 +664,11 @@ class ParquetDataloader:
                 (int(hashlib.md5(k.encode()).hexdigest(), 16) % 1000 for k in keys),
                 dtype=np.int64
             )
-        
-            mask = (hashes < self.split * 1000)
+
+            if split == "train":
+                mask = (hashes < self.split * 1000)
+            else:
+                mask = (hashes >= self.split * 1000)
             
             #mask = (np.array([hash(k) % 1000 for k in keys]) < self.split * 1000)
 
@@ -665,10 +687,44 @@ class ParquetDataloader:
                 continue
 
             latent_arr = latent_arr[np.isin(filtered_keys, valid_keys)]
+
+            numeric_dict = {
+                col: b.column(col).to_numpy()[mask][mask_valid].astype(np.float32)
+                for col in self.numeric_columns
+            }
+
+            # categorical features (int32)
+            # categorical features → mapped using vocab
+            categorical_dict = {}
+            for col in self.categorical_columns:
+                vocab = self.cat_cardinalities[col]   # dict: raw_value → ID
+
+                # Pull raw values for this batch
+                arr = b.column(col).to_numpy()[mask][mask_valid]
+
+                # Convert to strings so vocab matches safely
+                arr = arr.astype(str)
+
+                # Map to integer IDs using vocab (unknown → 0)
+                mapped = np.array([vocab.get(v, 0) for v in arr], dtype=np.int32)
+
+                categorical_dict[col] = mapped
+
+
             y = self.labels_df.loc[valid_keys, self.label_columns].values
 
             for i in range(0, len(latent_arr), self.model_batch_size):
                 X_batch = latent_arr[i:i+self.model_batch_size].astype(np.float32)
+
+                numeric_batch = {
+                    col: numeric_dict[col][i:i+self.model_batch_size]
+                    for col in self.numeric_columns
+                }
+                categorical_batch = {
+                    col: categorical_dict[col][i:i+self.model_batch_size]
+                    for col in self.categorical_columns
+                }
+
                 y_batch_all = y[i:i+self.model_batch_size]
                 key_batch = valid_keys[i:i+self.model_batch_size]
 
@@ -681,13 +737,19 @@ class ParquetDataloader:
                     label_name: (~np.isnan(y_batch_all[:, idx:idx+1])).astype(np.float32)
                     for idx, label_name in enumerate(self.label_columns)
                 }
-                yield X_batch, y_batch_dict, sw_batch_dict, key_batch
 
-            '''
+                X_out = {
+                    "latent": X_batch,
+                    "numeric": numeric_batch,
+                    "categorical": categorical_batch,
+                }
+                yield X_out, y_batch_dict, sw_batch_dict, key_batch
+
+            
             #yield latent_arr.astype(np.float32), y.astype(np.float32)
-            for i in range(0, len(latent_arr), self.model_batch_size):
-                yield latent_arr[i:i + self.model_batch_size].astype(np.float32), y[i:i + self.model_batch_size].astype(np.float32), valid_keys[i:i + self.model_batch_size]
-            '''
+            #for i in range(0, len(latent_arr), self.model_batch_size):
+            #    yield latent_arr[i:i + self.model_batch_size].astype(np.float32), y[i:i + self.model_batch_size].astype(np.float32), valid_keys[i:i + self.model_batch_size]
+            
     def _hashsplit(self, sample_id):
         h = int(hashlib.md5(sample_id.encode()).hexdigest(), 16)
         frac = h/ float(16 ** 32)
@@ -706,6 +768,29 @@ class ParquetDataloader:
             label: tf.TensorSpec(shape=(None, 1), dtype=tf.float32)
             for label in self.label_columns
         }
+        latent_output_spec = tf.TensorSpec(
+            shape=(None, len(self.latent_columns)),
+            dtype=tf.float32,
+        )
+
+        # numeric: dict[name -> (batch_size,)]
+        numeric_output_spec = {
+            col: tf.TensorSpec(shape=(None,), dtype=tf.float32)
+            for col in self.numeric_columns
+        }
+
+        # categorical: dict[name -> (batch_size,)]
+        categorical_output_spec = {
+            col: tf.TensorSpec(shape=(None,), dtype=tf.int32)
+            for col in self.categorical_columns
+        }
+
+        X_output_spec = {
+            "latent": latent_output_spec,
+            "numeric": numeric_output_spec,
+            "categorical": categorical_output_spec,
+        }
+        
         def gen():
             for X, y, sw, keys in self._iter_input_batches(split):
                 yield X, y, sw, keys
@@ -713,11 +798,11 @@ class ParquetDataloader:
         return tf.data.Dataset.from_generator(
                 gen,
                 output_signature=(
-                    tf.TensorSpec(shape=(None, len(self.latent_columns)), dtype=tf.float32),
+                    X_output_spec,
                     label_output_spec,
                     sw_output_spec,
-                    tf.TensorSpec(shape=(None,), dtype=tf.string)
-                )
+                    tf.TensorSpec(shape=(None,), dtype=tf.string),
+                ),
             ).prefetch(tf.data.AUTOTUNE)
 
 
@@ -731,51 +816,83 @@ class LongitudinalDatasetWrapper:
     (e.g., sample_id), sorted by timestamp, and padded to (B, Seq_len, *input_shape).
     """
 
-    def __init__(self, parquet_loader, group_column="sample_id", max_seq_len=None):
+    def __init__(self, 
+                 parquet_loader, 
+                 group_column="sample_id", 
+                 max_seq_len=None,
+                 categorical_columns: Optional[List[str]] = None,
+                 numeric_columns: Optional[List[str]] = None):
         self.loader = parquet_loader
         self.group_column = group_column
         self.max_seq_len = max_seq_len  # optional truncation for very long sequences
 
         self.label_columns = parquet_loader.label_columns
 
-    def _group_by_subject(self, X_batch, y_batch, sw_batch, key_batch):
+        self.latent_columns = parquet_loader.latent_columns
+        self.categorical_columns = categorical_columns or []
+        self.numeric_columns = numeric_columns or []
+
+        self.latent_dim = len(self.latent_columns)
+        self.numeric_dim = len(self.numeric_columns)
+
+    def _group_by_subject(self, X_lat, X_num, X_cat, y_batch, sw_batch, key_batch):
         """
         Group a flat batch of samples into subject-level sequences.
         Expects keys in the format '{sample_id}_{timestamp}'.
         """
-        decoded_keys = [k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else k for k in key_batch]
-        df = pd.DataFrame({"key": decoded_keys})
+        #decoded_keys = [k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else k for k in key_batch]
+        #df = pd.DataFrame({"key": decoded_keys})
+        #df[self.group_column] = df["key"].str.split("_").str[0]
+        clean_keys = []
+        for k in key_batch:
+            if isinstance(k, (bytes, bytearray)):
+                clean_keys.append(k.decode("utf-8"))
+            else:
+                clean_keys.append(str(k))
+
+        df = pd.DataFrame({"key": clean_keys})
+
+        # force dtype to string explicitly
+        df["key"] = df["key"].astype(str)
+
+        # now .str.split is ALWAYS safe
         df[self.group_column] = df["key"].str.split("_").str[0]
         df["idx"] = np.arange(len(df))
 
-        seqs_X, seqs_y, seqs_sw = [], [], []
+        seqs_lat, seqs_num, seqs_cat, seqs_y, seqs_sw = [], [], [], [], []
 
         for pid, g in df.groupby(self.group_column, sort=False):
             idxs = g["idx"].values
-            seq_X = X_batch[idxs]
-            #seq_y = y_batch[idxs]
-
-            # Optionally truncate very long sequences
-            if self.max_seq_len is not None and len(seq_X) > self.max_seq_len:
-                seq_X = seq_X[:self.max_seq_len]
-                seq_y = seq_y[:self.max_seq_len]
+            lat_seq = X_lat[idxs]
+            num_seq = {c: X_num[c][idxs] for c in self.numeric_columns}
+            cat_seq = {c: X_cat[c][idxs] for c in self.categorical_columns}
 
             seq_y_dict = {label: y_batch[label][idxs] for label in self.label_columns}
             seq_sw_dict = {label: sw_batch[label][idxs] for label in self.label_columns}
-            latest_label_dict = {
-                label: seq_y_dict[label][-1]   # last timestamp’s value
-                for label in self.label_columns
-            }
-            latest_sw_dict = {
-                label: np.array(seq_sw_dict[label][-1], dtype=np.float32)
-                for label in self.label_columns
-            }
-            #latest_y = seq_y[-1].reshape(-1)
-            seqs_X.append(seq_X)
-            seqs_y.append(latest_label_dict)
-            seqs_sw.append(latest_sw_dict)
+            #seq_y = y_batch[idxs]
 
-        return seqs_X, seqs_y, seqs_sw
+            # Optionally truncate very long sequences
+            if self.max_seq_len and len(lat_seq) > self.max_seq_len:
+                lat_seq = lat_seq[:self.max_seq_len]
+                for c in self.numeric_columns:
+                    num_seq[c] = num_seq[c][:self.max_seq_len]
+                for c in self.categorical_columns:
+                    cat_seq[c] = cat_seq[c][:self.max_seq_len]
+                for label in self.label_columns:
+                    seq_y_dict[label] = seq_y_dict[label][:self.max_seq_len]
+                    seq_sw_dict[label] = seq_sw_dict[label][:self.max_seq_len]
+
+
+            latest_y = {label: seq_y_dict[label][-1] for label in self.label_columns}
+            latest_sw = {label: np.array(seq_sw_dict[label][-1], dtype=np.float32) for label in self.label_columns}
+
+            seqs_lat.append(lat_seq)
+            seqs_num.append(num_seq)
+            seqs_cat.append(cat_seq)
+            seqs_y.append(latest_y)
+            seqs_sw.append(latest_sw)
+
+        return seqs_lat, seqs_num, seqs_cat, seqs_y, seqs_sw
 
     def get_tf_dataset(self, split="train"):
         """
@@ -792,28 +909,39 @@ class LongitudinalDatasetWrapper:
             label: tf.TensorSpec(shape=(1,), dtype=tf.float32)
             for label in self.label_columns
         }
+
+        cat_spec = {c: tf.TensorSpec((None,), tf.int32) for c in self.categorical_columns}
+        num_spec = {c: tf.TensorSpec((None,), tf.float32) for c in self.numeric_columns}
         def gen():
             for X, y, sw, keys in base_ds:
-                # ⚠️ Need keys for grouping → add this in your loader if not already
-                # For now, create synthetic keys for demonstration (replace with real)
-                X_np = X.numpy()
-                y_np_dict = {k: v.numpy() for k, v in y.items()}
+                X_lat = X["latent"].numpy()
+                X_num = {c: X["numeric"][c].numpy() for c in self.numeric_columns}
+                X_cat = {c: X["categorical"][c].numpy() for c in self.categorical_columns}
+
+                y_np = {k: v.numpy() for k, v in y.items()}
                 sw_np = {k: v.numpy() for k, v in sw.items()}
+
                 keys_np = keys.numpy()
 
-                seqs_X, seqs_y, seqs_sw = self._group_by_subject(X_np, y_np_dict, sw_np, keys_np)
-                #seqs_X, seqs_y = self._group_by_subject(X.numpy(), y.numpy(), keys.numpy())
-                for X_seq, y_seq, seqs_sw in zip(seqs_X, seqs_y, seqs_sw):
-                    mask = np.any(X_seq != 0.0, axis=1)
-                    sw_seq = {k: np.array(v, dtype=np.float32).reshape(1,) for k, v in seqs_sw.items()}
-                    y_seq = {k: np.array(v, dtype=np.float32) for k, v in y_seq.items()}
-                    yield X_seq, mask, y_seq, sw_seq
+                seq_lat, seq_num, seq_cat, seq_y, seq_sw = self._group_by_subject(
+                    X_lat, X_num, X_cat, y_np, sw_np, keys_np
+                )
+
+                for lat_seq, num_seq, cat_seq, y_seq, sw_seq in zip(seq_lat, seq_num, seq_cat, seq_y, seq_sw):
+                    mask = np.any(lat_seq != 0.0, axis=1)
+
+                    y_out = {k: np.array(v, np.float32).reshape(1,) for k, v in y_seq.items()}
+                    sw_out = {k: np.array(v, np.float32).reshape(1,) for k, v in sw_seq.items()}
+
+                    yield lat_seq, num_seq, cat_seq, mask, y_out, sw_out
 
         return (
             tf.data.Dataset.from_generator(
                 gen,
                 output_signature=(
-                    tf.TensorSpec(shape=(None, len(self.loader.latent_columns)), dtype=tf.float32),
+                    tf.TensorSpec(shape=(None, self.latent_dim), dtype=tf.float32),
+                    num_spec,
+                    cat_spec,
                     tf.TensorSpec(shape=(None,), dtype=tf.bool),
                     label_output_spec,
                     sw_output_spec
@@ -823,14 +951,18 @@ class LongitudinalDatasetWrapper:
             .padded_batch(
                 self.loader.model_batch_size,
                 padded_shapes=(
-                    [None, len(self.loader.latent_columns)],   # pad along Seq_len
-                    [None],
+                    [self.max_seq_len, self.latent_dim],   # pad along Seq_len
+                    {c: [self.max_seq_len] for c in self.numeric_columns},
+                    {c: [self.max_seq_len] for c in self.categorical_columns},
+                    [self.max_seq_len],
                     {k: [1] for k in self.label_columns}, 
                     {k: [1] for k in self.label_columns},
                     #[len(self.loader.label_columns)],
                 ),
                 padding_values=(
                     np.float32(0.0),
+                    {c: np.float32(0.0) for c in self.numeric_columns},
+                    {c: np.int32(0) for c in self.categorical_columns},
                     False,
                     {k: np.float32(0.0) for k in self.label_columns},
                     {k: np.float32(0.0) for k in self.label_columns},
@@ -840,6 +972,190 @@ class LongitudinalDatasetWrapper:
             )
             .prefetch(tf.data.AUTOTUNE)
         )
+'''
+
+class LongitudinalDataloader:
+    def __init__(
+        self,
+        input_file_path,
+        label_file_path,
+        group_column,
+        sort_column,
+        latent_dim,
+        numeric_columns,
+        categorical_columns,
+        label_columns,
+        max_seq_len,
+        batch_size,
+        shuffle=True,
+    ):
+        self.input_ds = ds.dataset(input_file_path, format="parquet")
+        self.label_ds = self.input_ds if label_file_path in [None, input_file_path] \
+                        else ds.dataset(label_file_path, format="parquet")
+
+        self.latent_cols = [f"latent_{i}" for i in range(latent_dim)]
+        self.latent_dim = latent_dim
+        self.numeric_columns = numeric_columns
+        self.categorical_columns = categorical_columns
+        self.label_columns = label_columns
+        self.max_seq_len = max_seq_len
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+        # ---- build MRN → row indices ONCE ----
+        index_tbl = self.input_ds.to_table(
+            columns=[group_column, sort_column]
+        ).to_pandas()
+
+        index_tbl = index_tbl.sort_values(
+            [group_column, sort_column], kind="mergesort"
+        )
+
+        self.group_to_indices = []
+        for _, g in index_tbl.groupby(group_column, sort=False):
+            idxs = g.index.values
+            if max_seq_len:
+                idxs = idxs[-max_seq_len:]
+            self.group_to_indices.append(idxs)
+
+    
+    def _generator(self):
+        groups = self.group_to_indices.copy()
+        if self.shuffle:
+            np.random.shuffle(groups)
+        
+        from more_itertools import chunked
+        for chunk in chunked(groups, 32):
+            #T = len(idxs)
+
+            flat_idxs = np.concatenate(chunk)
+            inp = self.input_ds.take(flat_idxs)
+            lab = self.label_ds.take(flat_idxs)
+
+            lat_all = np.stack(
+                [inp.column(c).to_numpy(zero_copy_only=False) for c in self.latent_cols],
+                axis=1
+            ).astype(np.float32)
+
+            num_all = {
+                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+                for c in self.numeric_columns
+            }
+
+            cat_all = {
+                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+                for c in self.categorical_columns
+            }
+
+            lab_all = np.stack(
+                [
+                    lab.column(c).to_numpy(zero_copy_only=False)
+                    for c in self.label_columns
+                ],
+                axis=1
+            ).astype(np.float32)
+
+
+
+            offset = 0
+            for idxs in chunk:
+                T = len(idxs)
+                sl = slice(offset, offset + T)
+
+                x = {
+                    "latent": lat_all[sl],
+                    "mask": np.ones(T, dtype=bool),
+                }
+
+                for c in self.numeric_columns:
+                    x[f"num_{c}"] = num_all[c][sl]
+
+                for c in self.categorical_columns:
+                    x[f"cat_{c}"] = cat_all[c][sl]
+
+                # latest label only
+                vals = lab_all[sl][-1]
+
+                y, sw = {}, {}
+                for i, c in enumerate(self.label_columns):
+                    if np.isnan(vals[i]):
+                        y[c] = 0.0
+                        sw[c] = 0.0
+                    else:
+                        y[c] = float(vals[i])
+                        sw[c] = 1.0
+
+                yield x, y, sw
+
+                offset += T
+
+
+    def get_tf_dataset(self):
+        output_signature = (
+            {
+                "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
+                "mask": tf.TensorSpec((None,), tf.bool),
+                **{
+                    f"num_{c}": tf.TensorSpec((None,), tf.float32)
+                    for c in self.numeric_columns
+                },
+                **{
+                    f"cat_{c}": tf.TensorSpec((None,), tf.int32)
+                    for c in self.categorical_columns
+                },
+            },
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+        )
+
+        ds_tf = tf.data.Dataset.from_generator(
+            self._generator,
+            output_signature=output_signature,
+        )
+
+        return (
+            ds_tf
+            .padded_batch(
+                self.batch_size,
+                padded_shapes=(
+                    {
+                        "latent": [self.max_seq_len, self.latent_dim],
+                        "mask": [self.max_seq_len],
+                        **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
+                        **{f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns},
+                    },
+                    {c: [] for c in self.label_columns},
+                    {c: [] for c in self.label_columns},
+                ),
+            )
+            .prefetch(tf.data.AUTOTUNE)
+        )
+
+    
+    def get_train_val_datasets(self, val_frac=0.2, seed=42):
+        rng = np.random.default_rng(seed)
+
+        n = len(self.group_to_indices)
+        indices = np.arange(n)
+        rng.shuffle(indices)
+
+        split = int((1 - val_frac) * n)
+        train_idx = indices[:split]
+        val_idx = indices[split:]
+
+        train_loader = copy.copy(self)
+        val_loader   = copy.copy(self)
+
+        train_loader.group_to_indices = [self.group_to_indices[i] for i in train_idx]
+        val_loader.group_to_indices   = [self.group_to_indices[i] for i in val_idx]
+
+        train_loader.shuffle = self.shuffle
+        val_loader.shuffle = False
+
+        return train_loader.get_tf_dataset(), val_loader.get_tf_dataset()
+
+
+
 
 
 import os
@@ -854,6 +1170,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 import pandas as pd
+from datasets import load_dataset
 
 
 def train_transformer_on_parquet(args):
@@ -882,53 +1199,50 @@ def train_transformer_on_parquet(args):
         input_categorical_column = None
         view2id = None
     '''
-    # train_ds, val_ds = build_datasets(
-    #     df,
-    #     input_numeric_columns,
-    #     input_categorical_column,
-    #     args.target_regression_columns,
-    #     args.target_binary_columns,
-    #     args.group_column,
-    #     args.sort_column,
-    #     args.transformer_max_size,
-    #     args.batch_size,
-    # )
-    # args.group_column = "sample_id_x"
-    # train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
-    #                                                 args.target_regression_columns + args.target_binary_columns,
-    #                                                args.transformer_max_size, args.batch_size)
-
-    base_loader = ParquetDataloader(
+    loader = LongitudinalDataloader(
         input_file_path=args.transformer_input_file,
         label_file_path=args.transformer_label_file,
-        key_columns=[args.group_column, args.sort_column],
+        latent_dim=args.latent_dimensions,
+        group_column=args.group_column,
+        sort_column=args.sort_column,
+        numeric_columns=args.input_numeric_columns,
+        categorical_columns=args.input_categorical_columns,
         label_columns=args.target_regression_columns + args.target_binary_columns,
-        model_batch_size=args.batch_size,
+        batch_size=args.batch_size,
+        max_seq_len=50,
+        shuffle=False,
     )
-    long_loader = LongitudinalDatasetWrapper(base_loader, group_column=args.group_column, max_seq_len=args.transformer_max_size)
 
-    train_ds = long_loader.get_tf_dataset("train")
-    val_ds = long_loader.get_tf_dataset("test")
+    train_ds, val_ds = loader.get_train_val_datasets(val_frac=0.2)
 
-    train_ds = train_ds.map(lambda X, mask, y, sw: ({'num': X, 'mask': mask}, y, sw))
-    val_ds = val_ds.map(lambda X, mask, y, sw: ({'num': X, 'mask': mask}, y, sw))
+    if args.categorical_columns:
+        logging.info(f"Building vocab for categorical columns...")
+        import pyarrow.dataset as ds
 
-    input_numeric_columns = args.input_numeric_columns
-    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
+        dataset = ds.dataset(args.transformer_input_file, format="parquet")
 
+        cat_cardinalities = {}
 
-    input_categorical_column = None
-    view2id = None
+        for col in args.input_categorical_columns:
+            max_id = dataset.to_table(columns=[col]).column(col).to_numpy().max()
+            cat_cardinalities[col] = int(max_id)
     
-    model = build_transformer(
-        args.latent_dimensions,                      # positional arg 1
-        args.target_regression_columns,
-        args.target_binary_columns,
-        args.transformer_token_embed,
-        args.transformer_size,
-        args.attention_heads,
-        args.transformer_layers,
-        args.transformer_dropout_rate
+    logging.info(f"Building and Training model...")
+
+    model = build_general_embedding_transformer(
+        latent_dim=args.latent_dimensions,
+        numeric_columns=args.input_numeric_columns,
+        categorical_columns=args.input_categorical_columns,
+        categorical_vocabs=cat_cardinalities,   # <-- important
+        REGRESSION_TARGETS=args.target_regression_columns,
+        BINARY_TARGETS=args.target_binary_columns,
+        MAX_LEN=50,
+        EMB_DIM=args.transformer_token_embed,
+        TOKEN_HIDDEN=args.transformer_size,
+        TRANSFORMER_DIM=args.transformer_size,
+        NUM_HEADS=args.attention_heads,
+        NUM_LAYERS=args.transformer_layers,
+        DROPOUT=args.transformer_dropout_rate,
     )
 
     if args.inspect_model:

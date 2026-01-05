@@ -330,142 +330,189 @@ def encoder(
 from keras import layers, ops, Model, Input, metrics, optimizers
 
 import keras
-from keras import layers, Input, Model, metrics, optimizers
-import keras.ops as ops
 
-
-from keras import layers, metrics, optimizers, Model, Input, ops
-
-class LearnablePositionalEmbedding(layers.Layer):
-    def __init__(self, max_len, embed_dim, **kwargs):
-        super().__init__(**kwargs)
-        self.max_len = max_len
-        self.embed_dim = embed_dim
-        self.pos_embedding = layers.Embedding(input_dim=max_len, output_dim=embed_dim)
-
-    def call(self, inputs):
-        length = ops.shape(inputs)[1]
-        positions = ops.arange(start=0, stop=length, step=1)
-        #positions = ops.expand_dims(positions, 0)
-        pos_embeddings = self.pos_embedding(positions)
-        return inputs + pos_embeddings
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({'max_len': self.max_len, 'embed_dim': self.embed_dim})
-        return config
-    
-def build_transformer(
-    input_dim,                   # e.g. 19968
-    REGRESSION_TARGETS,          # e.g. ["age"]
-    BINARY_TARGETS,              # e.g. []
-    TOKEN_HIDDEN,                # e.g. 256
-    TRANSFORMER_DIM,             # e.g. 256
-    NUM_HEADS,                   # e.g. 4
-    NUM_LAYERS,                  # e.g. 4
-    DROPOUT,                     # e.g. 0.1
-    MAX_LEN=50
-):
-    """
-    Minimal transformer encoder (Keras 3 native ops only).
-    Input:
-      num  : (B, T, input_dim)
-      mask : (B, T)  True=valid token, False=pad
-    Output:
-      regression / binary targets
-    """
-
-    # --- Inputs ---
-    inp_num  = Input(shape=(None, input_dim), dtype="float32", name="num")  # (B, T, input_dim)
-    inp_mask = Input(shape=(None,), dtype="bool", name="mask")              # (B, T)
-
-    x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
-    x = layers.Dropout(DROPOUT)(x)
-    # --- Positional embedding (learnable) ---
-    x =    LearnablePositionalEmbedding(
+def build_general_embedding_transformer(
+        latent_dim,
+        numeric_columns,
+        categorical_columns,
+        categorical_vocabs,   # dict col → mapping from category → ID
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
         MAX_LEN,
-        TOKEN_HIDDEN
-    )(x)
+        EMB_DIM,
+        TOKEN_HIDDEN,
+        TRANSFORMER_DIM,
+        NUM_HEADS,
+        NUM_LAYERS,
+        DROPOUT,
+):
+    # ------------------------------
+    # INPUTS
+    # ------------------------------
+    inp_latent = keras.Input(shape=(MAX_LEN, latent_dim), dtype="float32", name="latent")
 
-    # --- Build (B, T, T) attention mask ONCE from (B, T) ---
-    # True means "keep/attend", False means "mask out"
-    m_q = layers.Lambda(lambda m: ops.expand_dims(m, axis=2), name="mask_q")(inp_mask)  # (B, T, 1)
-    m_k = layers.Lambda(lambda m: ops.expand_dims(m, axis=1), name="mask_k")(inp_mask)  # (B, 1, T)
-    attn_mask = layers.Lambda(lambda mk: ops.logical_and(mk[0], mk[1]), name="mask_qk")([m_q, m_k])  # (B, T, T)
+    inp_numeric = {
+        col: keras.Input(shape=(MAX_LEN,), dtype="float32", name=f"num_{col}")
+        for col in numeric_columns
+    }
 
-    # --- Transformer encoder blocks ---
+    inp_categorical = {
+        col: keras.Input(shape=(MAX_LEN,), dtype="int32", name=f"cat_{col}")
+        for col in categorical_columns
+    }
+
+    inp_mask = keras.Input(shape=(MAX_LEN,), dtype="bool", name="mask")
+
+    # ------------------------------
+    # NUMERIC STACK
+    # ------------------------------
+    num_emb = None
+    if len(numeric_columns) > 0:
+        num_embs = []
+        for col in numeric_columns:
+            x = layers.Lambda(
+                lambda z: ops.expand_dims(z, -1),
+                name=f"num_{col}_expand"
+            )(inp_numeric[col])  # (B,T,1)
+
+            x = layers.Dense(EMB_DIM, name=f"num_{col}_emb")(x)  # (B,T,EMB_DIM)
+            num_embs.append(x)
+        num_emb = layers.Add(name="num_emb_sum")(num_embs) if len(num_embs) > 1 else num_embs[0]  # (B,T,EMB_DIM)
+    # ------------------------------
+    # MULTIPLE CATEGORICAL EMBEDDINGS
+    # ------------------------------
+    cat_embs = []
+    for col in categorical_columns:
+        vocab = categorical_vocabs[col]
+        vocab_size = vocab + 1
+
+        emb = layers.Embedding(
+            input_dim=vocab_size,
+            output_dim=EMB_DIM,
+            name=f"cat_{col}_emb"
+        )(inp_categorical[col])   # (B,T,EMB_DIM)
+
+        cat_embs.append(emb)
+
+    if len(cat_embs) > 0:
+        cat_emb = layers.Add(name="cat_emb_sum")(cat_embs)  # (B,T,EMB_DIM)
+    else:
+        cat_emb = None
+
+    latent_emb = layers.Dense(EMB_DIM, name="latent_emb")(inp_latent)  # (B,T,EMB_DIM)
+    # ------------------------------
+    # CONCAT ALL FEATURE STREAMS
+    # ------------------------------
+    emb = [latent_emb]
+    if num_emb is not None:
+        emb.append(num_emb)
+    if cat_emb is not None:
+        emb.append(cat_emb)
+
+    x = layers.Add(name="total_emb")(emb)  # (B,T,EMB_DIM)
+
+    # ------------------------------
+    # POSITIONAL EMBEDDING
+    # ------------------------------
+
+    positions = layers.Lambda(
+        lambda t: ops.tile(
+            ops.expand_dims(ops.arange(ops.shape(t)[1]), axis=0),
+            [ops.shape(t)[0], 1]), 
+        name = "pos_indices"
+    )(x)  # (T,)
+
+    pos_emb = layers.Embedding(
+        input_dim=MAX_LEN,
+        output_dim=EMB_DIM,
+        name="pos_embedding"
+    )(positions)  # (B,T,EMB_DIM)
+
+    x = layers.Add(name="add_pos")([x, pos_emb])
+    
+    # ------------------------------
+    # ATTENTION MASK
+    # ------------------------------
+
+    attn_mask = layers.Lambda(
+        lambda m: ops.cast(m[:, None, :], "bool"),
+        name = "attn_mask"
+    )(inp_mask)  # (B,1,T)
+
+    # ------------------------------
+    # TRANSFORMER LAYERS
+    # ------------------------------
     for i in range(NUM_LAYERS):
-        # MHA
-        attn_out = layers.MultiHeadAttention(
+        attn = layers.MultiHeadAttention(
             num_heads=NUM_HEADS,
-            key_dim=max(1, TOKEN_HIDDEN // NUM_HEADS),
+            key_dim=EMB_DIM // NUM_HEADS,
             dropout=DROPOUT,
             name=f"mha_{i}"
         )(x, x, attention_mask=attn_mask)
 
-        attn_out = layers.Dropout(DROPOUT, name=f"drop_attn_{i}")(attn_out)
-        x = layers.Add(name=f"add_attn_{i}")([x, attn_out])
-        x = layers.LayerNormalization(epsilon=1e-6, name=f"ln_attn_{i}")(x)
+        attn = layers.Dropout(DROPOUT, name=f"attn_dropout_{i}")(attn)
+        x = layers.Add(name=f"attn_residual_{i}")([x, attn])
+        x = layers.LayerNormalization(name=f"attn_norm_{i}")(x)
 
-        # FFN
-        ff = layers.Dense(TRANSFORMER_DIM, activation="relu", name=f"ff1_{i}")(x)
-        ff = layers.Dropout(DROPOUT, name=f"drop_ff1_{i}")(ff)
-        ff = layers.Dense(TOKEN_HIDDEN, name=f"ff2_{i}")(ff)
-        ff = layers.Dropout(DROPOUT, name=f"drop_ff2_{i}")(ff)
+        #FEED FORWARD
 
-        x = layers.Add(name=f"add_ff_{i}")([x, ff])
-        x = layers.LayerNormalization(epsilon=1e-6, name=f"ln_ff_{i}")(x)
+        ff = layers.Dense(4*EMB_DIM, activation="relu", name=f"ffn_dense_1_{i}")(x)
+        ff = layers.Dropout(DROPOUT,name=f"ffn_dropout_1_{i}")(ff)
+        ff = layers.Dense(EMB_DIM, name=f"ffn_dense_2_{i}")(ff)
+        ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_2_{i}")(ff)
+        x = layers.Add(name=f"ffn_residual_{i}")([x, ff])
+        x = layers.LayerNormalization(name=f"ffn_norm_{i}")(x)
+    
+    #ATTENTION POOLING
 
-    # --- Mask-aware attention pooling over time ---
-    # score: (B,T) then apply very negative to padded positions before softmax
-    score_h = layers.Dense(TOKEN_HIDDEN, activation="tanh", name="pool_h")(x)   # (B,T,D)
-    score = layers.Dense(1, name="pool_score")(score_h)                        # (B,T,1)
-    score = layers.Lambda(lambda s: ops.squeeze(s, axis=-1), name="pool_squeeze")(score)  # (B,T)
-
-    mask_f = layers.Lambda(lambda m: ops.cast(m, "float32"), name="mask_cast")(inp_mask)  # (B,T)
-    very_neg = layers.Lambda(lambda mf: (1.0 - mf) * (-1e9), name="pool_veryneg")(mask_f) # (B,T)
-    score_m = layers.Add(name="pool_score_masked")([score, very_neg])                      # (B,T)
-
-    wts = layers.Softmax(axis=-1, name="pool_wts")(score_m)                                # (B,T)
-    wts_e = layers.Lambda(lambda w: ops.expand_dims(w, axis=-1), name="pool_wts_expand")(wts)  # (B,T,1)
-
-    ctx = layers.Multiply(name="pool_apply")([x, wts_e])                                   # (B,T,D)
-    pooled = layers.Lambda(lambda t: ops.sum(t, axis=1), name="pool_sum")(ctx)             # (B,D)
-
-    # --- Output head ---
-    h = layers.Dense(128, activation="relu", name="head_pre")(pooled)
-    h = layers.Dropout(DROPOUT, name="head_drop")(h)
+    #AVG MEAN POOLING WITH MASK(CAN CHANGE TO DIFFERENT POOLING LATER)
+    mask_f = layers.Lambda(lambda m: ops.cast(m, "float32"))(inp_mask) # (B,T)
+    mask_f = layers.Lambda(lambda m: ops.expand_dims(m, -1))(mask_f)  # (B,T,1)
+    x_masked = layers.Multiply(name="apply_mask")([x, mask_f])  # (B,T,EMB_DIM)
+    sum_x = layers.Lambda(lambda z: ops.sum(z, axis=1), name="sum_over_time")(x_masked)  # (B,EMB_DIM)
+    count = layers.Lambda(lambda m: ops.sum(m, axis=1), name="count_valid")(mask_f)  # (B,1)
+    pooled = layers.Lambda(lambda args: args[0]/ ops.maximum(args[1],1.0), name="masked_mean")([sum_x, count])  # (B,EMB_DIM)
 
     outputs = {}
     for t in REGRESSION_TARGETS:
-        outputs[t] = layers.Dense(1, name=t)(h)
+        outputs[t] = layers.Dense(1, name=t)(pooled)
     for t in BINARY_TARGETS:
-        outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
+        outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(pooled)
 
-    model = Model(inputs={"num": inp_num, "mask": inp_mask}, outputs=outputs)
+    # ------------------------------
+    # MODEL
+    # ------------------------------
+    inputs = {"latent": inp_latent, "mask": inp_mask}
 
-    # --- Compile ---
+    for col in numeric_columns:
+        inputs[f"num_{col}"] = inp_numeric[col]
+
+    for col in categorical_columns:
+        inputs[f"cat_{col}"] = inp_categorical[col]
+
+    model = keras.Model(inputs, outputs)
+
     losses = {t: "mse" for t in REGRESSION_TARGETS}
     losses.update({t: "binary_crossentropy" for t in BINARY_TARGETS})
 
     metrics_dict = {
-        t: [metrics.MeanAbsoluteError(name="mae"), metrics.MeanSquaredError(name="mse")]
+        t: [keras.metrics.MeanAbsoluteError(), keras.metrics.MeanSquaredError()]
         for t in REGRESSION_TARGETS
     }
-    # (optional) binary metrics if you ever use BINARY_TARGETS
     for t in BINARY_TARGETS:
         metrics_dict[t] = [
-            metrics.BinaryAccuracy(name="acc"),
+            keras.metrics.AUC(name="auroc"),
+            keras.metrics.AUC(name="auprc", curve="PR"),
+            keras.metrics.BinaryAccuracy(name="acc"),
         ]
 
     model.compile(
-        optimizer=optimizers.Adam(1e-3),
+        optimizer=keras.optimizers.Adam(1e-4, clipnorm=1.0),
         loss=losses,
-        metrics=metrics_dict
+        metrics=metrics_dict,
     )
 
     return model
-
 
     
 def build_embedding_transformer(
@@ -594,10 +641,22 @@ def evaluate_multitask_on_dataset(
             for x, y, sw in dataset:
                 outs = model(x, training=False)
                 for t in y_true.keys():
+                    '''
                     y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
                     w[t].append(tf.convert_to_tensor(sw[t]).numpy())
                     # model outputs dict of tensors; ensure 1D
                     yp = tf.convert_to_tensor(outs[t]).numpy() #.reshape(-1)
+                    y_pred[t].append(yp)
+                    '''
+                    yt = y[t].numpy().flatten()
+                    y_true[t].append(yt)
+                    
+                    # sw[t] shape: (batch_size, 1) -> flatten to (batch_size,)
+                    wt = sw[t].numpy().flatten()
+                    w[t].append(wt)
+                    
+                    # outs[t] shape: (batch_size, 1) -> flatten to (batch_size,)
+                    yp = outs[t].numpy().flatten()
                     y_pred[t].append(yp)
         else:
             it = iter(dataset)
@@ -608,9 +667,21 @@ def evaluate_multitask_on_dataset(
                     break
                 outs = model(x, training=False)
                 for t in y_true.keys():
+                    '''
                     y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
                     w[t].append(tf.convert_to_tensor(sw[t]).numpy())
                     yp = tf.convert_to_tensor(outs[t]).numpy() #.reshape(-1)
+                    y_pred[t].append(yp)
+                    '''
+                    yt = y[t].numpy().flatten()
+                    y_true[t].append(yt)
+                    
+                    # sw[t] shape: (batch_size, 1) -> flatten to (batch_size,)
+                    wt = sw[t].numpy().flatten()
+                    w[t].append(wt)
+                    
+                    # outs[t] shape: (batch_size, 1) -> flatten to (batch_size,)
+                    yp = outs[t].numpy().flatten()
                     y_pred[t].append(yp)
 
     _consume()
