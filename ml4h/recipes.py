@@ -20,7 +20,7 @@ from collections import Counter, defaultdict
 
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
-from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset, build_transformer, build_general_embedding_transformer
+from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset, build_general_embedding_transformer
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.models.train import train_model_from_generators
