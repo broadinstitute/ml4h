@@ -1170,7 +1170,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 import pandas as pd
-from datasets import load_dataset
+#from datasets import load_dataset
 
 
 def train_transformer_on_parquet(args):
