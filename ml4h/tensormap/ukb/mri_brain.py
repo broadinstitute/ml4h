@@ -102,6 +102,14 @@ t1_slices_32_160_step10 = TensorMap(
     tensor_from_file=make_brain_volume_tensor_fxn(steps=10),
     normalization=ZeroMeanStd1(),
 )
+t1_slices_32_192 = TensorMap(
+    'axial_32_192',
+    shape=(216, 256, 160),
+    path_prefix='ukb_brain_mri/T1/',
+    tensor_from_file=make_brain_volume_tensor_fxn(),
+    normalization=ZeroMeanStd1(),
+)
+
 
 
 t1_slices_68_100 = TensorMap(
