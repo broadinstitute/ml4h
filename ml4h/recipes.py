@@ -1215,13 +1215,14 @@ def train_transformer_on_parquet(args):
 
     train_ds, val_ds = loader.get_train_val_datasets(val_frac=0.2)
 
-    if args.categorical_columns:
+    cat_cardinalities = {}
+    if len(args.input_categorical_columns) > 0:
         logging.info(f"Building vocab for categorical columns...")
         import pyarrow.dataset as ds
 
         dataset = ds.dataset(args.transformer_input_file, format="parquet")
 
-        cat_cardinalities = {}
+
 
         for col in args.input_categorical_columns:
             max_id = dataset.to_table(columns=[col]).column(col).to_numpy().max()
