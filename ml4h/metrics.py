@@ -1,4 +1,7 @@
 # metrics.py
+import json
+import os
+import time
 import logging
 
 import keras
@@ -1009,9 +1012,56 @@ def calculate_fid(real, generated):
     fid = diff_squared + np.trace(sigma_real) + np.trace(sigma_generated) - 2 * np.trace(covmean)
     return fid
 
+
 def _register_all(module_globals):
     for name, obj in module_globals.items():
         if callable(obj) and not name.startswith("_"):
             module_globals[name] = register_keras_serializable()(obj)
 
 _register_all(globals())
+
+class JsonLossMetricsCallback(tf.keras.callbacks.Callback):
+    """
+    Writes one JSON line per epoch with training + validation metrics.
+
+    Example output line:
+    {"epoch": 7, "time": 12.34, "loss": 0.42, "val_loss": 0.38, "val_auc_mean": 0.81}
+    """
+
+    def __init__(self, output_dir, filename="loss_metrics.json", flush=True):
+        super().__init__()
+        self.output_dir = output_dir
+        self.filename = filename
+        self.flush = flush
+        self._epoch_start_time = None
+
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.path = os.path.join(self.output_dir, self.filename)
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self._epoch_start_time = time.time()
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        elapsed = None
+        if self._epoch_start_time is not None:
+            elapsed = time.time() - self._epoch_start_time
+
+        record = {
+            "epoch": int(epoch),
+            "time": elapsed,
+        }
+
+        # Convert tensors / numpy scalars → Python scalars
+        for k, v in logs.items():
+            try:
+                record[k] = float(v)
+            except Exception:
+                pass
+
+        with open(self.path, "a") as f:
+            f.write(json.dumps(record) + "\n")
+            if self.flush:
+                f.flush()
+                os.fsync(f.fileno())
+

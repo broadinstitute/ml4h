@@ -193,7 +193,7 @@ def build_categorical_tensor_from_file(
         try:
             tensor = np.zeros(tm.shape, dtype=np.float32)
             val = table[int(os.path.basename(hd5.filename).replace('.hd5', ''))]
-            tensor[tm.channel_map[val]] = 1.0
+            tensor[tm.channel_map[f'val_{val}']] = 1.0
             return tensor
         except KeyError as e:
             raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')

@@ -1121,6 +1121,7 @@ def train_transformer_on_parquet(args):
             layer_range=None,
             show_layer_activations=False,
         )
+
     callbacks = [
         keras.callbacks.EarlyStopping(
             monitor="val_loss", patience=args.patience, restore_best_weights=True

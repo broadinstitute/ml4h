@@ -470,7 +470,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    figure_path = os.path.join(prefix, f'metrics_{now_string}_{title}{IMAGE_EXT}')
+    figure_path = os.path.join(prefix, f'learning_curves_plot_{now_string}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -3478,7 +3478,14 @@ def regplot(
     return res
 
 
-def radar_performance(df, prefix, show=False):
+def radar_performance(df, prefix, show=False, legend=True):
+    df['Task'] = (
+        df['Task']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
+    )
     # Group by metric and generate radar plot for each
     for metric_type, metric_df in df.groupby("Metric"):
         # Keep best score per model-task pair
@@ -3506,14 +3513,14 @@ def radar_performance(df, prefix, show=False):
         for angle, label in zip(angles[:-1], tasks):
             if '_lt_' in label:
                 label = label.replace('lvef_lt_', 'LVEF<')
-            if '_med_' in label:
+            if '_med' in label:
                 label = label.replace('hypertension_med', 'HTN MED')
             label = label.replace('output_', '').replace('_continuous', '').replace('_categorical', '').replace('_',
                                                                                                                 ' ')
             label = label.upper() if len(label) < 5 else label.capitalize()
             ax.text(
                 angle,
-                ax.get_ylim()[1] + 0.15,  # push outside radius
+                ax.get_ylim()[1] + 0.08,  # push outside radius
                 label,
                 ha="center",
                 va="center",
@@ -3523,11 +3530,12 @@ def radar_performance(df, prefix, show=False):
             )
 
         # Force radial axis to start at 0.5
-        # if 'ROC' in metric_type:
-        #     ax.set_ylim(0.5, 1.0)
+        if 'ROC' in metric_type:
+            ax.set_ylim(0.5, 1.0)
 
         # ax.set_title(f'Model Performance by Task ({metric_type.upper()})', size=14, pad=20)
-        ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=16)
+        if legend:
+            ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=16)
         #plt.tight_layout()
         if show:
             plt.show()
@@ -3537,7 +3545,13 @@ def radar_performance(df, prefix, show=False):
         plt.savefig(figure_path)
 
 def heatmap_performance(df, prefix="./figures/", show=False):
-
+    df['Task'] = (
+        df['Task']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
+    )
     for metric_type, metric_df in df.groupby("Metric"):
         metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")

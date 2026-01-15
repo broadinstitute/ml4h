@@ -101,6 +101,10 @@ def parse_args():
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
     parser.add_argument(
+        '--no_categorical_file_weighted_loss', dest='categorical_file_weighted_loss', default=True, action='store_false',
+        help='Disable weighted cross-entropy loss for categorical TensorMaps from file (enabled by default, with weights inverse to class prevalence).',
+    )
+    parser.add_argument(
         '--latent_input_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first input_tensors'
@@ -108,6 +112,9 @@ def parse_args():
     )
     parser.add_argument(
         '--latent_dimensions', default=256, type=int, help='Dimensionality (size) of latent space',
+    )
+    parser.add_argument(
+        '--latent_dimensions_start', default=0, type=int, help='Starting dimension of latent space',
     )
     parser.add_argument(
         '--latent_output_files', nargs='*', default=[], help=
@@ -136,6 +143,9 @@ def parse_args():
     )
     parser.add_argument(
         '--sort_column', default=None, help='Column to sort on for embedding transformer.'
+    )
+    parser.add_argument(
+        '--sort_column_ascend', default=False, action='store_true', help='Sort on for embedding transformer.',
     )
     parser.add_argument(
         '--merge_columns', nargs='*', default=['mrn', 'view'], help=
@@ -634,6 +644,7 @@ def _process_args(args):
                     args.categorical_file,
                     column,
                     args.output_tensors.pop(0),
+                    args.categorical_file_weighted_loss,
                 ),
             )
 
