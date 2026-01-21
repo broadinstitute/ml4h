@@ -1068,7 +1068,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index]
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img, cmap='rgb')
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
