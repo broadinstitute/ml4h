@@ -1071,7 +1071,7 @@ class DiffusionController(keras.Model):
                 if generated_images.shape[-1] == 1:
                     plt.imshow(generated_images[index], cmap='gray')
                 else:
-                    img = generated_images[index]
+                    img = generated_images[index].numpy()
                     img = (img - img.min()) / (1e-6 + img.max() - img.min())
                     plt.imshow(img, cmap='rgb')
                 plt.axis("off")
