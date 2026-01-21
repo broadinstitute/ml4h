@@ -1073,7 +1073,7 @@ class DiffusionController(keras.Model):
                 else:
                     img = generated_images[index].numpy()
                     img = (img - img.min()) / (1e-6 + img.max() - img.min())
-                    plt.imshow(img, cmap='rgb')
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
