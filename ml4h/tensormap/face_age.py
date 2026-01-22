@@ -63,7 +63,12 @@ def _gaussian_noise(img, mean=0, sigma=0.03):
     img += noise
     return img
 
-face_image_norm_192_augment = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
+face_image_norm_192_gaussian = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
                                         normalization=ZeroMeanStd1(),
-                                        augmentations=[_gaussian_noise, ]) #_median_filter, _make_rotate(-15, 15)])
-
+                                        augmentations=[_gaussian_noise, ])
+face_image_norm_192_median = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
+                                        normalization=ZeroMeanStd1(),
+                                        augmentations=[_median_filter, ])
+face_image_norm_192_rotate = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
+                                        normalization=ZeroMeanStd1(),
+                                        augmentations=[_make_rotate(-15, 15), ])
