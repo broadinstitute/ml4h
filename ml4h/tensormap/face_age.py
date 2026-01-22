@@ -61,7 +61,7 @@ def _make_rotate(min: float, max: float):
         return rotate(img, angle=angle, reshape=False)
     return _rotate
 
-def _gaussian_noise(img, mean=0, sigma=0.03):
+def _gaussian_noise(img, mean=0, sigma=0.05):
     img = img.copy()
     noise = np.random.normal(mean, sigma, img.shape)
     img += noise
@@ -76,3 +76,6 @@ face_image_norm_192_sharpen = TensorMap('face_image_192', shape=(192, 192, 3), t
 face_image_norm_192_rotate = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
                                         normalization=ZeroMeanStd1(),
                                         augmentations=[_make_rotate(-15, 15), ])
+face_image_norm_192_augment = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
+                                        normalization=ZeroMeanStd1(),
+                                        augmentations=[_gaussian_noise, _sharpen, _make_rotate(-15, 15), ])
