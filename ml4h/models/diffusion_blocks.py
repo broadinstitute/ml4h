@@ -631,7 +631,9 @@ class DiffusionModel(keras.Model):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
                 if len(generated_images[index].shape) == 3 and generated_images[index].shape[-1] in [3,4]:
-                    plt.imshow(generated_images[index, ..., :])
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 elif len(generated_images[index].shape) == 3 and generated_images[index].shape[-1] > 1:
                     plt.imshow(generated_images[index, ..., 0], cmap='gray')  # just plot first frame
                 else:
