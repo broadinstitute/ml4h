@@ -43,10 +43,11 @@ sharp_kernel = np.c_[
 
 def _sharpen(img):
     if np.random.rand() > 0.5:
-        r = convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm")
-        g = convolve2d(img[..., 1], sharp_kernel, mode="same", boundary="symm")
-        b = convolve2d(img[..., 2], sharp_kernel, mode="same", boundary="symm")
-        return np.array([r, g, b])
+        img = img.copy()
+        img[..., 0] = convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm")
+        img[..., 1] = convolve2d(img[..., 1], sharp_kernel, mode="same", boundary="symm")
+        img[..., 2] = convolve2d(img[..., 2], sharp_kernel, mode="same", boundary="symm")
+        return img
     return img
 
 
