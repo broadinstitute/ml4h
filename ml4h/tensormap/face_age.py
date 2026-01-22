@@ -43,7 +43,10 @@ sharp_kernel = np.c_[
 
 def _sharpen(img):
     if np.random.rand() > 0.5:
-        return np.expand_dims(convolve2d(img[..., :], sharp_kernel, mode="same", boundary="symm"), axis=-1)
+        r = convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm")
+        g = convolve2d(img[..., 1], sharp_kernel, mode="same", boundary="symm")
+        b = convolve2d(img[..., 2], sharp_kernel, mode="same", boundary="symm")
+        return np.array([r, g, b])
     return img
 
 
@@ -66,9 +69,9 @@ def _gaussian_noise(img, mean=0, sigma=0.03):
 face_image_norm_192_gaussian = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
                                         normalization=ZeroMeanStd1(),
                                         augmentations=[_gaussian_noise, ])
-face_image_norm_192_median = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
+face_image_norm_192_sharpen = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
                                         normalization=ZeroMeanStd1(),
-                                        augmentations=[_median_filter, ])
+                                        augmentations=[_sharpen, ])
 face_image_norm_192_rotate = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
                                         normalization=ZeroMeanStd1(),
                                         augmentations=[_make_rotate(-15, 15), ])
