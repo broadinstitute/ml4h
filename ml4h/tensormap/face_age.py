@@ -43,13 +43,13 @@ sharp_kernel = np.c_[
 
 def _sharpen(img):
     if np.random.rand() > 0.5:
-        return np.expand_dims(convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm"), axis=-1)
+        return np.expand_dims(convolve2d(img[..., :], sharp_kernel, mode="same", boundary="symm"), axis=-1)
     return img
 
 
 def _median_filter(img):
     window_size = np.random.randint(1, 15)
-    return np.expand_dims(median_filter(img[..., 0], size=(window_size, window_size)), axis=-1)
+    return np.expand_dims(median_filter(img[..., :], size=(window_size, window_size)), axis=-1)
 
 def _make_rotate(min: float, max: float):
     def _rotate(img):
