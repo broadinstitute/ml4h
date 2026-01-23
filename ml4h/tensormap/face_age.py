@@ -47,7 +47,6 @@ def _sharpen(img):
         img[..., 0] = convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm")
         img[..., 1] = convolve2d(img[..., 1], sharp_kernel, mode="same", boundary="symm")
         img[..., 2] = convolve2d(img[..., 2], sharp_kernel, mode="same", boundary="symm")
-        return img
     return img
 
 

@@ -1371,7 +1371,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
 
     predictions = defaultdict(dict)
     for j in range(steps):
-        batch = next(generator)
+        batch = next(iter(generator))
         input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
         test_paths.extend(tensor_paths)
         for tl in test_labels:
