@@ -1380,7 +1380,8 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
             y_predictions = models[model_name].predict(input_data)
-
+            if len(args.tensor_maps_out) == 1:
+                y_predictions = [y_predictions]
             for y, tm in zip(y_predictions, models_inputs_outputs[model_file][output_prefix]):
                 if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                     y = y_predictions
