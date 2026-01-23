@@ -1390,7 +1390,7 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                     predictions[tm][model_name] = []
                 if tm in scalar_predictions[model_name]:
                     logging.info(f"{model_name} preds: {y}")
-                    predictions[tm][model_name].extend(np.copy(y))
+                    predictions[tm][model_name].extend(np.copy(y[tm.output_name()]))
 
     for tm in predictions:
         logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")
