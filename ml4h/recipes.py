@@ -1380,7 +1380,6 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
             y_predictions = models[model_name].predict(input_data)
-            logging.info(f"{model_name} preds: {y_predictions}")
             if len(args.tensor_maps_out) == 1:
                 y_predictions = [y_predictions]
             for y, tm in zip(y_predictions, models_inputs_outputs[model_file][output_prefix]):
@@ -1389,7 +1388,6 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
                 if j == 0 and tm in scalar_predictions[model_name]:
                     predictions[tm][model_name] = []
                 if tm in scalar_predictions[model_name]:
-                    logging.info(f"{model_name} preds: {y}")
                     predictions[tm][model_name].extend(np.copy(y[tm.output_name()]))
 
     for tm in predictions:
