@@ -470,7 +470,7 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    figure_path = os.path.join(prefix, f'metrics_{now_string}_{title}{IMAGE_EXT}')
+    figure_path = os.path.join(prefix, f'learning_curves_plot_{now_string}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
@@ -1238,29 +1238,6 @@ def plot_noise(noise):
     pearson2 = np.corrcoef(y2.flatten(), y2_real.flatten())[1, 0]
     ratio_pearson = np.corrcoef(y_ratio.flatten(), y_ratio_real.flatten())[1, 0]
     return pearson, pearson2, ratio_pearson
-
-
-def plot_noisy():
-    samples = 140
-    p1s = []
-    p2s = []
-    prats = []
-    noises = np.linspace(0.0, 0.01, samples)
-    for n in noises:
-        p1, p2, prat = plot_noise(n)
-        p1s.append(1.0 - p1)
-        p2s.append(1.0 - p2)
-        prats.append(1.0 - prat)
-
-    plt.figure(figsize=(28, 42))
-    matplotlib.rcParams.update({"font.size": 36})
-    plt.xlabel("Noise")
-    plt.ylabel("Error")
-    plt.scatter(noises, p1s, color="cyan", label="p1")
-    plt.scatter(noises, p2s, color="green", label="p2")
-    plt.scatter(noises, prats, color="red", label="p_ratio")
-    plt.legend(loc="lower right")
-    plt.savefig("./figures/noise_fxn.png")
 
 
 def plot_value_counter(categories, counts, title, prefix="./figures/"):
@@ -3499,3 +3476,103 @@ def regplot(
         fig.savefig(destination)
 
     return res
+
+
+def radar_performance(df, prefix, show=False, legend=True):
+    df['Task'] = (
+        df['Task']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
+    )
+    # Group by metric and generate radar plot for each
+    for metric_type, metric_df in df.groupby("Metric"):
+        # Keep best score per model-task pair
+        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
+
+        pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score").fillna(0)
+
+        # Radar plot setup
+        tasks = pivot_df.index.tolist()
+        angles = np.linspace(0, 2 * np.pi, len(tasks), endpoint=False).tolist()
+        print(f'TASKS: {tasks}')
+        angles += angles[:1]  # close the loop
+
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+
+        for model in pivot_df.columns:
+            values = pivot_df[model].tolist()
+            values += values[:1]  # close the loop
+            ax.plot(angles, values, label=model)
+            ax.fill(angles, values, alpha=0.1)
+
+        # Move labels outside
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels([])
+        for angle, label in zip(angles[:-1], tasks):
+            if '_lt_' in label:
+                label = label.replace('lvef_lt_', 'LVEF<')
+            if '_med' in label:
+                label = label.replace('hypertension_med', 'HTN MED')
+            label = label.replace('output_', '').replace('_continuous', '').replace('_categorical', '').replace('_',
+                                                                                                                ' ')
+            label = label.upper() if len(label) < 5 else label.capitalize()
+            ax.text(
+                angle,
+                ax.get_ylim()[1] + 0.08,  # push outside radius
+                label,
+                ha="center",
+                va="center",
+                fontsize=12,
+                # rotation=np.degrees(angle),
+                rotation_mode="anchor"
+            )
+
+        # Force radial axis to start at 0.5
+        if 'ROC' in metric_type:
+            ax.set_ylim(0.5, 1.0)
+
+        # ax.set_title(f'Model Performance by Task ({metric_type.upper()})', size=14, pad=20)
+        if legend:
+            ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=16)
+        #plt.tight_layout()
+        if show:
+            plt.show()
+        figure_path = f"{prefix}/radar_performance_{metric_type.lower()}.png"
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path)
+
+def heatmap_performance(df, prefix="./figures/", show=False):
+    df['Task'] = (
+        df['Task']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
+    )
+    for metric_type, metric_df in df.groupby("Metric"):
+        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
+        pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
+
+        plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
+        im = plt.imshow(pivot_df.values, cmap="summer", aspect="auto")
+
+        for i in range(pivot_df.shape[0]):
+            for j in range(pivot_df.shape[1]):
+                value = pivot_df.iloc[i, j]
+                if not pd.isna(value):
+                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14)
+
+        plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=pivot_df.columns, rotation=45, ha="right")
+        plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=pivot_df.index)
+        plt.colorbar(im, label="Score")
+        plt.title(f"Model Performance by Task ({metric_type.upper()})")
+        plt.tight_layout()
+        if show:
+            plt.show()
+        figure_path = f"{prefix}/heatmap_performance_{metric_type.lower()}.png"
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path)
