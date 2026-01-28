@@ -1,10 +1,10 @@
 # recipes.py
 import json
+
 # Imports
 import os
 import csv
 import copy
-import time
 import h5py
 import glob
 import logging
@@ -18,9 +18,15 @@ from google.cloud import storage
 from timeit import default_timer as timer
 from collections import Counter, defaultdict
 
+import tensorflow as tf
+import pyarrow.dataset as ds
+
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
-from ml4h.models.transformer_blocks_embedding import build_embedding_transformer, evaluate_multitask_on_dataset
+from ml4h.models.transformer_blocks_embedding import (
+    evaluate_multitask_on_dataset,
+    build_general_embedding_transformer,
+)
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
 from ml4h.models.train import train_model_from_generators
@@ -28,25 +34,97 @@ from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader2
-from ml4h.plots import plot_saliency_maps, plot_partners_ecgs, plot_ecg_rest_mp, plot_metric_history, radar_performance, \
-    heatmap_performance
+from ml4h.plots import (
+    plot_saliency_maps,
+    plot_partners_ecgs,
+    plot_ecg_rest_mp,
+    plot_metric_history,
+    radar_performance,
+    heatmap_performance,
+)
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
-from ml4h.tensor_generators import BATCH_INPUT_INDEX, BATCH_OUTPUT_INDEX, BATCH_PATHS_INDEX, build_datasets, \
-    df_to_datasets_from_generator
-from ml4h.plots import evaluate_predictions, plot_scatters, plot_rocs, plot_precision_recalls
-from ml4h.plots import plot_roc, plot_precision_recall_per_class, plot_scatter, plot_reconstruction
-from ml4h.explorations import mri_dates, ecg_dates, predictions_to_pngs, sample_from_language_model
-from ml4h.explorations import plot_while_learning, plot_histograms_of_tensors_in_pdf, explore, pca_on_tsv
-from ml4h.models.legacy_models import get_model_inputs_outputs, make_shallow_model, make_hidden_layer_model
-from ml4h.explorations import test_labels_to_label_map, infer_with_pixels, infer_stats_from_segmented_regions
-from ml4h.models.legacy_models import embed_model_predict, make_siamese_model, legacy_multimodal_multitask_model
-from ml4h.models.train_diffusion import train_diffusion_model, train_diffusion_control_model, test_diffusion_control_model
-from ml4h.tensor_generators import TensorGenerator, test_train_valid_tensor_generators, big_batch_from_minibatch_generator
-from ml4h.data_descriptions import dataframe_data_description_from_tensor_map, ECGDataDescription, DataFrameDataDescription
-from ml4h.plots import subplot_rocs, subplot_comparison_rocs, subplot_scatters, subplot_comparison_scatters, plot_prediction_calibrations
-from ml4h.metrics import get_roc_aucs, get_precision_recall_aucs, get_pearson_coefficients, log_aucs, \
-    log_pearson_coefficients, concordance_index_censored, JsonLossMetricsCallback
-from ml4h.tensorize.tensor_writer_ukbb import write_tensors, append_fields_from_csv, append_gene_csv, write_tensors_from_dicom_pngs, write_tensors_from_ecg_pngs
+from ml4h.tensor_generators import (
+    BATCH_INPUT_INDEX,
+    BATCH_OUTPUT_INDEX,
+    BATCH_PATHS_INDEX,
+    df_to_datasets_from_generator,
+)
+from ml4h.plots import (
+    evaluate_predictions,
+    plot_scatters,
+    plot_rocs,
+    plot_precision_recalls,
+)
+from ml4h.plots import (
+    plot_roc,
+    plot_precision_recall_per_class,
+    plot_scatter,
+    plot_reconstruction,
+)
+from ml4h.explorations import (
+    mri_dates,
+    ecg_dates,
+    predictions_to_pngs,
+    sample_from_language_model,
+)
+from ml4h.explorations import (
+    plot_while_learning,
+    plot_histograms_of_tensors_in_pdf,
+    explore,
+    pca_on_tsv,
+)
+from ml4h.models.legacy_models import (
+    get_model_inputs_outputs,
+    make_shallow_model,
+    make_hidden_layer_model,
+)
+from ml4h.explorations import (
+    test_labels_to_label_map,
+    infer_with_pixels,
+    infer_stats_from_segmented_regions,
+)
+from ml4h.models.legacy_models import (
+    embed_model_predict,
+    make_siamese_model,
+    legacy_multimodal_multitask_model,
+)
+from ml4h.models.train_diffusion import (
+    train_diffusion_model,
+    train_diffusion_control_model,
+    test_diffusion_control_model,
+)
+from ml4h.tensor_generators import (
+    TensorGenerator,
+    test_train_valid_tensor_generators,
+    big_batch_from_minibatch_generator,
+)
+from ml4h.data_descriptions import (
+    dataframe_data_description_from_tensor_map,
+    ECGDataDescription,
+    DataFrameDataDescription,
+)
+from ml4h.plots import (
+    subplot_rocs,
+    subplot_comparison_rocs,
+    subplot_scatters,
+    subplot_comparison_scatters,
+    plot_prediction_calibrations,
+)
+from ml4h.metrics import (
+    get_roc_aucs,
+    get_precision_recall_aucs,
+    get_pearson_coefficients,
+    log_aucs,
+    log_pearson_coefficients,
+    concordance_index_censored,
+)
+from ml4h.tensorize.tensor_writer_ukbb import (
+    write_tensors,
+    append_fields_from_csv,
+    append_gene_csv,
+    write_tensors_from_dicom_pngs,
+    write_tensors_from_ecg_pngs,
+)
 
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
 from ml4ht.data.sample_getter import DataDescriptionSampleGetter
@@ -58,104 +136,133 @@ from torch.utils.data import DataLoader
 def run(args):
     start_time = timer()  # Keep track of elapsed execution time
     try:
-        if 'tensorize' == args.mode:
+        if "tensorize" == args.mode:
             write_tensors(
-                args.id, args.xml_folder, args.zip_folder, args.output_folder, args.tensors, args.dicoms, args.mri_field_ids, args.xml_field_ids,
-                args.write_pngs, args.min_sample_id, args.max_sample_id, args.min_values,
+                args.id,
+                args.xml_folder,
+                args.zip_folder,
+                args.output_folder,
+                args.tensors,
+                args.dicoms,
+                args.mri_field_ids,
+                args.xml_field_ids,
+                args.write_pngs,
+                args.min_sample_id,
+                args.max_sample_id,
+                args.min_values,
             )
-        elif 'tensorize_pngs' == args.mode:
-            write_tensors_from_dicom_pngs(args.tensors, args.dicoms, args.app_csv, args.dicom_series, args.min_sample_id, args.max_sample_id, args.x, args.y)
-        elif 'tensorize_ecg_pngs' == args.mode:
-            write_tensors_from_ecg_pngs(args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id)
-        elif 'tensorize_partners' == args.mode:
+        elif "tensorize_pngs" == args.mode:
+            write_tensors_from_dicom_pngs(
+                args.tensors,
+                args.dicoms,
+                args.app_csv,
+                args.dicom_series,
+                args.min_sample_id,
+                args.max_sample_id,
+                args.x,
+                args.y,
+            )
+        elif "tensorize_ecg_pngs" == args.mode:
+            write_tensors_from_ecg_pngs(
+                args.tensors, args.xml_folder, args.min_sample_id, args.max_sample_id
+            )
+        elif "tensorize_partners" == args.mode:
             write_tensors_mgb(args.xml_folder, args.tensors, args.num_workers)
-        elif 'explore' == args.mode:
+        elif "explore" == args.mode:
             explore(args)
-        elif 'train' == args.mode:
+        elif "train" == args.mode:
             train_multimodal_multitask(args)
-        elif 'train_legacy' == args.mode:
+        elif "train_legacy" == args.mode:
             train_legacy(args)
-        elif 'train_xdl' == args.mode:
+        elif "train_xdl" == args.mode:
             train_xdl(args)
-        elif 'train_xdl_af' == args.mode:
+        elif "train_xdl_af" == args.mode:
             train_xdl_af(args)
-        elif 'train_transformer_on_parquet' == args.mode:
+        elif "train_transformer_on_parquet" == args.mode:
             train_transformer_on_parquet(args)
-        elif 'test_transformer_on_parquet' == args.mode:
+        elif "test_transformer_on_parquet" == args.mode:
             test_transformer_on_parquet(args)
-        elif 'test' == args.mode:
+        elif "test" == args.mode:
             test_multimodal_multitask(args)
-        elif 'compare' == args.mode:
+        elif "compare" == args.mode:
             compare_multimodal_multitask_models(args)
-        elif 'infer' == args.mode:
+        elif "infer" == args.mode:
             infer_multimodal_multitask(args)
-        elif 'infer_hidden' == args.mode:
+        elif "infer_hidden" == args.mode:
             infer_hidden_layer_multimodal_multitask(args)
-        elif 'infer_pixels' == args.mode:
+        elif "infer_pixels" == args.mode:
             infer_with_pixels(args)
-        elif 'infer_stats_from_segmented_regions' == args.mode:
+        elif "infer_stats_from_segmented_regions" == args.mode:
             infer_stats_from_segmented_regions(args)
-        elif 'infer_encoders' == args.mode:
+        elif "infer_encoders" == args.mode:
             infer_encoders_block_multimodal_multitask(args)
-        elif 'infer_xdl' == args.mode:
+        elif "infer_xdl" == args.mode:
             infer_xdl(args)
-        elif 'test_scalar' == args.mode:
+        elif "test_scalar" == args.mode:
             test_multimodal_scalar_tasks(args)
-        elif 'compare_scalar' == args.mode:
+        elif "compare_scalar" == args.mode:
             compare_multimodal_scalar_task_models(args)
-        elif 'plot_predictions' == args.mode:
+        elif "plot_predictions" == args.mode:
             plot_predictions(args)
-        elif 'plot_while_training' == args.mode:
+        elif "plot_while_training" == args.mode:
             plot_while_training(args)
-        elif 'plot_saliency' == args.mode:
+        elif "plot_saliency" == args.mode:
             saliency_maps(args)
-        elif 'plot_mri_dates' == args.mode:
+        elif "plot_mri_dates" == args.mode:
             mri_dates(args.tensors, args.output_folder, args.id)
-        elif 'plot_ecg_dates' == args.mode:
+        elif "plot_ecg_dates" == args.mode:
             ecg_dates(args.tensors, args.output_folder, args.id)
-        elif 'plot_histograms' == args.mode:
-            plot_histograms_of_tensors_in_pdf(args.id, args.tensors, args.output_folder, args.max_samples)
-        elif 'plot_resting_ecgs' == args.mode:
-            plot_ecg_rest_mp(args.tensors, args.min_sample_id, args.max_sample_id, args.output_folder, args.num_workers)
-        elif 'plot_partners_ecgs' == args.mode:
+        elif "plot_histograms" == args.mode:
+            plot_histograms_of_tensors_in_pdf(
+                args.id, args.tensors, args.output_folder, args.max_samples
+            )
+        elif "plot_resting_ecgs" == args.mode:
+            plot_ecg_rest_mp(
+                args.tensors,
+                args.min_sample_id,
+                args.max_sample_id,
+                args.output_folder,
+                args.num_workers,
+            )
+        elif "plot_partners_ecgs" == args.mode:
             plot_partners_ecgs(args)
-        elif 'train_shallow' == args.mode:
+        elif "train_shallow" == args.mode:
             train_shallow_model(args)
-        elif 'train_diffusion' == args.mode:
+        elif "train_diffusion" == args.mode:
             train_diffusion_model(args)
-        elif 'train_diffusion_control' == args.mode:
+        elif "train_diffusion_control" == args.mode:
             train_diffusion_control_model(args)
-        elif 'train_diffusion_supervise' == args.mode:
+        elif "train_diffusion_supervise" == args.mode:
             train_diffusion_control_model(args, supervised=True)
-        elif 'test_diffusion' == args.mode:
+        elif "test_diffusion" == args.mode:
             test_diffusion_control_model(args, unconditioned=True)
-        elif 'test_diffusion_control' == args.mode:
+        elif "test_diffusion_control" == args.mode:
             test_diffusion_control_model(args)
-        elif 'train_siamese' == args.mode:
+        elif "train_siamese" == args.mode:
             train_siamese_model(args)
-        elif 'write_tensor_maps' == args.mode:
+        elif "write_tensor_maps" == args.mode:
             write_tensor_maps(args)
-        elif 'append_continuous_csv' == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, 'continuous', ',')
-        elif 'append_categorical_csv' == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, 'categorical', ',')
-        elif 'append_continuous_tsv' == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, 'continuous', '\t')
-        elif 'append_categorical_tsv' == args.mode:
-            append_fields_from_csv(args.tensors, args.app_csv, 'categorical', '\t')
-        elif 'append_gene_csv' == args.mode:
-            append_gene_csv(args.tensors, args.app_csv, ',')
-        elif 'pca_on_hidden_inference' == args.mode:
+        elif "append_continuous_csv" == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, "continuous", ",")
+        elif "append_categorical_csv" == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, "categorical", ",")
+        elif "append_continuous_tsv" == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, "continuous", "\t")
+        elif "append_categorical_tsv" == args.mode:
+            append_fields_from_csv(args.tensors, args.app_csv, "categorical", "\t")
+        elif "append_gene_csv" == args.mode:
+            append_gene_csv(args.tensors, args.app_csv, ",")
+        elif "pca_on_hidden_inference" == args.mode:
             pca_on_hidden_inference(args)
-        elif 'find_learning_rate' == args.mode:
+        elif "find_learning_rate" == args.mode:
             _find_learning_rate(args)
-        elif 'find_learning_rate_and_train' == args.mode:
+        elif "find_learning_rate_and_train" == args.mode:
             args.learning_rate = _find_learning_rate(args)
             if not args.learning_rate:
-                raise ValueError('Could not find learning rate.')
+                raise ValueError("Could not find learning rate.")
             train_legacy(args)
         else:
-            raise ValueError('Unknown mode:', args.mode)
+            raise ValueError("Unknown mode:", args.mode)
 
     except Exception as e:
         logging.exception(e)
@@ -165,21 +272,22 @@ def run(args):
 
     end_time = timer()
     elapsed_time = end_time - start_time
-    logging.info("Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time))
+    logging.info(
+        "Executed the '{}' operation in {:.2f} seconds".format(args.mode, elapsed_time)
+    )
 
 
 def save_to_google_cloud(args):
-
     """
     Function to transfer all files and result from output folder to designated location google cloud bucket.
     Args:
         args.output_folder(str): Local folder path where all files and results generated from run are saved:
         args.gcs_cloud_bucket (str): Google cloud bucket folder path where all files will be stored
     """
-    #Instantiate a storage client
+    # Instantiate a storage client
     client = storage.Client()
 
-    #get the bucket
+    # get the bucket
     split_path = args.gcs_cloud_bucket.split("/")
     bucket_name = split_path[0]
     blob_path = "/".join(split_path[1:])
@@ -187,21 +295,27 @@ def save_to_google_cloud(args):
     bucket = client.get_bucket(bucket_name)
 
     # get the output folder
-    if args.mode in ['train', 'compare', 'plot_predictions', 'infer_stats_from_segmented_regions']:
+    if args.mode in [
+        "train",
+        "compare",
+        "plot_predictions",
+        "infer_stats_from_segmented_regions",
+    ]:
         output_folder = os.path.join(args.output_folder, args.id)
     else:
         output_folder = args.output_folder
 
     # uploading all files from local to server
-    for root,_,files in os.walk(output_folder):
+    for root, _, files in os.walk(output_folder):
         for filename in files:
-            local_file_path = os.path.join(root,filename)
-            blob = bucket.blob(blob_path+filename)
+            local_file_path = os.path.join(root, filename)
+            blob = bucket.blob(blob_path + filename)
             blob.upload_from_filename(local_file_path)
-            print("Uploaded from local file path {} to {} in google cloud bucket".format(local_file_path,filename))
-
-
-
+            print(
+                "Uploaded from local file path {} to {} in google cloud bucket".format(
+                    local_file_path, filename
+                )
+            )
 
 
 def _find_learning_rate(args) -> float:
@@ -209,56 +323,115 @@ def _find_learning_rate(args) -> float:
     args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
     generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
     model = legacy_multimodal_multitask_model(**args.__dict__)
-    lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
+    lr = find_learning_rate(
+        model,
+        generate_train,
+        args.training_steps,
+        os.path.join(args.output_folder, args.id),
+    )
     args.learning_rate_schedule = schedule
     return lr
 
 
 def train_legacy(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+        **args.__dict__
+    )
     model = legacy_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        model,
+        generate_train,
+        generate_valid,
+        args.training_steps,
+        args.validation_steps,
+        args.batch_size,
+        args.epochs,
+        args.patience,
+        args.output_folder,
+        args.id,
+        args.inspect_model,
+        args.inspect_show_labels,
+        args.tensor_maps_out,
         save_last_model=args.save_last_model,
     )
 
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    out_path = os.path.join(args.output_folder, args.id + "/")
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     return _predict_and_evaluate(
-        model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-        args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha,
-        args.dpi, args.plot_width, args.plot_height,
+        model,
+        test_data,
+        test_labels,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        args.tensor_maps_protected,
+        args.batch_size,
+        args.hidden_layer,
+        out_path,
+        test_paths,
+        args.embed_visualization,
+        args.alpha,
+        args.dpi,
+        args.plot_width,
+        args.plot_height,
     )
 
 
 def train_multimodal_multitask(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+        **args.__dict__
+    )
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        model,
+        generate_train,
+        generate_valid,
+        args.training_steps,
+        args.validation_steps,
+        args.batch_size,
+        args.epochs,
+        args.patience,
+        args.output_folder,
+        args.id,
+        args.inspect_model,
+        args.inspect_show_labels,
+        args.tensor_maps_out,
         save_last_model=args.save_last_model,
     )
 
     save_dir = os.path.join(args.output_folder, args.id)
     os.makedirs(save_dir, exist_ok=True)
     for tm in encoders:
-        encoders[tm].save(os.path.join(save_dir, f'encoder_{tm.name}{MODEL_EXT}'))
+        encoders[tm].save(os.path.join(save_dir, f"encoder_{tm.name}{MODEL_EXT}"))
     for tm in decoders:
-        decoders[tm].save(os.path.join(save_dir, f'decoder_{tm.name}{MODEL_EXT}'))
+        decoders[tm].save(os.path.join(save_dir, f"decoder_{tm.name}{MODEL_EXT}"))
     if merger:
-        merger.save(os.path.join(save_dir, f'merger{MODEL_EXT}'))
+        merger.save(os.path.join(save_dir, f"merger{MODEL_EXT}"))
 
     performance_metrics = {}
     if args.test_steps > 0:
         iter_generate_test = iter(generate_test)
-        test_data, test_labels, _ = big_batch_from_minibatch_generator(iter_generate_test, args.test_steps)
+        test_data, test_labels, _ = big_batch_from_minibatch_generator(
+            iter_generate_test, args.test_steps
+        )
         test_paths = None
         performance_metrics = _predict_and_evaluate(
-            model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-            args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths,
-            args.embed_visualization, args.alpha, args.dpi, args.plot_width, args.plot_height,
+            model,
+            test_data,
+            test_labels,
+            args.tensor_maps_in,
+            args.tensor_maps_out,
+            args.tensor_maps_protected,
+            args.batch_size,
+            args.hidden_layer,
+            os.path.join(args.output_folder, args.id + "/"),
+            test_paths,
+            args.embed_visualization,
+            args.alpha,
+            args.dpi,
+            args.plot_width,
+            args.plot_height,
         )
 
         predictions = model.predict(test_data)
@@ -273,28 +446,54 @@ def train_multimodal_multitask(args):
             }
         else:
             # Single tensor output
-            predictions_dict = {
-                model.output_names[0]: predictions
-        }
+            predictions_dict = {model.output_names[0]: predictions}
         samples = min(args.test_steps * args.batch_size, 12)
-        out_path = os.path.join(args.output_folder, args.id, 'reconstructions/')
-        logging.info(f'Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}')
+        out_path = os.path.join(args.output_folder, args.id, "reconstructions/")
+        logging.info(
+            f"Predictions and shapes are: {[(p, predictions_dict[p].shape) for p in predictions_dict]}"
+        )
 
         for i, etm in enumerate(encoders):
             embed = encoders[etm].predict(test_data[etm.input_name()])
             if etm.output_name() in predictions_dict:
-                plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+                plot_reconstruction(
+                    etm,
+                    test_data[etm.input_name()],
+                    predictions_dict[etm.output_name()],
+                    out_path,
+                    test_paths,
+                    samples,
+                )
             for dtm in decoders:
                 reconstruction = decoders[dtm].predict(embed)
-                logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
-                my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
+                logging.info(
+                    f"{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}"
+                )
+                my_out_path = os.path.join(
+                    out_path, f"decoding_{dtm.name}_from_{etm.name}/"
+                )
                 os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
                 if dtm.axes() > 1:
-                    plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
+                    plot_reconstruction(
+                        dtm,
+                        test_labels[dtm.output_name()],
+                        reconstruction,
+                        my_out_path,
+                        test_paths,
+                        samples,
+                    )
                 else:
                     evaluate_predictions(
-                        dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path,
-                        test_paths, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                        dtm,
+                        reconstruction,
+                        test_labels[dtm.output_name()],
+                        {},
+                        dtm.name,
+                        my_out_path,
+                        test_paths,
+                        dpi=args.dpi,
+                        width=args.plot_width,
+                        height=args.plot_height,
                     )
     return performance_metrics
 
@@ -302,39 +501,73 @@ def train_multimodal_multitask(args):
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-    out_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    out_path = os.path.join(args.output_folder, args.id + "/")
+    data, labels, paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     return _predict_and_evaluate(
-        model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected, args.batch_size,
-        args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
-        args.dpi, args.plot_width, args.plot_height,
+        model,
+        data,
+        labels,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        args.tensor_maps_protected,
+        args.batch_size,
+        args.hidden_layer,
+        out_path,
+        paths,
+        args.embed_visualization,
+        args.alpha,
+        args.dpi,
+        args.plot_width,
+        args.plot_height,
     )
 
 
 def test_multimodal_scalar_tasks(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-    p = os.path.join(args.output_folder, args.id + '/')
+    p = os.path.join(args.output_folder, args.id + "/")
     return _predict_scalars_and_evaluate_from_generator(
-        model, generate_test, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected, args.test_steps,
-        args.hidden_layer, p, args.alpha, args.dpi, args.plot_width, args.plot_height,
+        model,
+        generate_test,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        args.tensor_maps_protected,
+        args.test_steps,
+        args.hidden_layer,
+        p,
+        args.alpha,
+        args.dpi,
+        args.plot_width,
+        args.plot_height,
     )
 
 
 def compare_multimodal_multitask_models(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    models_inputs_outputs = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
-    input_data, output_data, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
-    common_outputs = _get_common_outputs(models_inputs_outputs, 'output')
-    predictions = _get_predictions(args, models_inputs_outputs, input_data, common_outputs, 'input', 'output')
+    models_inputs_outputs = get_model_inputs_outputs(
+        args.model_files, args.tensor_maps_in, args.tensor_maps_out
+    )
+    input_data, output_data, paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
+    common_outputs = _get_common_outputs(models_inputs_outputs, "output")
+    predictions = _get_predictions(
+        args, models_inputs_outputs, input_data, common_outputs, "input", "output"
+    )
     _calculate_and_plot_prediction_stats(args, predictions, output_data, paths)
 
 
 def compare_multimodal_scalar_task_models(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    models_io = get_model_inputs_outputs(args.model_files, args.tensor_maps_in, args.tensor_maps_out)
+    models_io = get_model_inputs_outputs(
+        args.model_files, args.tensor_maps_in, args.tensor_maps_out
+    )
     outs = _get_common_outputs(models_io, "output")
-    predictions, labels, paths = _scalar_predictions_from_generator(args, models_io, generate_test, args.test_steps, outs, "input", "output")
+    predictions, labels, paths = _scalar_predictions_from_generator(
+        args, models_io, generate_test, args.test_steps, outs, "input", "output"
+    )
     _calculate_and_plot_prediction_stats(args, predictions, labels, paths)
 
 
@@ -345,15 +578,18 @@ def standardize_by_sample_ecg(ecg, _):
 
 def train_xdl(args):
     mrn_df = pd.read_csv(args.app_csv)
-    if 'start_fu_age' in mrn_df:
-        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
-    elif 'start_fu' in mrn_df:
-        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
+    if "start_fu_age" in mrn_df:
+        mrn_df["age_in_days"] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif "start_fu" in mrn_df:
+        mrn_df["age_in_days"] = pd.to_timedelta(mrn_df.start_fu).dt.days
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
-    mrn_df = mrn_df.set_index('sample_id')
+    mrn_df = mrn_df.set_index("sample_id")
 
-    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+    output_dds = [
+        dataframe_data_description_from_tensor_map(tmap, mrn_df)
+        for tmap in args.tensor_maps_out
+    ]
 
     ecg_dd = ECGDataDescription(
         args.tensors,
@@ -365,7 +601,7 @@ def train_xdl(args):
 
     def option_picker(sample_id, data_descriptions):
         ecg_dts = ecg_dd.get_loading_options(sample_id)
-        htn_dt = output_dds[0].get_loading_options(sample_id)[0]['start_fu_datetime']
+        htn_dt = output_dds[0].get_loading_options(sample_id)[0]["start_fu_datetime"]
         min_ecg_dt = htn_dt - pd.to_timedelta("1095d")
         max_ecg_dt = htn_dt + pd.to_timedelta("1095d")
         dates = []
@@ -373,9 +609,9 @@ def train_xdl(args):
             if min_ecg_dt <= dt[DATE_OPTION_KEY] <= max_ecg_dt:
                 dates.append(dt)
         if len(dates) == 0:
-            raise ValueError('No matching dates')
+            raise ValueError("No matching dates")
         chosen_dt = np.random.choice(dates)
-        chosen_dt['day_delta'] = (htn_dt - chosen_dt[DATE_OPTION_KEY]).days
+        chosen_dt["day_delta"] = (htn_dt - chosen_dt[DATE_OPTION_KEY]).days
         return {dd: chosen_dt for dd in data_descriptions}
 
     sg = DataDescriptionSampleGetter(
@@ -385,63 +621,91 @@ def train_xdl(args):
     )
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
 
-    train_ids = list(mrn_df[mrn_df.split == 'train'].index)
-    valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
-    test_ids = list(mrn_df[mrn_df.split == 'test'].index)
+    train_ids = list(mrn_df[mrn_df.split == "train"].index)
+    valid_ids = list(mrn_df[mrn_df.split == "valid"].index)
+    test_ids = list(mrn_df[mrn_df.split == "test"].index)
 
     train_dataset = SampleGetterIterableDataset(
-        sample_ids=list(train_ids), sample_getter=sg,
+        sample_ids=list(train_ids),
+        sample_getter=sg,
         get_epoch=shuffle_get_epoch,
     )
     valid_dataset = SampleGetterIterableDataset(
-        sample_ids=list(valid_ids), sample_getter=sg,
+        sample_ids=list(valid_ids),
+        sample_getter=sg,
         get_epoch=shuffle_get_epoch,
     )
 
-    num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
-    num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+    num_train_workers = int(
+        args.training_steps
+        / (args.training_steps + args.validation_steps)
+        * args.num_workers
+    ) or (1 if args.num_workers else 0)
+    num_valid_workers = int(
+        args.validation_steps
+        / (args.training_steps + args.validation_steps)
+        * args.num_workers
+    ) or (1 if args.num_workers else 0)
 
     generate_train = TensorMapDataLoader2(
-        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        input_maps=args.tensor_maps_in,
+        output_maps=args.tensor_maps_out,
         dataset=train_dataset,
         num_workers=num_train_workers,
     )
     generate_valid = TensorMapDataLoader2(
-        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        input_maps=args.tensor_maps_in,
+        output_maps=args.tensor_maps_out,
         dataset=valid_dataset,
         num_workers=num_valid_workers,
     )
 
     model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        model,
+        generate_train,
+        generate_valid,
+        args.training_steps,
+        args.validation_steps,
+        args.batch_size,
+        args.epochs,
+        args.patience,
+        args.output_folder,
+        args.id,
+        args.inspect_model,
+        args.inspect_show_labels,
+        args.tensor_maps_out,
         save_last_model=args.save_last_model,
     )
     for tm in encoders:
-        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+        encoders[tm].save(f"{args.output_folder}{args.id}/encoder_{tm.name}.h5")
     for tm in decoders:
-        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+        decoders[tm].save(f"{args.output_folder}{args.id}/decoder_{tm.name}.h5")
     if merger:
-        merger.save(f'{args.output_folder}{args.id}/merger.h5')
+        merger.save(f"{args.output_folder}{args.id}/merger.h5")
 
 
 def train_xdl_af(args):
     mrn_df = pd.read_csv(args.app_csv)
-    mrn_df = mrn_df.dropna(subset=['last_encounter'])
+    mrn_df = mrn_df.dropna(subset=["last_encounter"])
     mrn_df.MRN = mrn_df.MRN.astype(int)
-    mrn_df['survival_curve_af'] = mrn_df.af_event
-    #mrn_df['start_date'] = mrn_df.start_fu_datetime
+    mrn_df["survival_curve_af"] = mrn_df.af_event
+    # mrn_df['start_date'] = mrn_df.start_fu_datetime
 
-    if 'start_fu_age' in mrn_df:
-        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
-    elif 'start_fu' in mrn_df:
-        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
+    if "start_fu_age" in mrn_df:
+        mrn_df["age_in_days"] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif "start_fu" in mrn_df:
+        mrn_df["age_in_days"] = pd.to_timedelta(mrn_df.start_fu).dt.days
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
 
-    mrn_df = mrn_df.set_index('MRN')
+    mrn_df = mrn_df.set_index("MRN")
 
-    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+    output_dds = [
+        dataframe_data_description_from_tensor_map(tmap, mrn_df)
+        for tmap in args.tensor_maps_out
+    ]
 
     # ecg_dd = ECGDataDescription(
     #         args.tensors,
@@ -460,22 +724,24 @@ def train_xdl_af(args):
 
     def option_picker(sample_id, data_descriptions):
         ecg_dts = ecg_dd.get_loading_options(sample_id)
-        start_dt = output_dds[0].get_loading_options(sample_id)[0]['start_date']
+        start_dt = output_dds[0].get_loading_options(sample_id)[0]["start_date"]
         min_ecg_dt = start_dt - pd.to_timedelta("1095d")
         dates = []
         for dt in ecg_dts:
             if min_ecg_dt <= dt[DATE_OPTION_KEY] <= start_dt:
                 dates.append(dt)
         if len(dates) == 0:
-            raise ValueError('No matching dates')
+            raise ValueError("No matching dates")
         chosen_dt = np.random.choice(dates)
-        chosen_dt['start_date'] = start_dt
-        chosen_dt['day_delta'] = (start_dt - chosen_dt[DATE_OPTION_KEY]).days
+        chosen_dt["start_date"] = start_dt
+        chosen_dt["day_delta"] = (start_dt - chosen_dt[DATE_OPTION_KEY]).days
         return {dd: chosen_dt for dd in data_descriptions}
 
-    logging.info(f'output_dds[0].name {output_dds[0].name}')
-    logging.info(f'output_dds[0].get_loading_options(sample_id)[0] {output_dds[0].get_loading_options(3773)[0]}')
-    logging.info(f'option_picker {option_picker(3773, [ecg_dd])}')
+    logging.info(f"output_dds[0].name {output_dds[0].name}")
+    logging.info(
+        f"output_dds[0].get_loading_options(sample_id)[0] {output_dds[0].get_loading_options(3773)[0]}"
+    )
+    logging.info(f"option_picker {option_picker(3773, [ecg_dd])}")
 
     sg = DataDescriptionSampleGetter(
         input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
@@ -484,48 +750,73 @@ def train_xdl_af(args):
     )
 
     b = sg(3773)
-    logging.info(f'batch output: {b[1]}')
+    logging.info(f"batch output: {b[1]}")
 
     model, encoders, decoders, merger = make_multimodal_multitask_model(**args.__dict__)
 
-    train_ids = list(mrn_df[mrn_df.split == 'train'].index)
-    valid_ids = list(mrn_df[mrn_df.split == 'valid'].index)
-    test_ids = list(mrn_df[mrn_df.split == 'test'].index)
+    train_ids = list(mrn_df[mrn_df.split == "train"].index)
+    valid_ids = list(mrn_df[mrn_df.split == "valid"].index)
+    test_ids = list(mrn_df[mrn_df.split == "test"].index)
 
     train_dataset = SampleGetterIterableDataset(
-        sample_ids=list(train_ids), sample_getter=sg,
+        sample_ids=list(train_ids),
+        sample_getter=sg,
         get_epoch=shuffle_get_epoch,
     )
     valid_dataset = SampleGetterIterableDataset(
-        sample_ids=list(valid_ids), sample_getter=sg,
+        sample_ids=list(valid_ids),
+        sample_getter=sg,
         get_epoch=shuffle_get_epoch,
     )
 
-    num_train_workers = int(args.training_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
-    num_valid_workers = int(args.validation_steps / (args.training_steps + args.validation_steps) * args.num_workers) or (1 if args.num_workers else 0)
+    num_train_workers = int(
+        args.training_steps
+        / (args.training_steps + args.validation_steps)
+        * args.num_workers
+    ) or (1 if args.num_workers else 0)
+    num_valid_workers = int(
+        args.validation_steps
+        / (args.training_steps + args.validation_steps)
+        * args.num_workers
+    ) or (1 if args.num_workers else 0)
 
     generate_train = TensorMapDataLoader2(
-        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        input_maps=args.tensor_maps_in,
+        output_maps=args.tensor_maps_out,
         dataset=train_dataset,
         num_workers=num_train_workers,
     )
     generate_valid = TensorMapDataLoader2(
-        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        input_maps=args.tensor_maps_in,
+        output_maps=args.tensor_maps_out,
         dataset=valid_dataset,
         num_workers=num_valid_workers,
     )
 
     model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        model,
+        generate_train,
+        generate_valid,
+        args.training_steps,
+        args.validation_steps,
+        args.batch_size,
+        args.epochs,
+        args.patience,
+        args.output_folder,
+        args.id,
+        args.inspect_model,
+        args.inspect_show_labels,
+        args.tensor_maps_out,
         save_last_model=args.save_last_model,
     )
     for tm in encoders:
-        encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
+        encoders[tm].save(f"{args.output_folder}{args.id}/encoder_{tm.name}.h5")
     for tm in decoders:
-        decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
+        decoders[tm].save(f"{args.output_folder}{args.id}/decoder_{tm.name}.h5")
     if merger:
-        merger.save(f'{args.output_folder}{args.id}/merger.h5')
+        merger.save(f"{args.output_folder}{args.id}/merger.h5")
 
     test_sg = DataDescriptionSampleGetter(
         input_data_descriptions=[ecg_dd],  # what we want a model to use as input data
@@ -533,19 +824,24 @@ def train_xdl_af(args):
         option_picker=option_picker,
     )
     test_dataset = SampleGetterIterableDataset(
-        sample_ids=list(test_ids), sample_getter=test_sg,
+        sample_ids=list(test_ids),
+        sample_getter=test_sg,
         get_epoch=shuffle_get_epoch,
     )
 
     generate_test = TensorMapDataLoader2(
-        batch_size=args.batch_size, input_maps=args.tensor_maps_in, output_maps=args.tensor_maps_out,
+        batch_size=args.batch_size,
+        input_maps=args.tensor_maps_in,
+        output_maps=args.tensor_maps_out,
         dataset=test_dataset,
         num_workers=num_train_workers,
     )
 
     y_trues = defaultdict(list)
     y_preds = defaultdict(list)
-    logging.info(f'Now start testing... output keys: {list(next(generate_test)[1].keys())}')
+    logging.info(
+        f"Now start testing... output keys: {list(next(generate_test)[1].keys())}"
+    )
     for X, y in generate_test:
         preds = model.predict(X, verbose=0)
         if len(model.output_names) == 1:
@@ -556,8 +852,8 @@ def train_xdl_af(args):
             y_trues[otm.name].extend(y[otm.output_name()])
 
         if len(y_trues[otm.name]) % 400 == 0:
-            print(f'Predicted on {len(y_trues[otm.name])} test examples.')
-        if len(y_trues[otm.name]) > args.test_steps*args.batch_size:
+            print(f"Predicted on {len(y_trues[otm.name])} test examples.")
+        if len(y_trues[otm.name]) > args.test_steps * args.batch_size:
             break
 
     for otm in args.tensor_maps_out:
@@ -566,79 +862,251 @@ def train_xdl_af(args):
 
     for otm in args.tensor_maps_out:
         if otm.is_survival_curve():
-            plot_survival(y_preds[otm.name], y_trues[otm.name], f'{otm.name.upper()} Model:{args.id}', otm.days_window)
+            plot_survival(
+                y_preds[otm.name],
+                y_trues[otm.name],
+                f"{otm.name.upper()} Model:{args.id}",
+                otm.days_window,
+            )
         elif otm.is_categorical():
-            plot_roc(y_preds[otm.name], y_trues[otm.name], otm.channel_map, f'{otm.name} ROC')
+            plot_roc(
+                y_preds[otm.name], y_trues[otm.name], otm.channel_map, f"{otm.name} ROC"
+            )
             plot_precision_recall_per_class(
-                y_preds[otm.name], y_trues[otm.name], otm.channel_map,
-                f'{otm.name} Precision Recall',
+                y_preds[otm.name],
+                y_trues[otm.name],
+                otm.channel_map,
+                f"{otm.name} Precision Recall",
             )
         elif otm.is_continuous():
-            plot_scatter(y_preds[otm.name], y_trues[otm.name], f'{otm.name} Scatter')
+            plot_scatter(y_preds[otm.name], y_trues[otm.name], f"{otm.name} Scatter")
+
+
+class LongitudinalDataloader:
+    def __init__(
+        self,
+        input_file_path,
+        label_file_path,
+        group_column,
+        sort_column,
+        latent_dim,
+        numeric_columns,
+        categorical_columns,
+        label_columns,
+        max_seq_len,
+        batch_size,
+        shuffle=True,
+    ):
+        self.input_ds = ds.dataset(input_file_path, format="parquet")
+        self.label_ds = (
+            self.input_ds
+            if label_file_path in [None, input_file_path]
+            else ds.dataset(label_file_path, format="parquet")
+        )
+
+        self.latent_cols = [f"latent_{i}" for i in range(latent_dim)]
+        self.latent_dim = latent_dim
+        self.numeric_columns = numeric_columns
+        self.categorical_columns = categorical_columns
+        self.label_columns = label_columns
+        self.max_seq_len = max_seq_len
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+        # ---- build MRN → row indices ONCE ----
+        index_tbl = self.input_ds.to_table(
+            columns=[group_column, sort_column]
+        ).to_pandas()
+
+        index_tbl = index_tbl.sort_values([group_column, sort_column], kind="mergesort")
+
+        self.group_to_indices = []
+        for _, g in index_tbl.groupby(group_column, sort=False):
+            idxs = g.index.values
+            if max_seq_len:
+                idxs = idxs[-max_seq_len:]
+            self.group_to_indices.append(idxs)
+
+    def _generator(self):
+        groups = self.group_to_indices.copy()
+        if self.shuffle:
+            np.random.shuffle(groups)
+
+        from more_itertools import chunked
+
+        for chunk in chunked(groups, 32):
+            # T = len(idxs)
+
+            flat_idxs = np.concatenate(chunk)
+            inp = self.input_ds.take(flat_idxs)
+            lab = self.label_ds.take(flat_idxs)
+
+            lat_all = np.stack(
+                [
+                    inp.column(c).to_numpy(zero_copy_only=False)
+                    for c in self.latent_cols
+                ],
+                axis=1,
+            ).astype(np.float32)
+
+            num_all = {
+                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+                for c in self.numeric_columns
+            }
+
+            cat_all = {
+                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+                for c in self.categorical_columns
+            }
+
+            lab_all = np.stack(
+                [
+                    lab.column(c).to_numpy(zero_copy_only=False)
+                    for c in self.label_columns
+                ],
+                axis=1,
+            ).astype(np.float32)
+
+            offset = 0
+            for idxs in chunk:
+                T = len(idxs)
+                sl = slice(offset, offset + T)
+
+                x = {
+                    "latent": lat_all[sl],
+                    "mask": np.ones(T, dtype=bool),
+                }
+
+                for c in self.numeric_columns:
+                    x[f"num_{c}"] = num_all[c][sl]
+
+                for c in self.categorical_columns:
+                    x[f"cat_{c}"] = cat_all[c][sl]
+
+                # latest label only
+                vals = lab_all[sl][-1]
+
+                y, sw = {}, {}
+                for i, c in enumerate(self.label_columns):
+                    if np.isnan(vals[i]):
+                        y[c] = 0.0
+                        sw[c] = 0.0
+                    else:
+                        y[c] = float(vals[i])
+                        sw[c] = 1.0
+
+                yield x, y, sw
+
+                offset += T
+
+    def get_tf_dataset(self):
+        output_signature = (
+            {
+                "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
+                "mask": tf.TensorSpec((None,), tf.bool),
+                **{
+                    f"num_{c}": tf.TensorSpec((None,), tf.float32)
+                    for c in self.numeric_columns
+                },
+                **{
+                    f"cat_{c}": tf.TensorSpec((None,), tf.int32)
+                    for c in self.categorical_columns
+                },
+            },
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+        )
+
+        ds_tf = tf.data.Dataset.from_generator(
+            self._generator,
+            output_signature=output_signature,
+        )
+
+        return ds_tf.padded_batch(
+            self.batch_size,
+            padded_shapes=(
+                {
+                    "latent": [self.max_seq_len, self.latent_dim],
+                    "mask": [self.max_seq_len],
+                    **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
+                    **{
+                        f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
+                    },
+                },
+                {c: [] for c in self.label_columns},
+                {c: [] for c in self.label_columns},
+            ),
+        ).prefetch(tf.data.AUTOTUNE)
+
+    def get_train_val_datasets(self, val_frac=0.2, seed=42):
+        rng = np.random.default_rng(seed)
+
+        n = len(self.group_to_indices)
+        indices = np.arange(n)
+        rng.shuffle(indices)
+
+        split = int((1 - val_frac) * n)
+        train_idx = indices[:split]
+        val_idx = indices[split:]
+
+        train_loader = copy.copy(self)
+        val_loader = copy.copy(self)
+
+        train_loader.group_to_indices = [self.group_to_indices[i] for i in train_idx]
+        val_loader.group_to_indices = [self.group_to_indices[i] for i in val_idx]
+
+        train_loader.shuffle = self.shuffle
+        val_loader.shuffle = False
+
+        return train_loader.get_tf_dataset(), val_loader.get_tf_dataset()
 
 
 def train_transformer_on_parquet(args):
-    if args.transformer_input_file.endswith('.pq'):
-        df = pd.read_parquet(args.transformer_input_file)
-    else:
-        df = pd.read_csv(args.transformer_input_file, sep='\t')
-    if args.transformer_label_file is not None:
-        if args.transformer_label_file.endswith('.pq'):
-            label_df = pd.read_parquet(args.transformer_label_file)
-        else:
-            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
 
-        if 'ecg_datetime' in args.merge_columns:
-            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
-            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+    loader = LongitudinalDataloader(
+        input_file_path=args.transformer_input_file,
+        label_file_path=args.transformer_label_file,
+        latent_dim=args.latent_dimensions,
+        group_column=args.group_column,
+        sort_column=args.sort_column,
+        numeric_columns=args.input_numeric_columns,
+        categorical_columns=args.input_categorical_columns,
+        label_columns=args.target_regression_columns + args.target_binary_columns,
+        batch_size=args.batch_size,
+        max_seq_len=args.transformer_max_size,
+        shuffle=False,
+    )
 
-        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+    train_ds, val_ds = loader.get_train_val_datasets(val_frac=0.2)
 
-    input_numeric_columns = args.input_numeric_columns
-    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions+args.latent_dimensions_start)]
+    cat_cardinalities = {}
+    if len(args.input_categorical_columns) > 0:
+        logging.info("Building vocab for categorical columns...")
 
-    if len(args.input_categorical_columns) == 1:
-        input_categorical_column = args.input_categorical_columns[0]
-        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
-        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
-    else:
-        input_categorical_column = None
-        view2id = None
+        dataset = ds.dataset(args.transformer_input_file, format="parquet")
 
-    # train_ds, val_ds = build_datasets(
-    #     df,
-    #     input_numeric_columns,
-    #     input_categorical_column,
-    #     args.target_regression_columns,
-    #     args.target_binary_columns,
-    #     args.group_column,
-    #     args.sort_column,
-    #     args.transformer_max_size,
-    #     args.batch_size,
-    # )
-    train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
-                                                              args.group_column, args.sort_column, args.sort_column_ascend,
-                                                              args.target_regression_columns + args.target_binary_columns,
-                                                              args.transformer_max_size, args.batch_size,
-                                                              args.train_csv, args.valid_csv, args.test_csv)
-    if args.model_file:
-        logging.info(f"Loading model from {args.model_file}")
-        model = keras.models.load_model(args.model_file)
-    else:
-        model = build_embedding_transformer(
-            input_numeric_columns,
-            args.target_regression_columns,
-            args.target_binary_columns,
-            args.transformer_max_size,
-            args.transformer_categorical_embed,
-            args.transformer_token_embed,
-            args.transformer_size,
-            args.attention_heads,
-            args.transformer_layers,
-            args.transformer_dropout_rate,
-            view2id,
-            args.learning_rate,
-        )
+        for col in args.input_categorical_columns:
+            max_id = dataset.to_table(columns=[col]).column(col).to_numpy().max()
+            cat_cardinalities[col] = int(max_id)
+
+    logging.info("Building and Training model...")
+
+    model = build_general_embedding_transformer(
+        latent_dim=args.latent_dimensions,
+        numeric_columns=args.input_numeric_columns,
+        categorical_columns=args.input_categorical_columns,
+        categorical_vocabs=cat_cardinalities,
+        REGRESSION_TARGETS=args.target_regression_columns,
+        BINARY_TARGETS=args.target_binary_columns,
+        MAX_LEN=args.transformer_max_size,
+        EMB_DIM=args.transformer_token_embed,
+        TOKEN_HIDDEN=args.transformer_size,
+        TRANSFORMER_DIM=args.transformer_size,
+        NUM_HEADS=args.attention_heads,
+        NUM_LAYERS=args.transformer_layers,
+        DROPOUT=args.transformer_dropout_rate,
+    )
+
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
@@ -655,10 +1123,9 @@ def train_transformer_on_parquet(args):
         )
 
     callbacks = [
-        JsonLossMetricsCallback(f'{args.output_folder}/{args.id}/'),
-        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
-        keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
-                                        save_best_only=not args.save_last_model),
+        keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=args.patience, restore_best_weights=True
+        )
     ]
 
     history = model.fit(
@@ -668,35 +1135,47 @@ def train_transformer_on_parquet(args):
         validation_steps=args.validation_steps,
         epochs=args.epochs,
         callbacks=callbacks,
-        verbose=1
+        verbose=1,
     )
-    model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
-    plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
-    metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
-    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
+    model.save(
+        f"{args.output_folder}/{args.id}/{args.id}.keras"
+    )  # includes architecture + weights + compile config
+    plot_metric_history(
+        history, args.training_steps, args.id, f"{args.output_folder}/{args.id}/"
+    )
+    metrics = evaluate_multitask_on_dataset(
+        args.id,
+        model,
+        val_ds,
+        args.target_regression_columns,
+        args.target_binary_columns,
+        steps=args.test_steps,
+    )
+    radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    with open(f"{args.output_folder}/{args.id}/metrics.json", "w") as f:
         json.dump(metrics, f)
 
+
 def test_transformer_on_parquet(args):
-    if args.transformer_input_file.endswith('.pq'):
-        df = pd.read_parquet(args.transformer_input_file)
+    if args.transformer_input_file.endswith(".pq"):
+        echo_df = pd.read_parquet(args.transformer_input_file)
     else:
-        df = pd.read_csv(args.transformer_input_file, sep='\t')
-    if args.transformer_label_file is not None:
-        if args.transformer_label_file.endswith('.pq'):
-            label_df = pd.read_parquet(args.transformer_label_file)
-        else:
-            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
+        echo_df = pd.read_csv(args.transformer_input_file, sep="\t")
 
-        if 'ecg_datetime' in args.merge_columns:
-            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
-            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+    if args.transformer_label_file.endswith(".pq"):
+        df = pd.read_parquet(args.transformer_label_file)
+    else:
+        df = pd.read_csv(args.transformer_label_file, sep="\t")
 
-        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+    if "ecg_datetime" in args.merge_columns:
+        df["ecg_datetime"] = pd.to_datetime(df.ecg_datetime)
+        echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
+
+    df = pd.merge(echo_df, df, on=args.merge_columns, how="inner")
 
     input_numeric_columns = args.input_numeric_columns
-    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions)]
+    input_numeric_columns += [f"latent_{i}" for i in range(args.latent_dimensions)]
 
     if len(args.input_categorical_columns) == 1:
         input_categorical_column = args.input_categorical_columns[0]
@@ -704,14 +1183,26 @@ def test_transformer_on_parquet(args):
         input_categorical_column = None
 
     model = keras.models.load_model(args.model_file)
-    train_ds, val_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column, args.group_column,
-                                                     args.sort_column,
-                                                     args.target_regression_columns + args.target_binary_columns,
-                                                     args.transformer_max_size, args.batch_size)
-    metrics = evaluate_multitask_on_dataset(args.id, model, val_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
-    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
+    train_ds, val_ds = df_to_datasets_from_generator(
+        df,
+        input_numeric_columns,
+        input_categorical_column,
+        args.group_column,
+        args.target_regression_columns + args.target_binary_columns,
+        args.transformer_max_size,
+        args.batch_size,
+    )
+    metrics = evaluate_multitask_on_dataset(
+        args.id,
+        model,
+        val_ds,
+        args.target_regression_columns,
+        args.target_binary_columns,
+        steps=args.test_steps,
+    )
+    radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    with open(f"{args.output_folder}/{args.id}/metrics.json", "w") as f:
         json.dump(metrics, f)
 
 
@@ -720,7 +1211,7 @@ def datetime_to_float(d):
 
 
 def float_to_datetime(fl):
-    return pd.to_datetime(fl, unit='s', utc=True)
+    return pd.to_datetime(fl, unit="s", utc=True)
 
 
 def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000):
@@ -734,56 +1225,79 @@ def infer_from_dataloader(dataloader, model, tensor_maps_out, max_batches=125000
             prediction = model.predict(data, verbose=0)
             if len(model.output_names) == 1:
                 prediction = [prediction]
-            predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+            predictions_dict = {
+                name: pred for name, pred in zip(model.output_names, prediction)
+            }
             for b in range(prediction[0].shape[0]):
                 for otm in tensor_maps_out:
                     y = predictions_dict[otm.output_name()]
                     if otm.is_categorical():
-                        space_dict[f'{otm.name}_prediction'].append(y[b, 1])
+                        space_dict[f"{otm.name}_prediction"].append(y[b, 1])
                     elif otm.is_continuous():
-                        space_dict[f'{otm.name}_prediction'].append(y[b, 0])
+                        space_dict[f"{otm.name}_prediction"].append(y[b, 0])
                     elif otm.is_survival_curve():
                         intervals = otm.shape[-1] // 2
-                        days_per_bin = 1 + (2*otm.days_window) // intervals
+                        days_per_bin = 1 + (2 * otm.days_window) // intervals
                         predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
-                        space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
+                        space_dict[f"{otm.name}_prediction"].append(
+                            str(1 - predicted_survivals[0, -1])
+                        )
                         sick = np.sum(target[otm.output_name()][:, intervals:], axis=-1)
-                        follow_up = np.cumsum(target[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
-                        space_dict[f'{otm.name}_event'].append(str(sick[0]))
-                        space_dict[f'{otm.name}_follow_up'].append(str(follow_up[0]))
+                        follow_up = (
+                            np.cumsum(
+                                target[otm.output_name()][:, :intervals], axis=-1
+                            )[:, -1]
+                            * days_per_bin
+                        )
+                        space_dict[f"{otm.name}_event"].append(str(sick[0]))
+                        space_dict[f"{otm.name}_follow_up"].append(str(follow_up[0]))
                 for k in target:
-                    if k in ['MRN', 'linker_id', 'is_c3po', 'output_age_in_days_continuous']:
-                        space_dict[f'{k}'].append(target[k][b].numpy())
-                    elif k in ['datetime']:
-                        space_dict[f'{k}'].append(float_to_datetime(int(target[k][b].numpy())))
+                    if k in [
+                        "MRN",
+                        "linker_id",
+                        "is_c3po",
+                        "output_age_in_days_continuous",
+                    ]:
+                        space_dict[f"{k}"].append(target[k][b].numpy())
+                    elif k in ["datetime"]:
+                        space_dict[f"{k}"].append(
+                            float_to_datetime(int(target[k][b].numpy()))
+                        )
                     else:
-                        space_dict[f'{k}'].append(target[k][b, -1].numpy())
+                        space_dict[f"{k}"].append(target[k][b, -1].numpy())
             if i % 100 == 0:
-                logging.info(f'Inferred on {i} batches, {len(space_dict[k])} rows')
+                logging.info(f"Inferred on {i} batches, {len(space_dict[k])} rows")
         except StopIteration:
-            logging.info(f'Inferred on all {i} batches.')
+            logging.info(f"Inferred on all {i} batches.")
             break
     return pd.DataFrame.from_dict(space_dict)
 
 
 def infer_xdl(args):
     mrn_df = pd.read_csv(args.app_csv)
-    if 'start_fu_age' in mrn_df:
-        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
-    elif 'start_fu' in mrn_df:
-        mrn_df['age_in_days'] = pd.to_timedelta(mrn_df.start_fu).dt.days
-    mrn_df = mrn_df.rename(columns={'Dem.Gender.no_filter_x': 'sex', 'Dem.Gender.no_filter': 'sex'})
-    mrn_df['is_c3po'] = mrn_df.cohort == 'c3po'
+    if "start_fu_age" in mrn_df:
+        mrn_df["age_in_days"] = pd.to_timedelta(mrn_df.start_fu_age).dt.days
+    elif "start_fu" in mrn_df:
+        mrn_df["age_in_days"] = pd.to_timedelta(mrn_df.start_fu).dt.days
+    mrn_df = mrn_df.rename(
+        columns={"Dem.Gender.no_filter_x": "sex", "Dem.Gender.no_filter": "sex"}
+    )
+    mrn_df["is_c3po"] = mrn_df.cohort == "c3po"
     for ot in args.tensor_maps_out:
         mrn_df = mrn_df[mrn_df[ot.name].notna()]
-    mrn_df = mrn_df.set_index('sample_id')
+    mrn_df = mrn_df.set_index("sample_id")
 
-    output_dds = [dataframe_data_description_from_tensor_map(tmap, mrn_df) for tmap in args.tensor_maps_out]
+    output_dds = [
+        dataframe_data_description_from_tensor_map(tmap, mrn_df)
+        for tmap in args.tensor_maps_out
+    ]
 
     output_dds.append(DataFrameDataDescription(mrn_df, col="MRN"))
     output_dds.append(DataFrameDataDescription(mrn_df, col="linker_id"))
     output_dds.append(DataFrameDataDescription(mrn_df, col="is_c3po"))
-    output_dds.append(DataFrameDataDescription(mrn_df, col="datetime", process_col=datetime_to_float))
+    output_dds.append(
+        DataFrameDataDescription(mrn_df, col="datetime", process_col=datetime_to_float)
+    )
 
     ecg_dd = ECGDataDescription(
         args.tensors,
@@ -794,7 +1308,7 @@ def infer_xdl(args):
 
     def test_option_picker(sample_id, data_descriptions):
         ecg_dts = ecg_dd.get_loading_options(sample_id)
-        htn_dt = output_dds[0].get_loading_options(sample_id)[0]['start_fu_datetime']
+        htn_dt = output_dds[0].get_loading_options(sample_id)[0]["start_fu_datetime"]
         min_ecg_dt = htn_dt - pd.to_timedelta("1095d")
         max_ecg_dt = htn_dt - pd.to_timedelta("1d")
         dates = []
@@ -802,7 +1316,7 @@ def infer_xdl(args):
             if min_ecg_dt <= dt[DATE_OPTION_KEY] <= max_ecg_dt:
                 dates.append(dt)
         if len(dates) == 0:
-            raise ValueError('No matching dates')
+            raise ValueError("No matching dates")
         chosen_dt = dates[-1]
         return {dd: chosen_dt for dd in data_descriptions}
 
@@ -812,26 +1326,32 @@ def infer_xdl(args):
         option_picker=test_option_picker,
     )
 
-    dataset = SampleGetterIterableDataset(sample_ids=list(mrn_df.index), sample_getter=sg, get_epoch=shuffle_get_epoch)
+    dataset = SampleGetterIterableDataset(
+        sample_ids=list(mrn_df.index), sample_getter=sg, get_epoch=shuffle_get_epoch
+    )
     dataloader = DataLoader(dataset, num_workers=0, batch_size=args.batch_size)
 
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     infer_df = infer_from_dataloader(dataloader, model, args.tensor_maps_out)
-    if 'mgh' in args.tensors:
-        hospital = 'mgh'
-        infer_df = infer_df.rename(columns={'MRN': 'MGH_MRN'})
+    if "mgh" in args.tensors:
+        hospital = "mgh"
+        infer_df = infer_df.rename(columns={"MRN": "MGH_MRN"})
         infer_df.MGH_MRN = infer_df.MGH_MRN.astype(int)
     else:
-        hospital = 'bwh'
-        infer_df = infer_df.rename(columns={'MRN': 'BWH_MRN'})
+        hospital = "bwh"
+        infer_df = infer_df.rename(columns={"MRN": "BWH_MRN"})
         infer_df.BWH_MRN = infer_df.BWH_MRN.astype(int)
 
     infer_df.linker_id = infer_df.linker_id.astype(int)
-    names = '_'.join([otm.name for otm in args.tensor_maps_out])
-    now_string = datetime.datetime.now().strftime('%Y_%m_%d')
-    out_file = f'{args.output_folder}/{args.id}/infer_{names}_{hospital}_v{now_string}.tsv'
-    infer_df.to_csv(out_file, sep='\t', index=False)
-    logging.info(f'Infer dataframe head: {infer_df.head()}  \n\n Saved inferences to: {out_file}')
+    names = "_".join([otm.name for otm in args.tensor_maps_out])
+    now_string = datetime.datetime.now().strftime("%Y_%m_%d")
+    out_file = (
+        f"{args.output_folder}/{args.id}/infer_{names}_{hospital}_v{now_string}.tsv"
+    )
+    infer_df.to_csv(out_file, sep="\t", index=False)
+    logging.info(
+        f"Infer dataframe head: {infer_df.head()}  \n\n Saved inferences to: {out_file}"
+    )
 
 
 def _make_tmap_nan_on_fail(tmap):
@@ -852,54 +1372,76 @@ def _make_tmap_nan_on_fail(tmap):
 
 
 def inference_file_name(output_folder: str, id_: str) -> str:
-    return os.path.join(output_folder, id_, 'inference_' + id_ + '.tsv')
+    return os.path.join(output_folder, id_, "inference_" + id_ + ".tsv")
 
 
 def infer_multimodal_multitask(args):
     stats = Counter()
     tensor_paths_inferred = set()
     inference_tsv = inference_file_name(args.output_folder, args.id)
-    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    tsv_style_is_genetics = "genetics" in args.tsv_style
 
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     no_fail_tmaps_out = [_make_tmap_nan_on_fail(tmap) for tmap in args.tensor_maps_out]
     tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
-        1, args.tensor_maps_in, no_fail_tmaps_out, tensor_paths, num_workers=0,
-        cache_size=0, keep_paths=True, mixup_alpha=args.mixup_alpha,
+        1,
+        args.tensor_maps_in,
+        no_fail_tmaps_out,
+        tensor_paths,
+        num_workers=0,
+        cache_size=0,
+        keep_paths=True,
+        mixup_alpha=args.mixup_alpha,
     )
 
     logging.info(f"Found {len(tensor_paths)} tensor paths.")
     generate_test.set_worker_paths(tensor_paths)
     output_maps = {tm.output_name(): tm for tm in no_fail_tmaps_out}
-    with open(inference_tsv, mode='w') as inference_file:
+    with open(inference_tsv, mode="w") as inference_file:
         # TODO: csv.DictWriter is much nicer for this
-        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        header = ['sample_id']
+        inference_writer = csv.writer(
+            inference_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL
+        )
+        header = ["sample_id"]
         if tsv_style_is_genetics:
-            header = ['FID', 'IID']
+            header = ["FID", "IID"]
         for ot in model.output_names:
             otm = output_maps[ot]
-            logging.info(f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}.")
+            logging.info(
+                f"Got ot  {ot} and otm {otm}  ot and otm {otm.name} ot  and otm {otm.channel_map} channel_map and otm {otm.interpretation}."
+            )
             if len(otm.shape) == 1 and otm.is_continuous():
-                header.extend([otm.name + '_prediction', otm.name + '_actual'])
+                header.extend([otm.name + "_prediction", otm.name + "_actual"])
             elif len(otm.shape) == 1 and otm.is_categorical():
                 channel_columns = []
                 for k in otm.channel_map:
-                    channel_columns.append(otm.name + '_' + k + '_prediction')
-                    channel_columns.append(otm.name + '_' + k + '_actual')
+                    channel_columns.append(otm.name + "_" + k + "_prediction")
+                    channel_columns.append(otm.name + "_" + k + "_actual")
                 header.extend(channel_columns)
             elif otm.is_survival_curve():
-                header.extend([otm.name + '_prediction', otm.name + '_actual', otm.name + '_follow_up'])
+                header.extend(
+                    [
+                        otm.name + "_prediction",
+                        otm.name + "_actual",
+                        otm.name + "_follow_up",
+                    ]
+                )
         inference_writer.writerow(header)
 
         while True:
             batch = next(generate_test)
-            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            input_data, output_data, tensor_paths = (
+                batch[BATCH_INPUT_INDEX],
+                batch[BATCH_OUTPUT_INDEX],
+                batch[BATCH_PATHS_INDEX],
+            )
             if tensor_paths[0] in tensor_paths_inferred:
                 next(generate_test)  # this prints end of epoch info
-                logging.info(f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                logging.info(
+                    f"Inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}"
+                )
                 break
             predictions = model.predict(input_data, verbose=0)
             if isinstance(predictions, dict):
@@ -908,15 +1450,14 @@ def infer_multimodal_multitask(args):
             elif isinstance(predictions, (list, tuple)):
                 # Map outputs by model.output_names (strings)
                 predictions_dict = {
-                    str(name): pred for name, pred in zip(model.output_names, predictions)
+                    str(name): pred
+                    for name, pred in zip(model.output_names, predictions)
                 }
             else:
                 # Single tensor output
-                predictions_dict = {
-                    model.output_names[0]: predictions
-                }
+                predictions_dict = {model.output_names[0]: predictions}
 
-            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, "")
             csv_row = [sample_id]
             if tsv_style_is_genetics:
                 csv_row *= 2
@@ -924,12 +1465,18 @@ def infer_multimodal_multitask(args):
                 y = predictions_dict[ot]
                 otm = output_maps[ot]
                 if len(otm.shape) == 1 and otm.is_continuous():
-                    csv_row.append(str(otm.rescale(y)[0][0]))  # first index into batch then index into the 1x1 structure
-                    if ((otm.sentinel is not None and otm.sentinel == output_data[otm.output_name()][0][0])
-                            or np.isnan(output_data[otm.output_name()][0][0])):
+                    csv_row.append(
+                        str(otm.rescale(y)[0][0])
+                    )  # first index into batch then index into the 1x1 structure
+                    if (
+                        otm.sentinel is not None
+                        and otm.sentinel == output_data[otm.output_name()][0][0]
+                    ) or np.isnan(output_data[otm.output_name()][0][0]):
                         csv_row.append("NA")
                     else:
-                        csv_row.append(str(otm.rescale(output_data[otm.output_name()])[0][0]))
+                        csv_row.append(
+                            str(otm.rescale(output_data[otm.output_name()])[0][0])
+                        )
                 elif len(otm.shape) == 1 and otm.is_categorical():
                     for k, i in otm.channel_map.items():
                         try:
@@ -937,233 +1484,400 @@ def infer_multimodal_multitask(args):
                             actual = output_data[otm.output_name()][0][i]
                             csv_row.append("NA" if np.isnan(actual) else str(actual))
                         except (IndexError, KeyError):
-                            logging.warning(f'index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}')
+                            logging.warning(
+                                f"index error at {otm.name} item {i} key {k} with cm: {otm.channel_map} y is {y.shape} y is {y}"
+                            )
                 elif otm.is_survival_curve():
                     intervals = otm.shape[-1] // 2
                     days_per_bin = 1 + otm.days_window // intervals
                     predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
-                    #predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
+                    # predicted_survivals = np.cumprod(y[:, :10], axis=1)  # 2 year probability
                     csv_row.append(str(1 - predicted_survivals[0, -1]))
-                    sick = np.sum(output_data[otm.output_name()][:, intervals:], axis=-1)
-                    follow_up = np.cumsum(output_data[otm.output_name()][:, :intervals], axis=-1)[:, -1] * days_per_bin
+                    sick = np.sum(
+                        output_data[otm.output_name()][:, intervals:], axis=-1
+                    )
+                    follow_up = (
+                        np.cumsum(
+                            output_data[otm.output_name()][:, :intervals], axis=-1
+                        )[:, -1]
+                        * days_per_bin
+                    )
                     csv_row.extend([str(sick[0]), str(follow_up[0])])
                 elif otm.axes() > 1:
-                    hd5_path = os.path.join(args.output_folder, args.id, 'inferred_hd5s', f'{sample_id}{TENSOR_EXT}')
+                    hd5_path = os.path.join(
+                        args.output_folder,
+                        args.id,
+                        "inferred_hd5s",
+                        f"{sample_id}{TENSOR_EXT}",
+                    )
                     os.makedirs(os.path.dirname(hd5_path), exist_ok=True)
-                    with h5py.File(hd5_path, 'a') as hd5:
+                    with h5py.File(hd5_path, "a") as hd5:
                         hd5.create_dataset(
-                            f'{otm.name}_truth', data=otm.rescale(output_data[otm.output_name()][0]),
-                            compression='gzip',
+                            f"{otm.name}_truth",
+                            data=otm.rescale(output_data[otm.output_name()][0]),
+                            compression="gzip",
                         )
-                        if otm.path_prefix == 'ukb_ecg_rest':
+                        if otm.path_prefix == "ukb_ecg_rest":
                             for lead in otm.channel_map:
                                 hd5.create_dataset(
-                                    f'/ukb_ecg_rest/{lead}/instance_0',
+                                    f"/ukb_ecg_rest/{lead}/instance_0",
                                     data=otm.rescale(y[0, otm.channel_map[lead]]),
-                                    compression='gzip',
+                                    compression="gzip",
                                 )
             inference_writer.writerow(csv_row)
             tensor_paths_inferred.add(tensor_paths[0])
-            stats['count'] += 1
-            if stats['count'] % 250 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}")
+            stats["count"] += 1
+            if stats["count"] % 250 == 0:
+                logging.info(
+                    f"Wrote:{stats['count']} rows of inference.  Last tensor:{tensor_paths[0]}"
+                )
 
 
 def _tensor_paths_from_sample_csv(tensors, sample_csv):
     sample_set = None
     if sample_csv is not None:
-        with open(sample_csv, 'r') as csv_file:
+        with open(sample_csv, "r") as csv_file:
             sample_ids = [row[0] for row in csv.reader(csv_file)]
             sample_set = set(sample_ids[1:])
     tensor_paths = [
-        file for file in glob.glob(os.path.join(tensors, f"*{TENSOR_EXT}"))
-        if sample_set is None or os.path.splitext(os.path.basename(file))[0] in sample_set
+        file
+        for file in glob.glob(os.path.join(tensors, f"*{TENSOR_EXT}"))
+        if sample_set is None
+        or os.path.splitext(os.path.basename(file))[0] in sample_set
     ]
     return tensor_paths
 
 
-def _hidden_file_name(output_folder: str, prefix_: str, id_: str, extension_: str) -> str:
-    return os.path.join(output_folder, id_, f'hidden_{prefix_}_{id_}{extension_}')
+def _hidden_file_name(
+    output_folder: str, prefix_: str, id_: str, extension_: str
+) -> str:
+    return os.path.join(output_folder, id_, f"hidden_{prefix_}_{id_}{extension_}")
 
 
 def infer_hidden_layer_multimodal_multitask(args):
     stats = Counter()
     args.num_workers = 0
-    inference_tsv = _hidden_file_name(args.output_folder, args.hidden_layer, args.id, '.tsv')
-    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    inference_tsv = _hidden_file_name(
+        args.output_folder, args.hidden_layer, args.id, ".tsv"
+    )
+    tsv_style_is_genetics = "genetics" in args.tsv_style
     tensor_paths = _tensor_paths_from_sample_csv(args.tensors, args.sample_csv)
     # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
     generate_test = TensorGenerator(
-        1, args.tensor_maps_in, args.tensor_maps_out, tensor_paths, num_workers=0,
-        cache_size=args.cache_size, keep_paths=True, mixup_alpha=args.mixup_alpha,
+        1,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        tensor_paths,
+        num_workers=0,
+        cache_size=args.cache_size,
+        keep_paths=True,
+        mixup_alpha=args.mixup_alpha,
     )
     generate_test.set_worker_paths(tensor_paths)
     full_model = legacy_multimodal_multitask_model(**args.__dict__)
-    embed_model = make_hidden_layer_model(full_model, args.tensor_maps_in, args.hidden_layer)
-    embed_model.save(_hidden_file_name(args.output_folder, f'{args.hidden_layer}_encoder_', args.id, '.h5'))
-    dummy_input = {tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in args.tensor_maps_in}
+    embed_model = make_hidden_layer_model(
+        full_model, args.tensor_maps_in, args.hidden_layer
+    )
+    embed_model.save(
+        _hidden_file_name(
+            args.output_folder, f"{args.hidden_layer}_encoder_", args.id, ".h5"
+        )
+    )
+    dummy_input = {
+        tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in args.tensor_maps_in
+    }
     dummy_out = embed_model.predict(dummy_input)
     latent_dimensions = int(np.prod(dummy_out.shape[1:]))
-    logging.info(f'Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions} Will write inferences to: {inference_tsv}')
-    with open(inference_tsv, mode='w') as inference_file:
-        inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
-        header += [f'latent_{i}' for i in range(latent_dimensions)]
+    logging.info(
+        f"Dummy output shape is: {dummy_out.shape} latent dimensions: {latent_dimensions} Will write inferences to: {inference_tsv}"
+    )
+    with open(inference_tsv, mode="w") as inference_file:
+        inference_writer = csv.writer(
+            inference_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL
+        )
+        header = ["FID", "IID"] if tsv_style_is_genetics else ["sample_id"]
+        header += [f"latent_{i}" for i in range(latent_dimensions)]
         inference_writer.writerow(header)
 
         while True:
             batch = next(generate_test)
-            input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            input_data, tensor_paths = (
+                batch[BATCH_INPUT_INDEX],
+                batch[BATCH_PATHS_INDEX],
+            )
             if tensor_paths[0] in stats:
                 next(generate_test)  # this prints end of epoch info
-                logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                logging.info(
+                    f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}"
+                )
                 break
 
-            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+            sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, "")
             prediction = embed_model.predict(input_data, verbose=0)
             prediction = np.reshape(prediction, (latent_dimensions,))
             csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
-            csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
+            csv_row += [f"{prediction[i]}" for i in range(latent_dimensions)]
             inference_writer.writerow(csv_row)
             stats[tensor_paths[0]] += 1
-            stats['count'] += 1
-            if stats['count'] % 500 == 0:
-                logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
+            stats["count"] += 1
+            if stats["count"] % 500 == 0:
+                logging.info(
+                    f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}"
+                )
 
 
 def train_shallow_model(args):
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    model = make_shallow_model(args.tensor_maps_in, args.tensor_maps_out, args.learning_rate, args.model_file, args.model_layers)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+        **args.__dict__
+    )
+    model = make_shallow_model(
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        args.learning_rate,
+        args.model_file,
+        args.model_layers,
+    )
     model = train_model_from_generators(
-        model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+        model,
+        generate_train,
+        generate_valid,
+        args.training_steps,
+        args.validation_steps,
+        args.batch_size,
+        args.epochs,
+        args.patience,
+        args.output_folder,
+        args.id,
+        args.inspect_model,
+        args.inspect_show_labels,
     )
 
-    p = os.path.join(args.output_folder, args.id + '/')
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    p = os.path.join(args.output_folder, args.id + "/")
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     return _predict_and_evaluate(
-        model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
-        args.batch_size, args.hidden_layer, p, test_paths, args.embed_visualization, args.alpha,
-        args.dpi, args.plot_width, args.plot_height,
+        model,
+        test_data,
+        test_labels,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        args.tensor_maps_protected,
+        args.batch_size,
+        args.hidden_layer,
+        p,
+        test_paths,
+        args.embed_visualization,
+        args.alpha,
+        args.dpi,
+        args.plot_width,
+        args.plot_height,
     )
 
 
 def train_siamese_model(args):
     base_model = legacy_multimodal_multitask_model(**args.__dict__)
     siamese_model = make_siamese_model(base_model, **args.__dict__)
-    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__, siamese=True)
+    generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(
+        **args.__dict__, siamese=True
+    )
     siamese_model = train_model_from_generators(
-        siamese_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
+        siamese_model,
+        generate_train,
+        generate_valid,
+        args.training_steps,
+        args.validation_steps,
+        args.batch_size,
+        args.epochs,
+        args.patience,
+        args.output_folder,
+        args.id,
+        args.inspect_model,
+        args.inspect_show_labels,
     )
 
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     prediction = siamese_model.predict(data)
     return subplot_roc_per_class(
-        prediction, labels['output_siamese'], {'random_siamese_verification_task': 0},
-        args.protected_maps, args.id, os.path.join(args.output_folder, args.id + '/'),
+        prediction,
+        labels["output_siamese"],
+        {"random_siamese_verification_task": 0},
+        args.protected_maps,
+        args.id,
+        os.path.join(args.output_folder, args.id + "/"),
     )
 
 
 def infer_encoders_block_multimodal_multitask(args):
     args.num_workers = 0
-    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    tsv_style_is_genetics = "genetics" in args.tsv_style
     sample_set = None
     if args.sample_csv is not None:
-        with open(args.sample_csv, 'r') as csv_file:
+        with open(args.sample_csv, "r") as csv_file:
             sample_ids = [row[0] for row in csv.reader(csv_file)]
             sample_set = set(sample_ids[1:])
     _, encoders, _, _ = make_multimodal_multitask_model(**args.__dict__)
     latent_dimensions = args.dense_layers[-1]
     for e in encoders:
         stats = Counter()
-        inference_tsv = _hidden_file_name(args.output_folder, e.name, args.id, '.tsv')
-        logging.info(f'Will write encodings from {e.name} to: {inference_tsv}')
+        inference_tsv = _hidden_file_name(args.output_folder, e.name, args.id, ".tsv")
+        logging.info(f"Will write encodings from {e.name} to: {inference_tsv}")
         # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
         tensor_paths = [
-            os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
-            if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
+            os.path.join(args.tensors, tp)
+            for tp in sorted(os.listdir(args.tensors))
+            if os.path.splitext(tp)[-1].lower() == TENSOR_EXT
+            and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
         ]
         generate_test = TensorGenerator(
-            1, [e], [], tensor_paths, num_workers=0,
-            cache_size=args.cache_size, keep_paths=True, mixup_alpha=args.mixup_alpha,
+            1,
+            [e],
+            [],
+            tensor_paths,
+            num_workers=0,
+            cache_size=args.cache_size,
+            keep_paths=True,
+            mixup_alpha=args.mixup_alpha,
         )
         generate_test.set_worker_paths(tensor_paths)
-        with open(inference_tsv, mode='w') as inference_file:
-            inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
-            header += [f'latent_{i}' for i in range(latent_dimensions)]
+        with open(inference_tsv, mode="w") as inference_file:
+            inference_writer = csv.writer(
+                inference_file, delimiter="\t", quotechar='"', quoting=csv.QUOTE_MINIMAL
+            )
+            header = ["FID", "IID"] if tsv_style_is_genetics else ["sample_id"]
+            header += [f"latent_{i}" for i in range(latent_dimensions)]
             inference_writer.writerow(header)
 
             while True:
                 batch = next(generate_test)
-                input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+                input_data, tensor_paths = (
+                    batch[BATCH_INPUT_INDEX],
+                    batch[BATCH_PATHS_INDEX],
+                )
                 if tensor_paths[0] in stats:
                     next(generate_test)  # this prints end of epoch info
-                    logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                    logging.info(
+                        f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}"
+                    )
                     del stats
                     break
 
-                sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+                sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, "")
                 prediction = encoders[e].predict(input_data, verbose=0)
                 prediction = np.reshape(prediction, (latent_dimensions,))
-                csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
-                csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
+                csv_row = (
+                    [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
+                )
+                csv_row += [f"{prediction[i]}" for i in range(latent_dimensions)]
                 inference_writer.writerow(csv_row)
                 stats[tensor_paths[0]] += 1
-                stats['count'] += 1
-                if stats['count'] % 500 == 0:
-                    logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
+                stats["count"] += 1
+                if stats["count"] % 500 == 0:
+                    logging.info(
+                        f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}"
+                    )
 
 
 def pca_on_hidden_inference(args):
-    latent_cols = [f'latent_{i}' for i in range(args.dense_layers[0])]
-    pca_on_tsv(args.app_csv, latent_cols, 'sample_id', args.dense_layers[1])
+    latent_cols = [f"latent_{i}" for i in range(args.dense_layers[0])]
+    pca_on_tsv(args.app_csv, latent_cols, "sample_id", args.dense_layers[1])
 
 
 def plot_predictions(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
-    folder = os.path.join(args.output_folder, args.id, 'prediction_pngs/')
-    predictions_to_pngs(predictions, args.tensor_maps_in, args.tensor_maps_out, data, labels, paths, folder)
+    folder = os.path.join(args.output_folder, args.id, "prediction_pngs/")
+    predictions_to_pngs(
+        predictions,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        data,
+        labels,
+        paths,
+        folder,
+    )
 
 
 def plot_while_training(args):
-    generate_train, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    generate_train, _, generate_test = test_train_valid_tensor_generators(
+        **args.__dict__
+    )
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     model = legacy_multimodal_multitask_model(**args.__dict__)
 
-    plot_folder = os.path.join(args.output_folder, args.id, 'training_frames/')
+    plot_folder = os.path.join(args.output_folder, args.id, "training_frames/")
     plot_while_learning(
-        model, args.tensor_maps_in, args.tensor_maps_out, generate_train, test_data, test_labels, test_paths, args.epochs,
-        args.batch_size, args.training_steps, plot_folder, args.write_pngs,
+        model,
+        args.tensor_maps_in,
+        args.tensor_maps_out,
+        generate_train,
+        test_data,
+        test_labels,
+        test_paths,
+        args.epochs,
+        args.batch_size,
+        args.training_steps,
+        plot_folder,
+        args.write_pngs,
     )
 
 
 def saliency_maps(args):
     import tensorflow as tf
+
     tf.compat.v1.disable_eager_execution()
     from tensorflow.python.framework.ops import disable_eager_execution
+
     disable_eager_execution()
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = legacy_multimodal_multitask_model(**args.__dict__)
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(
+        generate_test, args.test_steps
+    )
     in_tensor = data[args.tensor_maps_in[0].input_name()]
     for tm in args.tensor_maps_out:
         if len(tm.shape) > 1:
             continue
         for channel in tm.channel_map:
-            gradients = saliency_map(in_tensor, model, tm.output_name(), tm.channel_map[channel])
-            plot_saliency_maps(in_tensor, gradients, paths, os.path.join(args.output_folder, f'{args.id}/saliency_maps/{tm.name}_{channel}'))
+            gradients = saliency_map(
+                in_tensor, model, tm.output_name(), tm.channel_map[channel]
+            )
+            plot_saliency_maps(
+                in_tensor,
+                gradients,
+                paths,
+                os.path.join(
+                    args.output_folder, f"{args.id}/saliency_maps/{tm.name}_{channel}"
+                ),
+            )
 
 
 def _predict_and_evaluate(
-    model, test_data, test_labels, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
-    batch_size, hidden_layer, plot_path, test_paths, embed_visualization, alpha, dpi, width, height,
+    model,
+    test_data,
+    test_labels,
+    tensor_maps_in,
+    tensor_maps_out,
+    tensor_maps_protected,
+    batch_size,
+    hidden_layer,
+    plot_path,
+    test_paths,
+    embed_visualization,
+    alpha,
+    dpi,
+    width,
+    height,
 ):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
@@ -1177,54 +1891,107 @@ def _predict_and_evaluate(
             continue
         if isinstance(y_predictions, dict):
             y_predictions = y_predictions[tm.output_name()]
-        if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+        if not isinstance(
+            y_predictions, list
+        ):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(
             evaluate_predictions(
-                tm, y, y_truth, protected_data, tm.name, plot_path, test_paths,
-                rocs=rocs, scatters=scatters, dpi=dpi, width=width, height=height,
+                tm,
+                y,
+                y_truth,
+                protected_data,
+                tm.name,
+                plot_path,
+                test_paths,
+                rocs=rocs,
+                scatters=scatters,
+                dpi=dpi,
+                width=width,
+                height=height,
             ),
         )
         if tm.is_language():
-            sample_from_language_model(tensor_maps_in[0], tm, model, test_data, max_samples=16)
+            sample_from_language_model(
+                tensor_maps_in[0], tm, model, test_data, max_samples=16
+            )
 
     if len(rocs) > 1:
         subplot_rocs(rocs, plot_path)
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
 
-    test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+    test_labels_1d = {
+        tm: np.array(test_labels[tm.output_name()])
+        for tm in tensor_maps_out
+        if tm.output_name() in test_labels
+    }
     test_labels_1d.update(protected_data)
     if embed_visualization == "tsne":
         _tsne_wrapper(
-            model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d, test_data=test_data,
-            tensor_maps_in=tensor_maps_in, batch_size=batch_size, dpi=dpi, width=width, height=height,
+            model,
+            hidden_layer,
+            alpha,
+            plot_path,
+            test_paths,
+            test_labels_1d,
+            test_data=test_data,
+            tensor_maps_in=tensor_maps_in,
+            batch_size=batch_size,
+            dpi=dpi,
+            width=width,
+            height=height,
         )
 
     return performance_metrics
 
 
 def _predict_scalars_and_evaluate_from_generator(
-    model, generate_test, tensor_maps_in, tensor_maps_out, tensor_maps_protected,
-    steps, hidden_layer, plot_path, alpha, dpi, width, height,
+    model,
+    generate_test,
+    tensor_maps_in,
+    tensor_maps_out,
+    tensor_maps_protected,
+    steps,
+    hidden_layer,
+    plot_path,
+    alpha,
+    dpi,
+    width,
+    height,
 ):
     layer_names = [layer.name for layer in model.layers]
-    model_predictions = [tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names]
-    scalar_predictions = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1 and tm.output_name() in layer_names}
+    model_predictions = [
+        tm.output_name() for tm in tensor_maps_out if tm.output_name() in layer_names
+    ]
+    scalar_predictions = {
+        tm.output_name(): []
+        for tm in tensor_maps_out
+        if len(tm.shape) == 1 and tm.output_name() in layer_names
+    }
     test_labels = {tm.output_name(): [] for tm in tensor_maps_out if len(tm.shape) == 1}
     protected_data = {tm: [] for tm in tensor_maps_protected}
 
-    logging.info(f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
+    logging.info(
+        f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}"
+    )
     embeddings = []
     test_paths = []
     for i in range(steps):
         batch = next(iter(generate_test))
         if len(batch) == 3:
-            input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+            input_data, output_data, tensor_paths = (
+                batch[BATCH_INPUT_INDEX],
+                batch[BATCH_OUTPUT_INDEX],
+                batch[BATCH_PATHS_INDEX],
+            )
             test_paths.extend(tensor_paths)
         else:
-            input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
+            input_data, output_data = (
+                batch[BATCH_INPUT_INDEX],
+                batch[BATCH_OUTPUT_INDEX],
+            )
             tensor_paths = None
         y_predictions = model.predict(input_data, verbose=0)
         if isinstance(y_predictions, dict):
@@ -1237,12 +2004,16 @@ def _predict_scalars_and_evaluate_from_generator(
             }
         else:
             # Single tensor output
-            predictions_dict = {
-                model.output_names[0]: y_predictions
-        }
+            predictions_dict = {model.output_names[0]: y_predictions}
         if hidden_layer in layer_names:
-            x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
-            embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
+            x_embed = embed_model_predict(
+                model, tensor_maps_in, hidden_layer, input_data, 2
+            )
+            embeddings.extend(
+                np.copy(
+                    np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))
+                )
+            )
 
         for tm_output_name in test_labels:
             test_labels[tm_output_name].extend(np.copy(output_data[tm_output_name]))
@@ -1254,7 +2025,7 @@ def _predict_scalars_and_evaluate_from_generator(
                 scalar_predictions[tm_output_name].extend(np.copy(y))
 
         if i % 100 == 0:
-            logging.info(f'Processed {i} batches, {len(test_paths)} tensors.')
+            logging.info(f"Processed {i} batches, {len(test_paths)} tensors.")
 
     performance_metrics = {}
     scatters = []
@@ -1267,8 +2038,18 @@ def _predict_scalars_and_evaluate_from_generator(
             y_predict = np.array(scalar_predictions[tm.output_name()])
             y_truth = np.array(test_labels[tm.output_name()])
             metrics = evaluate_predictions(
-                tm, y_predict, y_truth, protected_data, tm.name, plot_path, test_paths,
-                rocs=rocs, scatters=scatters, dpi=dpi, width=width, height=height,
+                tm,
+                y_predict,
+                y_truth,
+                protected_data,
+                tm.name,
+                plot_path,
+                test_paths,
+                rocs=rocs,
+                scatters=scatters,
+                dpi=dpi,
+                width=width,
+                height=height,
             )
             performance_metrics.update(metrics)
 
@@ -1277,10 +2058,22 @@ def _predict_scalars_and_evaluate_from_generator(
     if len(scatters) > 1:
         subplot_scatters(scatters, plot_path)
     if len(embeddings) > 0:
-        test_labels_1d = {tm: np.array(test_labels[tm.output_name()]) for tm in tensor_maps_out if tm.output_name() in test_labels}
+        test_labels_1d = {
+            tm: np.array(test_labels[tm.output_name()])
+            for tm in tensor_maps_out
+            if tm.output_name() in test_labels
+        }
         _tsne_wrapper(
-            model, hidden_layer, alpha, plot_path, test_paths, test_labels_1d,
-            embeddings=embeddings, dpi=dpi, width=width, height=height,
+            model,
+            hidden_layer,
+            alpha,
+            plot_path,
+            test_paths,
+            test_labels_1d,
+            embeddings=embeddings,
+            dpi=dpi,
+            width=width,
+            height=height,
         )
 
     return performance_metrics
@@ -1289,15 +2082,17 @@ def _predict_scalars_and_evaluate_from_generator(
 def _get_common_outputs(models_inputs_outputs, output_prefix):
     """Returns a set of outputs common to all the models so we can compare the models according to those outputs only"""
     all_outputs = []
-    for (_, ios) in models_inputs_outputs.items():
+    for _, ios in models_inputs_outputs.items():
         outputs = {k: v for (k, v) in ios.items() if k == output_prefix}
-        for (_, output) in outputs.items():
+        for _, output in outputs.items():
             all_outputs.append(set(output))
-    logging.info(f'Finding model output intersection of {all_outputs}')
+    logging.info(f"Finding model output intersection of {all_outputs}")
     return reduce(set.intersection, all_outputs)
 
 
-def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_prefix, output_prefix):
+def _get_predictions(
+    args, models_inputs_outputs, input_data, outputs, input_prefix, output_prefix
+):
     """Makes multi-modal predictions for a given number of models.
 
     Returns:
@@ -1322,7 +2117,7 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.model_file = model_file
         model = legacy_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(MODEL_EXT, '_')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, "_")
 
         # We can feed 'model.predict()' the entire input data because it knows what subset to use
         y_pred = model.predict(input_data, batch_size=args.batch_size)
@@ -1336,7 +2131,9 @@ def _get_predictions(args, models_inputs_outputs, input_data, outputs, input_pre
     return predictions
 
 
-def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, steps, outputs, input_prefix, output_prefix):
+def _scalar_predictions_from_generator(
+    args, models_inputs_outputs, generator, steps, outputs, input_prefix, output_prefix
+):
     """Makes multi-modal scalar predictions for a given number of models.
 
     Returns:
@@ -1358,22 +2155,29 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
     models = {}
     test_paths = []
     scalar_predictions = {}
-    test_labels = {tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1}
+    test_labels = {
+        tm.output_name(): [] for tm in args.tensor_maps_out if len(tm.shape) == 1
+    }
 
     for model_file in models_inputs_outputs:
         args.model_file = model_file
         args.tensor_maps_in = models_inputs_outputs[model_file][input_prefix]
         args.tensor_maps_out = models_inputs_outputs[model_file][output_prefix]
         model = legacy_multimodal_multitask_model(**args.__dict__)
-        model_name = os.path.basename(model_file).replace(MODEL_EXT, '')
+        model_name = os.path.basename(model_file).replace(MODEL_EXT, "")
         models[model_name] = model
-        scalar_predictions[model_name] = [tm for tm in models_inputs_outputs[model_file][output_prefix] if len(tm.shape) == 1]
+        scalar_predictions[model_name] = [
+            tm
+            for tm in models_inputs_outputs[model_file][output_prefix]
+            if len(tm.shape) == 1
+        ]
 
     predictions = defaultdict(dict)
     for j in range(steps):
+
         batch = next(iter(generator))
-        input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX] #, batch[BATCH_PATHS_INDEX]
-        # test_paths.extend(tensor_paths)
+        input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX] 
+
         for tl in test_labels:
             test_labels[tl].extend(np.copy(output_data[tl]))
 
@@ -1394,7 +2198,9 @@ def _scalar_predictions_from_generator(args, models_inputs_outputs, generator, s
         logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")
         test_labels[tm.output_name()] = np.array(test_labels[tm.output_name()])
         for m in predictions[tm]:
-            logging.info(f"{tm.output_name()} model: {m} prediction length:{len(predictions[tm][m])}")
+            logging.info(
+                f"{tm.output_name()} model: {m} prediction length:{len(predictions[tm][m])}"
+            )
             predictions[tm][m] = np.array(predictions[tm][m])
 
     return predictions, test_labels, test_paths
@@ -1406,108 +2212,237 @@ def _calculate_and_plot_prediction_stats(args, predictions, outputs, paths):
     for tm in args.tensor_maps_out:
         if tm not in predictions:
             continue
-        plot_title = tm.name+'_'+args.id
+        plot_title = tm.name + "_" + args.id
         plot_folder = os.path.join(args.output_folder, args.id)
         if tm.is_categorical() and tm.axes() == 1:
             for m in predictions[tm]:
-                logging.info(f"{tm.name} channel map {tm.channel_map}\nsum truth = {np.sum(outputs[tm.output_name()], axis=0)}\nsum preds = {np.sum(predictions[tm][m], axis=0)}")
+                logging.info(
+                    f"{tm.name} channel map {tm.channel_map}\nsum truth = {np.sum(outputs[tm.output_name()], axis=0)}\nsum preds = {np.sum(predictions[tm][m], axis=0)}"
+                )
             plot_rocs(
-                predictions[tm], outputs[tm.output_name()], tm.channel_map, plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                predictions[tm],
+                outputs[tm.output_name()],
+                tm.channel_map,
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
             rocs.append((predictions[tm], outputs[tm.output_name()], tm.channel_map))
         elif tm.is_categorical() and tm.axes() == 4:
             for p in predictions[tm]:
                 y = predictions[tm][p]
-                melt_shape = (y.shape[0]*y.shape[1]*y.shape[2]*y.shape[3], y.shape[4])
+                melt_shape = (
+                    y.shape[0] * y.shape[1] * y.shape[2] * y.shape[3],
+                    y.shape[4],
+                )
                 predictions[tm][p] = y.reshape(melt_shape)
 
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
             plot_rocs(
-                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                predictions[tm],
+                y_truth,
+                tm.channel_map,
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
             plot_precision_recalls(
-                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                predictions[tm],
+                y_truth,
+                tm.channel_map,
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
-            precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
+            precision_recall_aucs = get_precision_recall_aucs(
+                predictions[tm], y_truth, tm.channel_map
+            )
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
         elif tm.is_categorical() and tm.axes() == 3:
             # have to plot dice before the reshape
             plot_dice(
-                predictions[tm], outputs[tm.output_name()], tm.channel_map, paths, plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                predictions[tm],
+                outputs[tm.output_name()],
+                tm.channel_map,
+                paths,
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
             for p in predictions[tm]:
                 y = predictions[tm][p]
-                melt_shape = (y.shape[0]*y.shape[1]*y.shape[2], y.shape[3])
+                melt_shape = (y.shape[0] * y.shape[1] * y.shape[2], y.shape[3])
                 predictions[tm][p] = y.reshape(melt_shape)
             y_truth = outputs[tm.output_name()].reshape(melt_shape)
             plot_rocs(
-                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                predictions[tm],
+                y_truth,
+                tm.channel_map,
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
             plot_precision_recalls(
-                predictions[tm], y_truth, tm.channel_map, plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                predictions[tm],
+                y_truth,
+                tm.channel_map,
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
             roc_aucs = get_roc_aucs(predictions[tm], y_truth, tm.channel_map)
-            precision_recall_aucs = get_precision_recall_aucs(predictions[tm], y_truth, tm.channel_map)
+            precision_recall_aucs = get_precision_recall_aucs(
+                predictions[tm], y_truth, tm.channel_map
+            )
             aucs = {"ROC": roc_aucs, "Precision-Recall": precision_recall_aucs}
             log_aucs(**aucs)
         elif tm.is_continuous() and tm.axes() == 1:
-            scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
+            scaled_predictions = {
+                k: tm.rescale(predictions[tm][k]) for k in predictions[tm]
+            }
             plot_scatters(
-                scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                scaled_predictions,
+                tm.rescale(outputs[tm.output_name()]),
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
-            scatters.append((scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, None))
-            coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
+            scatters.append(
+                (
+                    scaled_predictions,
+                    tm.rescale(outputs[tm.output_name()]),
+                    plot_title,
+                    None,
+                )
+            )
+            coefs = get_pearson_coefficients(
+                scaled_predictions, tm.rescale(outputs[tm.output_name()])
+            )
             log_pearson_coefficients(coefs, tm.name)
         elif tm.is_time_to_event():
             new_predictions = {}
             for m in predictions[tm]:
-                c_index = concordance_index_censored(outputs[tm.output_name()][:, 0] == 1.0, outputs[tm.output_name()][:, 1], predictions[tm][m][:, 0])
-                concordance_return_values = ['C-Index', 'Concordant Pairs', 'Discordant Pairs', 'Tied Predicted Risk', 'Tied Event Time']
-                logging.info(f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}")
-                new_predictions[f'{m}_C_Index_{c_index[0]:0.3f}'] = predictions[tm][m]
+                c_index = concordance_index_censored(
+                    outputs[tm.output_name()][:, 0] == 1.0,
+                    outputs[tm.output_name()][:, 1],
+                    predictions[tm][m][:, 0],
+                )
+                concordance_return_values = [
+                    "C-Index",
+                    "Concordant Pairs",
+                    "Discordant Pairs",
+                    "Tied Predicted Risk",
+                    "Tied Event Time",
+                ]
+                logging.info(
+                    f"Model: {m} {[f'{label}: {value}' for label, value in zip(concordance_return_values, c_index)]}"
+                )
+                new_predictions[f"{m}_C_Index_{c_index[0]:0.3f}"] = predictions[tm][m]
             plot_rocs(
-                new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}, plot_title,
-                plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                new_predictions,
+                outputs[tm.output_name()][:, 0, np.newaxis],
+                {"_vs_ROC": 0},
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
-            rocs.append((new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0}))
+            rocs.append(
+                (
+                    new_predictions,
+                    outputs[tm.output_name()][:, 0, np.newaxis],
+                    {"_vs_ROC": 0},
+                )
+            )
             plot_prediction_calibrations(
-                new_predictions, outputs[tm.output_name()][:, 0, np.newaxis], {f'_vs_ROC': 0},
-                plot_title, plot_folder, dpi=args.dpi,
-                width=args.plot_width, height=args.plot_height,
+                new_predictions,
+                outputs[tm.output_name()][:, 0, np.newaxis],
+                {"_vs_ROC": 0},
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
         elif tm.is_survival_curve():
             for m in predictions[tm]:
                 plot_survival(
-                    predictions[tm][m], outputs[tm.output_name()], f'{m}_{plot_title}', tm.days_window,
-                    prefix=plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                    predictions[tm][m],
+                    outputs[tm.output_name()],
+                    f"{m}_{plot_title}",
+                    tm.days_window,
+                    prefix=plot_folder,
+                    dpi=args.dpi,
+                    width=args.plot_width,
+                    height=args.plot_height,
                 )
         else:
-            scaled_predictions = {k: tm.rescale(predictions[tm][k]) for k in predictions[tm]}
+            scaled_predictions = {
+                k: tm.rescale(predictions[tm][k]) for k in predictions[tm]
+            }
             plot_scatters(
-                scaled_predictions, tm.rescale(outputs[tm.output_name()]), plot_title, plot_folder,
-                dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+                scaled_predictions,
+                tm.rescale(outputs[tm.output_name()]),
+                plot_title,
+                plot_folder,
+                dpi=args.dpi,
+                width=args.plot_width,
+                height=args.plot_height,
             )
-            coefs = get_pearson_coefficients(scaled_predictions, tm.rescale(outputs[tm.output_name()]))
+            coefs = get_pearson_coefficients(
+                scaled_predictions, tm.rescale(outputs[tm.output_name()])
+            )
             log_pearson_coefficients(coefs, tm.name)
 
     if len(rocs) > 1:
-        subplot_comparison_rocs(rocs, plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+        subplot_comparison_rocs(
+            rocs,
+            plot_folder,
+            dpi=args.dpi,
+            width=args.plot_width,
+            height=args.plot_height,
+        )
     if len(scatters) > 1:
-        subplot_comparison_scatters(scatters, plot_folder, dpi=args.dpi, width=args.plot_width, height=args.plot_height)
+        subplot_comparison_scatters(
+            scatters,
+            plot_folder,
+            dpi=args.dpi,
+            width=args.plot_width,
+            height=args.plot_height,
+        )
 
 
 def _tsne_wrapper(
-    model, hidden_layer_name, alpha, plot_path, test_paths, test_labels, test_data=None,
-    tensor_maps_in=None, batch_size=16, embeddings=None, dpi=300, width=7, height=7,
+    model,
+    hidden_layer_name,
+    alpha,
+    plot_path,
+    test_paths,
+    test_labels,
+    test_data=None,
+    tensor_maps_in=None,
+    batch_size=16,
+    embeddings=None,
+    dpi=300,
+    width=7,
+    height=7,
 ):
     """Plot 2D t-SNE of a model's hidden layer colored by many different co-variates.
 
@@ -1526,21 +2461,39 @@ def _tsne_wrapper(
     :return: None
     """
     if hidden_layer_name not in [layer.name for layer in model.layers]:
-        logging.warning(f"Can't compute t-SNE, layer:{hidden_layer_name} not in provided model.")
+        logging.warning(
+            f"Can't compute t-SNE, layer:{hidden_layer_name} not in provided model."
+        )
         return
 
     if embeddings is None:
-        embeddings = embed_model_predict(model, tensor_maps_in, hidden_layer_name, test_data, batch_size)
+        embeddings = embed_model_predict(
+            model, tensor_maps_in, hidden_layer_name, test_data, batch_size
+        )
 
     gene_labels = []
-    label_dict, categorical_labels, continuous_labels = test_labels_to_label_map(test_labels, len(test_paths))
-    if len(categorical_labels) > 0 or len(continuous_labels) > 0 or len(gene_labels) > 0:
+    label_dict, categorical_labels, continuous_labels = test_labels_to_label_map(
+        test_labels, len(test_paths)
+    )
+    if (
+        len(categorical_labels) > 0
+        or len(continuous_labels) > 0
+        or len(gene_labels) > 0
+    ):
         plot_tsne(
-            embeddings, categorical_labels, continuous_labels, gene_labels,
-            label_dict, plot_path, alpha, dpi, width, height,
+            embeddings,
+            categorical_labels,
+            continuous_labels,
+            gene_labels,
+            label_dict,
+            plot_path,
+            alpha,
+            dpi,
+            width,
+            height,
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     arguments = parse_args()
     run(arguments)  # back to the top
