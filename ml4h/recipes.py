@@ -2174,31 +2174,25 @@ def _scalar_predictions_from_generator(
 
     predictions = defaultdict(dict)
     for j in range(steps):
-        batch = next(generator)
-        input_data, output_data, tensor_paths = (
-            batch[BATCH_INPUT_INDEX],
-            batch[BATCH_OUTPUT_INDEX],
-            batch[BATCH_PATHS_INDEX],
-        )
-        test_paths.extend(tensor_paths)
+
+        batch = next(iter(generator))
+        input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX] 
+
         for tl in test_labels:
             test_labels[tl].extend(np.copy(output_data[tl]))
 
         for model_name, model_file in zip(models, models_inputs_outputs):
             # We can feed 'model.predict()' the entire input data because it knows what subset to use
             y_predictions = models[model_name].predict(input_data)
-
-            for y, tm in zip(
-                y_predictions, models_inputs_outputs[model_file][output_prefix]
-            ):
-                if not isinstance(
-                    y_predictions, list
-                ):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+            if len(args.tensor_maps_out) == 1:
+                y_predictions = [y_predictions]
+            for y, tm in zip(y_predictions, models_inputs_outputs[model_file][output_prefix]):
+                if not isinstance(y_predictions, list):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
                     y = y_predictions
                 if j == 0 and tm in scalar_predictions[model_name]:
                     predictions[tm][model_name] = []
                 if tm in scalar_predictions[model_name]:
-                    predictions[tm][model_name].extend(np.copy(y))
+                    predictions[tm][model_name].extend(np.copy(y[tm.output_name()]))
 
     for tm in predictions:
         logging.info(f"{tm.output_name()} labels: {len(test_labels[tm.output_name()])}")
