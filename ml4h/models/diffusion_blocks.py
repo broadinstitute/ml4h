@@ -630,7 +630,11 @@ class DiffusionModel(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                if len(generated_images[index].shape) == 3 and generated_images[index].shape[-1] > 1:
+                if len(generated_images[index].shape) == 3 and generated_images[index].shape[-1] in [3,4]:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
+                elif len(generated_images[index].shape) == 3 and generated_images[index].shape[-1] > 1:
                     plt.imshow(generated_images[index, ..., 0], cmap='gray')  # just plot first frame
                 else:
                     plt.imshow(generated_images[index], cmap='gray')
@@ -690,7 +694,12 @@ class DiffusionModel(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -704,7 +713,12 @@ class DiffusionModel(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(images[index], cmap='gray')
+                if images.shape[-1] == 1:
+                    plt.imshow(images[index], cmap='gray')
+                else:
+                    img = images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -1068,7 +1082,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -1105,7 +1124,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -1119,7 +1143,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(images[index], cmap='gray')
+                if images.shape[-1] == 1:
+                    plt.imshow(images[index], cmap='gray')
+                else:
+                    img = images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         now_string = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -1149,7 +1178,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         plt.show()
@@ -1174,7 +1208,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         plt.show()
@@ -1197,7 +1236,12 @@ class DiffusionController(keras.Model):
             for col in range(num_cols):
                 index = row * num_cols + col
                 plt.subplot(num_rows, num_cols, index + 1)
-                plt.imshow(generated_images[index], cmap='gray')
+                if generated_images.shape[-1] == 1:
+                    plt.imshow(generated_images[index], cmap='gray')
+                else:
+                    img = generated_images[index].numpy()
+                    img = (img - img.min()) / (1e-6 + img.max() - img.min())
+                    plt.imshow(img)
                 plt.axis("off")
         plt.tight_layout()
         plt.show()

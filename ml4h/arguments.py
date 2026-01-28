@@ -101,16 +101,55 @@ def parse_args():
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
     parser.add_argument(
+        '--no_categorical_file_weighted_loss', dest='categorical_file_weighted_loss', default=True, action='store_false',
+        help='Disable weighted cross-entropy loss for categorical TensorMaps from file (enabled by default, with weights inverse to class prevalence).',
+    )
+    parser.add_argument(
         '--latent_input_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first input_tensors'
         'argument to the TensorMap made from this file.',
     )
     parser.add_argument(
+        '--latent_dimensions', default=256, type=int, help='Dimensionality (size) of latent space',
+    )
+    parser.add_argument(
+        '--latent_dimensions_start', default=0, type=int, help='Starting dimension of latent space',
+    )
+    parser.add_argument(
         '--latent_output_files', nargs='*', default=[], help=
         'Path to a file containing latent space values from which an input TensorMap will be made.'
         'Note that setting this argument has the effect of linking the first output_tensors'
         'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--input_numeric_columns', nargs='*', default=[], help=
+        'List of columns with continuous numeric values to use as Transformer inputs.'
+    )
+    parser.add_argument(
+        '--input_categorical_columns', nargs='*', default=[], help=
+        'List of columns with categorical values to learn an embed as input into Transformer.'
+    )
+    parser.add_argument(
+        '--target_regression_columns', nargs='*', default=[], help=
+        'List of columns with continuous numeric values to predict.'
+    )
+    parser.add_argument(
+        '--target_binary_columns', nargs='*', default=[], help=
+        'List of columns with binary values to predict.'
+    )
+    parser.add_argument(
+        '--group_column', default=None, help='Column to group on for embedding transformer.'
+    )
+    parser.add_argument(
+        '--sort_column', default=None, help='Column to sort on for embedding transformer.'
+    )
+    parser.add_argument(
+        '--sort_column_ascend', default=False, action='store_true', help='Sort on for embedding transformer.',
+    )
+    parser.add_argument(
+        '--merge_columns', nargs='*', default=['mrn', 'view'], help=
+        'List of columns to merge on for input and labels Transformer.'
     )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
@@ -260,11 +299,31 @@ def parse_args():
     parser.add_argument('--interpolate_step', type=float, default =1.0,
                         help='Diffusion model synthetic interpolation step size continuous condition')
 
-
+    parser.add_argument(
+         '--transformer_input_file', help='File with latent space input for transformers',
+    )
+    parser.add_argument(
+         '--transformer_label_file', help='File with target labels for transformers',
+    )
     parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
+    )
+    parser.add_argument(
+         '--transformer_layers', default=4, type=int, help='Number of residual attention layers in transformers',
+    )
+    parser.add_argument(
+         '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
+    )
+    parser.add_argument(
+         '--transformer_categorical_embed', default=4, type=int, help='Size of embedding of input categorical data',
+    )
+    parser.add_argument(
+         '--transformer_token_embed', default=32, type=int, help='Size of embedding of transformer input tokens',
+    )
+    parser.add_argument(
+         '--transformer_dropout_rate', default=0.1, type=float, help='Dropout rate for the longitudinal/embedding transformer.',
     )
     parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
 
@@ -554,14 +613,14 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
-    if len(args.latent_input_files) > 0:
-        new_pairs = []
-        for lif in args.latent_input_files:
-            tm = generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0))
-            args.tensor_maps_in.append(tm)
-            new_pairs.append(tm)
-        if len(args.pairs) > 0:
-            args.pairs = [new_pairs]
+    # if len(args.latent_input_files) > 0:
+    #     new_pairs = []
+    #     for lif in args.latent_input_files:
+    #         tm = generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0))
+    #         args.tensor_maps_in.append(tm)
+    #         new_pairs.append(tm)
+    #     if len(args.pairs) > 0:
+    #         args.pairs = [new_pairs]
 
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
@@ -585,14 +644,15 @@ def _process_args(args):
                     args.categorical_file,
                     column,
                     args.output_tensors.pop(0),
+                    args.categorical_file_weighted_loss,
                 ),
             )
 
-    if len(args.latent_output_files) > 0:
-        for lof in args.latent_output_files:
-            args.tensor_maps_out.append(
-                generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
-            )
+    # if len(args.latent_output_files) > 0:
+    #     for lof in args.latent_output_files:
+    #         args.tensor_maps_out.append(
+    #             generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
+    #         )
 
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
