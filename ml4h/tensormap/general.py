@@ -1,11 +1,13 @@
 import os
 import csv
 import logging
+
+import gzip
 import h5py
 import numpy as np
 import pandas as pd
 from typing import List, Tuple, Dict
-from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.TensorMap import TensorMap
 from ml4h.normalizer import Standardize
 
 
@@ -193,9 +195,26 @@ def build_categorical_tensor_from_file(
         try:
             tensor = np.zeros(tm.shape, dtype=np.float32)
             val = table[int(os.path.basename(hd5.filename).replace('.hd5', ''))]
-            tensor[tm.channel_map[val]] = 1.0
+            tensor[tm.channel_map[f'val_{val}']] = 1.0
             return tensor
         except KeyError as e:
             raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
+
+
+
+def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    compressed = hd5["image"][:].tobytes()
+    shape = tuple(hd5.attrs["shape"])
+
+    raw = gzip.decompress(compressed)
+    return np.array(np.frombuffer(raw, dtype=np.uint8).reshape(shape), dtype=np.float32)
+
+
+def age_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
+    return np.array([hd5["age"][()]], dtype=np.float32)
+
+
+face_image = TensorMap('face_image', shape=(200, 200, 3), tensor_from_file=image_from_hd5)
+face_age = TensorMap('face_age', shape=(1,), tensor_from_file=age_from_hd5)
