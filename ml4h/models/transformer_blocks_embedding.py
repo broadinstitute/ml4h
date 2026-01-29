@@ -442,6 +442,9 @@ def build_general_embedding_transformer(
 
     x = layers.Concatenate(name="total_emb")(emb)  # (B,T, up to EMB_DIM*2 + TOKEN_HIDDEN)
 
+    # Project concatenated embeddings to TRANSFORMER_DIM
+    x = layers.Dense(TRANSFORMER_DIM, name="emb_projection")(x)  # (B,T,TRANSFORMER_DIM)
+
     # ------------------------------
     # POSITIONAL EMBEDDING
     # ------------------------------
