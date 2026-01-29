@@ -12,6 +12,7 @@ from __future__ import print_function
 # Imports
 import os
 import csv
+import copy
 import math
 import h5py
 import time
@@ -25,6 +26,7 @@ from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
 
 import tensorflow as tf
+import pyarrow.dataset as ds
 from sklearn.model_selection import train_test_split
 
 from ml4h.defines import TENSOR_EXT, TensorGeneratorABC
@@ -1434,3 +1436,307 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
     test_ds = make_tf_dataset_from_generator(test_ids, shuffle=False)
     return train_ds, val_ds, test_ds
+
+
+class LongitudinalDataloader:
+    def __init__(
+        self,
+        input_file_path,
+        label_file_path,
+        group_column,
+        sort_column,
+        latent_dim,
+        numeric_columns,
+        categorical_columns,
+        label_columns,
+        max_seq_len,
+        batch_size,
+        shuffle=True,
+        train_csv: Optional[str] = None,
+        valid_csv: Optional[str] = None,
+        test_csv: Optional[str] = None,
+    ):
+        self.input_ds = ds.dataset(input_file_path, format="parquet")
+        self.label_ds = (
+            self.input_ds
+            if label_file_path in [None, input_file_path]
+            else ds.dataset(label_file_path, format="parquet")
+        )
+
+        self.latent_cols = [f"latent_{i}" for i in range(latent_dim)]
+        self.latent_dim = latent_dim
+        self.numeric_columns = numeric_columns
+        self.categorical_columns = categorical_columns
+        self.label_columns = label_columns
+        self.max_seq_len = max_seq_len
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.group_column = group_column
+        self.train_csv = train_csv
+        self.valid_csv = valid_csv
+        self.test_csv = test_csv
+
+        # ---- build MRN → row indices ONCE ----
+        index_tbl = self.input_ds.to_table(
+            columns=[group_column, sort_column]
+        ).to_pandas()
+
+        index_tbl = index_tbl.sort_values([group_column, sort_column], kind="mergesort")
+
+        self.group_to_indices = {}
+        self.group_ids = []
+        for group_id, g in index_tbl.groupby(group_column, sort=False):
+            idxs = g.index.values
+            if max_seq_len:
+                idxs = idxs[-max_seq_len:]
+            self.group_to_indices[group_id] = idxs
+            self.group_ids.append(group_id)
+
+        # Log number of groups found
+        logging.info(f"Found {len(self.group_ids)} groups (unique {group_column}s)")
+
+        # Log sequence length statistics
+        seq_lengths = np.array([len(idxs) for idxs in self.group_to_indices.values()])
+        logging.info(f"Sequence length statistics across {len(seq_lengths)} groups:")
+        logging.info(f"  Mean: {seq_lengths.mean():.2f}")
+        logging.info(f"  Std:  {seq_lengths.std():.2f}")
+        logging.info(f"  Min:  {seq_lengths.min()}")
+        logging.info(f"  Max:  {seq_lengths.max()}")
+        logging.info(f"  Median: {np.median(seq_lengths):.2f}")
+
+    def _generator(self, selected_group_ids: List = None):
+        """Generator that yields samples for the given group IDs.
+
+        Args:
+            selected_group_ids: List of group IDs to iterate over. If None, uses all group_ids.
+        """
+        if selected_group_ids is None:
+            selected_group_ids = self.group_ids
+
+        group_ids_list = list(selected_group_ids)
+        if self.shuffle:
+            np.random.shuffle(group_ids_list)
+
+        from more_itertools import chunked
+
+        for chunk_ids in chunked(group_ids_list, 32):
+            # Get indices for this chunk of groups
+            chunk = [self.group_to_indices[gid] for gid in chunk_ids]
+
+            flat_idxs = np.concatenate(chunk)
+            inp = self.input_ds.take(flat_idxs)
+            lab = self.label_ds.take(flat_idxs)
+
+            lat_all = np.stack(
+                [
+                    inp.column(c).to_numpy(zero_copy_only=False)
+                    for c in self.latent_cols
+                ],
+                axis=1,
+            ).astype(np.float32)
+
+            num_all = {
+                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+                for c in self.numeric_columns
+            }
+
+            cat_all = {
+                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+                for c in self.categorical_columns
+            }
+
+            lab_all = np.stack(
+                [
+                    lab.column(c).to_numpy(zero_copy_only=False)
+                    for c in self.label_columns
+                ],
+                axis=1,
+            ).astype(np.float32)
+
+            offset = 0
+            for idxs in chunk:
+                T = len(idxs)
+                sl = slice(offset, offset + T)
+
+                x = {
+                    "latent": lat_all[sl],
+                    "mask": np.ones(T, dtype=bool),
+                }
+
+                for c in self.numeric_columns:
+                    x[f"num_{c}"] = num_all[c][sl]
+
+                for c in self.categorical_columns:
+                    x[f"cat_{c}"] = cat_all[c][sl]
+
+                # latest label only
+                vals = lab_all[sl][-1]
+
+                y, sw = {}, {}
+                for i, c in enumerate(self.label_columns):
+                    if np.isnan(vals[i]):
+                        y[c] = 0.0
+                        sw[c] = 0.0
+                    else:
+                        y[c] = float(vals[i])
+                        sw[c] = 1.0
+
+                yield x, y, sw
+
+                offset += T
+
+    def _get_output_signature(self):
+        """Returns the output signature for the TensorFlow dataset."""
+        return (
+            {
+                "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
+                "mask": tf.TensorSpec((None,), tf.bool),
+                **{
+                    f"num_{c}": tf.TensorSpec((None,), tf.float32)
+                    for c in self.numeric_columns
+                },
+                **{
+                    f"cat_{c}": tf.TensorSpec((None,), tf.int32)
+                    for c in self.categorical_columns
+                },
+            },
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+        )
+
+    def _get_padded_shapes(self):
+        """Returns the padded shapes for batching."""
+        return (
+            {
+                "latent": [self.max_seq_len, self.latent_dim],
+                "mask": [self.max_seq_len],
+                **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
+                **{
+                    f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
+                },
+            },
+            {c: [] for c in self.label_columns},
+            {c: [] for c in self.label_columns},
+        )
+
+    def get_tf_dataset(self, selected_group_ids: List = None):
+        """Get a TensorFlow dataset for the specified group IDs.
+
+        Args:
+            selected_group_ids: List of group IDs to include. If None, uses all groups.
+        """
+        output_signature = self._get_output_signature()
+
+        ds_tf = tf.data.Dataset.from_generator(
+            lambda: self._generator(selected_group_ids),
+            output_signature=output_signature,
+        )
+
+        return ds_tf.padded_batch(
+            self.batch_size,
+            padded_shapes=self._get_padded_shapes(),
+        ).prefetch(tf.data.AUTOTUNE)
+
+    def get_train_valid_test_datasets(self, valid_frac=0.1, test_frac=0.1, seed=42):
+        """Split data into train, validation, and test datasets.
+
+        If train_csv, valid_csv, or test_csv were provided during initialization,
+        those will be used to determine the splits. Otherwise, random splitting
+        is performed based on the provided fractions.
+
+        Args:
+            valid_frac: Fraction of data for validation (used only if valid_csv not provided)
+            test_frac: Fraction of data for testing (used only if test_csv not provided)
+            seed: Random seed for reproducibility
+
+        Returns:
+            Tuple of (train_dataset, valid_dataset, test_dataset)
+        """
+        unique_group_ids = set(self.group_ids)
+        logging.info(f"Found {len(unique_group_ids)} unique {self.group_column}s in dataset")
+
+        # Check if CSV files are provided
+        if self.train_csv or self.valid_csv or self.test_csv:
+            # Read group IDs from CSV files
+            train_set = _sample_csv_to_set(self.train_csv) if self.train_csv else set()
+            valid_set = _sample_csv_to_set(self.valid_csv) if self.valid_csv else set()
+            test_set = _sample_csv_to_set(self.test_csv) if self.test_csv else set()
+
+            logging.info(f"CSV files contain: {len(train_set)} train IDs, {len(valid_set)} valid IDs, {len(test_set)} test IDs")
+
+            # Log sample IDs for debugging
+            if len(unique_group_ids) > 0:
+                sample_ids = list(unique_group_ids)[:3]
+                logging.info(f"Sample dataset {self.group_column}s: {sample_ids}")
+            if len(train_set) > 0:
+                logging.info(f"Sample train CSV IDs: {list(train_set)[:3]}")
+
+            # Split group IDs into train/val/test based on CSV membership
+            train_ids = set()
+            val_ids = set()
+            test_ids = set()
+
+            for gid in unique_group_ids:
+                gid_str = str(gid)
+                if train_set and gid_str in train_set:
+                    train_ids.add(gid)
+                elif valid_set and gid_str in valid_set:
+                    val_ids.add(gid)
+                elif test_set and gid_str in test_set:
+                    test_ids.add(gid)
+
+            logging.info(f"Matched IDs: {len(train_ids)} train, {len(val_ids)} valid, {len(test_ids)} test")
+        else:
+            # No CSV files provided - randomly split
+            logging.info(f"No CSV files provided. Randomly splitting: {(1-valid_frac-test_frac)*100:.0f}% train, {valid_frac*100:.0f}% valid, {test_frac*100:.0f}% test")
+
+            rng = np.random.default_rng(seed)
+            group_ids_array = np.array(list(unique_group_ids))
+            rng.shuffle(group_ids_array)
+
+            n = len(group_ids_array)
+            test_split = int(test_frac * n)
+            valid_split = int((test_frac + valid_frac) * n)
+
+            test_ids = set(group_ids_array[:test_split])
+            val_ids = set(group_ids_array[test_split:valid_split])
+            train_ids = set(group_ids_array[valid_split:])
+
+            logging.info(f"Random split IDs: {len(train_ids)} train, {len(val_ids)} valid, {len(test_ids)} test")
+
+        # Calculate total rows for train, validation, and test sets
+        train_rows = sum(len(self.group_to_indices[gid]) for gid in train_ids)
+        val_rows = sum(len(self.group_to_indices[gid]) for gid in val_ids)
+        test_rows = sum(len(self.group_to_indices[gid]) for gid in test_ids)
+
+        logging.info(f"Training set: {len(train_ids)} groups, {train_rows} total rows")
+        logging.info(f"Validation set: {len(val_ids)} groups, {val_rows} total rows")
+        logging.info(f"Test set: {len(test_ids)} groups, {test_rows} total rows")
+
+        # Validate that we have at least some data in train set
+        if len(train_ids) == 0:
+            if self.train_csv or self.valid_csv or self.test_csv:
+                raise ValueError(
+                    f"Training set is empty! No IDs from CSV files matched the dataset. "
+                    f"Check that ID formats match between CSV and dataset. "
+                    f"Dataset has {len(unique_group_ids)} unique {self.group_column}s."
+                )
+            else:
+                raise ValueError(
+                    f"Training set is empty! Dataset has {len(unique_group_ids)} unique {self.group_column}s but none were assigned to training."
+                )
+
+        # Create datasets with appropriate shuffle settings
+        train_loader = copy.copy(self)
+        val_loader = copy.copy(self)
+        test_loader = copy.copy(self)
+
+        train_loader.shuffle = self.shuffle
+        val_loader.shuffle = False
+        test_loader.shuffle = False
+
+        train_ds = train_loader.get_tf_dataset(selected_group_ids=list(train_ids))
+        val_ds = val_loader.get_tf_dataset(selected_group_ids=list(val_ids))
+        test_ds = test_loader.get_tf_dataset(selected_group_ids=list(test_ids))
+
+        return train_ds, val_ds, test_ds
