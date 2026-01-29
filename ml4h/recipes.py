@@ -901,7 +901,7 @@ def train_transformer_on_parquet(args):
         test_csv=args.test_csv,
     )
 
-    train_ds, val_ds = loader.get_train_val_datasets(val_frac=0.2)
+    train_ds, val_ds, test_ds = loader.get_train_valid_test_datasets()
 
     cat_cardinalities = {}
     if len(args.input_categorical_columns) > 0:
@@ -971,7 +971,7 @@ def train_transformer_on_parquet(args):
     metrics = evaluate_multitask_on_dataset(
         args.id,
         model,
-        val_ds,
+        test_ds,
         args.target_regression_columns,
         args.target_binary_columns,
         steps=args.test_steps,
