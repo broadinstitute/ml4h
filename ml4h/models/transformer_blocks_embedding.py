@@ -492,7 +492,7 @@ def build_general_embedding_transformer(
 
         ff = layers.Dense(4 * TRANSFORMER_DIM, activation="relu", name=f"ffn_dense_1_{i}")(x)
         ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_1_{i}")(ff)
-        ff = layers.Dense(TOKEN_HIDDEN, name=f"ffn_dense_2_{i}")(ff)
+        ff = layers.Dense(TRANSFORMER_DIM, name=f"ffn_dense_2_{i}")(ff)
         ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_2_{i}")(ff)
         x = layers.Add(name=f"ffn_residual_{i}")([x, ff])
         x = layers.LayerNormalization(name=f"ffn_norm_{i}")(x)
@@ -622,13 +622,13 @@ def build_embedding_transformer(
 
         ff = layers.Dense(TRANSFORMER_DIM, activation="relu", name=f"ff1_{i}")(x)
         ff = layers.Dropout(DROPOUT)(ff)
-        ff = layers.Dense(TOKEN_HIDDEN, name=f"ff2_{i}")(ff)
+        ff = layers.Dense(TRANSFORMER_DIM, name=f"ff2_{i}")(ff)
         x = layers.LayerNormalization(epsilon=1e-6, name=f"ln2_{i}")(
             layers.Add()([x, ff])
         )
 
     # Attention pooling over time (mask-aware via very negative)
-    score_h = layers.Dense(TOKEN_HIDDEN, activation="tanh", name="attn_h")(x)  # (B,T,D)
+    score_h = layers.Dense(TRANSFORMER_DIM, activation="tanh", name="attn_h")(x)  # (B,T,D)
     score = layers.Dense(1, name="attn_score")(score_h)  # (B,T,1)
     score = layers.Reshape((MAX_LEN,), name="attn_score_squeeze")(score)  # (B,T)
 
