@@ -1504,6 +1504,27 @@ class LongitudinalDataloader:
         logging.info(f"  Max:  {seq_lengths.max()}")
         logging.info(f"  Median: {np.median(seq_lengths):.2f}")
 
+        # Log summary statistics for each target
+        if label_columns:
+            logging.info("Target summary statistics:")
+            label_tbl = self.label_ds.to_table(columns=label_columns).to_pandas()
+            for t in label_columns:
+                if t in label_tbl.columns:
+                    target_values = label_tbl[t].values
+                    valid_mask = ~pd.isna(target_values)
+                    if valid_mask.sum() > 0:
+                        valid_values = target_values[valid_mask]
+                        logging.info(f"  {t}:")
+                        logging.info(f"    Valid samples: {valid_mask.sum()}/{len(target_values)} ({valid_mask.mean()*100:.1f}%)")
+                        logging.info(f"    Mean: {np.mean(valid_values):.4f}")
+                        logging.info(f"    Std:  {np.std(valid_values):.4f}")
+                        logging.info(f"    Min:  {np.min(valid_values):.4f}")
+                        logging.info(f"    Max:  {np.max(valid_values):.4f}")
+                    else:
+                        logging.info(f"  {t}: No valid samples")
+                else:
+                    logging.info(f"  {t}: Target not found in dataset")
+
     def _generator(self, selected_group_ids: List = None):
         """Generator that yields samples for the given group IDs.
 
