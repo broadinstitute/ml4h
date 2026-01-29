@@ -402,7 +402,7 @@ def build_general_embedding_transformer(
                 inp_numeric[col]
             )  # (B,T,1)
 
-            x = layers.Dense(TRANSFORMER_DIM, name=f"num_{col}_emb")(x)  # (B,T,TRANSFORMER_DIM)
+            x = layers.Dense(EMB_DIM, name=f"num_{col}_emb")(x)  # (B,T,TRANSFORMER_DIM)
             num_embs.append(x)
         num_emb = (
             layers.Add(name="num_emb_sum")(num_embs)
@@ -418,7 +418,7 @@ def build_general_embedding_transformer(
         vocab_size = vocab + 1
 
         emb = layers.Embedding(
-            input_dim=vocab_size, output_dim=TRANSFORMER_DIM, name=f"cat_{col}_emb"
+            input_dim=vocab_size, output_dim=EMB_DIM, name=f"cat_{col}_emb"
         )(
             inp_categorical[col]
         )  # (B,T,EMB_DIM)
@@ -430,7 +430,7 @@ def build_general_embedding_transformer(
     else:
         cat_emb = None
 
-    latent_emb = layers.Dense(TRANSFORMER_DIM, name="latent_emb")(inp_latent)  # (B,T,EMB_DIM)
+    latent_emb = layers.Dense(TOKEN_HIDDEN, name="latent_emb")(inp_latent)  # (B,T,EMB_DIM)
     # ------------------------------
     # CONCAT ALL FEATURE STREAMS
     # ------------------------------
