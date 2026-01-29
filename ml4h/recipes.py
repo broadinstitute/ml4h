@@ -893,7 +893,7 @@ def train_transformer_on_parquet(args):
         label_columns=args.target_regression_columns + args.target_binary_columns,
         batch_size=args.batch_size,
         max_seq_len=args.transformer_max_size,
-        shuffle=False,
+        shuffle=True,
         train_csv=args.train_csv,
         valid_csv=args.valid_csv,
         test_csv=args.test_csv,
@@ -931,7 +931,7 @@ def train_transformer_on_parquet(args):
             NUM_LAYERS=args.transformer_layers,
             DROPOUT=args.transformer_dropout_rate,
         )
-        
+
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
