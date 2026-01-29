@@ -490,9 +490,9 @@ def build_general_embedding_transformer(
 
         # FEED FORWARD
 
-        ff = layers.Dense(4 * EMB_DIM, activation="relu", name=f"ffn_dense_1_{i}")(x)
+        ff = layers.Dense(4 * TRANSFORMER_DIM, activation="relu", name=f"ffn_dense_1_{i}")(x)
         ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_1_{i}")(ff)
-        ff = layers.Dense(EMB_DIM, name=f"ffn_dense_2_{i}")(ff)
+        ff = layers.Dense(TOKEN_HIDDEN, name=f"ffn_dense_2_{i}")(ff)
         ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_2_{i}")(ff)
         x = layers.Add(name=f"ffn_residual_{i}")([x, ff])
         x = layers.LayerNormalization(name=f"ffn_norm_{i}")(x)
