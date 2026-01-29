@@ -47,7 +47,7 @@ from ml4h.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_OUTPUT_INDEX,
     BATCH_PATHS_INDEX,
-    df_to_datasets_from_generator,
+    df_to_datasets_from_generator, LongitudinalDataloader,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -882,190 +882,11 @@ def train_xdl_af(args):
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f"{otm.name} Scatter")
 
 
-class LongitudinalDataloader:
-    def __init__(
-        self,
-        input_file_path,
-        label_file_path,
-        group_column,
-        sort_column,
-        latent_dim,
-        numeric_columns,
-        categorical_columns,
-        label_columns,
-        max_seq_len,
-        batch_size,
-        shuffle=True,
-    ):
-        self.input_ds = ds.dataset(input_file_path, format="parquet")
-        self.label_ds = (
-            self.input_ds
-            if label_file_path in [None, input_file_path]
-            else ds.dataset(label_file_path, format="parquet")
-        )
-
-        self.latent_cols = [f"latent_{i}" for i in range(latent_dim)]
-        self.latent_dim = latent_dim
-        self.numeric_columns = numeric_columns
-        self.categorical_columns = categorical_columns
-        self.label_columns = label_columns
-        self.max_seq_len = max_seq_len
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-
-        # ---- build MRN → row indices ONCE ----
-        index_tbl = self.input_ds.to_table(
-            columns=[group_column, sort_column]
-        ).to_pandas()
-
-        index_tbl = index_tbl.sort_values([group_column, sort_column], kind="mergesort")
-
-        self.group_to_indices = []
-        for _, g in index_tbl.groupby(group_column, sort=False):
-            idxs = g.index.values
-            if max_seq_len:
-                idxs = idxs[-max_seq_len:]
-            self.group_to_indices.append(idxs)
-
-    def _generator(self):
-        groups = self.group_to_indices.copy()
-        if self.shuffle:
-            np.random.shuffle(groups)
-
-        from more_itertools import chunked
-
-        for chunk in chunked(groups, 32):
-            # T = len(idxs)
-
-            flat_idxs = np.concatenate(chunk)
-            inp = self.input_ds.take(flat_idxs)
-            lab = self.label_ds.take(flat_idxs)
-
-            lat_all = np.stack(
-                [
-                    inp.column(c).to_numpy(zero_copy_only=False)
-                    for c in self.latent_cols
-                ],
-                axis=1,
-            ).astype(np.float32)
-
-            num_all = {
-                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
-                for c in self.numeric_columns
-            }
-
-            cat_all = {
-                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
-                for c in self.categorical_columns
-            }
-
-            lab_all = np.stack(
-                [
-                    lab.column(c).to_numpy(zero_copy_only=False)
-                    for c in self.label_columns
-                ],
-                axis=1,
-            ).astype(np.float32)
-
-            offset = 0
-            for idxs in chunk:
-                T = len(idxs)
-                sl = slice(offset, offset + T)
-
-                x = {
-                    "latent": lat_all[sl],
-                    "mask": np.ones(T, dtype=bool),
-                }
-
-                for c in self.numeric_columns:
-                    x[f"num_{c}"] = num_all[c][sl]
-
-                for c in self.categorical_columns:
-                    x[f"cat_{c}"] = cat_all[c][sl]
-
-                # latest label only
-                vals = lab_all[sl][-1]
-
-                y, sw = {}, {}
-                for i, c in enumerate(self.label_columns):
-                    if np.isnan(vals[i]):
-                        y[c] = 0.0
-                        sw[c] = 0.0
-                    else:
-                        y[c] = float(vals[i])
-                        sw[c] = 1.0
-
-                yield x, y, sw
-
-                offset += T
-
-    def get_tf_dataset(self):
-        output_signature = (
-            {
-                "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
-                "mask": tf.TensorSpec((None,), tf.bool),
-                **{
-                    f"num_{c}": tf.TensorSpec((None,), tf.float32)
-                    for c in self.numeric_columns
-                },
-                **{
-                    f"cat_{c}": tf.TensorSpec((None,), tf.int32)
-                    for c in self.categorical_columns
-                },
-            },
-            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
-            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
-        )
-
-        ds_tf = tf.data.Dataset.from_generator(
-            self._generator,
-            output_signature=output_signature,
-        )
-
-        return ds_tf.padded_batch(
-            self.batch_size,
-            padded_shapes=(
-                {
-                    "latent": [self.max_seq_len, self.latent_dim],
-                    "mask": [self.max_seq_len],
-                    **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
-                    **{
-                        f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
-                    },
-                },
-                {c: [] for c in self.label_columns},
-                {c: [] for c in self.label_columns},
-            ),
-        ).prefetch(tf.data.AUTOTUNE)
-
-    def get_train_val_datasets(self, val_frac=0.2, seed=42):
-        rng = np.random.default_rng(seed)
-
-        n = len(self.group_to_indices)
-        indices = np.arange(n)
-        rng.shuffle(indices)
-
-        split = int((1 - val_frac) * n)
-        train_idx = indices[:split]
-        val_idx = indices[split:]
-
-        train_loader = copy.copy(self)
-        val_loader = copy.copy(self)
-
-        train_loader.group_to_indices = [self.group_to_indices[i] for i in train_idx]
-        val_loader.group_to_indices = [self.group_to_indices[i] for i in val_idx]
-
-        train_loader.shuffle = self.shuffle
-        val_loader.shuffle = False
-
-        return train_loader.get_tf_dataset(), val_loader.get_tf_dataset()
-
-
 def train_transformer_on_parquet(args):
 
     loader = LongitudinalDataloader(
         input_file_path=args.transformer_input_file,
-        label_file_path=args.transformer_label_file,
+        label_file_path=args.transformer_label_file if args.transformer_label_file else args.transformer_input_file,
         latent_dim=args.latent_dimensions,
         group_column=args.group_column,
         sort_column=args.sort_column,
@@ -1075,6 +896,9 @@ def train_transformer_on_parquet(args):
         batch_size=args.batch_size,
         max_seq_len=args.transformer_max_size,
         shuffle=False,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
     )
 
     train_ds, val_ds = loader.get_train_val_datasets(val_frac=0.2)
@@ -1123,9 +947,10 @@ def train_transformer_on_parquet(args):
         )
 
     callbacks = [
-        keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=args.patience, restore_best_weights=True
-        )
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
+        keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=args.patience, verbose=1),
+        keras.callbacks.ModelCheckpoint(filepath=f"{args.output_folder}/{args.id}/{args.id}.keras",
+                                        verbose=1, save_best_only=not args.save_last_model),
     ]
 
     history = model.fit(
