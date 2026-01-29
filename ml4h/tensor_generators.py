@@ -1734,19 +1734,6 @@ class LongitudinalDataloader:
         logging.info(f"Validation set: {len(val_ids)} groups, {val_rows} total rows")
         logging.info(f"Test set: {len(test_ids)} groups, {test_rows} total rows")
 
-        # Validate that we have at least some data in train set
-        if len(train_ids) == 0:
-            if self.train_csv or self.valid_csv or self.test_csv:
-                raise ValueError(
-                    f"Training set is empty! No IDs from CSV files matched the dataset. "
-                    f"Check that ID formats match between CSV and dataset. "
-                    f"Dataset has {len(unique_group_ids)} unique {self.group_column}s."
-                )
-            else:
-                raise ValueError(
-                    f"Training set is empty! Dataset has {len(unique_group_ids)} unique {self.group_column}s but none were assigned to training."
-                )
-
         # Create datasets with appropriate shuffle settings
         train_loader = copy.copy(self)
         val_loader = copy.copy(self)
