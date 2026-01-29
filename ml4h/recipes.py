@@ -180,8 +180,6 @@ def run(args):
             train_xdl_af(args)
         elif "train_transformer_on_parquet" == args.mode:
             train_transformer_on_parquet(args)
-        elif "test_transformer_on_parquet" == args.mode:
-            test_transformer_on_parquet(args)
         elif "test" == args.mode:
             test_multimodal_multitask(args)
         elif "compare" == args.mode:
