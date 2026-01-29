@@ -440,7 +440,7 @@ def build_general_embedding_transformer(
     if cat_emb is not None:
         emb.append(cat_emb)
 
-    x = layers.Add(name="total_emb")(emb)  # (B,T,EMB_DIM)
+    x = layers.Concatenate(name="total_emb")(emb)  # (B,T, up to EMB_DIM*2 + TOKEN_HIDDEN)
 
     # ------------------------------
     # POSITIONAL EMBEDDING
