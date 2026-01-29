@@ -912,23 +912,26 @@ def train_transformer_on_parquet(args):
             cat_cardinalities[col] = int(max_id)
 
     logging.info("Building and Training model...")
-
-    model = build_general_embedding_transformer(
-        latent_dim=args.latent_dimensions,
-        numeric_columns=args.input_numeric_columns,
-        categorical_columns=args.input_categorical_columns,
-        categorical_vocabs=cat_cardinalities,
-        REGRESSION_TARGETS=args.target_regression_columns,
-        BINARY_TARGETS=args.target_binary_columns,
-        MAX_LEN=args.transformer_max_size,
-        EMB_DIM=args.transformer_token_embed,
-        TOKEN_HIDDEN=args.transformer_size,
-        TRANSFORMER_DIM=args.transformer_size,
-        NUM_HEADS=args.attention_heads,
-        NUM_LAYERS=args.transformer_layers,
-        DROPOUT=args.transformer_dropout_rate,
-    )
-
+    if args.model_file:
+        logging.info(f"Loading model from {args.model_file}")
+        model = keras.models.load_model(args.model_file)
+    else:
+        model = build_general_embedding_transformer(
+            latent_dim=args.latent_dimensions,
+            numeric_columns=args.input_numeric_columns,
+            categorical_columns=args.input_categorical_columns,
+            categorical_vocabs=cat_cardinalities,
+            REGRESSION_TARGETS=args.target_regression_columns,
+            BINARY_TARGETS=args.target_binary_columns,
+            MAX_LEN=args.transformer_max_size,
+            EMB_DIM=args.transformer_token_embed,
+            TOKEN_HIDDEN=args.transformer_size,
+            TRANSFORMER_DIM=args.transformer_size,
+            NUM_HEADS=args.attention_heads,
+            NUM_LAYERS=args.transformer_layers,
+            DROPOUT=args.transformer_dropout_rate,
+        )
+        
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
         keras.utils.plot_model(
