@@ -894,6 +894,7 @@ def train_transformer_on_parquet(args):
         batch_size=args.batch_size,
         max_seq_len=args.transformer_max_size,
         shuffle=True,
+        sort_column_ascend=args.sort_column_ascend,
         train_csv=args.train_csv,
         valid_csv=args.valid_csv,
         test_csv=args.test_csv,

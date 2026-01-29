@@ -1452,6 +1452,7 @@ class LongitudinalDataloader:
         max_seq_len,
         batch_size,
         shuffle=True,
+        sort_column_ascend=True,
         train_csv: Optional[str] = None,
         valid_csv: Optional[str] = None,
         test_csv: Optional[str] = None,
@@ -1481,7 +1482,7 @@ class LongitudinalDataloader:
             columns=[group_column, sort_column]
         ).to_pandas()
 
-        index_tbl = index_tbl.sort_values([group_column, sort_column], kind="mergesort")
+        index_tbl = index_tbl.sort_values([group_column, sort_column], ascending=[True, sort_column_ascend], kind="mergesort")
 
         self.group_to_indices = {}
         self.group_ids = []
