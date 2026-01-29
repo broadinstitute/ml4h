@@ -430,7 +430,7 @@ def build_general_embedding_transformer(
     else:
         cat_emb = None
 
-    latent_emb = layers.Dense(EMB_DIM, name="latent_emb")(inp_latent)  # (B,T,EMB_DIM)
+    latent_emb = layers.Dense(TRANSFORMER_DIM, name="latent_emb")(inp_latent)  # (B,T,EMB_DIM)
     # ------------------------------
     # CONCAT ALL FEATURE STREAMS
     # ------------------------------
@@ -456,7 +456,7 @@ def build_general_embedding_transformer(
     )  # (T,)
 
     pos_emb = layers.Embedding(
-        input_dim=MAX_LEN, output_dim=EMB_DIM, name="pos_embedding"
+        input_dim=MAX_LEN, output_dim=TRANSFORMER_DIM, name="pos_embedding"
     )(
         positions
     )  # (B,T,EMB_DIM)
@@ -479,7 +479,7 @@ def build_general_embedding_transformer(
     for i in range(NUM_LAYERS):
         attn = layers.MultiHeadAttention(
             num_heads=NUM_HEADS,
-            key_dim=EMB_DIM // NUM_HEADS,
+            key_dim=TRANSFORMER_DIM // NUM_HEADS,
             dropout=DROPOUT,
             name=f"mha_{i}",
         )(x, x, attention_mask=attn_mask)
