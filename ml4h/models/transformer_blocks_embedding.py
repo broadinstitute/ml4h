@@ -360,34 +360,34 @@ def build_general_embedding_transformer(
     numeric_columns,
     categorical_columns,
     categorical_vocabs,  # dict col → mapping from category → ID
-    REGRESSION_TARGETS,
-    BINARY_TARGETS,
-    MAX_LEN,
-    EMB_DIM,
-    TOKEN_HIDDEN,
-    TRANSFORMER_DIM,
-    NUM_HEADS,
-    NUM_LAYERS,
-    DROPOUT,
+    regression_targets,
+    binary_targets,
+    max_len,
+    scalar_embed,
+    latent_embed,
+    transformer_dim,
+    num_heads,
+    num_layers,
+    dropout,
 ):
     # ------------------------------
     # INPUTS
     # ------------------------------
     inp_latent = keras.Input(
-        shape=(MAX_LEN, latent_dim), dtype="float32", name="latent"
+        shape=(max_len, latent_dim), dtype="float32", name="latent"
     )
 
     inp_numeric = {
-        col: keras.Input(shape=(MAX_LEN,), dtype="float32", name=f"num_{col}")
+        col: keras.Input(shape=(max_len,), dtype="float32", name=f"num_{col}")
         for col in numeric_columns
     }
 
     inp_categorical = {
-        col: keras.Input(shape=(MAX_LEN,), dtype="int32", name=f"cat_{col}")
+        col: keras.Input(shape=(max_len,), dtype="int32", name=f"cat_{col}")
         for col in categorical_columns
     }
 
-    inp_mask = keras.Input(shape=(MAX_LEN,), dtype="bool", name="mask")
+    inp_mask = keras.Input(shape=(max_len,), dtype="bool", name="mask")
 
     # ------------------------------
     # NUMERIC STACK
@@ -402,7 +402,7 @@ def build_general_embedding_transformer(
                 inp_numeric[col]
             )  # (B,T,1)
 
-            x = layers.Dense(EMB_DIM, name=f"num_{col}_emb")(x)  # (B,T,TRANSFORMER_DIM)
+            x = layers.Dense(scalar_embed, name=f"num_{col}_emb")(x)  # (B,T,transformer_dim)
             num_embs.append(x)
         num_emb = (
             layers.Add(name="num_emb_sum")(num_embs)
@@ -418,7 +418,7 @@ def build_general_embedding_transformer(
         vocab_size = vocab + 1
 
         emb = layers.Embedding(
-            input_dim=vocab_size, output_dim=EMB_DIM, name=f"cat_{col}_emb"
+            input_dim=vocab_size, output_dim=scalar_embed, name=f"cat_{col}_emb"
         )(
             inp_categorical[col]
         )  # (B,T,EMB_DIM)
@@ -430,7 +430,7 @@ def build_general_embedding_transformer(
     else:
         cat_emb = None
 
-    latent_emb = layers.Dense(TOKEN_HIDDEN, name="latent_emb")(inp_latent)  # (B,T,EMB_DIM)
+    latent_emb = layers.Dense(latent_embed, name="latent_emb")(inp_latent)  # (B,T,emb_dim)
     # ------------------------------
     # CONCAT ALL FEATURE STREAMS
     # ------------------------------
@@ -442,8 +442,8 @@ def build_general_embedding_transformer(
 
     x = layers.Concatenate(name="total_emb")(emb)  # (B,T, up to EMB_DIM*2 + TOKEN_HIDDEN)
 
-    # Project concatenated embeddings to TRANSFORMER_DIM
-    x = layers.Dense(TRANSFORMER_DIM, name="emb_projection")(x)  # (B,T,TRANSFORMER_DIM)
+    # Project concatenated embeddings to transformer_dim
+    x = layers.Dense(transformer_dim, name="emb_projection")(x)  # (B,T,transformer_dim)
 
     # ------------------------------
     # POSITIONAL EMBEDDING
@@ -459,7 +459,7 @@ def build_general_embedding_transformer(
     )  # (T,)
 
     pos_emb = layers.Embedding(
-        input_dim=MAX_LEN, output_dim=TRANSFORMER_DIM, name="pos_embedding"
+        input_dim=max_len, output_dim=transformer_dim, name="pos_embedding"
     )(
         positions
     )  # (B,T,EMB_DIM)
@@ -479,24 +479,24 @@ def build_general_embedding_transformer(
     # ------------------------------
     # TRANSFORMER LAYERS
     # ------------------------------
-    for i in range(NUM_LAYERS):
+    for i in range(num_layers):
         attn = layers.MultiHeadAttention(
-            num_heads=NUM_HEADS,
-            key_dim=TRANSFORMER_DIM // NUM_HEADS,
-            dropout=DROPOUT,
+            num_heads=num_heads,
+            key_dim=transformer_dim // num_heads,
+            dropout=dropout,
             name=f"mha_{i}",
         )(x, x, attention_mask=attn_mask)
 
-        attn = layers.Dropout(DROPOUT, name=f"attn_dropout_{i}")(attn)
+        attn = layers.Dropout(dropout, name=f"attn_dropout_{i}")(attn)
         x = layers.Add(name=f"attn_residual_{i}")([x, attn])
         x = layers.LayerNormalization(name=f"attn_norm_{i}")(x)
 
         # FEED FORWARD
 
-        ff = layers.Dense(4 * TRANSFORMER_DIM, activation="relu", name=f"ffn_dense_1_{i}")(x)
-        ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_1_{i}")(ff)
-        ff = layers.Dense(TRANSFORMER_DIM, name=f"ffn_dense_2_{i}")(ff)
-        ff = layers.Dropout(DROPOUT, name=f"ffn_dropout_2_{i}")(ff)
+        ff = layers.Dense(4 * transformer_dim, activation="relu", name=f"ffn_dense_1_{i}")(x)
+        ff = layers.Dropout(dropout, name=f"ffn_dropout_1_{i}")(ff)
+        ff = layers.Dense(transformer_dim, name=f"ffn_dense_2_{i}")(ff)
+        ff = layers.Dropout(dropout, name=f"ffn_dropout_2_{i}")(ff)
         x = layers.Add(name=f"ffn_residual_{i}")([x, ff])
         x = layers.LayerNormalization(name=f"ffn_norm_{i}")(x)
 
@@ -519,9 +519,9 @@ def build_general_embedding_transformer(
     )  # (B,EMB_DIM)
 
     outputs = {}
-    for t in REGRESSION_TARGETS:
+    for t in regression_targets:
         outputs[t] = layers.Dense(1, name=t)(pooled)
-    for t in BINARY_TARGETS:
+    for t in binary_targets:
         outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(pooled)
 
     # ------------------------------
@@ -537,14 +537,14 @@ def build_general_embedding_transformer(
 
     model = keras.Model(inputs, outputs)
 
-    losses = {t: "mse" for t in REGRESSION_TARGETS}
-    losses.update({t: "binary_crossentropy" for t in BINARY_TARGETS})
+    losses = {t: "mse" for t in regression_targets}
+    losses.update({t: "binary_crossentropy" for t in binary_targets})
 
     metrics_dict = {
         t: [keras.metrics.MeanAbsoluteError(), keras.metrics.MeanSquaredError()]
-        for t in REGRESSION_TARGETS
+        for t in regression_targets
     }
-    for t in BINARY_TARGETS:
+    for t in binary_targets:
         metrics_dict[t] = [
             keras.metrics.AUC(name="auroc"),
             keras.metrics.AUC(name="auprc", curve="PR"),
