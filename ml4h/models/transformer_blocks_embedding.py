@@ -500,29 +500,30 @@ def build_general_embedding_transformer(
         x = layers.Add(name=f"ffn_residual_{i}")([x, ff])
         x = layers.LayerNormalization(name=f"ffn_norm_{i}")(x)
 
-    # ATTENTION POOLING
 
-    # AVG MEAN POOLING WITH MASK(CAN CHANGE TO DIFFERENT POOLING LATER IF NEEDED)
-    mask_f = layers.Lambda(lambda m: ops.cast(m, "float32"))(inp_mask)  # (B,T)
-    mask_f = layers.Lambda(lambda m: ops.expand_dims(m, -1))(mask_f)  # (B,T,1)
-    x_masked = layers.Multiply(name="apply_mask")([x, mask_f])  # (B,T,EMB_DIM)
-    sum_x = layers.Lambda(lambda z: ops.sum(z, axis=1), name="sum_over_time")(
-        x_masked
-    )  # (B,EMB_DIM)
-    count = layers.Lambda(lambda m: ops.sum(m, axis=1), name="count_valid")(
-        mask_f
-    )  # (B,1)
-    pooled = layers.Lambda(
-        lambda args: args[0] / ops.maximum(args[1], 1.0), name="masked_mean"
-    )(
-        [sum_x, count]
-    )  # (B,EMB_DIM)
+    # Attention pooling over time (mask-aware via very negative)
+    score_h = layers.Dense(transformer_dim, activation="tanh", name="attn_h")(x)  # (B,T,D)
+    score = layers.Dense(1, name="attn_score")(score_h)  # (B,T,1)
+    score = layers.Reshape((max_len,), name="attn_score_squeeze")(score)  # (B,T)
+
+    mask_f = CastToFloatLayer(name="mask_cast")(inp_mask)
+
+    very_neg = ApplyVeryNegativeLayer(name="veryneg")(mask_f)
+    score_m = layers.Add(name="score_masked")([score, very_neg])
+    wts = layers.Softmax(axis=-1, name="attn_wts")(score_m)  # (B,T)
+    wts_e = layers.Reshape((max_len, 1), name="wts_e")(wts)
+    ctx = layers.Multiply(name="apply_wts")([x, wts_e])  # (B,T,D)
+    ctx = SumOverTimeLayer(name="pool")(ctx)  # (B,D)
+
+    # Shared tower
+    h = layers.Dense(128, activation="relu")(ctx)
+    h = layers.Dropout(dropout)(h)
 
     outputs = {}
     for t in regression_targets:
-        outputs[t] = layers.Dense(1, name=t)(pooled)
+        outputs[t] = layers.Dense(1, name=t)(h)
     for t in binary_targets:
-        outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(pooled)
+        outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
 
     # ------------------------------
     # MODEL
