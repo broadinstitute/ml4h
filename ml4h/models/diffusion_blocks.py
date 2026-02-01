@@ -19,8 +19,8 @@ from ml4h.metrics import KernelInceptionDistance, MultiScaleSSIM
 Tensor = tf.Tensor
 
 # sampling
-min_signal_rate = 0.05
-max_signal_rate = 0.95
+min_signal_rate = 0.02
+max_signal_rate = 0.98
 
 # architecture
 embedding_dims = 256
@@ -29,8 +29,11 @@ embedding_max_frequency = 1000.0
 # optimization
 ema = 0.999
 
-# plotting
-plot_diffusion_steps = 50
+# plotting - increased for higher quality
+plot_diffusion_steps = 100
+
+# attention settings
+DEFAULT_ATTENTION_RESOLUTIONS = [32, 16, 8]  # apply attention at these spatial resolutions
 
 @register_keras_serializable()
 def sinusoidal_embedding(x, dims=1):
@@ -56,6 +59,124 @@ def sinusoidal_embedding(x, dims=1):
         raise ValueError(f'No support for 4d or more.')
     return embeddings
 
+def get_norm_groups(channels, max_groups=32):
+    """Dynamically compute number of groups for GroupNorm based on channel count."""
+    for g in [max_groups, 16, 8, 4, 2, 1]:
+        if channels % g == 0 and channels >= g:
+            return g
+    return 1
+
+
+@register_keras_serializable()
+class SelfAttention2D(layers.Layer):
+    """Multi-head self-attention for 2D feature maps.
+
+    Critical for capturing long-range dependencies in larger images.
+    Applied at lower resolutions (e.g., 32x32, 16x16, 8x8) for efficiency.
+    """
+    def __init__(self, channels, num_heads=8, **kwargs):
+        super().__init__(**kwargs)
+        self.channels = channels
+        self.num_heads = num_heads
+        self.head_dim = max(channels // num_heads, 1)
+
+    def build(self, input_shape):
+        self.norm = tf.keras.layers.GroupNormalization(
+            groups=get_norm_groups(self.channels), axis=-1
+        )
+        self.qkv = layers.Dense(self.channels * 3, use_bias=False)
+        self.proj = layers.Dense(self.channels)
+        super().build(input_shape)
+
+    def call(self, x):
+        batch_size = tf.shape(x)[0]
+        h, w = x.shape[1], x.shape[2]
+
+        # Normalize and reshape for attention
+        x_norm = self.norm(x)
+        x_flat = tf.reshape(x_norm, [batch_size, h * w, self.channels])
+
+        # Compute Q, K, V
+        qkv = self.qkv(x_flat)
+        qkv = tf.reshape(qkv, [batch_size, h * w, 3, self.num_heads, self.head_dim])
+        qkv = tf.transpose(qkv, [2, 0, 3, 1, 4])  # [3, B, heads, seq, head_dim]
+        q, k, v = qkv[0], qkv[1], qkv[2]
+
+        # Scaled dot-product attention
+        scale = tf.math.rsqrt(tf.cast(self.head_dim, tf.float32))
+        attn = tf.matmul(q, k, transpose_b=True) * scale
+        attn = tf.nn.softmax(attn, axis=-1)
+
+        # Apply attention to values
+        out = tf.matmul(attn, v)
+        out = tf.transpose(out, [0, 2, 1, 3])  # [B, seq, heads, head_dim]
+        out = tf.reshape(out, [batch_size, h * w, self.channels])
+        out = self.proj(out)
+        out = tf.reshape(out, [batch_size, h, w, self.channels])
+
+        return x + out  # Residual connection
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'channels': self.channels,
+            'num_heads': self.num_heads,
+        })
+        return config
+
+
+@register_keras_serializable()
+class SelfAttention1D(layers.Layer):
+    """Multi-head self-attention for 1D sequences (e.g., ECGs)."""
+    def __init__(self, channels, num_heads=8, **kwargs):
+        super().__init__(**kwargs)
+        self.channels = channels
+        self.num_heads = num_heads
+        self.head_dim = max(channels // num_heads, 1)
+
+    def build(self, input_shape):
+        self.norm = tf.keras.layers.GroupNormalization(
+            groups=get_norm_groups(self.channels), axis=-1
+        )
+        self.qkv = layers.Dense(self.channels * 3, use_bias=False)
+        self.proj = layers.Dense(self.channels)
+        super().build(input_shape)
+
+    def call(self, x):
+        batch_size = tf.shape(x)[0]
+        seq_len = x.shape[1]
+
+        # Normalize
+        x_norm = self.norm(x)
+
+        # Compute Q, K, V
+        qkv = self.qkv(x_norm)
+        qkv = tf.reshape(qkv, [batch_size, seq_len, 3, self.num_heads, self.head_dim])
+        qkv = tf.transpose(qkv, [2, 0, 3, 1, 4])
+        q, k, v = qkv[0], qkv[1], qkv[2]
+
+        # Scaled dot-product attention
+        scale = tf.math.rsqrt(tf.cast(self.head_dim, tf.float32))
+        attn = tf.matmul(q, k, transpose_b=True) * scale
+        attn = tf.nn.softmax(attn, axis=-1)
+
+        # Apply attention
+        out = tf.matmul(attn, v)
+        out = tf.transpose(out, [0, 2, 1, 3])
+        out = tf.reshape(out, [batch_size, seq_len, self.channels])
+        out = self.proj(out)
+
+        return x + out
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'channels': self.channels,
+            'num_heads': self.num_heads,
+        })
+        return config
+
+
 @register_keras_serializable()
 def residual_block(width, conv, kernel_size, groups=32):
     def apply(x):
@@ -66,13 +187,16 @@ def residual_block(width, conv, kernel_size, groups=32):
         else:
             residual = x
 
+        # Dynamic groups based on channel count
+        num_groups = get_norm_groups(width, groups)
+
         # first GN → SiLU → Conv
-        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=num_groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
 
         # second GN → SiLU → Conv
-        x = tf.keras.layers.GroupNormalization(groups=groups, axis=-1)(x)
+        x = tf.keras.layers.GroupNormalization(groups=num_groups, axis=-1)(x)
         x = layers.Activation('silu')(x)
         x = conv(width, kernel_size=kernel_size, padding="same")(x)
 
@@ -82,32 +206,62 @@ def residual_block(width, conv, kernel_size, groups=32):
     return apply
 
 @register_keras_serializable()
-def down_block(width, block_depth, conv, pool, kernel_size, groups=32):
+def down_block(width, block_depth, conv, pool, kernel_size, groups=32, use_attention=False, attention_heads=8, ndim=2):
     def apply(x):
         x, skips = x
         for _ in range(block_depth):
             x = residual_block(width, conv, kernel_size, groups=groups)(x)
             skips.append(x)
+        # Apply self-attention after residual blocks if enabled
+        if use_attention:
+            if ndim == 2:
+                x = SelfAttention2D(width, num_heads=attention_heads)(x)
+            elif ndim == 1:
+                x = SelfAttention1D(width, num_heads=attention_heads)(x)
         x = pool(pool_size=2)(x)
         return x
     return apply
 
 @register_keras_serializable()
-def up_block(width, block_depth, conv, upsample, kernel_size, groups=32):
+def up_block(width, block_depth, conv, upsample, kernel_size, groups=32, use_attention=False, attention_heads=8, ndim=2):
     def apply(x):
         x, skips = x
         x = upsample(size=2)(x)
         for _ in range(block_depth):
             x = layers.Concatenate()([x, skips.pop()])
             x = residual_block(width, conv, kernel_size, groups=groups)(x)
+        # Apply self-attention after residual blocks if enabled
+        if use_attention:
+            if ndim == 2:
+                x = SelfAttention2D(width, num_heads=attention_heads)(x)
+            elif ndim == 1:
+                x = SelfAttention1D(width, num_heads=attention_heads)(x)
         return x
     return apply
 
 @register_keras_serializable()
-def get_network(input_shape, widths, block_depth, kernel_size):
+def get_network(input_shape, widths, block_depth, kernel_size, attention_resolutions=None, attention_heads=8):
+    """Build a U-Net with optional self-attention at specified resolutions.
+
+    Args:
+        input_shape: Shape of input images (H, W, C) or (L, C) for 1D
+        widths: List of channel widths for each U-Net level
+        block_depth: Number of residual blocks per level
+        kernel_size: Convolution kernel size
+        attention_resolutions: List of spatial resolutions where attention is applied.
+                              For 256x256 images, typical values are [32, 16, 8].
+                              None or empty list disables attention.
+        attention_heads: Number of attention heads
+    """
+    if attention_resolutions is None:
+        attention_resolutions = DEFAULT_ATTENTION_RESOLUTIONS
+
     noisy_images = keras.Input(shape=input_shape)
     conv, upsample, pool, _ = layers_from_shape_control(input_shape)
     noise_variances = keras.Input(shape=[1] * len(input_shape))
+
+    # Determine dimensionality (1D for ECG, 2D for images)
+    ndim = len(input_shape) - 1  # subtract channel dim
 
     e = layers.Lambda(sinusoidal_embedding)(noise_variances)
     if len(input_shape) == 2:
@@ -119,15 +273,37 @@ def get_network(input_shape, widths, block_depth, kernel_size):
     x = conv(widths[0], kernel_size=1)(noisy_images)
     x = layers.Concatenate()([x, e])
 
-    skips = []
-    for width in widths[:-1]:
-        x = down_block(width, block_depth, conv, pool, kernel_size)([x, skips])
+    # Track spatial resolution for attention decisions
+    current_resolution = input_shape[0]  # Start with input resolution
 
+    skips = []
+    for i, width in enumerate(widths[:-1]):
+        # Check if we should apply attention at this resolution
+        use_attention = (current_resolution in attention_resolutions) and ndim <= 2
+        x = down_block(
+            width, block_depth, conv, pool, kernel_size,
+            use_attention=use_attention, attention_heads=attention_heads, ndim=ndim
+        )([x, skips])
+        current_resolution = current_resolution // 2
+
+    # Bottleneck with attention (always apply attention at bottleneck for larger images)
+    use_bottleneck_attention = (current_resolution <= 32) and ndim <= 2
     for _ in range(block_depth):
         x = residual_block(widths[-1], conv, kernel_size)(x)
+    if use_bottleneck_attention:
+        if ndim == 2:
+            x = SelfAttention2D(widths[-1], num_heads=attention_heads)(x)
+        elif ndim == 1:
+            x = SelfAttention1D(widths[-1], num_heads=attention_heads)(x)
 
-    for width in reversed(widths[:-1]):
-        x = up_block(width, block_depth, conv, upsample, kernel_size)([x, skips])
+    # Up path - mirror the attention pattern
+    for i, width in enumerate(reversed(widths[:-1])):
+        current_resolution = current_resolution * 2
+        use_attention = (current_resolution in attention_resolutions) and ndim <= 2
+        x = up_block(
+            width, block_depth, conv, upsample, kernel_size,
+            use_attention=use_attention, attention_heads=attention_heads, ndim=ndim
+        )([x, skips])
 
     x = conv(input_shape[-1], kernel_size=1, kernel_initializer="zeros")(x)
 
@@ -361,8 +537,27 @@ def get_control_embed_model(output_maps, control_size):
 @register_keras_serializable()
 class DiffusionModel(keras.Model):
     def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model,
+                 attention_resolutions=None, attention_heads=8, prediction_type='eps', sampler='ddim',
                  name=None,
                  **kwargs):
+        """Diffusion model for image and waveform generation.
+
+        Args:
+            tensor_map: TensorMap defining input shape and properties
+            batch_size: Training batch size
+            widths: List of channel widths for U-Net levels
+            block_depth: Number of residual blocks per level
+            kernel_size: Convolution kernel size
+            diffusion_loss: Loss type ('mse' or 'sigmoid')
+            sigmoid_beta: Beta parameter for sigmoid loss weighting
+            inspect_model: Whether to compute expensive metrics during validation
+            attention_resolutions: Spatial resolutions for self-attention (e.g., [32, 16, 8]).
+                                   For 256x256 images, attention at these resolutions is critical.
+                                   Set to [] to disable attention (faster but lower quality).
+            attention_heads: Number of attention heads (default 8)
+            prediction_type: 'eps' for noise prediction, 'v' for v-prediction (better for high resolution)
+            sampler: 'ddpm' for original sampler, 'ddim' for deterministic higher-quality sampling
+        """
         super().__init__()
 
         self.tensor_map     = tensor_map
@@ -372,10 +567,18 @@ class DiffusionModel(keras.Model):
         self.kernel_size    = kernel_size
         self.diffusion_loss = diffusion_loss
         self.sigmoid_beta   = sigmoid_beta
-        self.inspect_model  = False #inspect_model
+        self.inspect_model  = False  # inspect_model
+        self.attention_resolutions = attention_resolutions if attention_resolutions is not None else DEFAULT_ATTENTION_RESOLUTIONS
+        self.attention_heads = attention_heads
+        self.prediction_type = prediction_type
+        self.sampler = sampler
 
         self.normalizer = layers.Normalization()
-        self.network = get_network(self.tensor_map.shape, widths, block_depth, kernel_size)
+        self.network = get_network(
+            self.tensor_map.shape, widths, block_depth, kernel_size,
+            attention_resolutions=self.attention_resolutions,
+            attention_heads=self.attention_heads
+        )
         self.ema_network = keras.models.clone_model(self.network)
         self.use_sigmoid_loss = diffusion_loss == 'sigmoid'
 
@@ -399,6 +602,10 @@ class DiffusionModel(keras.Model):
             "diffusion_loss": self.diffusion_loss,
             "sigmoid_beta":   self.sigmoid_beta,
             "inspect_model":  self.inspect_model,
+            "attention_resolutions": self.attention_resolutions,
+            "attention_heads": self.attention_heads,
+            "prediction_type": self.prediction_type,
+            "sampler": self.sampler,
             # name/trainable/dtype are already in super().get_config()
         })
         return config
@@ -453,39 +660,47 @@ class DiffusionModel(keras.Model):
         return noise_rates, signal_rates
 
     def denoise(self, noisy_images, noise_rates, signal_rates, training):
+        """Denoise images using the network prediction.
+
+        Supports both epsilon (noise) prediction and v-prediction parameterizations.
+        V-prediction often produces better results for high-resolution images.
+        """
         # the exponential moving average weights are used at evaluation
         if training:
             network = self.network
         else:
             network = self.ema_network
 
-        # predict noise component and calculate the image component using it
-        pred_noises = network([noisy_images, noise_rates ** 2], training=training)
-        pred_images = (noisy_images - noise_rates * pred_noises) / signal_rates
+        # Network predicts either noise (eps) or velocity (v)
+        pred = network([noisy_images, noise_rates ** 2], training=training)
+
+        if self.prediction_type == 'v':
+            # V-prediction: network predicts v = signal_rate * noise - noise_rate * image
+            # Recover noise and image from v-prediction
+            pred_images = signal_rates * noisy_images - noise_rates * pred
+            pred_noises = noise_rates * noisy_images + signal_rates * pred
+        else:
+            # Epsilon prediction (default): network predicts noise directly
+            pred_noises = pred
+            pred_images = (noisy_images - noise_rates * pred_noises) / signal_rates
 
         return pred_noises, pred_images
 
-    def reverse_diffusion(self, initial_noise, diffusion_steps):
-        # reverse diffusion = sampling
+    def reverse_diffusion_ddpm(self, initial_noise, diffusion_steps):
+        """Original DDPM sampling (stochastic)."""
         num_images = initial_noise.shape[0]
         step_size = 1.0 / diffusion_steps
 
-        # important line:
-        # at the first sampling step, the "noisy image" is pure noise
-        # but its signal rate is assumed to be nonzero (min_signal_rate)
         next_noisy_images = initial_noise
         for step in range(diffusion_steps):
             noisy_images = next_noisy_images
 
-            # separate the current noisy image to its components
             diffusion_times = tf.ones([num_images] + [1] * self.tensor_map.axes()) - step * step_size
             noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
             pred_noises, pred_images = self.denoise(
                 noisy_images, noise_rates, signal_rates, training=False,
             )
-            # network used in eval mode
 
-            # remix the predicted components using the next signal and noise rates
             next_diffusion_times = diffusion_times - step_size
             next_noise_rates, next_signal_rates = self.diffusion_schedule(
                 next_diffusion_times,
@@ -493,26 +708,102 @@ class DiffusionModel(keras.Model):
             next_noisy_images = (
                     next_signal_rates * pred_images + next_noise_rates * pred_noises
             )
-            # this new noisy image will be used in the next step
 
         return pred_images
 
-    def generate(self, num_images, diffusion_steps, reseed=None):
-        # noise -> images -> denormalized images
+    def reverse_diffusion_ddim(self, initial_noise, diffusion_steps, eta=0.0):
+        """DDIM sampling (deterministic when eta=0, better quality for fewer steps).
+
+        DDIM produces higher quality samples especially with fewer diffusion steps.
+        Set eta=0 for fully deterministic sampling, eta=1 for DDPM-like stochasticity.
+
+        Reference: "Denoising Diffusion Implicit Models" (Song et al., 2020)
+        """
+        num_images = initial_noise.shape[0]
+        step_size = 1.0 / diffusion_steps
+
+        next_noisy_images = initial_noise
+        pred_images = None
+
+        for step in range(diffusion_steps):
+            noisy_images = next_noisy_images
+
+            # Current timestep
+            diffusion_times = tf.ones([num_images] + [1] * self.tensor_map.axes()) - step * step_size
+            noise_rates, signal_rates = self.diffusion_schedule(diffusion_times)
+
+            # Get model prediction
+            pred_noises, pred_images = self.denoise(
+                noisy_images, noise_rates, signal_rates, training=False,
+            )
+
+            # Next timestep
+            next_diffusion_times = diffusion_times - step_size
+            next_noise_rates, next_signal_rates = self.diffusion_schedule(
+                next_diffusion_times,
+            )
+
+            # DDIM update rule
+            # x_{t-1} = sqrt(alpha_{t-1}) * x0_pred + sqrt(1 - alpha_{t-1} - sigma^2) * eps_pred + sigma * noise
+            # where sigma = eta * sqrt((1 - alpha_{t-1}) / (1 - alpha_t)) * sqrt(1 - alpha_t / alpha_{t-1})
+
+            if eta > 0 and step < diffusion_steps - 1:
+                # Compute sigma for stochastic sampling
+                sigma = eta * tf.sqrt(
+                    (next_noise_rates ** 2 / (noise_rates ** 2 + 1e-8)) *
+                    (1.0 - (signal_rates ** 2) / (next_signal_rates ** 2 + 1e-8))
+                )
+                # Direction pointing to x_t
+                dir_xt = tf.sqrt(tf.maximum(next_noise_rates ** 2 - sigma ** 2, 0.0)) * pred_noises
+                # Add noise
+                noise = tf.random.normal(shape=tf.shape(noisy_images))
+                next_noisy_images = next_signal_rates * pred_images + dir_xt + sigma * noise
+            else:
+                # Deterministic DDIM (eta=0)
+                next_noisy_images = next_signal_rates * pred_images + next_noise_rates * pred_noises
+
+        return pred_images
+
+    def reverse_diffusion(self, initial_noise, diffusion_steps):
+        """Main reverse diffusion method - dispatches to selected sampler."""
+        if self.sampler == 'ddim':
+            return self.reverse_diffusion_ddim(initial_noise, diffusion_steps, eta=0.0)
+        else:
+            return self.reverse_diffusion_ddpm(initial_noise, diffusion_steps)
+
+    def generate(self, num_images, diffusion_steps, reseed=None, eta=0.0):
+        """Generate synthetic images/waveforms from noise.
+
+        Args:
+            num_images: Number of samples to generate
+            diffusion_steps: Number of denoising steps. For high quality:
+                            - 256x256 color images: use 100-200 steps
+                            - Smaller grayscale: 50-100 steps may suffice
+            reseed: Optional random seed for reproducibility
+            eta: DDIM stochasticity parameter (only used when sampler='ddim'):
+                 - eta=0: Fully deterministic (recommended for quality)
+                 - eta=1: Same stochasticity as DDPM
+                 - 0 < eta < 1: Interpolation between the two
+
+        Returns:
+            Generated and denormalized images/waveforms
+        """
         if reseed is not None:
             tf.random.set_seed(reseed)
         initial_noise = tf.random.normal(shape=(num_images,) + self.tensor_map.shape)
-        generated_images = self.reverse_diffusion(initial_noise, diffusion_steps)
+
+        if self.sampler == 'ddim':
+            generated_images = self.reverse_diffusion_ddim(initial_noise, diffusion_steps, eta=eta)
+        else:
+            generated_images = self.reverse_diffusion_ddpm(initial_noise, diffusion_steps)
+
         generated_images = self.denormalize(generated_images)
         return generated_images
 
     def train_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
-        #self.normalizer.adapt(images)
-        # images = images['input_lax_4ch_diastole_slice0_224_3d_continuous']
         images = self.normalizer(images, training=True)
-        # images = images.numpy() - images.numpy().mean() / images.numpy().std()
         noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
 
         # sample uniform random diffusion times
@@ -525,12 +816,29 @@ class DiffusionModel(keras.Model):
         noisy_images = signal_rates * images + noise_rates * noises
 
         with tf.GradientTape() as tape:
-            # train the network to separate noisy images to their components
-            pred_noises, pred_images = self.denoise(
-                noisy_images, noise_rates, signal_rates, training=True,
-            )
+            # Get network prediction (either noise or velocity depending on prediction_type)
+            if self.prediction_type == 'eps':
+                network = self.network
+            else:
+                network = self.network
 
-            noise_loss = self.loss(noises, pred_noises)  # used for training
+            pred = network([noisy_images, noise_rates ** 2], training=True)
+
+            if self.prediction_type == 'v':
+                # V-prediction: target is v = signal_rate * noise - noise_rate * image
+                # This parameterization has better gradient flow at high noise levels
+                target_v = signal_rates * noises - noise_rates * images
+                prediction_loss = self.loss(target_v, pred)
+                # Recover pred_noises and pred_images for metrics
+                pred_images = signal_rates * noisy_images - noise_rates * pred
+                pred_noises = noise_rates * noisy_images + signal_rates * pred
+            else:
+                # Epsilon prediction: target is the noise
+                prediction_loss = self.loss(noises, pred)
+                pred_noises = pred
+                pred_images = (noisy_images - noise_rates * pred_noises) / signal_rates
+
+            noise_loss = prediction_loss
             image_loss = self.loss(images, pred_images)  # only used as metric
             if self.use_sigmoid_loss:
                 signal_rates_squared = tf.square(signal_rates)
@@ -559,9 +867,7 @@ class DiffusionModel(keras.Model):
     def test_step(self, images_original):
         # normalize images to have standard deviation of 1, like the noises
         images = images_original[0][self.tensor_map.input_name()]
-        #self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
-        # images = images - tf.math.reduce_mean(images) / tf.math.reduce_std(images)
         noises = tf.random.normal(shape=(self.batch_size,) + self.tensor_map.shape)
 
         # sample uniform random diffusion times
@@ -572,12 +878,22 @@ class DiffusionModel(keras.Model):
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
 
-        # use the network to separate noisy images to their components
-        pred_noises, pred_images = self.denoise(
-            noisy_images, noise_rates, signal_rates, training=False,
-        )
+        # Get network prediction
+        pred = self.ema_network([noisy_images, noise_rates ** 2], training=False)
 
-        noise_loss = self.loss(noises, pred_noises)
+        if self.prediction_type == 'v':
+            # V-prediction: compute loss against velocity target
+            target_v = signal_rates * noises - noise_rates * images
+            noise_loss = self.loss(target_v, pred)
+            # Recover pred_noises and pred_images for metrics
+            pred_images = signal_rates * noisy_images - noise_rates * pred
+            pred_noises = noise_rates * noisy_images + signal_rates * pred
+        else:
+            # Epsilon prediction
+            noise_loss = self.loss(noises, pred)
+            pred_noises = pred
+            pred_images = (noisy_images - noise_rates * pred_noises) / signal_rates
+
         image_loss = self.loss(images, pred_images)
         if self.use_sigmoid_loss:
             signal_rates_squared = tf.square(signal_rates)
@@ -598,7 +914,7 @@ class DiffusionModel(keras.Model):
         if self.tensor_map.axes() == 3 and self.inspect_model:
             images = self.denormalize(images)
             generated_images = self.generate(
-                num_images=self.batch_size, diffusion_steps=20
+                num_images=self.batch_size, diffusion_steps=50
             )
             self.kid.update_state(images, generated_images)
             self.ms_ssim.update_state(images, generated_images, 255)
