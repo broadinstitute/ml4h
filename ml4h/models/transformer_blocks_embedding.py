@@ -562,91 +562,78 @@ def build_general_embedding_transformer(
 
 
 def build_embedding_transformer(
-    INPUT_NUMERIC_COLS,
-    REGRESSION_TARGETS,
-    BINARY_TARGETS,
-    MAX_LEN,
-    EMB_DIM,
-    TOKEN_HIDDEN,
-    TRANSFORMER_DIM,
-    NUM_HEADS,
-    NUM_LAYERS,
-    DROPOUT,
-    view2id,
+        INPUT_NUMERIC_COLS,
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
+        MAX_LEN,
+        EMB_DIM,
+        TOKEN_HIDDEN,
+        TRANSFORMER_DIM,
+        NUM_HEADS,
+        NUM_LAYERS,
+        DROPOUT,
+        view2id,
+        learning_rate,
 ):
-    Feat = 64  # len(INPUT_NUMERIC_COLS)
-    print(MAX_LEN, EMB_DIM, TOKEN_HIDDEN, TRANSFORMER_DIM, NUM_HEADS, NUM_LAYERS)
-    inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype="float32", name="num")
-    inp_mask = keras.Input(shape=(MAX_LEN,), dtype="bool", name="mask")  # True = valid
+    Feat = len(INPUT_NUMERIC_COLS)
+
+    inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
+    inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
 
     if view2id is not None:
-        inp_view = keras.Input(shape=(MAX_LEN,), dtype="int32", name="view")
+        inp_view = keras.Input(shape=(MAX_LEN,), dtype='int32', name='view')
         view_emb = layers.Embedding(
             input_dim=int(max(view2id.values())) + 1,  # include PAD
             output_dim=EMB_DIM,
             mask_zero=True,
-            name="view_embedding",
-        )(
-            inp_view
-        )  # (B,T,EMB_DIM)
+            name='view_embedding'
+        )(inp_view)  # (B,T,EMB_DIM)
         # Token features: [embed(view) || numeric features]
-        x = layers.Concatenate(name="token_concat")(
-            [view_emb, inp_num]
-        )  # (B,T,EMB_DIM+F)
-        x = layers.Dense(TOKEN_HIDDEN, activation="relu", name="token_proj")(x)
+        x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,EMB_DIM+F)
+        x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(x)
     else:
-        x = layers.Dense(TOKEN_HIDDEN, activation="relu", name="token_proj")(inp_num)
+        x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
     x = layers.Dropout(DROPOUT)(x)
 
     # Positional embedding (learnable)
     if view2id is not None:
-        pos_idx = PositionIndexLayer(max_len=MAX_LEN, name="pos_idx")(inp_view)
-        pos_emb = layers.Embedding(
-            input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name="pos_embedding"
-        )(pos_idx)
-        x = layers.Add(name="add_pos")([x, pos_emb])
+        pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_view)
+        pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
+        x = layers.Add(name='add_pos')([x, pos_emb])
 
     # Build (B,T,T) attention mask from (B,T)
-    m_q = ExpandDimsLayer(axis=2, name="mask_q")(inp_mask)
-    m_k = ExpandDimsLayer(axis=1, name="mask_k")(inp_mask)
-    mask_2d = LogicalAndLayer(name="mask_qk")([m_q, m_k])
+    m_q = ExpandDimsLayer(axis=2, name='mask_q')(inp_mask)
+    m_k = ExpandDimsLayer(axis=1, name='mask_k')(inp_mask)
+    mask_2d = LogicalAndLayer(name='mask_qk')([m_q, m_k])
 
     # Transformer blocks
     for i in range(NUM_LAYERS):
-        attn = layers.MultiHeadAttention(
-            num_heads=NUM_HEADS,
-            key_dim=TRANSFORMER_DIM // NUM_HEADS,
-            dropout=DROPOUT,
-            name=f"mha_{i}",
-        )(x, x, attention_mask=mask_2d)
+        attn = layers.MultiHeadAttention(num_heads=NUM_HEADS, key_dim=TRANSFORMER_DIM // NUM_HEADS,
+                                         dropout=DROPOUT, name=f'mha_{i}')(x, x, attention_mask=mask_2d)
         attn = layers.Dropout(DROPOUT)(attn)
-        x = layers.LayerNormalization(epsilon=1e-6, name=f"ln1_{i}")(
-            layers.Add()([x, attn])
-        )
+        x = layers.LayerNormalization(epsilon=1e-6, name=f'ln1_{i}')(layers.Add()([x, attn]))
 
-        ff = layers.Dense(TRANSFORMER_DIM, activation="relu", name=f"ff1_{i}")(x)
+        ff = layers.Dense(TRANSFORMER_DIM, activation='relu', name=f'ff1_{i}')(x)
         ff = layers.Dropout(DROPOUT)(ff)
-        ff = layers.Dense(TRANSFORMER_DIM, name=f"ff2_{i}")(ff)
-        x = layers.LayerNormalization(epsilon=1e-6, name=f"ln2_{i}")(
-            layers.Add()([x, ff])
-        )
+        ff = layers.Dense(TOKEN_HIDDEN, name=f'ff2_{i}')(ff)
+        x = layers.LayerNormalization(epsilon=1e-6, name=f'ln2_{i}')(layers.Add()([x, ff]))
 
     # Attention pooling over time (mask-aware via very negative)
-    score_h = layers.Dense(TRANSFORMER_DIM, activation="tanh", name="attn_h")(x)  # (B,T,D)
-    score = layers.Dense(1, name="attn_score")(score_h)  # (B,T,1)
-    score = layers.Reshape((MAX_LEN,), name="attn_score_squeeze")(score)  # (B,T)
+    score_h = layers.Dense(TOKEN_HIDDEN, activation='tanh', name='attn_h')(x)  # (B,T,D)
+    score = layers.Dense(1, name='attn_score')(score_h)  # (B,T,1)
+    score = layers.Reshape((MAX_LEN,), name='attn_score_squeeze')(score)  # (B,T)
 
-    mask_f = CastToFloatLayer(name="mask_cast")(inp_mask)
+    mask_f = CastToFloatLayer(name='mask_cast')(inp_mask)
 
-    very_neg = ApplyVeryNegativeLayer(name="veryneg")(mask_f)
-    score_m = layers.Add(name="score_masked")([score, very_neg])
-    wts = layers.Softmax(axis=-1, name="attn_wts")(score_m)  # (B,T)
-    wts_e = layers.Reshape((MAX_LEN, 1), name="wts_e")(wts)
-    ctx = layers.Multiply(name="apply_wts")([x, wts_e])  # (B,T,D)
-    ctx = SumOverTimeLayer(name="pool")(ctx)  # (B,D)
+    very_neg = ApplyVeryNegativeLayer(name='veryneg')(mask_f)
+    score_m = layers.Add(name='score_masked')([score, very_neg])
+    wts = layers.Softmax(axis=-1, name='attn_wts')(score_m)  # (B,T)
+    wts_e = layers.Reshape((MAX_LEN, 1), name='wts_e')(wts)
+    ctx = layers.Multiply(name='apply_wts')([x, wts_e])  # (B,T,D)
+    ctx = SumOverTimeLayer(name='pool')(ctx)  # (B,D)
 
     # Shared tower
-    h = layers.Dense(128, activation="relu")(ctx)
+    h = layers.Dense(128, activation='relu')(ctx)
     h = layers.Dropout(DROPOUT)(h)
 
     # Task heads (names must match keys used in y/sample_weight dicts)
@@ -654,39 +641,28 @@ def build_embedding_transformer(
     for t in REGRESSION_TARGETS:
         outputs[t] = layers.Dense(1, name=t)(h)  # linear
     for t in BINARY_TARGETS:
-        outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
+        outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
 
     if view2id is not None:
-        model = keras.Model(
-            inputs={"view": inp_view, "num": inp_num, "mask": inp_mask}, outputs=outputs
-        )
+        model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     else:
-        model = keras.Model(inputs={"num": inp_num, "mask": inp_mask}, outputs=outputs)
+        model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     # Losses / metrics
-    losses = {t: "mse" for t in REGRESSION_TARGETS}
-    losses.update({t: "binary_crossentropy" for t in BINARY_TARGETS})
+    losses = {t: 'mse' for t in REGRESSION_TARGETS}
+    losses.update({t: 'binary_crossentropy' for t in BINARY_TARGETS})
 
-    metrics = {
-        t: [
-            keras.metrics.MeanAbsoluteError(name="mae"),
-            keras.metrics.MeanSquaredError(name="mse"),
-        ]
-        for t in REGRESSION_TARGETS
-    }
-    metrics.update(
-        {
-            t: [
-                keras.metrics.AUC(name="auroc", curve="ROC"),
-                keras.metrics.AUC(name="auprc", curve="PR"),
-                keras.metrics.BinaryAccuracy(name="acc"),
-            ]
-            for t in BINARY_TARGETS
-        }
+    metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),
+                   keras.metrics.MeanSquaredError(name='mse')] for t in REGRESSION_TARGETS}
+    metrics.update({t: [keras.metrics.AUC(name='auroc', curve='ROC'),
+                        keras.metrics.AUC(name='auprc', curve='PR'),
+                        keras.metrics.BinaryAccuracy(name='acc')] for t in BINARY_TARGETS})
+
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate),
+        loss=losses,
+        metrics=metrics
     )
 
-    model.compile(optimizer=keras.optimizers.Adam(1e-3), loss=losses, metrics=metrics)
-
-    model.summary()
     return model
 
 
