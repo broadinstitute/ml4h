@@ -25,7 +25,7 @@ from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
 from ml4h.models.transformer_blocks_embedding import (
     evaluate_multitask_on_dataset,
-    build_general_embedding_transformer,
+    build_general_embedding_transformer, build_embedding_transformer,
 )
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
@@ -180,6 +180,8 @@ def run(args):
             train_xdl_af(args)
         elif "train_transformer_on_parquet" == args.mode:
             train_transformer_on_parquet(args)
+        elif "train_transformer_on_parquet_fast" == args.mode:
+            train_transformer_on_parquet_fast(args)
         elif "test" == args.mode:
             test_multimodal_multitask(args)
         elif "compare" == args.mode:
@@ -981,6 +983,97 @@ def train_transformer_on_parquet(args):
     )
     radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
     heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
+        json.dump(metrics, f)
+
+
+def train_transformer_on_parquet_fast(args):
+    if args.transformer_input_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_input_file)
+    else:
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions+args.latent_dimensions_start)]
+
+    if len(args.input_categorical_columns) == 1:
+        input_categorical_column = args.input_categorical_columns[0]
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+    else:
+        input_categorical_column = None
+        view2id = None
+
+    train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
+                                                              args.group_column, args.sort_column, args.sort_column_ascend,
+                                                              args.target_regression_columns + args.target_binary_columns,
+                                                              args.transformer_max_size, args.batch_size,
+                                                              args.train_csv, args.valid_csv, args.test_csv)
+    if args.model_file:
+        logging.info(f"Loading model from {args.model_file}")
+        model = keras.models.load_model(args.model_file)
+    else:
+        model = build_embedding_transformer(
+            input_numeric_columns,
+            args.target_regression_columns,
+            args.target_binary_columns,
+            args.transformer_max_size,
+            args.transformer_categorical_embed,
+            args.transformer_token_embed,
+            args.transformer_size,
+            args.attention_heads,
+            args.transformer_layers,
+            args.transformer_dropout_rate,
+            view2id,
+            args.learning_rate,
+        )
+    if args.inspect_model:
+        model.summary(print_fn=logging.info, expand_nested=True)
+        keras.utils.plot_model(
+            model,
+            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}.png",
+            show_shapes=True,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
+            expand_nested=True,
+            dpi=args.dpi,
+            layer_range=None,
+            show_layer_activations=False,
+        )
+
+    callbacks = [
+        JsonLossMetricsCallback(f'{args.output_folder}/{args.id}/'),
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
+        keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
+                                        save_best_only=not args.save_last_model),
+    ]
+
+    history = model.fit(
+        train_ds,
+        steps_per_epoch=args.training_steps,
+        validation_data=val_ds,
+        validation_steps=args.validation_steps,
+        epochs=args.epochs,
+        callbacks=callbacks,
+        verbose=1
+    )
+    model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
+    plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
+    metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 
