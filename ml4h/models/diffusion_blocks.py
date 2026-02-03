@@ -537,7 +537,7 @@ def get_control_embed_model(output_maps, control_size):
 @register_keras_serializable()
 class DiffusionModel(keras.Model):
     def __init__(self, tensor_map, batch_size, widths, block_depth, kernel_size, diffusion_loss, sigmoid_beta, inspect_model,
-                 attention_resolutions=None, attention_heads=8, prediction_type='eps', sampler='ddim',
+                 attention_resolutions=None, attention_heads=8, prediction_type='v', sampler='ddim',
                  name=None,
                  **kwargs):
         """Diffusion model for image and waveform generation.
