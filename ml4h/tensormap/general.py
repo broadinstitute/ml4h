@@ -201,20 +201,3 @@ def build_categorical_tensor_from_file(
             raise KeyError(f'Sample id not in file {file_name}, Error: {e}.')
 
     return tensor_from_file
-
-
-
-def image_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    compressed = hd5["image"][:].tobytes()
-    shape = tuple(hd5.attrs["shape"])
-
-    raw = gzip.decompress(compressed)
-    return np.array(np.frombuffer(raw, dtype=np.uint8).reshape(shape), dtype=np.float32)
-
-
-def age_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
-    return np.array([hd5["age"][()]], dtype=np.float32)
-
-
-face_image = TensorMap('face_image', shape=(200, 200, 3), tensor_from_file=image_from_hd5)
-face_age = TensorMap('face_age', shape=(1,), tensor_from_file=age_from_hd5)

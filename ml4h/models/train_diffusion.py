@@ -22,7 +22,7 @@ from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch
 def train_diffusion_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = DiffusionModel(args.tensor_maps_in[0], args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
-                           args.diffusion_loss, args.sigmoid_beta, args.inspect_model)
+                           args.diffusion_loss, args.sigmoid_beta, args.inspect_model, attention_resolutions=[32, 16, 8])
 
     model.compile(
         optimizer=tf.keras.optimizers.AdamW(
