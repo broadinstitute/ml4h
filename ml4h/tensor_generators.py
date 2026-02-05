@@ -24,6 +24,8 @@ from collections import Counter
 from multiprocessing import Process, Queue
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
+import psutil
+from functools import lru_cache
 
 import tensorflow as tf
 import pyarrow.dataset as ds
@@ -1505,6 +1507,38 @@ class LongitudinalDataloader:
         logging.info(f"  Max:  {seq_lengths.max()}")
         logging.info(f"  Median: {np.median(seq_lengths):.2f}")
 
+        # ------------------------------------------------------------
+        # Fallback cache (contiguous range cache, bounded by RAM)
+        # ------------------------------------------------------------
+        avail = psutil.virtual_memory().available
+        # conservative: allow cache to use ~40% of RAM
+        self._fallback_cache_rows = int(
+            0.4 * avail / (self.latent_dim * 4 + 16)
+        )
+
+        @lru_cache(maxsize=8)
+        def _cached_take(start, length):
+            idxs = np.arange(start, start + length)
+            tbl = self.input_ds.take(idxs)
+
+            lat = np.stack(
+                [tbl.column(c).to_numpy(zero_copy_only=False) for c in self.latent_cols],
+                axis=1,
+            ).astype(np.float32)
+
+            num = {
+                c: tbl.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+                for c in self.numeric_columns
+            }
+
+            cat = {
+                c: tbl.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+                for c in self.categorical_columns
+            }
+
+            return lat, num, cat
+
+        self._cached_take = _cached_take
         # Log summary statistics for each target
         if label_columns:
             logging.info("Target summary statistics:")
@@ -1525,48 +1559,151 @@ class LongitudinalDataloader:
                         logging.info(f"  {t}: No valid samples")
                 else:
                     logging.info(f"  {t}: Target not found in dataset")
+    def _try_build_in_memory_dataset(self, groups):
+        num_groups = len(groups)
 
-    def _generator(self, selected_group_ids: List = None):
-        """Generator that yields samples for the given group IDs.
+        bytes_per_step = (
+            self.latent_dim * 4
+            + len(self.numeric_columns) * 4
+            + len(self.categorical_columns) * 4
+            + 1
+        )
+        est_bytes = (
+            num_groups * self.max_seq_len * bytes_per_step * 2.0
+        )
 
-        Args:
-            selected_group_ids: List of group IDs to iterate over. If None, uses all group_ids.
-        """
-        if selected_group_ids is None:
-            selected_group_ids = self.group_ids
+        avail = psutil.virtual_memory().available
+        if est_bytes > 0.6 * avail:
+            return None
 
-        group_ids_list = list(selected_group_ids)
+        # ---- allocate tensors ----
+        X_latent = np.zeros(
+            (num_groups, self.max_seq_len, self.latent_dim), dtype=np.float32
+        )
+        X_mask = np.zeros((num_groups, self.max_seq_len), dtype=bool)
+
+        X_num = {
+            c: np.zeros((num_groups, self.max_seq_len), dtype=np.float32)
+            for c in self.numeric_columns
+        }
+        X_cat = {
+            c: np.zeros((num_groups, self.max_seq_len), dtype=np.int32)
+            for c in self.categorical_columns
+        }
+
+        Y = {c: np.zeros((num_groups,), dtype=np.float32) for c in self.label_columns}
+        SW = {c: np.zeros((num_groups,), dtype=np.float32) for c in self.label_columns}
+
+        # ---- load all rows ONCE ----
+        flat_idxs = np.concatenate(groups)
+        inp = self.input_ds.take(flat_idxs)
+        lab = self.label_ds.take(flat_idxs)
+
+        lat_all = np.stack(
+            [inp.column(c).to_numpy(zero_copy_only=False) for c in self.latent_cols],
+            axis=1,
+        ).astype(np.float32)
+
+        num_all = {
+            c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+            for c in self.numeric_columns
+        }
+
+        cat_all = {
+            c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+            for c in self.categorical_columns
+        }
+
+        lab_all = np.stack(
+            [lab.column(c).to_numpy(zero_copy_only=False) for c in self.label_columns],
+            axis=1,
+        ).astype(np.float32)
+
+        offset = 0
+        for i, idxs in enumerate(groups):
+            T = len(idxs)
+            sl = slice(offset, offset + T)
+
+            X_latent[i, :T] = lat_all[sl]
+            X_mask[i, :T] = True
+
+            for c in self.numeric_columns:
+                X_num[c][i, :T] = num_all[c][sl]
+
+            for c in self.categorical_columns:
+                X_cat[c][i, :T] = cat_all[c][sl]
+
+            vals = lab_all[sl][-1]
+            for j, c in enumerate(self.label_columns):
+                if not np.isnan(vals[j]):
+                    Y[c][i] = float(vals[j])
+                    SW[c][i] = 1.0
+
+            offset += T
+
+        X = {
+            "latent": X_latent,
+            "mask": X_mask,
+            **{f"num_{c}": X_num[c] for c in self.numeric_columns},
+            **{f"cat_{c}": X_cat[c] for c in self.categorical_columns},
+        }
+
+        ds_tf = tf.data.Dataset.from_tensor_slices((X, Y, SW))
         if self.shuffle:
-            np.random.shuffle(group_ids_list)
+            ds_tf = ds_tf.shuffle(num_groups)
+
+        return ds_tf.batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
+    # ------------------------------------------------------------
+    # Original generator, now with cached fallback
+    # ------------------------------------------------------------
+    def _generator(self, groups=None):
+        
+        #groups = list(self.group_to_indices.values())
+        if self.shuffle:
+            np.random.shuffle(groups)
 
         from more_itertools import chunked
 
-        for chunk_ids in chunked(group_ids_list, 32):
-            # Get indices for this chunk of groups
-            chunk = [self.group_to_indices[gid] for gid in chunk_ids]
-
+        for chunk in chunked(groups, 32):
             flat_idxs = np.concatenate(chunk)
-            inp = self.input_ds.take(flat_idxs)
+
+            flat_idxs = np.asarray(flat_idxs)
+            start = int(flat_idxs.min())
+            length = int(flat_idxs.ptp()) + 1
+
+            # Heuristic: only use contiguous caching if it's not too sparse.
+            # density = how many rows we actually need / span we would read
+            density = flat_idxs.size / float(length)
+
+            USE_CONTIG_CACHE = (density >= 0.25) and (length <= 200_000)  # tune if you want
+
+            if USE_CONTIG_CACHE:
+                lat_blk, num_blk, cat_blk = self._cached_take(start, length)
+                rel = flat_idxs - start
+
+                lat_all = lat_blk[rel]
+                num_all = {c: num_blk[c][rel] for c in self.numeric_columns}
+                cat_all = {c: cat_blk[c][rel] for c in self.categorical_columns}
+            else:
+                # SAFE PATH (no huge span reads)
+                inp = self.input_ds.take(flat_idxs)
+
+                lat_all = np.stack(
+                    [inp.column(c).to_numpy(zero_copy_only=False) for c in self.latent_cols],
+                    axis=1,
+                ).astype(np.float32)
+
+                num_all = {
+                    c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+                    for c in self.numeric_columns
+                }
+
+                cat_all = {
+                    c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+                    for c in self.categorical_columns
+                }
+                
             lab = self.label_ds.take(flat_idxs)
-
-            lat_all = np.stack(
-                [
-                    inp.column(c).to_numpy(zero_copy_only=False)
-                    for c in self.latent_cols
-                ],
-                axis=1,
-            ).astype(np.float32)
-
-            num_all = {
-                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
-                for c in self.numeric_columns
-            }
-
-            cat_all = {
-                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
-                for c in self.categorical_columns
-            }
-
             lab_all = np.stack(
                 [
                     lab.column(c).to_numpy(zero_copy_only=False)
@@ -1591,9 +1728,7 @@ class LongitudinalDataloader:
                 for c in self.categorical_columns:
                     x[f"cat_{c}"] = cat_all[c][sl]
 
-                # latest label only
                 vals = lab_all[sl][-1]
-
                 y, sw = {}, {}
                 for i, c in enumerate(self.label_columns):
                     if np.isnan(vals[i]):
@@ -1604,12 +1739,22 @@ class LongitudinalDataloader:
                         sw[c] = 1.0
 
                 yield x, y, sw
-
                 offset += T
 
-    def _get_output_signature(self):
-        """Returns the output signature for the TensorFlow dataset."""
-        return (
+    # ------------------------------------------------------------
+    # Dataset builder (Option 5 → fallback)
+    # ------------------------------------------------------------
+    def get_tf_dataset(self, selected_group_ids=None):
+        groups = (
+                    [self.group_to_indices[g] for g in selected_group_ids]
+                    if selected_group_ids is not None
+                    else list(self.group_to_indices.values())
+                )
+        ds = self._try_build_in_memory_dataset(groups)
+        if ds is not None:
+            print("Using in-memory dataset.")
+            return ds
+        output_signature = (
             {
                 "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
                 "mask": tf.TensorSpec((None,), tf.bool),
@@ -1626,39 +1771,30 @@ class LongitudinalDataloader:
             {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
         )
 
-    def _get_padded_shapes(self):
-        """Returns the padded shapes for batching."""
-        return (
-            {
-                "latent": [self.max_seq_len, self.latent_dim],
-                "mask": [self.max_seq_len],
-                **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
-                **{
-                    f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
-                },
-            },
-            {c: [] for c in self.label_columns},
-            {c: [] for c in self.label_columns},
-        )
-
-    def get_tf_dataset(self, selected_group_ids: List = None):
-        """Get a TensorFlow dataset for the specified group IDs.
-
-        Args:
-            selected_group_ids: List of group IDs to include. If None, uses all groups.
-        """
-        output_signature = self._get_output_signature()
-
         ds_tf = tf.data.Dataset.from_generator(
-            lambda: self._generator(selected_group_ids),
+            lambda: self._generator(groups),
             output_signature=output_signature,
         )
 
         return ds_tf.padded_batch(
             self.batch_size,
-            padded_shapes=self._get_padded_shapes(),
-        ).prefetch(tf.data.AUTOTUNE)
+            padded_shapes=(
+                {
+                    "latent": [self.max_seq_len, self.latent_dim],
+                    "mask": [self.max_seq_len],
+                    **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
+                    **{
+                        f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
+                    },
+                },
+                {c: [] for c in self.label_columns},
+                {c: [] for c in self.label_columns},
+            ),
+        ).repeat().prefetch(tf.data.AUTOTUNE)
 
+    # ------------------------------------------------------------
+    # Train / val split unchanged
+    # ------------------------------------------------------------
     def get_train_valid_test_datasets(self, valid_frac=0.1, test_frac=0.1, seed=42):
         """Split data into train, validation, and test datasets.
 
@@ -1675,7 +1811,6 @@ class LongitudinalDataloader:
             Tuple of (train_dataset, valid_dataset, test_dataset)
         """
         unique_group_ids = set(self.group_ids)
-        logging.info(f"Found {len(unique_group_ids)} unique {self.group_column}s in dataset")
 
         # Check if CSV files are provided
         if self.train_csv or self.valid_csv or self.test_csv:
@@ -1749,3 +1884,4 @@ class LongitudinalDataloader:
         test_ds = test_loader.get_tf_dataset(selected_group_ids=list(test_ids))
 
         return train_ds, val_ds, test_ds
+
