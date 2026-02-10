@@ -1055,7 +1055,8 @@ def train_transformer_on_parquet_fast(args):
 
     callbacks = [
         JsonLossMetricsCallback(f'{args.output_folder}/{args.id}/'),
-        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience, restore_best_weights=True),
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience*3, restore_best_weights=True),
+        keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=args.patience, verbose=1),
         keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
                                         save_best_only=not args.save_last_model),
     ]
