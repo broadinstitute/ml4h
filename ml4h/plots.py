@@ -3557,7 +3557,7 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
 
         plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
-        im = plt.imshow(pivot_df.values, cmap="summer", aspect="auto")
+        im = plt.imshow(pivot_df.values, cmap="Blues", aspect="auto")
 
         for i in range(pivot_df.shape[0]):
             for j in range(pivot_df.shape[1]):
