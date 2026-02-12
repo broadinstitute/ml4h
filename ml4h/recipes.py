@@ -47,7 +47,7 @@ from ml4h.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_OUTPUT_INDEX,
     BATCH_PATHS_INDEX,
-    df_to_datasets_from_generator, LongitudinalDataloader,
+    df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -883,8 +883,8 @@ def train_xdl_af(args):
 
 
 def train_transformer_on_parquet(args):
-
-    loader = LongitudinalDataloader(
+    
+    loader = LongitudinalDataloaderFast(
         input_file_path=args.transformer_input_file,
         label_file_path=args.transformer_label_file if args.transformer_label_file else args.transformer_input_file,
         latent_dim=args.latent_dimensions,
