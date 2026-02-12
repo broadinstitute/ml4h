@@ -1064,7 +1064,7 @@ def build_datasets(
 ):
     TARGETS_ALL = REGRESSION_TARGETS + BINARY_TARGETS
     # ---------- Checks ----------
-    required_cols = set(['mrn'] + INPUT_NUMERIC_COLS + TARGETS_ALL)
+    required_cols = set([AGGREGATE_COLUMN] + INPUT_NUMERIC_COLS + TARGETS_ALL)
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"df is missing required columns: {missing}")
@@ -1185,7 +1185,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
 
     # Get unique MRNs from the dataframe
-    unique_mrns = df_sorted['mrn'].drop_duplicates().to_numpy()
+    unique_mrns = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
     logging.info(f"Found {len(unique_mrns)} unique MRNs in dataframe")
 
     # Check if CSV files are provided
@@ -1242,7 +1242,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
     # Now map group_ids to train/val/test based on their MRN
     # Build a mapping from group_id to mrn
-    group_to_mrn = df_sorted.groupby(AGGREGATE_COLUMN)['mrn'].first().to_dict()
+    group_to_mrn = df_sorted.groupby(AGGREGATE_COLUMN)[AGGREGATE_COLUMN].first().to_dict()
 
     train_ids = set()
     val_ids = set()
