@@ -561,6 +561,30 @@ def build_general_embedding_transformer(
     return model
 
 
+def weighted_binary_crossentropy(pos_weight):
+    """
+    Create a weighted binary cross entropy loss function.
+
+    Args:
+        pos_weight: Weight for positive class. To balance classes inversely
+                   proportional to prevalence, use (1 - prevalence) / prevalence.
+
+    Returns:
+        A loss function compatible with Keras.
+    """
+    def loss(y_true, y_pred):
+        y_true = tf.cast(y_true, y_pred.dtype)
+        # Clip predictions to prevent log(0)
+        y_pred = tf.clip_by_value(y_pred, keras.backend.epsilon(), 1 - keras.backend.epsilon())
+        # Weighted BCE: -[pos_weight * y * log(p) + (1-y) * log(1-p)]
+        bce = -(
+            pos_weight * y_true * tf.math.log(y_pred)
+            + (1 - y_true) * tf.math.log(1 - y_pred)
+        )
+        return tf.reduce_mean(bce)
+    return loss
+
+
 def build_embedding_transformer(
         INPUT_NUMERIC_COLS,
         REGRESSION_TARGETS,
@@ -574,7 +598,19 @@ def build_embedding_transformer(
         DROPOUT,
         view2id,
         learning_rate,
+        binary_class_prevalences=None,
 ):
+    """
+    Build an embedding transformer model.
+
+    Args:
+        ...
+        binary_class_prevalences: Optional dict mapping binary target names to their
+            positive class prevalence (fraction of positive samples). When provided,
+            uses weighted binary cross entropy with weights inversely proportional
+            to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
+            10% of samples are positive for that target.
+    """
     Feat = len(INPUT_NUMERIC_COLS)
 
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
@@ -649,7 +685,15 @@ def build_embedding_transformer(
         model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     # Losses / metrics
     losses = {t: 'mse' for t in REGRESSION_TARGETS}
-    losses.update({t: 'binary_crossentropy' for t in BINARY_TARGETS})
+    for t in BINARY_TARGETS:
+        if binary_class_prevalences is not None and t in binary_class_prevalences:
+            prevalence = binary_class_prevalences[t]
+            # pos_weight = (1 - prevalence) / prevalence balances classes
+            pos_weight = (1 - prevalence) / prevalence
+            losses[t] = weighted_binary_crossentropy(pos_weight)
+            logging.info(f"Using weighted BCE for {t}: prevalence={prevalence:.4f}, pos_weight={pos_weight:.2f}")
+        else:
+            losses[t] = 'binary_crossentropy'
 
     metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),
                    keras.metrics.MeanSquaredError(name='mse')] for t in REGRESSION_TARGETS}
@@ -768,11 +812,11 @@ def evaluate_multitask_on_dataset(
     # Binary tasks
     for t in BINARY_TARGETS:
         if y_true[t].size == 0:
-            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan}
+            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n_positive": 0}
             continue
         msk = w[t] > 0
         if msk.sum() == 0:
-            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan}
+            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n_positive": 0}
             continue
         yt = (y_true[t][msk] > 0.5).astype("int32")
         prob = y_pred[t][msk].astype("float32")
@@ -785,7 +829,8 @@ def evaluate_multitask_on_dataset(
         except ValueError:
             auprc = float("nan")
         acc = float(accuracy_score(yt, (prob >= 0.5).astype("int32")))
-        results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc}
+        n_positive = int(yt.sum())
+        results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc, "n_positive": n_positive}
         performance_data.append(
             {"Model": name, "Task": t, "Metric": "auROC", "Score": auroc}
         )
@@ -802,7 +847,7 @@ def evaluate_multitask_on_dataset(
         for t in BINARY_TARGETS:
             r = results[t]
             logging.info(
-                f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}"
+                f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}  n_positive: {r['n_positive']}"
             )
 
     return performance_data

@@ -1437,7 +1437,60 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
     val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
     test_ds = make_tf_dataset_from_generator(test_ids, shuffle=False)
-    return train_ds, val_ds, test_ds
+    return train_ds, val_ds, test_ds, train_ids
+
+
+def compute_binary_class_prevalences(
+    df: pd.DataFrame,
+    train_ids: set,
+    aggregate_column: str,
+    binary_targets: List[str],
+) -> Dict[str, float]:
+    """
+    Compute the prevalence of positive cases for binary targets from training data.
+
+    Args:
+        df: The dataframe containing the data.
+        train_ids: Set of group IDs (e.g., MRNs) that belong to the training set.
+        aggregate_column: Column name used for grouping (e.g., 'MRN').
+        binary_targets: List of binary target column names.
+
+    Returns:
+        Dictionary mapping binary target names to their positive class prevalence
+        (fraction of positive samples in the training set).
+    """
+    prevalences = {}
+
+    # Get MRN-level targets (max of non-NA values per group) for training data only
+    train_df = df[df[aggregate_column].isin(train_ids)]
+
+    for target in binary_targets:
+        if target not in train_df.columns:
+            logging.warning(f"Binary target '{target}' not found in dataframe, skipping prevalence calculation.")
+            continue
+
+        # Get group-level target values (max per group)
+        group_targets = train_df.groupby(aggregate_column)[target].max()
+
+        # Filter out NaN values
+        valid_targets = group_targets.dropna()
+
+        if len(valid_targets) == 0:
+            logging.warning(f"No valid samples for binary target '{target}', skipping prevalence calculation.")
+            continue
+
+        # Compute prevalence (fraction of positive cases)
+        n_positive = (valid_targets > 0.5).sum()
+        n_total = len(valid_targets)
+        prevalence = n_positive / n_total
+
+        prevalences[target] = prevalence
+        logging.info(
+            f"Binary target '{target}': {n_positive}/{n_total} positive cases "
+            f"(prevalence={prevalence:.4f})"
+        )
+
+    return prevalences
 
 
 class LongitudinalDataloader:
