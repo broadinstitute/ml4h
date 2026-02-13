@@ -26,9 +26,13 @@ from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
 import psutil
 from functools import lru_cache
+import threading
+import queue
+import pyarrow as pa
 
 import tensorflow as tf
 import pyarrow.dataset as ds
+import pyarrow.parquet as pq
 from sklearn.model_selection import train_test_split
 
 from ml4h.defines import TENSOR_EXT, TensorGeneratorABC
@@ -1717,7 +1721,7 @@ class LongitudinalDataloader:
 
         from more_itertools import chunked
 
-        for chunk in chunked(groups, 32):
+        for chunk in chunked(groups, 256):
             flat_idxs = np.concatenate(chunk)
 
             flat_idxs = np.asarray(flat_idxs)
@@ -1938,3 +1942,447 @@ class LongitudinalDataloader:
 
         return train_ds, val_ds, test_ds
 
+class _QueueIterator:
+    def __init__(self, loader, q):
+        self.loader = loader
+        self.q = q
+
+        self._chunk = None
+        self._lat_all = None
+        self._num_all = None
+        self._cat_all = None
+        self._lab_all = None
+        self._cum_lengths = None
+        self._group_idx = 0
+        self._lock = threading.Lock()
+
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self._lock:
+            # If no chunk loaded or exhausted → load next
+            if self._chunk is None or self._group_idx >= len(self._chunk):
+
+                chunk, inp, lab = self.q.get()
+
+                # Convert Arrow → NumPy ONCE per chunk
+                n = inp.num_rows
+                self._lat_all = np.empty((n, self.loader.latent_dim), dtype=np.float32)
+
+                for i, c in enumerate(self.loader.latent_cols):
+                    self._lat_all[:, i] = inp.column(c).to_numpy(zero_copy_only=False)
+
+                self._num_all = {
+                    c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
+                    for c in self.loader.numeric_columns
+                }
+
+                self._cat_all = {
+                    c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
+                    for c in self.loader.categorical_columns
+                }
+
+                self._lab_all = np.stack(
+                    [lab.column(c).to_numpy(zero_copy_only=False)
+                    for c in self.loader.label_columns],
+                    axis=1,
+                ).astype(np.float32)
+
+                self._chunk = chunk
+                self._cum_lengths = np.cumsum([0] + [len(g) for g in chunk])
+                self._group_idx = 0
+
+            # Emit one group
+            start = self._cum_lengths[self._group_idx]
+            end = self._cum_lengths[self._group_idx + 1]
+
+            T = end - start
+            sl = slice(start, end)
+
+            x = {
+                "latent": self._lat_all[sl],
+                "mask": np.ones(T, dtype=bool),
+            }
+
+            for c in self.loader.numeric_columns:
+                x[f"num_{c}"] = self._num_all[c][sl]
+
+            for c in self.loader.categorical_columns:
+                x[f"cat_{c}"] = self._cat_all[c][sl]
+
+            vals = self._lab_all[sl][-1]
+            y, sw = {}, {}
+
+            for i, c in enumerate(self.loader.label_columns):
+                if np.isnan(vals[i]):
+                    y[c] = 0.0
+                    sw[c] = 0.0
+                else:
+                    y[c] = float(vals[i])
+                    sw[c] = 1.0
+
+            self._group_idx += 1
+            return x, y, sw
+
+
+class LongitudinalDataloaderFast:
+    def __init__(
+        self,
+        input_file_path,
+        label_file_path,
+        group_column,
+        sort_column,
+        latent_dim,
+        numeric_columns,
+        categorical_columns,
+        label_columns,
+        max_seq_len,
+        batch_size,
+        shuffle=True,
+        sort_column_ascend=True,
+        train_csv: Optional[str] = None,
+        valid_csv: Optional[str] = None,
+        test_csv: Optional[str] = None,
+    ):
+        self.input_ds = ds.dataset(input_file_path, format="parquet")
+        self.label_ds = (
+            self.input_ds
+            if label_file_path in [None, input_file_path]
+            else ds.dataset(label_file_path, format="parquet")
+        )
+        self._inp_pf = pq.ParquetFile(input_file_path)
+        self._lab_pf = self._inp_pf if label_file_path in [None, input_file_path] else pq.ParquetFile(label_file_path)
+
+        self._rg_sizes = [self._inp_pf.metadata.row_group(i).num_rows for i in range(self._inp_pf.num_row_groups)]
+        print("Mean row group size:", np.mean(self._rg_sizes))
+        print("Max row group size:", np.max(self._rg_sizes))
+
+        self._rg_cum = np.cumsum([0] + self._rg_sizes).astype(np.int64)  # len = num_row_groups+1
+
+
+        self.latent_cols = [f"latent_{i}" for i in range(latent_dim)]
+        self.latent_dim = latent_dim
+        self.numeric_columns = numeric_columns
+        self.categorical_columns = categorical_columns
+        self.label_columns = label_columns
+        self.max_seq_len = max_seq_len
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.group_column = group_column
+        self.train_csv = train_csv
+        self.valid_csv = valid_csv
+        self.test_csv = test_csv
+
+        # ---- build MRN → row indices ONCE ----
+        index_tbl = self.input_ds.to_table(
+            columns=[group_column, sort_column]
+        ).to_pandas()
+
+        index_tbl = index_tbl.sort_values([group_column, sort_column], ascending=[True, sort_column_ascend], kind="mergesort")
+
+        self._q = queue.Queue(maxsize=2)   # you can tune this, but it isn't the main fix
+        self._producer_started = False
+        self._consumer_iter = _QueueIterator(self, self._q)
+
+        self.group_to_indices = {}
+        self.group_ids = []
+        for group_id, g in index_tbl.groupby(group_column, sort=False):
+            idxs = g.index.values
+            if max_seq_len:
+                idxs = idxs[-max_seq_len:]
+            self.group_to_indices[group_id] = idxs
+            self.group_ids.append(group_id)
+
+        # Log number of groups found
+        logging.info(f"Found {len(self.group_ids)} groups (unique {group_column}s)")
+
+        self._groups_by_locality = sorted(
+            list(self.group_to_indices.values()),
+            key=lambda idxs: int(np.median(idxs))
+        )
+
+
+        # Log sequence length statistics
+        seq_lengths = np.array([len(idxs) for idxs in self.group_to_indices.values()])
+        logging.info(f"Sequence length statistics across {len(seq_lengths)} groups:")
+        logging.info(f"  Mean: {seq_lengths.mean():.2f}")
+        logging.info(f"  Std:  {seq_lengths.std():.2f}")
+        logging.info(f"  Min:  {seq_lengths.min()}")
+        logging.info(f"  Max:  {seq_lengths.max()}")
+        logging.info(f"  Median: {np.median(seq_lengths):.2f}")
+
+        # Log summary statistics for each target
+        if label_columns:
+            logging.info("Target summary statistics:")
+            label_tbl = self.label_ds.to_table(columns=label_columns).to_pandas()
+            for t in label_columns:
+                if t in label_tbl.columns:
+                    target_values = label_tbl[t].values
+                    valid_mask = ~pd.isna(target_values)
+                    if valid_mask.sum() > 0:
+                        valid_values = target_values[valid_mask]
+                        logging.info(f"  {t}:")
+                        logging.info(f"    Valid samples: {valid_mask.sum()}/{len(target_values)} ({valid_mask.mean()*100:.1f}%)")
+                        logging.info(f"    Mean: {np.mean(valid_values):.4f}")
+                        logging.info(f"    Std:  {np.std(valid_values):.4f}")
+                        logging.info(f"    Min:  {np.min(valid_values):.4f}")
+                        logging.info(f"    Max:  {np.max(valid_values):.4f}")
+                    else:
+                        logging.info(f"  {t}: No valid samples")
+                else:
+                    logging.info(f"  {t}: Target not found in dataset")
+    
+    #@lru_cache(maxsize=1)
+    def _read_row_group_cached(self, rg: int, cols_key: str):
+        cols = cols_key.split("|") if cols_key else None
+        return self._inp_pf.read_row_group(rg, columns=cols)
+
+    #@lru_cache(maxsize=1)
+    def _read_row_group_cached_labels(self, rg: int, cols_key: str):
+        cols = cols_key.split("|") if cols_key else None
+        return self._lab_pf.read_row_group(rg, columns=cols)
+    
+    def _gather_parquet_rows(self, flat_idxs: np.ndarray, columns, is_label=False):
+        """
+        Gather rows from Parquet using row-group aware reads.
+        flat_idxs: global row indices (np.int64)
+        columns: list[str] columns to read
+        returns: pyarrow.Table with rows in the SAME order as flat_idxs
+        """
+        flat_idxs = np.asarray(flat_idxs, dtype=np.int64)
+        n = flat_idxs.size
+        out_pos = np.arange(n, dtype=np.int64)
+
+        # Map global idx -> row group id (vectorized)
+        # rg is in [0, num_row_groups-1]
+        rg = np.searchsorted(self._rg_cum[1:], flat_idxs, side="right").astype(np.int32)
+        local = (flat_idxs - self._rg_cum[rg]).astype(np.int64)
+
+        # Group requests by row group (preserve original positions)
+        order = np.argsort(rg, kind="mergesort")
+        rg_s = rg[order]
+        local_s = local[order]
+        pos_s = out_pos[order]
+
+        cols_key = "|".join(columns)
+
+        chunks = []
+        start = 0
+        while start < n:
+            r = int(rg_s[start])
+            end = start + 1
+            while end < n and rg_s[end] == r:
+                end += 1
+
+            local_idx = local_s[start:end]
+            pos_idx = pos_s[start:end]
+
+            if is_label:
+                tbl = self._read_row_group_cached_labels(r, cols_key)
+            else:
+                tbl = self._read_row_group_cached(r, cols_key)
+
+            # take within row group, then scatter back to original order
+            taken = tbl.take(pa.array(local_idx))
+            # attach position so we can re-order later
+            taken = taken.append_column("__pos__", pa.array(pos_idx))
+
+            chunks.append(taken)
+            start = end
+
+        merged = pa.concat_tables(chunks)
+
+        # reorder by __pos__ to match original flat_idxs order
+        pos = merged["__pos__"].to_numpy(zero_copy_only=False)
+        back = np.argsort(pos, kind="mergesort")
+        merged = merged.take(pa.array(back)).drop(["__pos__"])
+
+        return merged
+
+    def _start_producer(self, groups):
+        if self._producer_started:
+            return
+        self._producer_started = True
+
+        from more_itertools import chunked
+        import gc
+
+        def producer_loop():
+            # IMPORTANT: never exit; keep feeding forever
+            while True:
+                # NOTE: do NOT reshuffle if you don't need to
+                if self.shuffle:
+                    np.random.shuffle(groups)
+
+                groups_local = self._groups_by_locality
+                n = len(groups_local)
+
+                # optionally shuffle window order by shuffling indices
+                window_starts = list(range(0, n, 5000))
+                if self.shuffle:
+                    np.random.shuffle(window_starts)
+
+                for start in window_starts:
+                    end = min(start + 5000, n)
+                    window = groups_local[start:end]
+                    if self.shuffle:
+                        np.random.shuffle(window)
+
+                    for chunk in chunked(window, 256):
+                #for chunk in chunked(groups, 256):  # tune chunk size later
+                        flat_idxs = np.concatenate(chunk).astype(np.int64)
+
+                        # <-- this is your fast row-group aware gather version -->
+                        inp_cols = self.latent_cols + self.numeric_columns + self.categorical_columns
+                        lab_cols = self.label_columns
+
+                        inp = self._gather_parquet_rows(flat_idxs, inp_cols, is_label=False)
+                        lab = self._gather_parquet_rows(flat_idxs, lab_cols, is_label=(self._lab_pf is not self._inp_pf))
+
+                        self._q.put((chunk, inp, lab))
+
+        threading.Thread(target=producer_loop, daemon=True).start()
+
+    # ------------------------------------------------------------
+    # Dataset builder (Option 5 → fallback)
+    # ------------------------------------------------------------
+    def get_tf_dataset(self, selected_group_ids=None):
+        groups = (
+                    [self.group_to_indices[g] for g in selected_group_ids]
+                    if selected_group_ids is not None
+                    else list(self.group_to_indices.values())
+                )
+        
+        output_signature = (
+            {
+                "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
+                "mask": tf.TensorSpec((None,), tf.bool),
+                **{
+                    f"num_{c}": tf.TensorSpec((None,), tf.float32)
+                    for c in self.numeric_columns
+                },
+                **{
+                    f"cat_{c}": tf.TensorSpec((None,), tf.int32)
+                    for c in self.categorical_columns
+                },
+            },
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+        )
+        self._start_producer(groups)
+
+        ds_tf = tf.data.Dataset.from_generator(
+            lambda: self._consumer_iter,   # <-- persistent iterator, not a new generator
+            output_signature=output_signature,
+        )
+        ds_tf = ds_tf.repeat()
+        return ds_tf.padded_batch(
+            self.batch_size,
+            padded_shapes=(
+                {
+                    "latent": [self.max_seq_len, self.latent_dim],
+                    "mask": [self.max_seq_len],
+                    **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
+                    **{
+                        f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
+                    },
+                },
+                {c: [] for c in self.label_columns},
+                {c: [] for c in self.label_columns},
+            ),
+        ).prefetch(tf.data.AUTOTUNE)
+
+    # ------------------------------------------------------------
+    # Train / val split unchanged
+    # ------------------------------------------------------------
+    def get_train_valid_test_datasets(self, valid_frac=0.1, test_frac=0.1, seed=42):
+        """Split data into train, validation, and test datasets.
+
+        If train_csv, valid_csv, or test_csv were provided during initialization,
+        those will be used to determine the splits. Otherwise, random splitting
+        is performed based on the provided fractions.
+
+        Args:
+            valid_frac: Fraction of data for validation (used only if valid_csv not provided)
+            test_frac: Fraction of data for testing (used only if test_csv not provided)
+            seed: Random seed for reproducibility
+
+        Returns:
+            Tuple of (train_dataset, valid_dataset, test_dataset)
+        """
+        unique_group_ids = set(self.group_ids)
+
+        # Check if CSV files are provided
+        if self.train_csv or self.valid_csv or self.test_csv:
+            # Read group IDs from CSV files
+            train_set = _sample_csv_to_set(self.train_csv) if self.train_csv else set()
+            valid_set = _sample_csv_to_set(self.valid_csv) if self.valid_csv else set()
+            test_set = _sample_csv_to_set(self.test_csv) if self.test_csv else set()
+
+            logging.info(f"CSV files contain: {len(train_set)} train IDs, {len(valid_set)} valid IDs, {len(test_set)} test IDs")
+
+            # Log sample IDs for debugging
+            if len(unique_group_ids) > 0:
+                sample_ids = list(unique_group_ids)[:3]
+                logging.info(f"Sample dataset {self.group_column}s: {sample_ids}")
+            if len(train_set) > 0:
+                logging.info(f"Sample train CSV IDs: {list(train_set)[:3]}")
+
+            # Split group IDs into train/val/test based on CSV membership
+            train_ids = set()
+            val_ids = set()
+            test_ids = set()
+
+            for gid in unique_group_ids:
+                gid_str = str(gid)
+                if train_set and gid_str in train_set:
+                    train_ids.add(gid)
+                elif valid_set and gid_str in valid_set:
+                    val_ids.add(gid)
+                elif test_set and gid_str in test_set:
+                    test_ids.add(gid)
+
+            logging.info(f"Matched IDs: {len(train_ids)} train, {len(val_ids)} valid, {len(test_ids)} test")
+        else:
+            # No CSV files provided - randomly split
+            logging.info(f"No CSV files provided. Randomly splitting: {(1-valid_frac-test_frac)*100:.0f}% train, {valid_frac*100:.0f}% valid, {test_frac*100:.0f}% test")
+
+            rng = np.random.default_rng(seed)
+            group_ids_array = np.array(list(unique_group_ids))
+            rng.shuffle(group_ids_array)
+
+            n = len(group_ids_array)
+            test_split = int(test_frac * n)
+            valid_split = int((test_frac + valid_frac) * n)
+
+            test_ids = set(group_ids_array[:test_split])
+            val_ids = set(group_ids_array[test_split:valid_split])
+            train_ids = set(group_ids_array[valid_split:])
+
+            logging.info(f"Random split IDs: {len(train_ids)} train, {len(val_ids)} valid, {len(test_ids)} test")
+
+        # Calculate total rows for train, validation, and test sets
+        train_rows = sum(len(self.group_to_indices[gid]) for gid in train_ids)
+        val_rows = sum(len(self.group_to_indices[gid]) for gid in val_ids)
+        test_rows = sum(len(self.group_to_indices[gid]) for gid in test_ids)
+
+        logging.info(f"Training set: {len(train_ids)} groups, {train_rows} total rows")
+        logging.info(f"Validation set: {len(val_ids)} groups, {val_rows} total rows")
+        logging.info(f"Test set: {len(test_ids)} groups, {test_rows} total rows")
+
+        # Create datasets with appropriate shuffle settings
+        train_loader = copy.copy(self)
+        val_loader = copy.copy(self)
+        test_loader = copy.copy(self)
+
+        train_loader.shuffle = self.shuffle
+        val_loader.shuffle = False
+        test_loader.shuffle = False
+
+        train_ds = train_loader.get_tf_dataset(selected_group_ids=list(train_ids))
+        val_ds = val_loader.get_tf_dataset(selected_group_ids=list(val_ids))
+        test_ds = test_loader.get_tf_dataset(selected_group_ids=list(test_ids))
+
+        return train_ds, val_ds, test_ds
