@@ -1441,7 +1441,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
     val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
     test_ds = make_tf_dataset_from_generator(test_ids, shuffle=False)
-    return train_ds, val_ds, test_ds, train_ids
+    return train_ds, val_ds, test_ds
 
 
 def compute_binary_class_prevalences(
