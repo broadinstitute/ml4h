@@ -48,6 +48,7 @@ from ml4h.tensor_generators import (
     BATCH_OUTPUT_INDEX,
     BATCH_PATHS_INDEX,
     df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
+    compute_binary_class_prevalences,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -883,7 +884,7 @@ def train_xdl_af(args):
 
 
 def train_transformer_on_parquet(args):
-    
+
     loader = LongitudinalDataloaderFast(
         input_file_path=args.transformer_input_file,
         label_file_path=args.transformer_label_file if args.transformer_label_file else args.transformer_input_file,
@@ -1020,6 +1021,17 @@ def train_transformer_on_parquet_fast(args):
                                                               args.target_regression_columns + args.target_binary_columns,
                                                               args.transformer_max_size, args.batch_size,
                                                               args.train_csv, args.valid_csv, args.test_csv)
+
+    # Compute binary class prevalences for weighted loss
+    binary_class_prevalences = None
+    if args.target_binary_columns:
+        binary_class_prevalences = compute_binary_class_prevalences(
+            df=df,
+            aggregate_column=args.group_column,
+            binary_targets=args.target_binary_columns,
+            train_csv=args.train_csv,
+        )
+
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
         model = keras.models.load_model(args.model_file)
@@ -1037,6 +1049,7 @@ def train_transformer_on_parquet_fast(args):
             args.transformer_dropout_rate,
             view2id,
             args.learning_rate,
+            binary_class_prevalences=binary_class_prevalences,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)

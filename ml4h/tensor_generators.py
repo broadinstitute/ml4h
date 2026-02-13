@@ -1446,18 +1446,22 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
 def compute_binary_class_prevalences(
     df: pd.DataFrame,
-    train_ids: set,
     aggregate_column: str,
     binary_targets: List[str],
+    train_ids: Optional[set] = None,
+    train_csv: Optional[str] = None,
 ) -> Dict[str, float]:
     """
     Compute the prevalence of positive cases for binary targets from training data.
 
     Args:
         df: The dataframe containing the data.
-        train_ids: Set of group IDs (e.g., MRNs) that belong to the training set.
         aggregate_column: Column name used for grouping (e.g., 'MRN').
         binary_targets: List of binary target column names.
+        train_ids: Set of group IDs (e.g., MRNs) that belong to the training set.
+                   If None, train_csv must be provided.
+        train_csv: Path to CSV file containing training sample IDs.
+                   Used if train_ids is not provided.
 
     Returns:
         Dictionary mapping binary target names to their positive class prevalence
@@ -1465,8 +1469,18 @@ def compute_binary_class_prevalences(
     """
     prevalences = {}
 
+    # Get train_ids from CSV if not provided directly
+    if train_ids is None:
+        if train_csv is not None:
+            train_ids = _sample_csv_to_set(train_csv)
+        else:
+            logging.warning("Neither train_ids nor train_csv provided, using all data for prevalence calculation.")
+            train_ids = set(df[aggregate_column].unique())
+
     # Get MRN-level targets (max of non-NA values per group) for training data only
-    train_df = df[df[aggregate_column].isin(train_ids)]
+    # Convert train_ids to strings for comparison since _sample_csv_to_set returns strings
+    train_ids_str = {str(tid) for tid in train_ids}
+    train_df = df[df[aggregate_column].astype(str).isin(train_ids_str)]
 
     for target in binary_targets:
         if target not in train_df.columns:
