@@ -95,6 +95,35 @@ class SumOverTimeLayer(keras.layers.Layer):
         return keras.ops.sum(inputs, axis=1)
 
 
+@keras.saving.register_keras_serializable(package="ml4h")
+class DynamicPositionIndicesLayer(keras.layers.Layer):
+    """Custom layer to generate dynamic position indices based on input shape."""
+
+    def call(self, inputs):
+        """Generate position indices matching input sequence length."""
+        batch_size = ops.shape(inputs)[0]
+        seq_len = ops.shape(inputs)[1]
+        positions = ops.tile(
+            ops.expand_dims(ops.arange(seq_len), axis=0), [batch_size, 1]
+        )
+        return positions
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], input_shape[1])
+
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class AttentionMaskLayer(keras.layers.Layer):
+    """Custom layer to create attention mask from padding mask."""
+
+    def call(self, inputs):
+        """Expand mask for attention: (B, T) -> (B, 1, T)."""
+        return ops.cast(inputs[:, None, :], "bool")
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], 1, input_shape[1])
+
+
 class TransformerEncoderEmbedding(Block):
     # this version directly intakes in tokens in the shape of (batch_size, N_tokens,embedim)
     def __init__(
@@ -396,9 +425,7 @@ def build_general_embedding_transformer(
     if len(numeric_columns) > 0:
         num_embs = []
         for col in numeric_columns:
-            x = layers.Lambda(
-                lambda z: ops.expand_dims(z, -1), name=f"num_{col}_expand"
-            )(
+            x = ExpandDimsLayer(axis=-1, name=f"num_{col}_expand")(
                 inp_numeric[col]
             )  # (B,T,1)
 
@@ -449,14 +476,7 @@ def build_general_embedding_transformer(
     # POSITIONAL EMBEDDING
     # ------------------------------
 
-    positions = layers.Lambda(
-        lambda t: ops.tile(
-            ops.expand_dims(ops.arange(ops.shape(t)[1]), axis=0), [ops.shape(t)[0], 1]
-        ),
-        name="pos_indices",
-    )(
-        x
-    )  # (T,)
+    positions = DynamicPositionIndicesLayer(name="pos_indices")(x)  # (B,T)
 
     pos_emb = layers.Embedding(
         input_dim=max_len, output_dim=transformer_dim, name="pos_embedding"
@@ -470,11 +490,7 @@ def build_general_embedding_transformer(
     # ATTENTION MASK
     # ------------------------------
 
-    attn_mask = layers.Lambda(
-        lambda m: ops.cast(m[:, None, :], "bool"), name="attn_mask"
-    )(
-        inp_mask
-    )  # (B,1,T)
+    attn_mask = AttentionMaskLayer(name="attn_mask")(inp_mask)  # (B,1,T)
 
     # ------------------------------
     # TRANSFORMER LAYERS
