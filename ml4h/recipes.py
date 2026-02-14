@@ -918,6 +918,7 @@ def train_transformer_on_parquet(args):
     logging.info("Building and Training model...")
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
+        keras.config.enable_unsafe_deserialization()
         model = keras.models.load_model(args.model_file)
     else:
         model = build_general_embedding_transformer(
@@ -1034,6 +1035,7 @@ def train_transformer_on_parquet_fast(args):
 
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
+        keras.config.enable_unsafe_deserialization()
         model = keras.models.load_model(args.model_file)
     else:
         model = build_embedding_transformer(
