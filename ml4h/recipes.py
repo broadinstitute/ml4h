@@ -1024,13 +1024,13 @@ def train_transformer_on_parquet_fast(args):
 
     # Compute binary class prevalences for weighted loss
     binary_class_prevalences = None
-    if args.target_binary_columns:
-        binary_class_prevalences = compute_binary_class_prevalences(
-            df=df,
-            aggregate_column=args.group_column,
-            binary_targets=args.target_binary_columns,
-            train_csv=args.train_csv,
-        )
+    # if args.target_binary_columns:
+    #     binary_class_prevalences = compute_binary_class_prevalences(
+    #         df=df,
+    #         aggregate_column=args.group_column,
+    #         binary_targets=args.target_binary_columns,
+    #         train_csv=args.train_csv,
+    #     )
 
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
