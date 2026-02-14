@@ -1224,7 +1224,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
         logging.info(f"Matched MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test")
     else:
         # No CSV files provided - randomly split MRNs: 80% train, 10% valid, 10% test
-        logging.info("No CSV files provided. Randomly splitting MRNs: 80% train, 10% valid, 10% test")
+        logging.info("No CSV files provided. Randomly splitting MRNs: 80% train, 4% valid, 16% test")
 
         from sklearn.model_selection import train_test_split
 
@@ -1235,7 +1235,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
 
         # Second split: split temp into 50% valid, 50% test (each 10% of total)
         val_mrns_arr, test_mrns_arr = train_test_split(
-            temp_mrns, test_size=0.5, random_state=42
+            temp_mrns, test_size=0.8, random_state=42
         )
 
         train_mrn_set = set(train_mrns_arr)
