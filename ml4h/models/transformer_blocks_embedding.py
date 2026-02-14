@@ -561,28 +561,36 @@ def build_general_embedding_transformer(
     return model
 
 
-def weighted_binary_crossentropy(pos_weight):
+@keras.saving.register_keras_serializable(package="ml4h")
+class WeightedBinaryCrossentropy(keras.losses.Loss):
     """
-    Create a weighted binary cross entropy loss function.
+    Weighted binary cross entropy loss for handling class imbalance.
 
     Args:
         pos_weight: Weight for positive class. To balance classes inversely
                    proportional to prevalence, use (1 - prevalence) / prevalence.
-
-    Returns:
-        A loss function compatible with Keras.
+        name: Name of the loss function.
     """
-    def loss(y_true, y_pred):
+
+    def __init__(self, pos_weight=1.0, name="weighted_binary_crossentropy", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.pos_weight = pos_weight
+
+    def call(self, y_true, y_pred):
         y_true = tf.cast(y_true, y_pred.dtype)
         # Clip predictions to prevent log(0)
         y_pred = tf.clip_by_value(y_pred, keras.backend.epsilon(), 1 - keras.backend.epsilon())
         # Weighted BCE: -[pos_weight * y * log(p) + (1-y) * log(1-p)]
         bce = -(
-            pos_weight * y_true * tf.math.log(y_pred)
+            self.pos_weight * y_true * tf.math.log(y_pred)
             + (1 - y_true) * tf.math.log(1 - y_pred)
         )
         return tf.reduce_mean(bce)
-    return loss
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"pos_weight": self.pos_weight})
+        return config
 
 
 def build_embedding_transformer(
@@ -690,7 +698,7 @@ def build_embedding_transformer(
             prevalence = binary_class_prevalences[t]
             # pos_weight = (1 - prevalence) / prevalence balances classes
             pos_weight = (1 - prevalence) / prevalence
-            losses[t] = weighted_binary_crossentropy(pos_weight)
+            losses[t] = WeightedBinaryCrossentropy(pos_weight=pos_weight)
             logging.info(f"Using weighted BCE for {t}: prevalence={prevalence:.4f}, pos_weight={pos_weight:.2f}")
         else:
             losses[t] = 'binary_crossentropy'
