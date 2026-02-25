@@ -770,7 +770,7 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(f'{title} N = {len(prediction)}' )
+    ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
     sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
@@ -2253,7 +2253,7 @@ def plot_ecg_rest(
     tensor_paths: List[str],
     rows: List[int],
     out_folder: str,
-    is_blind: bool
+    is_blind: bool,
 ) -> None:
     """Plots resting ECGs including annotations and LVH criteria
 
@@ -2770,11 +2770,25 @@ def plot_dice(
 
     logging.info(f"label_names: {label_names}")
     dice_scores = {}
+    y_true_counts = {}
+    y_pred_counts = {}
     mean_dice_scores = {}
     std_dice_scores = {}
     for p in predictions:
         y_pred = predictions[p].argmax(-1)
         dice_scores[p] = np.stack([dice(y_true[i], y_pred[i], labels=label_vals) for i in range(batch_size)], axis=0)
+        y_true_counts[p] = np.stack(
+            [
+                np.stack([np.count_nonzero(np.where(y_true[i] == val)) for val in label_vals], axis=-1)
+                for i in range(batch_size)
+            ], axis=0,
+        )
+        y_pred_counts[p] = np.stack(
+            [
+                np.stack([np.count_nonzero(np.where(y_pred[i] == val)) for val in label_vals], axis=-1)
+                for i in range(batch_size)
+            ], axis=0,
+        )
 
         # If a label is not in y_true nor y_pred, this is actually a perfect score
         y_pred_unique = [np.unique(y_pred[i]) for i in range(batch_size)]
@@ -2845,9 +2859,9 @@ def plot_dice(
         tsv_path = os.path.join(prefix, f'dice_{p}_{now_string}_{title}.tsv')
         with open(tsv_path, mode='w') as tsv_file:
             tsv_writer = csv.writer(tsv_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            tsv_writer.writerow(['sample_id'] + list(label_names))
+            tsv_writer.writerow(['sample_id'] + list(label_names) + ['y_true_n_'+k for k in label_names] + ['y_pred_n_'+k for k in label_names])
             for i in range(dice_scores[p].shape[0]):
-                tsv_writer.writerow([paths[i]] + list(dice_scores[p][i,:]))
+                tsv_writer.writerow([paths[i]] + list(dice_scores[p][i,:]) + list(y_true_counts[p][i,:]) + list(y_pred_counts[p][i,:]))
         logging.info(f"Saved dice tsv at: {tsv_path}")
 
 def get_fpr_tpr_roc_pred(y_pred, test_truth, labels):
