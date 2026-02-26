@@ -2777,18 +2777,8 @@ def plot_dice(
     for p in predictions:
         y_pred = predictions[p].argmax(-1)
         dice_scores[p] = np.stack([dice(y_true[i], y_pred[i], labels=label_vals) for i in range(batch_size)], axis=0)
-        y_true_counts[p] = np.stack(
-            [
-                np.stack([np.count_nonzero(np.where(y_true[i] == val)) for val in label_vals], axis=-1)
-                for i in range(batch_size)
-            ], axis=0,
-        )
-        y_pred_counts[p] = np.stack(
-            [
-                np.stack([np.count_nonzero(np.where(y_pred[i] == val)) for val in label_vals], axis=-1)
-                for i in range(batch_size)
-            ], axis=0,
-        )
+        y_true_counts[p] = np.array([[np.sum(y_true[i] == val) for val in label_vals] for i in range(batch_size)])
+        y_pred_counts[p] = np.array([[np.sum(y_pred[i] == val) for val in label_vals] for i in range(batch_size)])
 
         # If a label is not in y_true nor y_pred, this is actually a perfect score
         y_pred_unique = [np.unique(y_pred[i]) for i in range(batch_size)]
