@@ -3557,7 +3557,8 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
 
         plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
-        im = plt.imshow(pivot_df.values, cmap="magma", aspect="auto")
+        magma_truncated = plt.cm.colors.ListedColormap(plt.cm.magma(np.linspace(0.25, 1, 256)))
+        im = plt.imshow(pivot_df.values, cmap=magma_truncated, aspect="auto")
 
         for i in range(pivot_df.shape[0]):
             for j in range(pivot_df.shape[1]):
