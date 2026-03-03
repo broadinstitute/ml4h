@@ -3557,16 +3557,16 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
 
         plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
-        im = plt.imshow(pivot_df.values, cmap="Blues_r", aspect="auto")
+        im = plt.imshow(pivot_df.values, cmap="Purples", aspect="auto")
 
         for i in range(pivot_df.shape[0]):
             for j in range(pivot_df.shape[1]):
                 value = pivot_df.iloc[i, j]
                 if not pd.isna(value):
-                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14)
+                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="white", fontsize=14)
 
-        plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=pivot_df.columns, rotation=45, ha="right")
-        plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=pivot_df.index)
+        plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=pivot_df.columns, rotation=45, ha="right", fontsize=14, fontweight="bold")
+        plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=pivot_df.index, fontsize=14, fontweight="bold")
         plt.colorbar(im, label="Score")
         plt.title(f"Model Performance by Task ({metric_type.upper()})")
         plt.tight_layout()
