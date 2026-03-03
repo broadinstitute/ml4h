@@ -315,7 +315,7 @@ if __name__=="__main__":
     print("Longitudinal Transformer model loaded.")
 
     # --- Prepare CSV ---
-    out_csv = "/output/fingen_inference_comparison_single_vs_longitudinal.csv"
+    out_csv = "/output/finngen_inference_comparison_single_vs_longitudinal.csv"
     header_written = False
     buffer = []
 
