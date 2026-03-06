@@ -836,11 +836,11 @@ def evaluate_multitask_on_dataset(
     # Binary tasks
     for t in BINARY_TARGETS:
         if y_true[t].size == 0:
-            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n_positive": 0}
+            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n": 0, "n_positive": 0, "prevalence": 0.0}
             continue
         msk = w[t] > 0
         if msk.sum() == 0:
-            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n_positive": 0}
+            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n": 0, "n_positive": 0, "prevalence": 0.0}
             continue
         yt = (y_true[t][msk] > 0.5).astype("int32")
         prob = y_pred[t][msk].astype("float32")
@@ -853,8 +853,10 @@ def evaluate_multitask_on_dataset(
         except ValueError:
             auprc = float("nan")
         acc = float(accuracy_score(yt, (prob >= 0.5).astype("int32")))
+        n = len(yt)
         n_positive = int(yt.sum())
-        results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc, "n_positive": n_positive}
+        prevalence = 100.0 * n_positive / n if n > 0 else 0.0
+        results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc, "n": n, "n_positive": n_positive, "prevalence": prevalence}
         performance_data.append(
             {"Model": name, "Task": t, "Metric": "auROC", "Score": auroc}
         )
@@ -871,7 +873,7 @@ def evaluate_multitask_on_dataset(
         for t in BINARY_TARGETS:
             r = results[t]
             logging.info(
-                f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}  n_positive: {r['n_positive']}"
+                f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}  n: {r['n']}  n_positive: {r['n_positive']}  prevalence: {r['prevalence']:.2f}%"
             )
 
     return performance_data
