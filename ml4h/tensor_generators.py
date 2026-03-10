@@ -2209,9 +2209,9 @@ class LongitudinalDataloaderFast:
         merged = pa.concat_tables(chunks)
 
         # reorder by __pos__ to match original flat_idxs order
-        pos = merged["__pos__"].to_numpy(zero_copy_only=False)
-        back = np.argsort(pos, kind="mergesort")
-        merged = merged.take(pa.array(back)).drop(["__pos__"])
+        pos_arr = merged["__pos__"].combine_chunks()
+        order = pa.compute.sort_indices(pos_arr)  # Arrow computes stable sort
+        merged = merged.take(order).drop(["__pos__"])
 
         return merged
 
