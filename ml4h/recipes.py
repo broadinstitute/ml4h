@@ -1774,14 +1774,16 @@ def _predict_and_evaluate(
 
     y_predictions = model.predict(test_data, batch_size=batch_size, verbose=0)
     protected_data = {tm: test_labels[tm.output_name()] for tm in tensor_maps_protected}
-    for y, tm in zip(y_predictions, tensor_maps_out):
+    for i, tm in enumerate(tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
+        # Get predictions for this specific tensormap
         if isinstance(y_predictions, dict):
-            y_predictions = y_predictions[tm.output_name()]
-        if not isinstance(
-            y_predictions, list
-        ):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+            y = y_predictions[tm.output_name()]
+        elif isinstance(y_predictions, list):
+            y = y_predictions[i]
+        else:
+            # Single output - use predictions directly
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(
