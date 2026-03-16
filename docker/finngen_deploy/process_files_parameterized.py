@@ -105,7 +105,7 @@ class LongitudinalECGFromMetadata(Dataset):
         self.transform       = transform
         self.max_timestamps  = max_timestamps
 
-        df              = pd.read_csv(metadata_csv)#, sep="\t")
+        df              = pd.read_csv(metadata_csv, sep="\t")
         df["timestamp"] = df["APPROX_EVENT_DAY"] + "T" + df["TIME"]
         df["path"]      = [
             resolve_ecg_path(data_path, r["FINNGENID"], r["MEASID"])
