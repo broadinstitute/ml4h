@@ -489,29 +489,34 @@ def run_infer(full_model, encoder, long_model, loader,
 
         # Longitudinal prediction for whole batch
         long_out        = long_model.predict(
-            {"features": feat, "mask": mask_np}, verbose=0
+            {"num": feat, "mask": mask_np}, verbose=0
         )
-        long_preds_norm = np.array(long_out).flatten()
+        long_out_np = {k: np.asarray(v) for k, v in long_out.items()}
+        #long_preds_norm = np.array(long_out).flatten()
 
         # Single-ECG prediction per patient (latest valid visit)
         for i in range(B):
             seq_len       = int(masks[i].sum().item())
             latest_ecg_np = ecgs[i, seq_len - 1].numpy()[np.newaxis]
-            single_out    = full_model(latest_ecg_np, training=False)
-            single_norm   = extract_prediction(single_out, output_key)
+            #single_out    = full_model(latest_ecg_np, training=False)
+            #single_norm   = extract_prediction(single_out, output_key)
             latest_age    = event_ages_list[i][seq_len - 1]
             latest_ts     = timestamps_list[i][seq_len - 1] if timestamps_list[i] else None
 
+            row_long_out = {k: float(v[i].squeeze()) for k, v in long_out_np.items()}
+            
             buffer.append({
                 "patient_id":       patient_ids[i],
                 "latest_timestamp": latest_ts,
                 "num_ecgs":         seq_len,
                 "true_age":         latest_age,
-                "pred_single_norm": single_norm,
-                "pred_single":      denorm(single_norm, mean_norm, std_norm),
-                "pred_long_norm":   float(long_preds_norm[i]),
-                "pred_long":        denorm(float(long_preds_norm[i]), mean_norm, std_norm),
+                **row_long_out,
+                #"pred_single_norm": single_norm,
+                #"pred_single":      denorm(single_norm, mean_norm, std_norm),
+                #"pred_long_norm":   float(long_preds_norm[i]),
+                #"pred_long":        denorm(float(long_preds_norm[i]), mean_norm, std_norm),
             })
+            
 
         if (batch_idx + 1) % flush_every == 0:
             pd.DataFrame(buffer).to_csv(
