@@ -144,6 +144,7 @@ class LongitudinalECGFromMetadata(Dataset):
                 lead_data['aVL'] = (lead_data['I'] - lead_data['III']) / 2
 
                 ecg = np.stack([lead_data[l] for l in lead_order], axis=1)  # [5000,12]
+                ecg = ecg[:4096, :]
                 #print("ECG is ",ecg.shape)
                 ecg -= ecg.mean(axis=0, keepdims=True)
                 ecg /= (ecg.std(axis=0, keepdims=True) + 1e-6)

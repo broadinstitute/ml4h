@@ -52,7 +52,6 @@ from torch.utils.data import Dataset, DataLoader
 import keras
 import keras.ops as ops
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Required custom layer for loading the standalone longitudinal model
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,6 +68,107 @@ class MaskedMeanPool(keras.layers.Layer):
 
     def get_config(self):
         return super().get_config()
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class PositionIndexLayer(keras.layers.Layer):
+    """Custom layer to generate position indices for positional encoding."""
+
+    def __init__(self, max_len, **kwargs):
+        super().__init__(**kwargs)
+        self.max_len = max_len
+
+    def call(self, inputs):
+        """Generate position indices."""
+        b = keras.ops.shape(inputs)[0]
+        pos = keras.ops.arange(0, self.max_len)
+        pos = keras.ops.tile(keras.ops.expand_dims(pos, 0), (b, 1))
+        return pos
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"max_len": self.max_len})
+        return config
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class ExpandDimsLayer(keras.layers.Layer):
+    """Custom layer to expand dimensions with specified axis."""
+
+    def __init__(self, axis, **kwargs):
+        super().__init__(**kwargs)
+        self.axis = axis
+
+    def call(self, inputs):
+        """Expand dimensions."""
+        return keras.ops.expand_dims(inputs, self.axis)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"axis": self.axis})
+        return config
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class LogicalAndLayer(keras.layers.Layer):
+    """Custom layer to apply logical AND to two inputs."""
+
+    def call(self, inputs):
+        """Apply logical AND."""
+        return keras.ops.logical_and(inputs[0], inputs[1])
+
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class CastToFloatLayer(keras.layers.Layer):
+    """Custom layer to cast boolean to float32."""
+
+    def call(self, inputs):
+        """Cast to float32."""
+        return keras.ops.cast(inputs, "float32")
+
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class ApplyVeryNegativeLayer(keras.layers.Layer):
+    """Custom layer to apply very negative values to masked positions."""
+
+    def call(self, inputs):
+        """Apply very negative values."""
+        return (1.0 - inputs) * (-1e9)
+
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class SumOverTimeLayer(keras.layers.Layer):
+    """Custom layer to sum over time dimension."""
+
+    def call(self, inputs):
+        """Sum over axis 1."""
+        return keras.ops.sum(inputs, axis=1)
+
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class DynamicPositionIndicesLayer(keras.layers.Layer):
+    """Custom layer to generate dynamic position indices based on input shape."""
+
+    def call(self, inputs):
+        """Generate position indices matching input sequence length."""
+        batch_size = ops.shape(inputs)[0]
+        seq_len = ops.shape(inputs)[1]
+        positions = ops.tile(
+            ops.expand_dims(ops.arange(seq_len), axis=0), [batch_size, 1]
+        )
+        return positions
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], input_shape[1])
+
+
+@keras.saving.register_keras_serializable(package="ml4h")
+class AttentionMaskLayer(keras.layers.Layer):
+    """Custom layer to create attention mask from padding mask."""
+
+    def call(self, inputs):
+        """Expand mask for attention: (B, T) -> (B, 1, T)."""
+        return ops.cast(inputs[:, None, :], "bool")
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], 1, input_shape[1])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,6 +250,7 @@ class LongitudinalECGFromMetadata(Dataset):
                 lead_data["aVL"] = (lead_data["I"]  - lead_data["III"]) / 2
 
                 ecg  = np.stack([lead_data[l] for l in lead_order], axis=1).astype(np.float32)
+                ecg = ecg[:4096, :]
                 ecg -= ecg.mean(axis=0, keepdims=True)
                 ecg /= ecg.std(axis=0, keepdims=True) + 1e-6
 

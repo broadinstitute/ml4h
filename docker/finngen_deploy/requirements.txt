@@ -1,4 +1,5 @@
 numpy
+pyarrow
 pandas
 python-dateutil
 xmltodict
