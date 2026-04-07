@@ -1112,8 +1112,9 @@ def infer_transformer_on_parquet_fast(args):
 
     Outputs a parquet file with columns:
         - {label}_prediction for each model output
-        - {label} (true label value) for each target
+        - {label} (true label value, max per group, same as training signal)
         - mrn (group identifier)
+        - {sort_column} (the sort column value from the first/top entry)
         - n_rows (number of contributing rows per group)
     """
     if not args.model_file:
@@ -1189,10 +1190,11 @@ def infer_transformer_on_parquet_fast(args):
 
     # Preload arrays for fast slicing
     arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
+    arr_sort_col = df_sorted[sort_column].to_numpy()
     if input_categorical_column:
         arr_view = df_sorted['_view_id'].to_numpy(np.int32)
 
-    # MRN-level targets (max of non-NA values per group)
+    # MRN-level targets (max of non-NA values per group) - same as training signal
     arr_tgts = {
         t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
         for t in all_targets
@@ -1201,6 +1203,7 @@ def infer_transformer_on_parquet_fast(args):
     # Storage for results
     results = {
         'mrn': [],
+        sort_column: [],
         'n_rows': [],
     }
     for t in all_targets:
@@ -1264,6 +1267,7 @@ def infer_transformer_on_parquet_fast(args):
 
         # Store results
         results['mrn'].append(gid)
+        results[sort_column].append(arr_sort_col[start])  # First/top entry's sort column value
         results['n_rows'].append(n_rows)
 
         for t in all_targets:
@@ -1271,7 +1275,7 @@ def infer_transformer_on_parquet_fast(args):
             pred = outputs[t].numpy().flatten()[0]
             results[f'{t}_prediction'].append(float(pred))
 
-            # Get true label
+            # Get true label (max per group, same as training signal)
             if arr_tgts[t] is not None:
                 true_val = arr_tgts[t].get(gid, np.nan)
                 results[t].append(float(true_val) if not pd.isna(true_val) else np.nan)
