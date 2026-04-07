@@ -183,6 +183,8 @@ def run(args):
             train_transformer_on_parquet(args)
         elif "train_transformer_on_parquet_fast" == args.mode:
             train_transformer_on_parquet_fast(args)
+        elif "infer_transformer_on_parquet_fast" == args.mode:
+            infer_transformer_on_parquet_fast(args)
         elif "test" == args.mode:
             test_multimodal_multitask(args)
         elif "compare" == args.mode:
@@ -1092,6 +1094,215 @@ def train_transformer_on_parquet_fast(args):
     heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
+
+
+def infer_transformer_on_parquet_fast(args):
+    """
+    Generate inference parquet files containing all predictions from a transformer model
+    trained with train_transformer_on_parquet_fast.
+
+    Expects:
+        - args.model_file: Path to trained keras model file
+        - args.transformer_input_file: Path to input parquet/csv file
+        - args.max_samples: Maximum number of samples (groups) to process
+        - args.output_folder: Where to write the output parquet file
+        - args.id: Run identifier for output file naming
+
+    Outputs a parquet file with columns:
+        - {label}_prediction for each model output
+        - {label} (true label value) for each target
+        - mrn (group identifier)
+        - n_rows (number of contributing rows per group)
+    """
+    if not args.model_file:
+        raise ValueError("model_file is required for infer_transformer_on_parquet_fast mode")
+
+    # Load the input data
+    if args.transformer_input_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_input_file)
+    else:
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+
+    # Handle optional label file merge (same as training)
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+
+    # Build input columns (same as training)
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions + args.latent_dimensions_start)]
+
+    # Handle categorical column
+    if len(args.input_categorical_columns) == 1:
+        input_categorical_column = args.input_categorical_columns[0]
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+    else:
+        input_categorical_column = None
+        view2id = None
+
+    # Load the trained model
+    logging.info(f"Loading model from {args.model_file}")
+    keras.config.enable_unsafe_deserialization()
+    model = keras.models.load_model(args.model_file)
+
+    # Get target columns from model output names
+    all_targets = args.target_regression_columns + args.target_binary_columns
+    logging.info(f"Model output names: {model.output_names}")
+    logging.info(f"Target columns: {all_targets}")
+
+    # Sort data by group and sort column
+    AGGREGATE_COLUMN = args.group_column
+    sort_column = args.sort_column
+    sort_column_ascend = args.sort_column_ascend
+    MAX_LEN = args.transformer_max_size
+
+    df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
+                               ascending=[True, sort_column_ascend]).reset_index(drop=True)
+
+    # Build group index
+    group_index = {}
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        first = g.index[0]
+        last = g.index[-1]
+        group_index[gid] = (first, last)
+
+    # Get unique group IDs
+    group_ids = list(group_index.keys())
+    logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
+
+    # Limit samples if max_samples is set
+    if args.max_samples and args.max_samples < len(group_ids):
+        group_ids = group_ids[:args.max_samples]
+        logging.info(f"Limited to {len(group_ids)} groups based on max_samples")
+
+    # Preload arrays for fast slicing
+    arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
+    if input_categorical_column:
+        arr_view = df_sorted['_view_id'].to_numpy(np.int32)
+
+    # MRN-level targets (max of non-NA values per group)
+    arr_tgts = {
+        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
+        for t in all_targets
+    }
+
+    # Storage for results
+    results = {
+        'mrn': [],
+        'n_rows': [],
+    }
+    for t in all_targets:
+        results[f'{t}_prediction'] = []
+        results[t] = []
+
+    Feat = len(input_numeric_columns)
+
+    # Process each group
+    logging.info(f"Starting inference over {len(group_ids)} groups...")
+    for i, gid in enumerate(group_ids):
+        if (i + 1) % 1000 == 0:
+            logging.info(f"Processed {i + 1}/{len(group_ids)} groups")
+
+        span = group_index.get(gid)
+        if span is None:
+            continue
+        start, last = span
+        end = last + 1
+
+        # Get features for this group
+        num = arr_num[start:end, :]  # (T, F)
+        if input_categorical_column:
+            view = arr_view[start:end]  # (T,)
+        T = num.shape[0]
+
+        # Record number of contributing rows
+        n_rows = T
+
+        # Truncate to MAX_LEN if sequence is longer
+        if T > MAX_LEN:
+            num = num[:MAX_LEN, :]
+            if input_categorical_column:
+                view = view[:MAX_LEN]
+            T = MAX_LEN
+
+        mask = np.ones((T,), dtype=bool)  # (T,)
+
+        # Pad to MAX_LEN
+        pad_len = MAX_LEN - T
+        if pad_len > 0:
+            num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
+            mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
+            if input_categorical_column:
+                view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
+
+        # Add batch dimension
+        num = np.expand_dims(num, axis=0)  # (1, MAX_LEN, F)
+        mask = np.expand_dims(mask, axis=0)  # (1, MAX_LEN)
+        if input_categorical_column:
+            view = np.expand_dims(view, axis=0)  # (1, MAX_LEN)
+
+        # Prepare input dict
+        if input_categorical_column:
+            inputs = {'view': view, 'num': num, 'mask': mask}
+        else:
+            inputs = {'num': num, 'mask': mask}
+
+        # Run inference
+        outputs = model(inputs, training=False)
+
+        # Store results
+        results['mrn'].append(gid)
+        results['n_rows'].append(n_rows)
+
+        for t in all_targets:
+            # Get prediction (flatten from (1, 1) to scalar)
+            pred = outputs[t].numpy().flatten()[0]
+            results[f'{t}_prediction'].append(float(pred))
+
+            # Get true label
+            if arr_tgts[t] is not None:
+                true_val = arr_tgts[t].get(gid, np.nan)
+                results[t].append(float(true_val) if not pd.isna(true_val) else np.nan)
+            else:
+                results[t].append(np.nan)
+
+    logging.info(f"Completed inference over {len(group_ids)} groups")
+
+    # Create output dataframe
+    output_df = pd.DataFrame(results)
+
+    # Ensure output directory exists
+    os.makedirs(f'{args.output_folder}/{args.id}', exist_ok=True)
+
+    # Save to parquet
+    output_path = f'{args.output_folder}/{args.id}/predictions_{args.id}.pq'
+    output_df.to_parquet(output_path, index=False)
+    logging.info(f"Saved predictions to {output_path}")
+
+    # Log summary statistics
+    logging.info(f"\n=== Inference Summary ===")
+    logging.info(f"Total samples: {len(output_df)}")
+    logging.info(f"Columns: {list(output_df.columns)}")
+    for t in all_targets:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        logging.info(f"\n{t}:")
+        logging.info(f"  Predictions - mean: {output_df[pred_col].mean():.4f}, std: {output_df[pred_col].std():.4f}")
+        valid_true = output_df[true_col].dropna()
+        if len(valid_true) > 0:
+            logging.info(f"  True labels - mean: {valid_true.mean():.4f}, std: {valid_true.std():.4f}, n_valid: {len(valid_true)}")
+        else:
+            logging.info(f"  True labels - no valid values")
 
 
 def datetime_to_float(d):
