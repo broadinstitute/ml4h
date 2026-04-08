@@ -31,7 +31,8 @@ Infer mode:
         --encoder_layer     activation_18 \\
         --longitudinal_path longitudinal_ecg2age_standalone.keras \\
         --output            predictions.csv \\
-        --batch_size        8
+        --batch_size        8 \\
+        --delta_consider
 ──────────────────────────────────────────────────────────────────────────────
 """
 
@@ -216,6 +217,13 @@ class LongitudinalECGFromMetadata(Dataset):
             print(f"⚠️  Dropping {missing} rows with missing ECG files")
         df = df.dropna(subset=["path"])
 
+        max_age_per_person = df.groupby("FINNGENID")["EVENT_AGE"].transform("max")
+        df["age_delta"] = (max_age_per_person - df["EVENT_AGE"]) * 365.25  # days from most recent ECG
+        age_delta_mean = 2135.022283470709#df["age_delta"].mean()
+        age_delta_std = 2361.7968570069415#df["age_delta"].std()
+        df["age_delta_norm"] = (df["age_delta"] - age_delta_mean) / age_delta_std
+
+
         self.groups      = df.groupby("FINNGENID")
         self.patient_ids = list(self.groups.groups.keys())
         print(f"Loaded {len(self.patient_ids)} patients.")
@@ -228,8 +236,9 @@ class LongitudinalECGFromMetadata(Dataset):
         group = self.groups.get_group(pid).sort_values("timestamp")
         group = group.tail(self.max_timestamps)
 
-        arrays, timestamps, event_ages = [], [], []
 
+        arrays, timestamps, event_ages, age_deltas = [], [], [], []
+        
         for _, row in group.iterrows():
             try:
                 with open(row["path"], "rb") as fd:
@@ -260,6 +269,7 @@ class LongitudinalECGFromMetadata(Dataset):
                 arrays.append(ecg)
                 timestamps.append(row["timestamp"])
                 event_ages.append(row["EVENT_AGE"])
+                age_deltas.append(row["age_delta_norm"])
 
             except Exception as e:
                 print(f"⚠️  Failed to parse {row['path']}: {e}")
@@ -268,6 +278,7 @@ class LongitudinalECGFromMetadata(Dataset):
             "patient_id":  pid,
             "timestamps":  timestamps,   # list[str], length = num valid ECGs
             "event_ages":  event_ages,   # list[float]
+            "age_deltas":  age_deltas,   # list[float]
             "ecgs":        arrays,       # list of np.float32 [5000, 12]
         }
 
@@ -288,14 +299,21 @@ def collate_longitudinal(batch, fixed_max_seq_len=50):
     patient_ids      = []
     timestamps_list  = []
     event_ages_list  = []
+    age_deltas_list  = []
 
     for item in batch:
         ecgs = item["ecgs"][-max_seq:]
         timestamps = item["timestamps"][-max_seq:]
         event_ages = item["event_ages"][-max_seq:]
+        age_deltas = item["age_deltas"][-max_seq:]
+
+
 
         n = len(ecgs)
         pad = max_seq - n
+
+        #pad = max_seq - len(age_deltas)
+        age_deltas = age_deltas + [0.0] * pad
 
         padded = ecgs + [np.zeros_like(ecgs[0]) for _ in range(pad)]
         ecgs_padded.append(torch.tensor(np.stack(padded)).float())
@@ -307,6 +325,7 @@ def collate_longitudinal(batch, fixed_max_seq_len=50):
         patient_ids.append(item["patient_id"])
         timestamps_list.append(timestamps)
         event_ages_list.append(event_ages)
+        age_deltas_list.append(age_deltas)
 
     return (
         torch.stack(ecgs_padded),   # [B, 50, 5000, 12]
@@ -314,6 +333,7 @@ def collate_longitudinal(batch, fixed_max_seq_len=50):
         patient_ids,
         timestamps_list,
         event_ages_list,
+        age_deltas_list
     )
 # ─────────────────────────────────────────────────────────────────────────────
 # Model loading helper
@@ -403,7 +423,7 @@ def run_encode(encoder, loader, output_path, flush_every=100):
         if batch is None:
             continue
 
-        ecgs, masks, patient_ids, timestamps_list, event_ages_list = batch
+        ecgs, masks, patient_ids, timestamps_list, event_ages_list, age_deltas_list = batch
         B  = ecgs.shape[0]
         L  = ecgs.shape[1]
         flat_np = ecgs.reshape(B * L, *ecgs.shape[2:]).numpy().astype(np.float32)
@@ -421,12 +441,14 @@ def run_encode(encoder, loader, output_path, flush_every=100):
             pid        = patient_ids[i]
             timestamps = timestamps_list[i]
             ages       = event_ages_list[i]
+            age_deltas = age_deltas_list[i]
 
             for v in range(seq_len):
                 row = {
                     "patient_id":  pid,
                     "timestamp":   timestamps[v] if v < len(timestamps) else None,
                     "event_age":   float(ages[v]) if v < len(ages) else None,
+                    "age_delta":   float(age_deltas[v]) if v < len(age_deltas) else None,
                     "visit_index": v,
                 }
                 row.update({latent_cols[d]: float(feat[i, v, d]) for d in range(D)})
@@ -444,7 +466,7 @@ def run_encode(encoder, loader, output_path, flush_every=100):
 
     total = pd.read_parquet(output_path).shape[0]
     print(f"\n✅  Encode done.  {total} rows → {output_path}")
-    print(f"   Columns: patient_id, timestamp, event_age, visit_index, "
+    print(f"   Columns: patient_id, timestamp, event_age, age_delta, visit_index, "
           f"latent_0 … latent_{D-1}")
 
 
@@ -468,8 +490,7 @@ def extract_prediction(model_out, output_key):
 
 
 def run_infer(full_model, encoder, long_model, loader,
-              output_path, output_key, mean_norm, std_norm,
-              flush_every=100):
+              output_path, output_key, mean_norm, std_norm, use_delta, flush_every=100):
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     header_written = False
     buffer         = []
@@ -478,14 +499,23 @@ def run_infer(full_model, encoder, long_model, loader,
         if batch is None:
             continue
 
-        ecgs, masks, patient_ids, timestamps_list, event_ages_list = batch
+        ecgs, masks, patient_ids, timestamps_list, event_ages_list, age_deltas_list  = batch
         B  = ecgs.shape[0]
         L  = ecgs.shape[1]
+
+        # Age delta
+        age_delta_np = np.array(age_deltas_list, dtype=np.float32)
+        age_delta_np = age_delta_np[..., np.newaxis]
 
         # Encode all visits — auto-detect pooling
         flat_np  = ecgs.reshape(B * L, *ecgs.shape[2:]).numpy().astype(np.float32)
         feat     = encode_batch(encoder, flat_np).reshape(B, L, -1).astype(np.float32)
         mask_np  = masks.numpy().astype(np.float32)
+
+        if use_delta:
+            feat = np.concatenate([age_delta_np, feat], axis=-1)  # (B, L, 513)
+
+
 
         # Longitudinal prediction for whole batch
         long_out        = long_model.predict(
@@ -502,6 +532,7 @@ def run_infer(full_model, encoder, long_model, loader,
             #single_norm   = extract_prediction(single_out, output_key)
             latest_age    = event_ages_list[i][seq_len - 1]
             latest_ts     = timestamps_list[i][seq_len - 1] if timestamps_list[i] else None
+            latest_delta  = age_deltas_list[i][seq_len - 1] if age_deltas_list[i] else None
 
             row_long_out = {k: float(v[i].squeeze()) for k, v in long_out_np.items()}
             
@@ -510,6 +541,7 @@ def run_infer(full_model, encoder, long_model, loader,
                 "latest_timestamp": latest_ts,
                 "num_ecgs":         seq_len,
                 "true_age":         latest_age,
+                "age_delta":        latest_delta,
                 **row_long_out,
                 #"pred_single_norm": single_norm,
                 #"pred_single":      denorm(single_norm, mean_norm, std_norm),
@@ -574,6 +606,8 @@ def main():
     parser.add_argument("--batch_size",         type=int, default=8)
     parser.add_argument("--max_seq_len",        type=int, default=50)
     parser.add_argument("--flush_every",        type=int, default=100)
+    # ── flags ─────────────────────────────────────────────────────
+    parser.add_argument("--delta_consider", action="store_true")
     args = parser.parse_args()
 
     if args.mode == "infer" and args.longitudinal_path is None:
@@ -614,7 +648,8 @@ def main():
             output_key=args.output_key,
             mean_norm=args.mean_norm,
             std_norm=args.std_norm,
-            flush_every=args.flush_every,
+            use_delta=args.delta_consider,
+            flush_every=args.flush_every
         )
 
 
