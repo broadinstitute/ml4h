@@ -49,6 +49,7 @@ from ml4h.tensor_generators import (
     BATCH_PATHS_INDEX,
     df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
     compute_binary_class_prevalences,
+    _sample_csv_to_set,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -1183,6 +1184,12 @@ def infer_transformer_on_parquet_fast(args):
     group_ids = list(group_index.keys())
     logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
 
+    # Filter to only groups in test_csv if provided
+    if args.test_csv:
+        test_mrns = _sample_csv_to_set(args.test_csv)
+        group_ids = [gid for gid in group_ids if str(gid) in test_mrns]
+        logging.info(f"Filtered to {len(group_ids)} groups based on test_csv")
+
     # Limit samples if max_samples is set
     if args.max_samples and args.max_samples < len(group_ids):
         group_ids = group_ids[:args.max_samples]
@@ -1404,6 +1411,12 @@ def infer_trajectory_transformer_on_parquet_fast(args):
     # Get unique group IDs
     group_ids = list(group_index.keys())
     logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
+
+    # Filter to only groups in test_csv if provided
+    if args.test_csv:
+        test_mrns = _sample_csv_to_set(args.test_csv)
+        group_ids = [gid for gid in group_ids if str(gid) in test_mrns]
+        logging.info(f"Filtered to {len(group_ids)} groups based on test_csv")
 
     # Preload arrays for fast slicing
     arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
