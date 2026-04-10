@@ -1240,11 +1240,11 @@ def infer_transformer_on_parquet_fast(args):
         # Record number of contributing rows
         n_rows = T
 
-        # Truncate to MAX_LEN if sequence is longer
+        # Truncate to MAX_LEN if sequence is longer (keep most recent, same as training)
         if T > MAX_LEN:
-            num = num[:MAX_LEN, :]
+            num = num[-MAX_LEN:, :]
             if input_categorical_column:
-                view = view[:MAX_LEN]
+                view = view[-MAX_LEN:]
             T = MAX_LEN
 
         mask = np.ones((T,), dtype=bool)  # (T,)
