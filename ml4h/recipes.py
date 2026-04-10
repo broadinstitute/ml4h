@@ -1251,12 +1251,12 @@ def infer_transformer_on_parquet_fast(args):
         mask = np.ones((T,), dtype=bool)  # (T,)
 
         # Pad to MAX_LEN
-        # pad_len = MAX_LEN - T
-        # if pad_len > 0:
-        #     num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
-        #     mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
-        #     if input_categorical_column:
-        #         view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
+        pad_len = MAX_LEN - T
+        if pad_len > 0:
+            num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
+            mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
+            if input_categorical_column:
+                view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
 
 
         # Add batch dimension
