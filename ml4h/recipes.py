@@ -1248,10 +1248,7 @@ def infer_transformer_on_parquet_fast(args):
                 view = view[-MAX_LEN:]
             T = MAX_LEN
 
-        # Reverse order along time axis to match training
-        # num = num[::-1, :]
-        # if input_categorical_column:
-        #     view = view[::-1]
+
 
         mask = np.ones((T,), dtype=bool)  # (T,)
 
@@ -1263,6 +1260,10 @@ def infer_transformer_on_parquet_fast(args):
             if input_categorical_column:
                 view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
 
+        num = num[::-1, :]
+        if input_categorical_column:
+            view = view[::-1]
+            
         # Add batch dimension
         num = np.expand_dims(num, axis=0)  # (1, MAX_LEN, F)
         mask = np.expand_dims(mask, axis=0)  # (1, MAX_LEN)
