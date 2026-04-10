@@ -1201,9 +1201,9 @@ def infer_transformer_on_parquet_fast(args):
     if input_categorical_column:
         arr_view = df_sorted['_view_id'].to_numpy(np.int32)
 
-    # MRN-level targets (max of non-NA values per group) - same as training signal
+    # Preload target arrays - training uses last row's label value per group
     arr_tgts = {
-        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
+        t: (df_sorted[t].to_numpy() if t in df_sorted.columns else None)
         for t in all_targets
     }
 
@@ -1282,9 +1282,9 @@ def infer_transformer_on_parquet_fast(args):
             pred = outputs[t].numpy().flatten()[0]
             results[f'{t}_prediction'].append(float(pred))
 
-            # Get true label (max per group, same as training signal)
+            # Get true label (last row's value per group, same as training signal)
             if arr_tgts[t] is not None:
-                true_val = arr_tgts[t].get(gid, np.nan)
+                true_val = arr_tgts[t][last]
                 results[t].append(float(true_val) if not pd.isna(true_val) else np.nan)
             else:
                 results[t].append(np.nan)
