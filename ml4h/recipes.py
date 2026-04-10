@@ -1249,9 +1249,9 @@ def infer_transformer_on_parquet_fast(args):
             T = MAX_LEN
 
         # Reverse order along time axis to match training
-        num = num[::-1, :]
-        if input_categorical_column:
-            view = view[::-1]
+        # num = num[::-1, :]
+        # if input_categorical_column:
+        #     view = view[::-1]
 
         mask = np.ones((T,), dtype=bool)  # (T,)
 
