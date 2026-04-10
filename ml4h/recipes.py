@@ -1204,7 +1204,7 @@ def infer_transformer_on_parquet_fast(args):
 
     # MRN-level targets (max of non-NA values per group)
     arr_tgts = {
-        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
+        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].last() if t in df_sorted.columns else None)
         for t in all_targets
     }
 
@@ -1243,20 +1243,20 @@ def infer_transformer_on_parquet_fast(args):
 
         # Truncate to MAX_LEN if sequence is longer (keep most recent, same as training)
         if T > MAX_LEN:
-            num = num[-MAX_LEN:, :]
+            num = num[:MAX_LEN, :]
             if input_categorical_column:
-                view = view[-MAX_LEN:]
+                view = view[:MAX_LEN]
             T = MAX_LEN
 
         mask = np.ones((T,), dtype=bool)  # (T,)
 
         # Pad to MAX_LEN
-        pad_len = MAX_LEN - T
-        if pad_len > 0:
-            num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
-            mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
-            if input_categorical_column:
-                view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
+        # pad_len = MAX_LEN - T
+        # if pad_len > 0:
+        #     num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
+        #     mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
+        #     if input_categorical_column:
+        #         view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
 
 
         # Add batch dimension
