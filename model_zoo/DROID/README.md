@@ -26,10 +26,12 @@ git clone https://github.com/broadinstitute/ml4h.git
 git clone https://github.com/broadinstitute/ml4ht_data_source.git
 ```
 
-For convenience, we provide a docker image containing additional dependencies:
+For convenience, we provide a DROID docker image layered on top of the official
+`ml4h` TensorFlow 2.19 image:
 ```commandline
+docker build -f docker/droid/Dockerfile -t ml4h-droid:tf2.19 .
 docker run -it --gpus all --rm -v {PARENT_DIRECTORY_OF_REPOS} -v {OPTIONAL_DATA_DIRECTORY} \
-us-central1-docker.pkg.dev/broad-ml4cvd/droid/droid:0.1 /bin/bash
+ml4h-droid:tf2.19 /bin/bash
 ```
 
 Within the docker container, install `ml4ht`:

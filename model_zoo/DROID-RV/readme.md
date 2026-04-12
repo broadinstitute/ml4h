@@ -4,9 +4,9 @@
 
 This is a simple example script demonstrating how to load and run the DROID-RV and DROID-RVEF models. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code.
 
-1. Download DROID docker image. Note: docker image is not compatible with Apple Silicon.
+1. Build the DROID docker image from the official `ml4h` TensorFlow 2.19 image.
 
-`docker pull alalusim/droid:latest`
+`docker build -f docker/droid/Dockerfile -t ml4h-droid:tf2.19 .`
 
 2.  Pull github repo, including DROID-RV model checkpoints stored using git lfs.
 
@@ -17,9 +17,9 @@ git lfs pull --include ml4h/model_zoo/DROID-RV/droid_rvef_checkpoint/*
 git lfs pull --include ml4h/model_zoo/DROID-RV/movinet_a2_base/*
 ```
 
-3. Run docker image while mounting ml4h directory and run example inference script.
+3. Run the DROID image while mounting the `ml4h` directory and run the example inference script.
 
-`docker run -it -v {PATH TO CLONED ML4H DIRECTORY}:/ml4h/ alalusim/droid:latest`
+`docker run -it --rm -v {PATH TO CLONED ML4H DIRECTORY}:/ml4h/ ml4h-droid:tf2.19`
 
 ```
 cd /ml4h/model_zoo/DROID-RV/

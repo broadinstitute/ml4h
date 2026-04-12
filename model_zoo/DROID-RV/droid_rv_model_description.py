@@ -1,6 +1,10 @@
 import numpy as np
 import tensorflow as tf
-from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
+
+try:
+    from official.projects.movinet.modeling import movinet, movinet_model
+except ImportError:
+    from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
 
 hidden_units = 256
 dropout_rate = 0.5

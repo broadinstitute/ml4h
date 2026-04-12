@@ -2,7 +2,10 @@ import numpy as np
 import tensorflow as tf
 
 # from official.common import flags as tfm_flags
-from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
+try:
+    from official.projects.movinet.modeling import movinet, movinet_model
+except ImportError:
+    from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
 
 learning_rate = 0.0001
 hidden_units = 256
