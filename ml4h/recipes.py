@@ -1204,7 +1204,7 @@ def infer_transformer_on_parquet_fast(args):
 
     # MRN-level targets (max of non-NA values per group)
     arr_tgts = {
-        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].last() if t in df_sorted.columns else None)
+        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
         for t in all_targets
     }
 
