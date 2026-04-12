@@ -594,6 +594,78 @@ def _sample_csv_to_set(sample_csv: Optional[str] = None) -> Union[None, Set[str]
     return set(sample_ids)
 
 
+def split_group_ids_from_dataframe(
+    df_sorted: pd.DataFrame,
+    aggregate_column: str,
+    train_csv: Optional[str] = None,
+    valid_csv: Optional[str] = None,
+    test_csv: Optional[str] = None,
+) -> Tuple[List[Any], List[Any], List[Any]]:
+    group_ids = df_sorted[aggregate_column].drop_duplicates().to_list()
+
+    logging.info(f"Found {len(group_ids)} groups (unique {aggregate_column}s)")
+    logging.info(f"Found {len(group_ids)} unique MRNs in dataframe")
+
+    if train_csv or valid_csv or test_csv:
+        train_mrns = _sample_csv_to_set(train_csv) if train_csv else set()
+        valid_mrns = _sample_csv_to_set(valid_csv) if valid_csv else set()
+        test_mrns = _sample_csv_to_set(test_csv) if test_csv else set()
+
+        logging.info(
+            f"CSV files contain: {len(train_mrns)} train MRNs, {len(valid_mrns)} valid MRNs, {len(test_mrns)} test MRNs",
+        )
+
+        if group_ids:
+            logging.info(f"Sample dataframe MRNs: {list(group_ids[:3])}")
+        if train_mrns:
+            logging.info(f"Sample train CSV MRNs: {list(list(train_mrns)[:3])}")
+
+        train_mrn_set = set()
+        val_mrn_set = set()
+        test_mrn_set = set()
+
+        for mrn in group_ids:
+            mrn_str = str(mrn)
+            if train_mrns and mrn_str in train_mrns:
+                train_mrn_set.add(mrn)
+            elif valid_mrns and mrn_str in valid_mrns:
+                val_mrn_set.add(mrn)
+            elif test_mrns and mrn_str in test_mrns:
+                test_mrn_set.add(mrn)
+
+        logging.info(
+            f"Matched MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test",
+        )
+    else:
+        logging.info("No CSV files provided. Randomly splitting MRNs: 80% train, 4% valid, 16% test")
+
+        train_mrns_arr, temp_mrns = train_test_split(
+            group_ids, test_size=0.2, random_state=42,
+        )
+        val_mrns_arr, test_mrns_arr = train_test_split(
+            temp_mrns, test_size=0.8, random_state=42,
+        )
+
+        train_mrn_set = set(train_mrns_arr)
+        val_mrn_set = set(val_mrns_arr)
+        test_mrn_set = set(test_mrns_arr)
+
+        logging.info(
+            f"Random split MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test",
+        )
+
+    train_ids, val_ids, test_ids = [], [], []
+    for gid in group_ids:
+        if gid in train_mrn_set:
+            train_ids.append(gid)
+        elif gid in val_mrn_set:
+            val_ids.append(gid)
+        elif gid in test_mrn_set:
+            test_ids.append(gid)
+
+    return train_ids, val_ids, test_ids
+
+
 def get_train_valid_test_paths(
         tensors: str,
         sample_csv: str,
@@ -1182,84 +1254,16 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
-    # ----- Train/Val/Test split by MRN based on CSV files -----
-    group_ids = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
-
-    # Log number of groups found
-    logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
-
-    # Get unique MRNs from the dataframe
-    unique_mrns = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
-    logging.info(f"Found {len(unique_mrns)} unique MRNs in dataframe")
-
-    # Check if CSV files are provided
-    if train_csv or valid_csv or test_csv:
-        # Read MRNs from CSV files
-        train_mrns = _sample_csv_to_set(train_csv) if train_csv else set()
-        valid_mrns = _sample_csv_to_set(valid_csv) if valid_csv else set()
-        test_mrns = _sample_csv_to_set(test_csv) if test_csv else set()
-
-        logging.info(f"CSV files contain: {len(train_mrns)} train MRNs, {len(valid_mrns)} valid MRNs, {len(test_mrns)} test MRNs")
-
-        # Log sample MRNs for debugging
-        if len(unique_mrns) > 0:
-            logging.info(f"Sample dataframe MRNs: {list(unique_mrns[:3])}")
-        if len(train_mrns) > 0:
-            logging.info(f"Sample train CSV MRNs: {list(list(train_mrns)[:3])}")
-
-        # Split MRNs into train/val/test based on CSV membership
-        train_mrn_set = set()
-        val_mrn_set = set()
-        test_mrn_set = set()
-
-        for mrn in unique_mrns:
-            mrn_str = str(mrn)
-            if train_mrns and mrn_str in train_mrns:
-                train_mrn_set.add(mrn)
-            elif valid_mrns and mrn_str in valid_mrns:
-                val_mrn_set.add(mrn)
-            elif test_mrns and mrn_str in test_mrns:
-                test_mrn_set.add(mrn)
-
-        logging.info(f"Matched MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test")
-    else:
-        # No CSV files provided - randomly split MRNs: 80% train, 10% valid, 10% test
-        logging.info("No CSV files provided. Randomly splitting MRNs: 80% train, 4% valid, 16% test")
-
-        from sklearn.model_selection import train_test_split
-
-        # First split: 80% train, 20% temp (for valid+test)
-        train_mrns_arr, temp_mrns = train_test_split(
-            unique_mrns, test_size=0.2, random_state=42
-        )
-
-        # Second split: split temp into 50% valid, 50% test (each 10% of total)
-        val_mrns_arr, test_mrns_arr = train_test_split(
-            temp_mrns, test_size=0.8, random_state=42
-        )
-
-        train_mrn_set = set(train_mrns_arr)
-        val_mrn_set = set(val_mrns_arr)
-        test_mrn_set = set(test_mrns_arr)
-
-        logging.info(f"Random split MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test")
-
-    # Now map group_ids to train/val/test based on their MRN
-    # Build a mapping from group_id to mrn
-    group_to_mrn = df_sorted.groupby(AGGREGATE_COLUMN)[AGGREGATE_COLUMN].first().to_dict()
-
-    train_ids = set()
-    val_ids = set()
-    test_ids = set()
-
-    for gid in group_ids:
-        mrn = group_to_mrn.get(gid)
-        if mrn in train_mrn_set:
-            train_ids.add(gid)
-        elif mrn in val_mrn_set:
-            val_ids.add(gid)
-        elif mrn in test_mrn_set:
-            test_ids.add(gid)
+    train_ids, val_ids, test_ids = split_group_ids_from_dataframe(
+        df_sorted,
+        AGGREGATE_COLUMN,
+        train_csv=train_csv,
+        valid_csv=valid_csv,
+        test_csv=test_csv,
+    )
+    train_id_lookup = set(train_ids)
+    val_id_lookup = set(val_ids)
+    test_id_lookup = set(test_ids)
 
     # Log training, validation, and test set sizes
     train_groups = len(train_ids)
@@ -1271,11 +1275,11 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     val_rows = 0
     test_rows = 0
     for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
-        if gid in train_ids:
+        if gid in train_id_lookup:
             train_rows += len(g)
-        elif gid in val_ids:
+        elif gid in val_id_lookup:
             val_rows += len(g)
-        elif gid in test_ids:
+        elif gid in test_id_lookup:
             test_rows += len(g)
 
     logging.info(f"Training set: {train_groups} groups, {train_rows} total rows")
@@ -1288,11 +1292,11 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             raise ValueError(
                 f"Training set is empty! No MRNs from CSV files matched the dataframe. "
                 f"Check that MRN formats match between CSV and dataframe. "
-                f"Dataframe has {len(unique_mrns)} unique MRNs."
+                f"Dataframe has {len(train_ids) + len(val_ids) + len(test_ids)} unique MRNs."
             )
         else:
             raise ValueError(
-                f"Training set is empty! Dataframe has {len(unique_mrns)} unique MRNs but none were assigned to training."
+                f"Training set is empty! Dataframe has {len(train_ids) + len(val_ids) + len(test_ids)} unique MRNs but none were assigned to training."
             )
 
     Feat = len(INPUT_NUMERIC_COLS)

@@ -51,6 +51,7 @@ from ml4h.tensor_generators import (
     df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
     compute_binary_class_prevalences,
     _sample_csv_to_set,
+    split_group_ids_from_dataframe,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -1165,6 +1166,21 @@ def infer_transformer_on_parquet_fast(args):
     logging.info(f"Model output names: {model.output_names}")
     logging.info(f"Target columns: {all_targets}")
 
+    def _select_groups_for_repeated_batched_eval(group_ids, batch_size, steps):
+        if steps is None:
+            return list(group_ids)
+        if not group_ids or batch_size <= 0 or steps <= 0:
+            return []
+
+        batches = [
+            group_ids[i:i + batch_size]
+            for i in range(0, len(group_ids), batch_size)
+        ]
+        selected = []
+        for step_idx in range(int(steps)):
+            selected.extend(batches[step_idx % len(batches)])
+        return selected
+
     # Sort data by group and sort column
     AGGREGATE_COLUMN = args.group_column
     sort_column = args.sort_column
@@ -1174,6 +1190,14 @@ def infer_transformer_on_parquet_fast(args):
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
+    _, _, test_group_ids = split_group_ids_from_dataframe(
+        df_sorted,
+        AGGREGATE_COLUMN,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
+    )
+
     # Build group index
     group_index = {}
     for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
@@ -1181,20 +1205,26 @@ def infer_transformer_on_parquet_fast(args):
         last = g.index[-1]
         group_index[gid] = (first, last)
 
-    # Get unique group IDs
-    group_ids = list(group_index.keys())
-    logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
-
-    # Filter to only groups in test_csv if provided
-    if args.test_csv:
-        test_mrns = _sample_csv_to_set(args.test_csv)
-        group_ids = [gid for gid in group_ids if str(gid) in test_mrns]
-        logging.info(f"Filtered to {len(group_ids)} groups based on test_csv")
+    # Match the exact evaluation cohort used by training.
+    group_ids = test_group_ids
+    logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
 
     # Limit samples if max_samples is set
     if args.max_samples and args.max_samples < len(group_ids):
         group_ids = group_ids[:args.max_samples]
         logging.info(f"Limited to {len(group_ids)} groups based on max_samples")
+
+    if args.test_steps is not None:
+        original_group_count = len(group_ids)
+        group_ids = _select_groups_for_repeated_batched_eval(
+            group_ids,
+            batch_size=args.batch_size,
+            steps=args.test_steps,
+        )
+        logging.info(
+            f"Expanded {original_group_count} test groups to {len(group_ids)} inference rows "
+            f"to match repeated batched evaluation with test_steps={args.test_steps}",
+        )
 
     # Preload arrays for fast slicing
     arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
