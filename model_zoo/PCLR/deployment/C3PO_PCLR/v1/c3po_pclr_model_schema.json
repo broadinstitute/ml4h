@@ -1,0 +1,16 @@
+{
+  "inputs": [ 
+    {
+      "name": "ecg",
+      "shape": [2500, 12],
+      "dtype": "FP32"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "output_0",
+      "shape": [320],
+      "dtype": "FP32"
+    },
+  ]
+}
