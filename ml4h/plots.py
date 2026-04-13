@@ -3561,10 +3561,12 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         im = plt.imshow(pivot_df.values, cmap=magma_truncated, aspect="auto")
 
         for i in range(pivot_df.shape[0]):
+            row_max = pivot_df.iloc[i].max(skipna=True)
             for j in range(pivot_df.shape[1]):
                 value = pivot_df.iloc[i, j]
                 if not pd.isna(value):
-                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14, fontweight="bold")
+                    fontweight = "bold" if not pd.isna(row_max) and value == row_max else "normal"
+                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14, fontweight=fontweight)
 
         x_labels = [col.upper() if len(col) <= 4 else col for col in pivot_df.columns]
         y_labels = [idx.upper() if len(idx) <= 4 else idx for idx in pivot_df.index]
