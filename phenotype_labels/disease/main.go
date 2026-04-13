@@ -25,6 +25,7 @@ var (
 )
 
 var materializedDB string
+var useGPData bool
 
 func main() {
 	defer STDOUT.Flush()
@@ -36,6 +37,7 @@ func main() {
 	var displayQuery bool
 	var override bool
 	var diseaseName string
+	
 
 	flag.StringVar(&BQ.Project, "project", "", "Google Cloud project you want to use for billing purposes only")
 	flag.StringVar(&BQ.Database, "database", "", "BigQuery source database name (note: must be formatted as project.database, e.g., broad-ml4cvd.ukbb7089_201904)")
@@ -43,6 +45,7 @@ func main() {
 	flag.StringVar(&materializedDB, "materialized", "broad-ml4cvd.ukbb7089_201904", "project.database storing materialized view tables")
 	flag.BoolVar(&displayQuery, "display-query", false, "Display the constructed query and exit?")
 	flag.BoolVar(&override, "override", false, "Force run, even if this tool thinks your tabfile is inadequate?")
+	flag.BoolVar(&useGPData, "use-gp-data", false, "Use general practitioner data? Note that materialized_gp_dates table must first be created. ")
 	flag.StringVar(&diseaseName, "disease", "", "If not specified, the tabfile will be parsed and become the disease name.")
 	flag.Parse()
 
@@ -62,7 +65,7 @@ func main() {
 			diseaseName = strings.Join(parts[0:len(parts)-1], ".")
 		}
 	}
-
+    
 	log.Println("Processing disease", diseaseName)
 
 	missingFields, err := tabs.CheckSensibility()
@@ -80,7 +83,7 @@ func main() {
 	}
 	defer BQ.Client.Close()
 
-	query, err := BuildQuery(BQ, tabs, displayQuery)
+	query, err := BuildQuery(BQ, tabs, displayQuery, useGPData)
 	if err != nil {
 		log.Fatalln(diseaseName, err)
 	}

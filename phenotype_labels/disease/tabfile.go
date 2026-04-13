@@ -22,13 +22,9 @@ type TabEntry struct {
 func (t TabEntry) FormattedValues() []string {
 	out := make([]string, 0, len(t.Values))
 
-	// HESIN is special-cased to exclude "." (So K41.2 becomes K412)
-	if IsHesin(t.FieldID) {
-		for _, v := range t.Values {
-			out = append(out, strings.Replace(v, ".", "", -1))
-		}
-	} else {
-		out = append(out, t.Values...)
+	// ICD codes are formatted to exclude "." (So K41.2 becomes K412)
+	for _, v := range t.Values {
+		out = append(out, strings.Replace(v, ".", "", -1))
 	}
 
 	// Every field will get leading and trailing spaces trimmed
