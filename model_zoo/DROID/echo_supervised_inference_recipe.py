@@ -7,6 +7,7 @@ import sys
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import keras
 
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from echo_defines import category_dictionaries
@@ -167,9 +168,12 @@ def main(
         checkpoint_dir=movinet_chkp_dir,
     )
 
-    backbone_output = backbone.layers[-1].output[0]
-    flatten = tf.keras.layers.Flatten()(backbone_output)
-    encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
+    #backbone_output = backbone.layers[-1].output[0]
+    #flatten = tf.keras.layers.Flatten()(backbone_output)
+    #encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
+    inputs = keras.Input(shape=(None, None, None, 3))
+    outputs = keras.layers.Flatten()(inputs)
+    encoder = keras.Model(inputs=[inputs], outputs=[outputs])
 
     # ---------- Adaptation for regression + classification ---------- #
     # Organize regressor/classifier inputs:
@@ -181,7 +185,9 @@ def main(
 
     model_plus_head = create_regressor_classifier(encoder, **func_args)
     # ---------------------------------------------------------------- #
-    model_plus_head.load_weights(pretrained_chkp_dir)
+    #model_plus_head.load_weights(pretrained_chkp_dir)
+    ckpt = tf.train.Checkpoint(model=model_plus_head)
+    ckpt.restore(pretrained_chkp_dir).expect_partial()
 
     vois = '_'.join(selected_views)
     ufm = 'conv7'
