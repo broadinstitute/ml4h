@@ -10,6 +10,6 @@ INPUT_TENSORS_DIR=$1
 NUMBER_OF_THREADS=$2
 
 
-find ${INPUT_TENSORS_DIR}/*.hd5 | \
+find ${INPUT_TENSORS_DIR} | grep ".hd5" | \
     xargs -P ${NUMBER_OF_THREADS} -I {} \
         bash -c "h5dump -n {} | (grep -q 'HDF5 \"{}\"' && echo 'OK - {}' || echo 'BAD - {}')"
