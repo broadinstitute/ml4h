@@ -201,6 +201,15 @@ def get_ecg_from_HL7(filepath):
                 waveform.append(line.split("|")[5].split("^"))
         return waveform
 
+def parse_ecg_primary(filepath):
+    with open(filepath, "rb") as fd:
+        waveform = xmltodict.parse(fd.read().decode("utf-8"))
+
+    return waveform
+
+
+
+
 
 def resolve_ecg_path(basepath, finngenid, measid):
     basename    = f"{finngenid}_{measid}"
