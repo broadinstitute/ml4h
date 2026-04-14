@@ -183,6 +183,24 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
     byte_array     = struct.unpack(unpack_symbols, arr)
     return np.array(byte_array)[::dwnsmpl]
 
+def get_ecg_from_HL7(filepath):
+    with open(filepath, "rt") as ecg:
+        line = ecg.readline()
+        field4 = line.split("|")[3]
+        while field4 != "CHN":
+            line = ecg.readline()
+            field4 = line.split("|")[3]
+        channels = line.split("|")[5].split("~")
+        waveform = []
+        waveform.append(channels)
+        while line.startswith("OBX"):
+            line = ecg.readline()
+            if not line:
+                break
+            else:
+                waveform.append(line.split("|")[5].split("^"))
+        return waveform
+
 
 def resolve_ecg_path(basepath, finngenid, measid):
     basename    = f"{finngenid}_{measid}"
