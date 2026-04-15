@@ -60,10 +60,12 @@ class MoviNetEncoder(Block):
         self.tensor_map = tensor_map
         if not self.can_apply():
             return
+
         self.base_model = movinet.Movinet(model_id='a2')
-        self.base_model.build([None, 16, 224, 224, 3])
+
+        # Initialize weights by calling once; do not manually build with shape list.
         dummy_input = tf.random.uniform([1, 16, 224, 224, 3])
-        backbone_output = self.base_model(dummy_input)
+        _ = self.base_model(dummy_input, training=False)
 
         self.base_model.trainable = pretrain_trainable
 
@@ -73,9 +75,21 @@ class MoviNetEncoder(Block):
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         if not self.can_apply():
             return x
-        inputs = self.base_model.input
-        y = self.base_model(x)
-        encoding = tf.keras.layers.Flatten()(y[0]['head'])
+
+        y = self.base_model(x, training=False)
+
+        # Handle common output structures defensively.
+        if isinstance(y, tuple):
+            y = y[0]
+
+        if isinstance(y, dict):
+            head = y['head']
+        elif isinstance(y, (list, tuple)) and isinstance(y[0], dict):
+            head = y[0]['head']
+        else:
+            raise TypeError(f"Unexpected MoViNet output type: {type(y)}")
+
+        encoding = tf.keras.layers.Flatten()(head)
         intermediates[self.tensor_map].append(encoding)
         return encoding
 
