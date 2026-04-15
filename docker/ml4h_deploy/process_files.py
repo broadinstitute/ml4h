@@ -4,6 +4,7 @@ import base64
 import struct
 from collections import defaultdict
 
+import argparse
 import h5py
 import xmltodict
 import numpy as np
@@ -12,54 +13,64 @@ from tensorflow.keras.models import load_model
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.defines import ECG_REST_AMP_LEADS
 from ml4h.models.model_factory import get_custom_objects
+from ml4h.metrics import weighted_crossentropy
 
 n_intervals = 25
 
 ecg_tmap = TensorMap(
-    'ecg_5000_std',
+    'ecg_4096_std',
     Interpretation.CONTINUOUS,
-    shape=(5000, 12),
-    channel_map=ECG_REST_AMP_LEADS
+    shape=(4096, 12),
+    channel_map=ECG_REST_AMP_LEADS,
 )
 
-af_tmap = TensorMap(
-    'survival_curve_af',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(n_intervals*2,),
-)
+lvef_tmap = TensorMap('lvef', Interpretation.CONTINUOUS, channel_map={'lvef': 0})
+nlp_as_tmap = TensorMap('nlp_as_label', Interpretation.CATEGORICAL, 
+                        channel_map={'no_as': 0, 'severe_as':1, 'prosthetic_valve':2, 'no_data':3})
+ecg_age_tmap = TensorMap('ecg_age', Interpretation.CONTINUOUS, channel_map={'ecg_age': 0})
+echo_age_tmap = TensorMap('echo_age', Interpretation.CONTINUOUS, channel_map={'echo_age': 0})
+lbbb_tmap = TensorMap(name='lbbb', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'lbbb'),
+                            channel_map={'no_lbbb': 0, 'lbbb':1})
+rbbb_tmap = TensorMap(name='rbbb', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'rbbb'),
+                            channel_map={'no_rbbb': 0, 'rbbb':1})
+avb_tmap = TensorMap(name='avb', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'avb'),
+                            channel_map={'no_avb': 0, 'avb':1})
+af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'af_in_read'),
+                            channel_map={'no_af_in_read': 0, 'af_in_read':1})
 
-hf_nlp_tmap = TensorMap(
-    'hf_nlp_event',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(n_intervals*2,),
-)
+input_tmaps = [ecg_tmap]
+output_tmaps = [lvef_tmap, nlp_as_tmap, echo_age_tmap, ecg_age_tmap, lbbb_tmap, rbbb_tmap, avb_tmap, af_in_read_tmap]
+ecg_label_tmaps = [ecg_age_tmap, lbbb_tmap, rbbb_tmap, avb_tmap, af_in_read_tmap]
+ecg_labels = ['is_male', 'lvh', 'aortic_stenosis', 'dm', 'cad', 'mi', 'htn', 'valve_dz', 'hypertension_med', 'afib', 'obesity', 'ckd']
+for d in ecg_labels:
+    d_tmap = TensorMap(d, Interpretation.CATEGORICAL, channel_map={f'no_{d}': 0, f'{d}':1})
+    output_tmaps.append(d_tmap)
+    ecg_label_tmaps.append(d_tmap)
+                        
+cutpoints = [30, 35, 40, 45, 50, 55]
+for cutpoint in cutpoints:
+    output_tmaps.append(
+        TensorMap(name=f'lvef_lt_{cutpoint}', interpretation=Interpretation.CATEGORICAL, 
+                  channel_map={f'no_lvef_lt_{cutpoint}':0, f'lvef_lt_{cutpoint}': 1})
+    )
 
-hf_primary_tmap = TensorMap(
-    'hf_primary_event',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(n_intervals*2,),
-)
 
 
-death_tmap = TensorMap(
-    'death_event',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(n_intervals*2,),
-)
-is_male_tmap = TensorMap(
-    'is_male', Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male': 1},
-)
-sex_tmap = TensorMap(name='sex', interpretation=Interpretation.CATEGORICAL, channel_map={'Female': 0, 'Male':1})
-age_tmap = TensorMap(name='age_in_days', interpretation=Interpretation.CONTINUOUS, channel_map={'age_in_days': 0})
-af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CATEGORICAL, channel_map={'no_af_in_read': 0, 'af_in_read':1})
 
-output_tensormaps = {tm.output_name(): tm for tm in [hf_nlp_tmap, hf_primary_tmap, death_tmap, is_male_tmap, age_tmap]}
+
+
+
+output_tensormaps = {tm.output_name(): tm for tm in output_tmaps}
 custom_dict = get_custom_objects(list(output_tensormaps.values()))
-model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
-output_file = '/output/ecg2hf_quintuplet.csv'
-space_dict = defaultdict(list)
+#model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
+#output_file = '/output/ecg2hf_quintuplet.csv'
+#space_dict = defaultdict(list)
 
-def process_ukb_hd5(filepath, space_dict):
+def process_ukb_hd5(filepath, space_dict, model):
     # Placeholder for file processing logic
     print(f"Processing file: {filepath}")
     with h5py.File(filepath, 'r') as hd5:
@@ -130,7 +141,7 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
     byte_array = struct.unpack(unpack_symbols, arr)
     return np.array(byte_array)[::dwnsmpl]
 
-def process_ge_muse_xml(filepath, space_dict):
+def process_ge_muse_xml(filepath, space_dict, model):
     """
 
     Upload the ECG as numpy array with shape=[2500,12,1] ([time, leads, 1]).
@@ -243,6 +254,7 @@ def process_ge_muse_xml(filepath, space_dict):
 
     # transpose to be [time, leads, ]
     ecg_array = np.array(temp).T
+    ecg_array = ecg_array[:4096, :]
 
     print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
     ecg_array -= ecg_array.mean()
@@ -276,22 +288,31 @@ def process_ge_muse_xml(filepath, space_dict):
             # space_dict[f'{otm.name}_follow_up'].append(str(follow_up[b]))
 # Example: Use the model to make a prediction (add real processing logic here)
 
-def main(directory):
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--directory",               required=True,
+                        help="Root directory containing patient ECG folders")
+    parser.add_argument("--model_path",       required=True,
+                        help="Path to  Keras model (.keras)")
+    parser.add_argument("--output_file",             required=True,
+                        help="Output path")
+    args = parser.parse_args()
+
+    model = load_model(args.model_path)
     # Iterate over all files in the specified directory
     space_dict = defaultdict(list)
-    for root, _, files in os.walk(directory):
+    for root, _, files in os.walk(args.directory):
         for i, filename in enumerate(files):
             filepath = os.path.join(root, filename)
             if os.path.isfile(filepath):
-                process_ge_muse_xml(filepath, space_dict)
+                process_ge_muse_xml(filepath, space_dict, model)
             # if i > 10000:
             #     break
 
     df = pd.DataFrame.from_dict(space_dict)
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    df.to_csv(output_file, index=False)
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+    df.to_csv(args.output_file, index=False)
 
 if __name__ == "__main__":
-    # Take directory path from command-line arguments
-    directory = sys.argv[1] if len(sys.argv) > 1 else "/data"
-    main(directory)
+    main()
