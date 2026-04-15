@@ -120,7 +120,7 @@ def build_movinet_style_encoder(
     return Model(inputs, x, name="movinet_style_encoder")
 
 
-class MoviNetStyleEncoder(Block):
+class MoviNetEncoder(Block):
     def __init__(self, tensor_map, dense_layers, pretrain_trainable, **kwargs):
         self.tensor_map = tensor_map
         if self.tensor_map.axes() != 4:
@@ -142,49 +142,6 @@ class MoviNetStyleEncoder(Block):
         intermediates[self.tensor_map].append(encoding)
         return encoding
 
-
-class MoviNetEncoder(Block):
-    def __init__(
-            self,
-            *,
-            tensor_map: TensorMap,
-            pretrain_trainable: bool,
-            **kwargs,
-    ):
-        self.tensor_map = tensor_map
-        if not self.can_apply():
-            return
-
-        backbone = movinet.Movinet(model_id='a2')
-
-        video = tf.keras.Input(shape=(16, 224, 224, 3), name='movinet_video')
-        y = backbone(video, training=False)
-
-        # Adjust this depending on the actual structure returned.
-        if isinstance(y, tuple):
-            y = y[0]
-
-        if isinstance(y, dict):
-            head = y['head']
-        elif isinstance(y, (list, tuple)) and isinstance(y[0], dict):
-            head = y[0]['head']
-        else:
-            raise TypeError(f"Unexpected MoViNet output type in init: {type(y)}")
-
-        self.base_model = tf.keras.Model(video, head, name='movinet_a2_head')
-        self.base_model.trainable = pretrain_trainable
-
-    def can_apply(self):
-        return self.tensor_map.axes() == 4
-
-    def __call__(self, x: Tensor, intermediates=None) -> Tensor:
-        if not self.can_apply():
-            return x
-
-        head = self.base_model(x, training=False)
-        encoding = tf.keras.layers.Flatten()(head)
-        intermediates[self.tensor_map].append(encoding)
-        return encoding
 
 class BertEncoder(Block):
     def __init__(
