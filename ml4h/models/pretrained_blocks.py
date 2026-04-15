@@ -6,6 +6,7 @@ import tensorflow as tf
 import keras
 import tensorflow_hub as hub
 from official.projects.movinet.modeling import movinet
+from official.projects.movinet.modeling import movinet_model
 from tensorflow.keras.layers import Dense, Flatten, Reshape, LayerNormalization, DepthwiseConv2D, concatenate, Concatenate, Add
 
 from ml4h.models.Block import Block
@@ -47,49 +48,97 @@ class ResNetEncoder(Block):
         intermediates[self.tensor_map].append(x)
         return x
 
+import tensorflow as tf
+from tensorflow.keras import layers, Model
+
+def conv2plus1d(x, filters, kernel_size=(3, 3, 3), strides=(1, 1, 1), name=None):
+    t, h, w = kernel_size
+    st, sh, sw = strides
+
+    x = layers.Conv3D(
+        filters,
+        kernel_size=(1, h, w),
+        strides=(1, sh, sw),
+        padding="same",
+        use_bias=False,
+        name=None if name is None else f"{name}_spatial",
+    )(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+
+    x = layers.Conv3D(
+        filters,
+        kernel_size=(t, 1, 1),
+        strides=(st, 1, 1),
+        padding="same",
+        use_bias=False,
+        name=None if name is None else f"{name}_temporal",
+    )(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    return x
+
+def residual_block(x, filters, downsample=False, name=None):
+    stride = (1, 2, 2) if downsample else (1, 1, 1)
+    shortcut = x
+
+    y = conv2plus1d(x, filters, strides=stride, name=None if name is None else f"{name}_conv1")
+    y = conv2plus1d(y, filters, name=None if name is None else f"{name}_conv2")
+
+    if downsample or x.shape[-1] != filters:
+        shortcut = layers.Conv3D(
+            filters,
+            kernel_size=1,
+            strides=stride,
+            padding="same",
+            use_bias=False,
+            name=None if name is None else f"{name}_proj",
+        )(shortcut)
+        shortcut = layers.BatchNormalization()(shortcut)
+
+    y = layers.Add()([shortcut, y])
+    y = layers.Activation("relu")(y)
+    return y
+
+def build_movinet_style_encoder(
+    input_shape=(16, 224, 224, 3),
+    embedding_dim=512,
+):
+    inputs = layers.Input(shape=input_shape)
+
+    x = conv2plus1d(inputs, 32, kernel_size=(3, 7, 7), strides=(1, 2, 2), name="stem")
+    x = residual_block(x, 32, name="res1")
+    x = residual_block(x, 64, downsample=True, name="res2")
+    x = residual_block(x, 64, name="res3")
+    x = residual_block(x, 128, downsample=True, name="res4")
+    x = residual_block(x, 128, name="res5")
+    x = residual_block(x, 256, downsample=True, name="res6")
+
+    x = layers.GlobalAveragePooling3D(name="gap")(x)
+    x = layers.Dense(embedding_dim, activation=None, name="embedding")(x)
+
+    return Model(inputs, x, name="movinet_style_encoder")
+
 
 class MoviNetEncoder(Block):
-    def __init__(
-            self,
-            *,
-            tensor_map: TensorMap,
-            pretrain_trainable: bool,
-            path='https://tfhub.dev/tensorflow/movinet/a2/base/kinetics-600/classification/3',
-            **kwargs,
-    ):
+    def __init__(self, tensor_map, dense_layers, pretrain_trainable, **kwargs):
         self.tensor_map = tensor_map
-        if not self.can_apply():
+        if self.tensor_map.axes() != 4:
             return
 
-        self.base_model = movinet.Movinet(model_id='a2')
-
-        # Initialize weights by calling once; do not manually build with shape list.
-        dummy_input = tf.random.uniform([1, 16, 224, 224, 3])
-        _ = self.base_model(dummy_input, training=False)
-
+        self.base_model = build_movinet_style_encoder(
+            input_shape=(16, 224, 224, 3),
+            embedding_dim=dense_layers[-1],
+        )
         self.base_model.trainable = pretrain_trainable
 
     def can_apply(self):
         return self.tensor_map.axes() == 4
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x, intermediates=None):
         if not self.can_apply():
             return x
-
-        y = self.base_model(x, training=False)
-
-        # Handle common output structures defensively.
-        if isinstance(y, tuple):
-            y = y[0]
-
-        if isinstance(y, dict):
-            head = y['head']
-        elif isinstance(y, (list, tuple)) and isinstance(y[0], dict):
-            head = y[0]['head']
-        else:
-            raise TypeError(f"Unexpected MoViNet output type: {type(y)}")
-
-        encoding = tf.keras.layers.Flatten()(head)
+        encoding = self.base_model(x, training=False)
         intermediates[self.tensor_map].append(encoding)
         return encoding
 
