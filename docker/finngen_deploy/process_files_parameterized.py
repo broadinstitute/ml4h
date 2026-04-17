@@ -183,29 +183,6 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
     byte_array     = struct.unpack(unpack_symbols, arr)
     return np.array(byte_array)[::dwnsmpl]
 
-def get_ecg_from_HL7(filepath):
-    with open(filepath, "rt") as ecg:
-        line = ecg.readline()
-        field4 = line.split("|")[3]
-        while field4 != "CHN":
-            line = ecg.readline()
-            field4 = line.split("|")[3]
-        channels = line.split("|")[5].split("~")
-        waveform = []
-        waveform.append(channels)
-        while line.startswith("OBX"):
-            line = ecg.readline()
-            if not line:
-                break
-            else:
-                waveform.append(line.split("|")[5].split("^"))
-        return waveform
-
-def parse_ecg_primary(filepath):
-    with open(filepath, "rb") as fd:
-        waveform = xmltodict.parse(fd.read().decode("utf-8"))
-
-    return waveform
 
 
 
@@ -219,7 +196,6 @@ def resolve_ecg_path(basepath, finngenid, measid):
         if os.path.exists(candidate):
             return candidate
     return None
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Dataset
@@ -258,6 +234,133 @@ class LongitudinalECGFromMetadata(Dataset):
     def __len__(self):
         return len(self.patient_ids)
 
+
+
+    def process_ecg_xml_format(self, row):
+        with open(row["path"], "rb") as fd:
+            dic = xmltodict.parse(fd.read().decode("utf-8"))
+
+        lead_order = ["I","II","III","aVR","aVL","aVF",
+                  "V1","V2","V3","V4","V5","V6"]
+        lead_data = dict.fromkeys(lead_order)
+
+        for wave in dic["RestingECG"]["Waveform"][1]["LeadData"]:
+            lid = wave["LeadID"]
+            if lid in lead_order:
+                lead_data[lid] = self.decode_fn(wave["WaveFormData"])
+
+        lead_data["III"] = lead_data["II"] - lead_data["I"]
+        lead_data["aVR"] = -(lead_data["I"] + lead_data["II"]) / 2
+        lead_data["aVF"] = (lead_data["II"] + lead_data["III"]) / 2
+        lead_data["aVL"] = (lead_data["I"] - lead_data["III"]) / 2
+
+        ecg = np.stack([lead_data[l] for l in lead_order], axis=1).astype(np.float32)
+        ecg = ecg[:4096, :]
+        ecg -= ecg.mean(axis=0, keepdims=True)
+        ecg /= ecg.std(axis=0, keepdims=True) + 1e-6
+
+        if self.transform:
+            ecg = self.transform(ecg)
+
+        return ecg
+
+
+    def process_ecg_hl7_format(self, row):
+        with open(row['path'], "rt") as ecg:
+            line = ecg.readline()
+            field4 = line.split("|")[3]
+
+        # --- Step 1: Find CHN line ---
+            while field4 != "CHN":
+                line = ecg.readline()
+                field4 = line.split("|")[3]
+
+            raw_channels = line.split("|")[5].split("~")
+
+            def fixed_length(ecg_, target_len=4096):
+                if ecg_.shape[0] >= target_len:
+                    return ecg_[:target_len, :]
+                pad = np.zeros((target_len - ecg_.shape[0], ecg_.shape[1]), dtype=ecg_.dtype)
+                return np.vstack([ecg_, pad])
+
+        # Extract "I" from "1^I^..."
+            def extract_lead(x):
+                parts = x.strip().split("^")
+                return parts[1].strip().upper()
+
+            channels = [extract_lead(x) for x in raw_channels]
+
+        # --- Step 2: Read OBX waveform rows ---
+            rows = []
+
+            while line.startswith("OBX"):
+                line = ecg.readline()
+                if not line:
+                    break
+
+                parts = line.split("|")
+                if len(parts) < 6:
+                    continue
+
+                values = parts[5].split("^")
+
+            # Ensure correct number of leads
+                if len(values) != len(channels):
+                    continue
+
+                try:
+                    row = [float(v) for v in values]
+                    rows.append(row)
+                except:
+                    continue
+
+        if len(rows) == 0:
+            raise ValueError("No waveform data found")
+
+        ecg = np.array(rows, dtype=np.float32)  # shape: (time, leads)
+
+
+        lead_order = ["I","II","III","aVR","aVL","aVF",
+                  "V1","V2","V3","V4","V5","V6"]
+
+        lead_idx = {l: i for i, l in enumerate(channels)}
+
+        if "III" not in lead_idx:
+            ecg_III = ecg[:, lead_idx["II"]] - ecg[:, lead_idx["I"]]
+            lead_idx["III"] = None
+        if "aVR" not in lead_idx:
+            ecg_aVR = -(ecg[:, lead_idx["I"]] + ecg[:, lead_idx["II"]]) / 2
+            lead_idx["aVR"] = None
+        if "aVF" not in lead_idx:
+            ecg_aVF = (ecg[:, lead_idx["II"]] + ecg[:, lead_idx["III"]]) / 2
+            lead_idx["aVF"] = None
+        if "aVL" not in lead_idx:
+            ecg_aVL = (ecg[:, lead_idx["I"]] - ecg[:, lead_idx["III"]]) / 2
+            lead_idx["aVL"] = None
+
+        final_leads = []
+        for l in lead_order:
+            if l in lead_idx and lead_idx[l] is not None:
+                final_leads.append(ecg[:, lead_idx[l]])
+            else:
+                if l == "III":
+                    final_leads.append(ecg_III)
+                elif l == "aVR":
+                    final_leads.append(ecg_aVR)
+                elif l == "aVF":
+                    final_leads.append(ecg_aVF)
+                elif l == "aVL":
+                    final_leads.append(ecg_aVL)
+
+        ecg = np.stack(final_leads, axis=1)
+        ecg = fixed_length(ecg, target_len = 4096)
+        #ecg = ecg[:4096, :]
+        ecg -= ecg.mean(axis=0, keepdims=True)
+        ecg /= ecg.std(axis=0, keepdims=True) + 1e-6
+
+
+        return ecg
+
     def __getitem__(self, idx):
         pid   = self.patient_ids[idx]
         group = self.groups.get_group(pid).sort_values("timestamp")
@@ -268,38 +371,26 @@ class LongitudinalECGFromMetadata(Dataset):
         
         for _, row in group.iterrows():
             try:
-                with open(row["path"], "rb") as fd:
-                    dic = xmltodict.parse(fd.read().decode("utf-8"))
+                ecg = self.process_ecg_xml_format(row)
 
-                lead_order = ["I","II","III","aVR","aVL","aVF",
-                              "V1","V2","V3","V4","V5","V6"]
-                lead_data  = dict.fromkeys(lead_order)
+            except Exception as e:
+                print(f"⚠️ Primary method failed, not xml, try hl7 parsing for {row['path']}: {e}")
 
-                for wave in dic["RestingECG"]["Waveform"][1]["LeadData"]:
-                    lid = wave["LeadID"]
-                    if lid in lead_order:
-                        lead_data[lid] = self.decode_fn(wave["WaveFormData"])
+                try:
+                    ecg = self.process_ecg_hl7_format(row)
 
-                lead_data["III"] = lead_data["II"]  - lead_data["I"]
-                lead_data["aVR"] = -(lead_data["I"] + lead_data["II"]) / 2
-                lead_data["aVF"] = (lead_data["II"] + lead_data["III"]) / 2
-                lead_data["aVL"] = (lead_data["I"]  - lead_data["III"]) / 2
+                except Exception as e2:
+                    print(f"❌ Fallback also failed, not able to parse at all for {row['path']}: {e2}")
+                    ecg = None
 
-                ecg  = np.stack([lead_data[l] for l in lead_order], axis=1).astype(np.float32)
-                ecg = ecg[:4096, :]
-                ecg -= ecg.mean(axis=0, keepdims=True)
-                ecg /= ecg.std(axis=0, keepdims=True) + 1e-6
-
-                if self.transform:
-                    ecg = self.transform(ecg)
-
+            if ecg is not None:
                 arrays.append(ecg)
                 timestamps.append(row["timestamp"])
                 event_ages.append(row["EVENT_AGE"])
                 age_deltas.append(row["age_delta_norm"])
 
-            except Exception as e:
-                print(f"⚠️  Failed to parse {row['path']}: {e}")
+
+
 
         return {
             "patient_id":  pid,
