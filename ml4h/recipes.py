@@ -50,7 +50,6 @@ from ml4h.tensor_generators import (
     BATCH_PATHS_INDEX,
     df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
     compute_binary_class_prevalences,
-    _sample_csv_to_set,
     split_group_ids_from_dataframe,
 )
 from ml4h.plots import (
@@ -1454,6 +1453,14 @@ def infer_trajectory_transformer_on_parquet_fast(args):
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
+    _, _, test_group_ids = split_group_ids_from_dataframe(
+        df_sorted,
+        AGGREGATE_COLUMN,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
+    )
+
     # Build group index
     group_index = {}
     for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
@@ -1461,15 +1468,9 @@ def infer_trajectory_transformer_on_parquet_fast(args):
         last = g.index[-1]
         group_index[gid] = (first, last)
 
-    # Get unique group IDs
-    group_ids = list(group_index.keys())
-    logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
-
-    # Filter to only groups in test_csv if provided
-    if args.test_csv:
-        test_mrns = _sample_csv_to_set(args.test_csv)
-        group_ids = [gid for gid in group_ids if str(gid) in test_mrns]
-        logging.info(f"Filtered to {len(group_ids)} groups based on test_csv")
+    # Match the exact evaluation cohort used by training.
+    group_ids = test_group_ids
+    logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
 
     # Preload arrays for fast slicing
     arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
