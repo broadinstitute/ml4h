@@ -1165,21 +1165,6 @@ def infer_transformer_on_parquet_fast(args):
     logging.info(f"Model output names: {model.output_names}")
     logging.info(f"Target columns: {all_targets}")
 
-    def _select_groups_for_repeated_batched_eval(group_ids, batch_size, steps):
-        if steps is None:
-            return list(group_ids)
-        if not group_ids or batch_size <= 0 or steps <= 0:
-            return []
-
-        batches = [
-            group_ids[i:i + batch_size]
-            for i in range(0, len(group_ids), batch_size)
-        ]
-        selected = []
-        for step_idx in range(int(steps)):
-            selected.extend(batches[step_idx % len(batches)])
-        return selected
-
     # Sort data by group and sort column
     AGGREGATE_COLUMN = args.group_column
     sort_column = args.sort_column
@@ -1212,18 +1197,6 @@ def infer_transformer_on_parquet_fast(args):
     if args.max_samples and args.max_samples < len(group_ids):
         group_ids = group_ids[:args.max_samples]
         logging.info(f"Limited to {len(group_ids)} groups based on max_samples")
-
-    if args.test_steps is not None:
-        original_group_count = len(group_ids)
-        group_ids = _select_groups_for_repeated_batched_eval(
-            group_ids,
-            batch_size=args.batch_size,
-            steps=args.test_steps,
-        )
-        logging.info(
-            f"Expanded {original_group_count} test groups to {len(group_ids)} inference rows "
-            f"to match repeated batched evaluation with test_steps={args.test_steps}",
-        )
 
     # Preload arrays for fast slicing
     arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
