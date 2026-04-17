@@ -1602,6 +1602,42 @@ def infer_trajectory_transformer_on_parquet_fast(args):
     # Create output dataframe
     output_df = pd.DataFrame(results)
 
+    # Calculate and report performance metrics before saving
+    logging.info(f"\n=== Performance Metrics ===")
+    logging.info(f"Total samples: {len(output_df)}")
+
+    # Regression targets - report R^2
+    for t in args.target_regression_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                r2 = r2_score(y_true, y_pred)
+                logging.info(f"{t}: R^2 = {r2:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: R^2 calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for R^2 calculation")
+
+    # Binary targets - report auROC
+    for t in args.target_binary_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                auroc = roc_auc_score(y_true, y_pred)
+                logging.info(f"{t}: auROC = {auroc:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: auROC calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for auROC calculation")
+
     # Ensure output directory exists
     os.makedirs(f'{args.output_folder}/{args.id}', exist_ok=True)
 
