@@ -20,12 +20,13 @@ from collections import Counter, defaultdict
 
 import tensorflow as tf
 import pyarrow.dataset as ds
+from sklearn.metrics import r2_score, roc_auc_score
 
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
 from ml4h.models.transformer_blocks_embedding import (
     evaluate_multitask_on_dataset,
-    build_general_embedding_transformer,
+    build_general_embedding_transformer, build_embedding_transformer,
 )
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
@@ -47,7 +48,9 @@ from ml4h.tensor_generators import (
     BATCH_INPUT_INDEX,
     BATCH_OUTPUT_INDEX,
     BATCH_PATHS_INDEX,
-    df_to_datasets_from_generator,
+    df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
+    compute_binary_class_prevalences,
+    split_group_ids_from_dataframe,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -116,7 +119,7 @@ from ml4h.metrics import (
     get_pearson_coefficients,
     log_aucs,
     log_pearson_coefficients,
-    concordance_index_censored,
+    concordance_index_censored, JsonLossMetricsCallback,
 )
 from ml4h.tensorize.tensor_writer_ukbb import (
     write_tensors,
@@ -180,8 +183,12 @@ def run(args):
             train_xdl_af(args)
         elif "train_transformer_on_parquet" == args.mode:
             train_transformer_on_parquet(args)
-        elif "test_transformer_on_parquet" == args.mode:
-            test_transformer_on_parquet(args)
+        elif "train_transformer_on_parquet_fast" == args.mode:
+            train_transformer_on_parquet_fast(args)
+        elif "infer_transformer_on_parquet_fast" == args.mode:
+            infer_transformer_on_parquet_fast(args)
+        elif "infer_trajectory_transformer_on_parquet_fast" == args.mode:
+            infer_trajectory_transformer_on_parquet_fast(args)
         elif "test" == args.mode:
             test_multimodal_multitask(args)
         elif "compare" == args.mode:
@@ -882,190 +889,11 @@ def train_xdl_af(args):
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f"{otm.name} Scatter")
 
 
-class LongitudinalDataloader:
-    def __init__(
-        self,
-        input_file_path,
-        label_file_path,
-        group_column,
-        sort_column,
-        latent_dim,
-        numeric_columns,
-        categorical_columns,
-        label_columns,
-        max_seq_len,
-        batch_size,
-        shuffle=True,
-    ):
-        self.input_ds = ds.dataset(input_file_path, format="parquet")
-        self.label_ds = (
-            self.input_ds
-            if label_file_path in [None, input_file_path]
-            else ds.dataset(label_file_path, format="parquet")
-        )
-
-        self.latent_cols = [f"latent_{i}" for i in range(latent_dim)]
-        self.latent_dim = latent_dim
-        self.numeric_columns = numeric_columns
-        self.categorical_columns = categorical_columns
-        self.label_columns = label_columns
-        self.max_seq_len = max_seq_len
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-
-        # ---- build MRN → row indices ONCE ----
-        index_tbl = self.input_ds.to_table(
-            columns=[group_column, sort_column]
-        ).to_pandas()
-
-        index_tbl = index_tbl.sort_values([group_column, sort_column], kind="mergesort")
-
-        self.group_to_indices = []
-        for _, g in index_tbl.groupby(group_column, sort=False):
-            idxs = g.index.values
-            if max_seq_len:
-                idxs = idxs[-max_seq_len:]
-            self.group_to_indices.append(idxs)
-
-    def _generator(self):
-        groups = self.group_to_indices.copy()
-        if self.shuffle:
-            np.random.shuffle(groups)
-
-        from more_itertools import chunked
-
-        for chunk in chunked(groups, 32):
-            # T = len(idxs)
-
-            flat_idxs = np.concatenate(chunk)
-            inp = self.input_ds.take(flat_idxs)
-            lab = self.label_ds.take(flat_idxs)
-
-            lat_all = np.stack(
-                [
-                    inp.column(c).to_numpy(zero_copy_only=False)
-                    for c in self.latent_cols
-                ],
-                axis=1,
-            ).astype(np.float32)
-
-            num_all = {
-                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.float32)
-                for c in self.numeric_columns
-            }
-
-            cat_all = {
-                c: inp.column(c).to_numpy(zero_copy_only=False).astype(np.int32)
-                for c in self.categorical_columns
-            }
-
-            lab_all = np.stack(
-                [
-                    lab.column(c).to_numpy(zero_copy_only=False)
-                    for c in self.label_columns
-                ],
-                axis=1,
-            ).astype(np.float32)
-
-            offset = 0
-            for idxs in chunk:
-                T = len(idxs)
-                sl = slice(offset, offset + T)
-
-                x = {
-                    "latent": lat_all[sl],
-                    "mask": np.ones(T, dtype=bool),
-                }
-
-                for c in self.numeric_columns:
-                    x[f"num_{c}"] = num_all[c][sl]
-
-                for c in self.categorical_columns:
-                    x[f"cat_{c}"] = cat_all[c][sl]
-
-                # latest label only
-                vals = lab_all[sl][-1]
-
-                y, sw = {}, {}
-                for i, c in enumerate(self.label_columns):
-                    if np.isnan(vals[i]):
-                        y[c] = 0.0
-                        sw[c] = 0.0
-                    else:
-                        y[c] = float(vals[i])
-                        sw[c] = 1.0
-
-                yield x, y, sw
-
-                offset += T
-
-    def get_tf_dataset(self):
-        output_signature = (
-            {
-                "latent": tf.TensorSpec((None, self.latent_dim), tf.float32),
-                "mask": tf.TensorSpec((None,), tf.bool),
-                **{
-                    f"num_{c}": tf.TensorSpec((None,), tf.float32)
-                    for c in self.numeric_columns
-                },
-                **{
-                    f"cat_{c}": tf.TensorSpec((None,), tf.int32)
-                    for c in self.categorical_columns
-                },
-            },
-            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
-            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
-        )
-
-        ds_tf = tf.data.Dataset.from_generator(
-            self._generator,
-            output_signature=output_signature,
-        )
-
-        return ds_tf.padded_batch(
-            self.batch_size,
-            padded_shapes=(
-                {
-                    "latent": [self.max_seq_len, self.latent_dim],
-                    "mask": [self.max_seq_len],
-                    **{f"num_{c}": [self.max_seq_len] for c in self.numeric_columns},
-                    **{
-                        f"cat_{c}": [self.max_seq_len] for c in self.categorical_columns
-                    },
-                },
-                {c: [] for c in self.label_columns},
-                {c: [] for c in self.label_columns},
-            ),
-        ).prefetch(tf.data.AUTOTUNE)
-
-    def get_train_val_datasets(self, val_frac=0.2, seed=42):
-        rng = np.random.default_rng(seed)
-
-        n = len(self.group_to_indices)
-        indices = np.arange(n)
-        rng.shuffle(indices)
-
-        split = int((1 - val_frac) * n)
-        train_idx = indices[:split]
-        val_idx = indices[split:]
-
-        train_loader = copy.copy(self)
-        val_loader = copy.copy(self)
-
-        train_loader.group_to_indices = [self.group_to_indices[i] for i in train_idx]
-        val_loader.group_to_indices = [self.group_to_indices[i] for i in val_idx]
-
-        train_loader.shuffle = self.shuffle
-        val_loader.shuffle = False
-
-        return train_loader.get_tf_dataset(), val_loader.get_tf_dataset()
-
-
 def train_transformer_on_parquet(args):
 
-    loader = LongitudinalDataloader(
+    loader = LongitudinalDataloaderFast(
         input_file_path=args.transformer_input_file,
-        label_file_path=args.transformer_label_file,
+        label_file_path=args.transformer_label_file if args.transformer_label_file else args.transformer_input_file,
         latent_dim=args.latent_dimensions,
         group_column=args.group_column,
         sort_column=args.sort_column,
@@ -1074,10 +902,14 @@ def train_transformer_on_parquet(args):
         label_columns=args.target_regression_columns + args.target_binary_columns,
         batch_size=args.batch_size,
         max_seq_len=args.transformer_max_size,
-        shuffle=False,
+        shuffle=True,
+        sort_column_ascend=args.sort_column_ascend,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
     )
 
-    train_ds, val_ds = loader.get_train_val_datasets(val_frac=0.2)
+    train_ds, val_ds, test_ds = loader.get_train_valid_test_datasets()
 
     cat_cardinalities = {}
     if len(args.input_categorical_columns) > 0:
@@ -1090,22 +922,26 @@ def train_transformer_on_parquet(args):
             cat_cardinalities[col] = int(max_id)
 
     logging.info("Building and Training model...")
-
-    model = build_general_embedding_transformer(
-        latent_dim=args.latent_dimensions,
-        numeric_columns=args.input_numeric_columns,
-        categorical_columns=args.input_categorical_columns,
-        categorical_vocabs=cat_cardinalities,
-        REGRESSION_TARGETS=args.target_regression_columns,
-        BINARY_TARGETS=args.target_binary_columns,
-        MAX_LEN=args.transformer_max_size,
-        EMB_DIM=args.transformer_token_embed,
-        TOKEN_HIDDEN=args.transformer_size,
-        TRANSFORMER_DIM=args.transformer_size,
-        NUM_HEADS=args.attention_heads,
-        NUM_LAYERS=args.transformer_layers,
-        DROPOUT=args.transformer_dropout_rate,
-    )
+    if args.model_file:
+        logging.info(f"Loading model from {args.model_file}")
+        keras.config.enable_unsafe_deserialization()
+        model = keras.models.load_model(args.model_file)
+    else:
+        model = build_general_embedding_transformer(
+            latent_dim=args.latent_dimensions,
+            numeric_columns=args.input_numeric_columns,
+            categorical_columns=args.input_categorical_columns,
+            categorical_vocabs=cat_cardinalities,
+            regression_targets=args.target_regression_columns,
+            binary_targets=args.target_binary_columns,
+            max_len=args.transformer_max_size,
+            scalar_embed=args.transformer_scalar_embed,
+            latent_embed=args.transformer_latent_embed,
+            transformer_dim=args.transformer_size,
+            num_heads=args.attention_heads,
+            num_layers=args.transformer_layers,
+            dropout=args.transformer_dropout_rate,
+        )
 
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
@@ -1123,9 +959,11 @@ def train_transformer_on_parquet(args):
         )
 
     callbacks = [
-        keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=args.patience, restore_best_weights=True
-        )
+        JsonLossMetricsCallback(f"{args.output_folder}/{args.id}/"),
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience*3, restore_best_weights=True),
+        keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=args.patience, verbose=1),
+        keras.callbacks.ModelCheckpoint(filepath=f"{args.output_folder}/{args.id}/{args.id}.keras",
+                                        verbose=1, save_best_only=not args.save_last_model),
     ]
 
     history = model.fit(
@@ -1146,64 +984,658 @@ def train_transformer_on_parquet(args):
     metrics = evaluate_multitask_on_dataset(
         args.id,
         model,
-        val_ds,
+        test_ds,
         args.target_regression_columns,
         args.target_binary_columns,
         steps=args.test_steps,
     )
     radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
     heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
-    with open(f"{args.output_folder}/{args.id}/metrics.json", "w") as f:
+    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 
 
-def test_transformer_on_parquet(args):
-    if args.transformer_input_file.endswith(".pq"):
-        echo_df = pd.read_parquet(args.transformer_input_file)
+def train_transformer_on_parquet_fast(args):
+    if args.transformer_input_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_input_file)
     else:
-        echo_df = pd.read_csv(args.transformer_input_file, sep="\t")
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
 
-    if args.transformer_label_file.endswith(".pq"):
-        df = pd.read_parquet(args.transformer_label_file)
-    else:
-        df = pd.read_csv(args.transformer_label_file, sep="\t")
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
 
-    if "ecg_datetime" in args.merge_columns:
-        df["ecg_datetime"] = pd.to_datetime(df.ecg_datetime)
-        echo_df.ecg_datetime = pd.to_datetime(echo_df.ecg_datetime)
-
-    df = pd.merge(echo_df, df, on=args.merge_columns, how="inner")
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
 
     input_numeric_columns = args.input_numeric_columns
-    input_numeric_columns += [f"latent_{i}" for i in range(args.latent_dimensions)]
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions+args.latent_dimensions_start)]
 
     if len(args.input_categorical_columns) == 1:
         input_categorical_column = args.input_categorical_columns[0]
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
     else:
         input_categorical_column = None
+        view2id = None
 
-    model = keras.models.load_model(args.model_file)
-    train_ds, val_ds = df_to_datasets_from_generator(
-        df,
-        input_numeric_columns,
-        input_categorical_column,
-        args.group_column,
-        args.target_regression_columns + args.target_binary_columns,
-        args.transformer_max_size,
-        args.batch_size,
+    train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
+                                                              args.group_column, args.sort_column, args.sort_column_ascend,
+                                                              args.target_regression_columns + args.target_binary_columns,
+                                                              args.transformer_max_size, args.batch_size,
+                                                              args.train_csv, args.valid_csv, args.test_csv)
+
+    # Compute binary class prevalences for weighted loss
+    binary_class_prevalences = None
+    # if args.target_binary_columns:
+    #     binary_class_prevalences = compute_binary_class_prevalences(
+    #         df=df,
+    #         aggregate_column=args.group_column,
+    #         binary_targets=args.target_binary_columns,
+    #         train_csv=args.train_csv,
+    #     )
+
+    if args.model_file:
+        logging.info(f"Loading model from {args.model_file}")
+        keras.config.enable_unsafe_deserialization()
+        model = keras.models.load_model(args.model_file)
+    else:
+        model = build_embedding_transformer(
+            input_numeric_columns,
+            args.target_regression_columns,
+            args.target_binary_columns,
+            args.transformer_max_size,
+            args.transformer_scalar_embed,
+            args.transformer_latent_embed,
+            args.transformer_size,
+            args.attention_heads,
+            args.transformer_layers,
+            args.transformer_dropout_rate,
+            view2id,
+            args.learning_rate,
+            binary_class_prevalences=binary_class_prevalences,
+        )
+    if args.inspect_model:
+        model.summary(print_fn=logging.info, expand_nested=True)
+        keras.utils.plot_model(
+            model,
+            to_file=f"{args.output_folder}/{args.id}/architecture_{args.id}.png",
+            show_shapes=True,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
+            expand_nested=True,
+            dpi=args.dpi,
+            layer_range=None,
+            show_layer_activations=False,
+        )
+
+    callbacks = [
+        JsonLossMetricsCallback(f'{args.output_folder}/{args.id}/'),
+        keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.patience*3, restore_best_weights=True),
+        keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=args.patience, verbose=1),
+        keras.callbacks.ModelCheckpoint(filepath=f'{args.output_folder}/{args.id}/{args.id}.keras', verbose=1,
+                                        save_best_only=not args.save_last_model),
+    ]
+
+    history = model.fit(
+        train_ds,
+        steps_per_epoch=args.training_steps,
+        validation_data=val_ds,
+        validation_steps=args.validation_steps,
+        epochs=args.epochs,
+        callbacks=callbacks,
+        verbose=1
     )
-    metrics = evaluate_multitask_on_dataset(
-        args.id,
-        model,
-        val_ds,
-        args.target_regression_columns,
-        args.target_binary_columns,
-        steps=args.test_steps,
-    )
-    radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
-    heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
-    with open(f"{args.output_folder}/{args.id}/metrics.json", "w") as f:
+    model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
+    plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
+    metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
+
+
+def infer_transformer_on_parquet_fast(args):
+    """
+    Generate inference parquet files containing all predictions from a transformer model
+    trained with train_transformer_on_parquet_fast.
+
+    Expects:
+        - args.model_file: Path to trained keras model file
+        - args.transformer_input_file: Path to input parquet/csv file
+        - args.max_samples: Maximum number of samples (groups) to process
+        - args.output_folder: Where to write the output parquet file
+        - args.id: Run identifier for output file naming
+
+    Outputs a parquet file with columns:
+        - {label}_prediction for each model output
+        - {label} (true label value, max per group, same as training signal)
+        - mrn (group identifier)
+        - {sort_column} (the sort column value from the first/top entry)
+        - n_rows (number of contributing rows per group)
+    """
+    if not args.model_file:
+        raise ValueError("model_file is required for infer_transformer_on_parquet_fast mode")
+
+    # Load the input data
+    if args.transformer_input_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_input_file)
+    else:
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+
+    # Handle optional label file merge (same as training)
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+
+    # Build input columns (same as training)
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions + args.latent_dimensions_start)]
+
+    # Handle categorical column
+    if len(args.input_categorical_columns) == 1:
+        input_categorical_column = args.input_categorical_columns[0]
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+    else:
+        input_categorical_column = None
+        view2id = None
+
+    # Load the trained model
+    logging.info(f"Loading model from {args.model_file}")
+    keras.config.enable_unsafe_deserialization()
+    model = keras.models.load_model(args.model_file)
+
+    # Get target columns from model output names
+    all_targets = args.target_regression_columns + args.target_binary_columns
+    logging.info(f"Model output names: {model.output_names}")
+    logging.info(f"Target columns: {all_targets}")
+
+    # Sort data by group and sort column
+    AGGREGATE_COLUMN = args.group_column
+    sort_column = args.sort_column
+    sort_column_ascend = args.sort_column_ascend
+    MAX_LEN = args.transformer_max_size
+
+    df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
+                               ascending=[True, sort_column_ascend]).reset_index(drop=True)
+
+    _, _, test_group_ids = split_group_ids_from_dataframe(
+        df_sorted,
+        AGGREGATE_COLUMN,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
+    )
+
+    # Build group index
+    group_index = {}
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        first = g.index[0]
+        last = g.index[-1]
+        group_index[gid] = (first, last)
+
+    # Match the exact evaluation cohort used by training.
+    group_ids = test_group_ids
+    logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
+
+    # Limit samples if max_samples is set
+    if args.max_samples and args.max_samples < len(group_ids):
+        group_ids = group_ids[:args.max_samples]
+        logging.info(f"Limited to {len(group_ids)} groups based on max_samples")
+
+    # Preload arrays for fast slicing
+    arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
+    arr_sort_col = df_sorted[sort_column].to_numpy()
+    if input_categorical_column:
+        arr_view = df_sorted['_view_id'].to_numpy(np.int32)
+
+    # MRN-level targets (max of non-NA values per group)
+    arr_tgts = {
+        t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
+        for t in all_targets
+    }
+
+    # Storage for results
+    results = {
+        'mrn': [],
+        sort_column: [],
+        'n_rows': [],
+    }
+    for t in all_targets:
+        results[f'{t}_prediction'] = []
+        results[t] = []
+
+    Feat = len(input_numeric_columns)
+
+    # Process each group
+    logging.info(f"Starting inference over {len(group_ids)} groups...")
+    for i, gid in enumerate(group_ids):
+        if (i + 1) % 1000 == 0:
+            logging.info(f"Processed {i + 1}/{len(group_ids)} groups")
+
+        span = group_index.get(gid)
+        if span is None:
+            continue
+        start, last = span
+        end = last + 1
+
+        # Get features for this group
+        num = arr_num[start:end, :]  # (T, F)
+        if input_categorical_column:
+            view = arr_view[start:end]  # (T,)
+        T = num.shape[0]
+
+        # Record number of contributing rows
+        n_rows = T
+
+        # Truncate to MAX_LEN if sequence is longer (keep most recent, same as training)
+        if T > MAX_LEN:
+            num = num[:MAX_LEN, :]
+            if input_categorical_column:
+                view = view[:MAX_LEN]
+            T = MAX_LEN
+
+        mask = np.ones((T,), dtype=bool)  # (T,)
+
+        # Pad to MAX_LEN
+        pad_len = MAX_LEN - T
+        if pad_len > 0:
+            num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
+            mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
+            if input_categorical_column:
+                view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
+
+
+        # Add batch dimension
+        num = np.expand_dims(num, axis=0)  # (1, MAX_LEN, F)
+        mask = np.expand_dims(mask, axis=0)  # (1, MAX_LEN)
+        if input_categorical_column:
+            view = np.expand_dims(view, axis=0)  # (1, MAX_LEN)
+
+        # Prepare input dict
+        if input_categorical_column:
+            inputs = {'view': view, 'num': num, 'mask': mask}
+        else:
+            inputs = {'num': num, 'mask': mask}
+
+        # Run inference
+        outputs = model(inputs, training=False)
+
+        # Store results
+        results['mrn'].append(gid)
+        results[sort_column].append(arr_sort_col[start])  # First/top entry's sort column value
+        results['n_rows'].append(n_rows)
+
+        for t in all_targets:
+            # Get prediction (flatten from (1, 1) to scalar)
+            pred = outputs[t].numpy().flatten()[0]
+            results[f'{t}_prediction'].append(float(pred))
+
+            # Get true label (max per group)
+            if arr_tgts[t] is not None:
+                true_val = arr_tgts[t].get(gid, np.nan)
+                results[t].append(float(true_val) if not pd.isna(true_val) else np.nan)
+            else:
+                results[t].append(np.nan)
+
+    logging.info(f"Completed inference over {len(group_ids)} groups")
+
+    # Create output dataframe
+    output_df = pd.DataFrame(results)
+
+    # Calculate and report performance metrics before saving
+    logging.info(f"\n=== Performance Metrics ===")
+    logging.info(f"Total samples: {len(output_df)}")
+
+    # Regression targets - report R^2
+    for t in args.target_regression_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                r2 = r2_score(y_true, y_pred)
+                logging.info(f"{t}: R^2 = {r2:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: R^2 calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for R^2 calculation")
+
+    # Binary targets - report auROC
+    for t in args.target_binary_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                auroc = roc_auc_score(y_true, y_pred)
+                logging.info(f"{t}: auROC = {auroc:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: auROC calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for auROC calculation")
+
+    # Ensure output directory exists
+    os.makedirs(f'{args.output_folder}/{args.id}', exist_ok=True)
+
+    # Save to parquet
+    output_path = f'{args.output_folder}/{args.id}/predictions_{args.id}.pq'
+    output_df.to_parquet(output_path, index=False)
+    logging.info(f"Saved predictions to {output_path}")
+
+
+def infer_trajectory_transformer_on_parquet_fast(args):
+    """
+    Generate inference parquet files with trajectory predictions from a transformer model
+    trained with train_transformer_on_parquet_fast.
+
+    Unlike infer_transformer_on_parquet_fast which outputs one row per group (MRN),
+    this mode outputs one row per input row. For each row in a group, the prediction
+    uses that row and all later rows (according to sort_column), omitting earlier rows.
+
+    For example, for a person with 3 rows sorted by time:
+        - Row 1 prediction uses rows 1-3
+        - Row 2 prediction uses rows 2-3
+        - Row 3 prediction uses only row 3
+
+    Expects:
+        - args.model_file: Path to trained keras model file
+        - args.transformer_input_file: Path to input parquet/csv file
+        - args.max_samples: Maximum number of samples (rows) to process
+        - args.output_folder: Where to write the output parquet file
+        - args.id: Run identifier for output file naming
+
+    Outputs a parquet file with columns:
+        - {label}_prediction for each model output
+        - {label} (true label value) for each target
+        - mrn (group identifier)
+        - {sort_column} (the sort column value for this row)
+        - n_rows (number of contributing rows used for this prediction)
+    """
+    if not args.model_file:
+        raise ValueError("model_file is required for infer_trajectory_transformer_on_parquet_fast mode")
+
+    # Load the input data
+    if args.transformer_input_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_input_file)
+    else:
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+
+    # Handle optional label file merge (same as training)
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+
+    # Build input columns (same as training)
+    input_numeric_columns = args.input_numeric_columns
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions + args.latent_dimensions_start)]
+
+    # Handle categorical column
+    if len(args.input_categorical_columns) == 1:
+        input_categorical_column = args.input_categorical_columns[0]
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+    else:
+        input_categorical_column = None
+        view2id = None
+
+    # Load the trained model
+    logging.info(f"Loading model from {args.model_file}")
+    keras.config.enable_unsafe_deserialization()
+    model = keras.models.load_model(args.model_file)
+
+    # Get target columns from model output names
+    all_targets = args.target_regression_columns + args.target_binary_columns
+    logging.info(f"Model output names: {model.output_names}")
+    logging.info(f"Target columns: {all_targets}")
+
+    # Sort data by group and sort column
+    AGGREGATE_COLUMN = args.group_column
+    sort_column = args.sort_column
+    sort_column_ascend = args.sort_column_ascend
+    MAX_LEN = args.transformer_max_size
+
+    df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
+                               ascending=[True, sort_column_ascend]).reset_index(drop=True)
+
+    _, _, test_group_ids = split_group_ids_from_dataframe(
+        df_sorted,
+        AGGREGATE_COLUMN,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
+    )
+
+    # Build group index
+    group_index = {}
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        first = g.index[0]
+        last = g.index[-1]
+        group_index[gid] = (first, last)
+
+    # Match the exact evaluation cohort used by training.
+    group_ids = test_group_ids
+    logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
+
+    # Preload arrays for fast slicing
+    arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
+    arr_sort_col = df_sorted[sort_column].to_numpy()
+    if input_categorical_column:
+        arr_view = df_sorted['_view_id'].to_numpy(np.int32)
+
+    # Row-level targets (get target value for each row if available)
+    arr_tgts = {}
+    for t in all_targets:
+        if t in df_sorted.columns:
+            arr_tgts[t] = df_sorted[t].to_numpy()
+        else:
+            arr_tgts[t] = None
+
+    # Storage for results
+    results = {
+        'mrn': [],
+        sort_column: [],
+        'n_rows': [],
+    }
+    for t in all_targets:
+        results[f'{t}_prediction'] = []
+        results[t] = []
+
+    Feat = len(input_numeric_columns)
+
+    # Count total rows to process
+    total_rows = sum(group_index[gid][1] - group_index[gid][0] + 1 for gid in group_ids)
+    logging.info(f"Total rows to process: {total_rows}")
+
+    # Track processed rows for max_samples limit
+    processed_rows = 0
+
+    # Process each group
+    logging.info(f"Starting trajectory inference over {len(group_ids)} groups...")
+    for i, gid in enumerate(group_ids):
+        if (i + 1) % 1000 == 0:
+            logging.info(f"Processed {i + 1}/{len(group_ids)} groups ({processed_rows} rows)")
+
+        span = group_index.get(gid)
+        if span is None:
+            continue
+        start, last = span
+        end = last + 1
+
+        # Get all features for this group
+        group_num = arr_num[start:end, :]  # (T_group, F)
+        group_sort_col = arr_sort_col[start:end]  # (T_group,)
+        if input_categorical_column:
+            group_view = arr_view[start:end]  # (T_group,)
+
+        T_group = group_num.shape[0]
+
+        # For each position in the group, make a prediction using that row through the end.
+        # The top row therefore uses the full group, matching infer_transformer_on_parquet_fast.
+        for pos in range(T_group):
+            # Check max_samples limit
+            if args.max_samples and processed_rows >= args.max_samples:
+                break
+
+            # Number of rows used for this prediction after dropping earlier rows.
+            n_rows = T_group - pos
+
+            # Get features from the current row through the end of the group.
+            num = group_num[pos:, :]  # (n_rows, F)
+            if input_categorical_column:
+                view = group_view[pos:]  # (n_rows,)
+            T = num.shape[0]
+
+            # Truncate to MAX_LEN if sequence is longer, matching infer_transformer_on_parquet_fast.
+            if T > MAX_LEN:
+                num = num[:MAX_LEN, :]
+                if input_categorical_column:
+                    view = view[:MAX_LEN]
+                T = MAX_LEN
+
+            mask = np.ones((T,), dtype=bool)  # (T,)
+
+            # Pad to MAX_LEN
+            pad_len = MAX_LEN - T
+            if pad_len > 0:
+                num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
+                mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
+                if input_categorical_column:
+                    view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
+
+            # Add batch dimension
+            num = np.expand_dims(num, axis=0)  # (1, MAX_LEN, F)
+            mask = np.expand_dims(mask, axis=0)  # (1, MAX_LEN)
+            if input_categorical_column:
+                view = np.expand_dims(view, axis=0)  # (1, MAX_LEN)
+
+            # Prepare input dict
+            if input_categorical_column:
+                inputs = {'view': view, 'num': num, 'mask': mask}
+            else:
+                inputs = {'num': num, 'mask': mask}
+
+            # Run inference
+            outputs = model(inputs, training=False)
+
+            # Store results
+            results['mrn'].append(gid)
+            results[sort_column].append(group_sort_col[pos])
+            results['n_rows'].append(n_rows)
+
+            for t in all_targets:
+                # Get prediction (flatten from (1, 1) to scalar)
+                pred = outputs[t].numpy().flatten()[0]
+                results[f'{t}_prediction'].append(float(pred))
+
+                # Get true label for this row
+                if arr_tgts[t] is not None:
+                    row_idx = start + pos
+                    true_val = arr_tgts[t][row_idx]
+                    results[t].append(float(true_val) if not pd.isna(true_val) else np.nan)
+                else:
+                    results[t].append(np.nan)
+
+            processed_rows += 1
+
+        # Check max_samples limit at group level too
+        if args.max_samples and processed_rows >= args.max_samples:
+            logging.info(f"Reached max_samples limit ({args.max_samples}), stopping early")
+            break
+
+    logging.info(f"Completed trajectory inference: {processed_rows} predictions from {i + 1} groups")
+
+    # Create output dataframe
+    output_df = pd.DataFrame(results)
+
+    # Calculate and report performance metrics before saving
+    logging.info(f"\n=== Performance Metrics ===")
+    logging.info(f"Total samples: {len(output_df)}")
+
+    # Regression targets - report R^2
+    for t in args.target_regression_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                r2 = r2_score(y_true, y_pred)
+                logging.info(f"{t}: R^2 = {r2:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: R^2 calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for R^2 calculation")
+
+    # Binary targets - report auROC
+    for t in args.target_binary_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                auroc = roc_auc_score(y_true, y_pred)
+                logging.info(f"{t}: auROC = {auroc:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: auROC calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for auROC calculation")
+
+    # Ensure output directory exists
+    os.makedirs(f'{args.output_folder}/{args.id}', exist_ok=True)
+
+    # Save to parquet
+    output_path = f'{args.output_folder}/{args.id}/trajectory_predictions_{args.id}.pq'
+    output_df.to_parquet(output_path, index=False)
+    logging.info(f"Saved trajectory predictions to {output_path}")
+
+    # Log summary statistics
+    logging.info(f"\n=== Trajectory Inference Summary ===")
+    logging.info(f"Total predictions: {len(output_df)}")
+    logging.info(f"Unique MRNs: {output_df['mrn'].nunique()}")
+    logging.info(f"Columns: {list(output_df.columns)}")
+    logging.info(f"n_rows distribution: min={output_df['n_rows'].min()}, max={output_df['n_rows'].max()}, mean={output_df['n_rows'].mean():.2f}")
+    for t in all_targets:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        logging.info(f"\n{t}:")
+        logging.info(f"  Predictions - mean: {output_df[pred_col].mean():.4f}, std: {output_df[pred_col].std():.4f}")
+        valid_true = output_df[true_col].dropna()
+        if len(valid_true) > 0:
+            logging.info(f"  True labels - mean: {valid_true.mean():.4f}, std: {valid_true.std():.4f}, n_valid: {len(valid_true)}")
+        else:
+            logging.info(f"  True labels - no valid values")
 
 
 def datetime_to_float(d):
@@ -1886,14 +2318,16 @@ def _predict_and_evaluate(
 
     y_predictions = model.predict(test_data, batch_size=batch_size, verbose=0)
     protected_data = {tm: test_labels[tm.output_name()] for tm in tensor_maps_protected}
-    for y, tm in zip(y_predictions, tensor_maps_out):
+    for i, tm in enumerate(tensor_maps_out):
         if tm.output_name() not in layer_names:
             continue
+        # Get predictions for this specific tensormap
         if isinstance(y_predictions, dict):
-            y_predictions = y_predictions[tm.output_name()]
-        if not isinstance(
-            y_predictions, list
-        ):  # When models have a single output model.predict returns a ndarray otherwise it returns a list
+            y = y_predictions[tm.output_name()]
+        elif isinstance(y_predictions, list):
+            y = y_predictions[i]
+        else:
+            # Single output - use predictions directly
             y = y_predictions
         y_truth = np.array(test_labels[tm.output_name()])
         performance_metrics.update(
