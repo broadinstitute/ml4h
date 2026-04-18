@@ -169,10 +169,10 @@ def process_ge_muse_xml(filepath, space_dict, model):
 
     except xmltodict.expat.ExpatError as e:
         print(f"XML parsing error in file {filepath}: {e}")
-        return
+        raise#return
     except Exception as e:
         print(f"Unexpected error processing {filepath}: {e}")
-        return
+        raise#return
 
     try:
         patient_id = dic['RestingECG']['PatientDemographics']['PatientID']
@@ -288,6 +288,136 @@ def process_ge_muse_xml(filepath, space_dict, model):
             # space_dict[f'{otm.name}_follow_up'].append(str(follow_up[b]))
 # Example: Use the model to make a prediction (add real processing logic here)
 
+
+
+def process_ge_muse_hl7(filepath, space_dict, model):
+
+    def fix_length(ecg_, target_len=4096):
+        if ecg_.shape[0] >= target_len:
+            return ecg_[:target_len, :]
+        pad = np.zeros((target_len - ecg_.shape[0], ecg_.shape[1]), dtype=ecg_.dtype)
+        return np.vstack([ecg_, pad])
+
+    with open(filepath, "rt") as ecg:
+        line = ecg.readline()
+        field4 = line.split("|")[3]
+
+        # --- Step 1: Find CHN line ---
+        while field4 != "CHN":
+            line = ecg.readline()
+            field4 = line.split("|")[3]
+
+        raw_channels = line.split("|")[5].split("~")
+
+        # Extract "I" from "1^I^..."
+        def extract_lead(x):
+            parts = x.strip().split("^")
+            return parts[1].strip().upper()
+
+        channels = [extract_lead(x) for x in raw_channels]
+
+        # --- Step 2: Read OBX waveform rows ---
+        rows = []
+
+        while line.startswith("OBX"):
+            line = ecg.readline()
+            if not line:
+                break
+
+            parts = line.split("|")
+            if len(parts) < 6:
+                continue
+
+            values = parts[5].split("^")
+
+            # Ensure correct number of leads
+            if len(values) != len(channels):
+                continue
+
+            try:
+                row = [float(v) for v in values]
+                rows.append(row)
+            except:
+                continue
+
+    if len(rows) == 0:
+        raise ValueError("No waveform data found")
+
+    # --- Step 3: Convert to array ---
+    ecg = np.array(rows, dtype=np.float32)  # shape: (time, leads)
+
+    print("Raw ECG shape:", ecg.shape)  # should be (~4000, 12)
+
+    # --- Step 4: Reorder leads ---
+    lead_order = ["I","II","III","aVR","aVL","aVF",
+                  "V1","V2","V3","V4","V5","V6"]
+
+    lead_idx = {l: i for i, l in enumerate(channels)}
+
+    # Derive missing leads if needed
+    if "III" not in lead_idx:
+        ecg_III = ecg[:, lead_idx["II"]] - ecg[:, lead_idx["I"]]
+        lead_idx["III"] = None
+    if "aVR" not in lead_idx:
+        ecg_aVR = -(ecg[:, lead_idx["I"]] + ecg[:, lead_idx["II"]]) / 2
+        lead_idx["aVR"] = None
+    if "aVF" not in lead_idx:
+        ecg_aVF = (ecg[:, lead_idx["II"]] + ecg[:, lead_idx["III"]]) / 2
+        lead_idx["aVF"] = None
+    if "aVL" not in lead_idx:
+        ecg_aVL = (ecg[:, lead_idx["I"]] - ecg[:, lead_idx["III"]]) / 2
+        lead_idx["aVL"] = None
+
+    # Build final matrix
+    final_leads = []
+    for l in lead_order:
+        if l in lead_idx and lead_idx[l] is not None:
+            final_leads.append(ecg[:, lead_idx[l]])
+        else:
+            # use derived leads
+            if l == "III":
+                final_leads.append(ecg_III)
+            elif l == "aVR":
+                final_leads.append(ecg_aVR)
+            elif l == "aVF":
+                final_leads.append(ecg_aVF)
+            elif l == "aVL":
+                final_leads.append(ecg_aVL)
+
+    ecg = np.stack(final_leads, axis=1)
+    ecg_array = fixed_length(ecg, target_len = 4096)
+    ecg_array = ecg_array[:4096, :]
+
+
+
+
+
+    print(f'Writing row of ECG2AF predictions for hl7 ECG {patient_id}, at {acquisition_date_time}')
+    ecg_array -= ecg_array.mean()
+    ecg_array /= (ecg_array.std() + 1e-6)
+    #print(f"Got tensor: {tensor.mean():0.3f}")
+    prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
+    if len(model.output_names) == 1:
+        prediction = [prediction]
+    predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+    #print(f"Got predictions: {predictions_dict}")
+    space_dict['filepath'].append(os.path.basename(filepath))
+    space_dict['patient_id'].append(patient_id)
+    space_dict['acquisition_datetime'].append(acquisition_date_time)
+    space_dict['pharma_unique_ecg_id'].append(pharma_unique_ecg_id)
+
+    for otm in output_tensormaps.values():
+        y = predictions_dict[otm.output_name()]
+        if otm.is_categorical():
+            space_dict[f'{otm.name}_prediction'].append(y[0, 1])
+        elif otm.is_continuous():
+            space_dict[f'{otm.name}_prediction'].append(y[0, 0])
+        elif otm.is_survival_curve():
+            intervals = otm.shape[-1] // 2
+            days_per_bin = 1 + (2 * otm.days_window) // intervals
+            predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+            space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -306,7 +436,14 @@ def main():
         for i, filename in enumerate(files):
             filepath = os.path.join(root, filename)
             if os.path.isfile(filepath):
-                process_ge_muse_xml(filepath, space_dict, model)
+                try:
+                    process_ge_muse_xml(filepath, space_dict, model)
+                except:
+                    try:
+                        print(f'trying hl7 for {filepath}')
+                        process_ge_muse_hl7(filepath, space_dict, model)
+                    except:
+                        print(f'skipped altogether for {filepath}')
             # if i > 10000:
             #     break
 
