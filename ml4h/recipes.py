@@ -1350,12 +1350,12 @@ def infer_trajectory_transformer_on_parquet_fast(args):
 
     Unlike infer_transformer_on_parquet_fast which outputs one row per group (MRN),
     this mode outputs one row per input row. For each row in a group, the prediction
-    uses all previous rows (according to sort_column) but none of the future rows.
+    uses that row and all later rows (according to sort_column), omitting earlier rows.
 
     For example, for a person with 3 rows sorted by time:
-        - Row 1 prediction uses only row 1
-        - Row 2 prediction uses rows 1-2
-        - Row 3 prediction uses rows 1-3
+        - Row 1 prediction uses rows 1-3
+        - Row 2 prediction uses rows 2-3
+        - Row 3 prediction uses only row 3
 
     Expects:
         - args.model_file: Path to trained keras model file
@@ -1498,26 +1498,27 @@ def infer_trajectory_transformer_on_parquet_fast(args):
 
         T_group = group_num.shape[0]
 
-        # For each position in the group, make a prediction using rows 0 to position (inclusive)
+        # For each position in the group, make a prediction using that row through the end.
+        # The top row therefore uses the full group, matching infer_transformer_on_parquet_fast.
         for pos in range(T_group):
             # Check max_samples limit
             if args.max_samples and processed_rows >= args.max_samples:
                 break
 
-            # Number of rows used for this prediction (1-indexed position)
-            n_rows = pos + 1
+            # Number of rows used for this prediction after dropping earlier rows.
+            n_rows = T_group - pos
 
-            # Get features up to and including current position
-            num = group_num[:n_rows, :]  # (n_rows, F)
+            # Get features from the current row through the end of the group.
+            num = group_num[pos:, :]  # (n_rows, F)
             if input_categorical_column:
-                view = group_view[:n_rows]  # (n_rows,)
+                view = group_view[pos:]  # (n_rows,)
             T = num.shape[0]
 
-            # Truncate to MAX_LEN if sequence is longer (keep most recent)
+            # Truncate to MAX_LEN if sequence is longer, matching infer_transformer_on_parquet_fast.
             if T > MAX_LEN:
-                num = num[-MAX_LEN:, :]
+                num = num[:MAX_LEN, :]
                 if input_categorical_column:
-                    view = view[-MAX_LEN:]
+                    view = view[:MAX_LEN]
                 T = MAX_LEN
 
             mask = np.ones((T,), dtype=bool)  # (T,)
