@@ -112,7 +112,7 @@ class LongitudinalECGFromMetadata(Dataset):
 
         # Limit to most recent `max_timestamps`
         group = group.tail(self.max_timestamps)
-        print("Processing patient ", pid, " with ", len(group), " timestamps.")
+        print("Processing patient record with ", len(group), " timestamps.")
         arrays, timestamps, event_ages = [], [], []
 
         for _, row in group.iterrows():
