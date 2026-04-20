@@ -203,7 +203,7 @@ def collate_longitudinal(batch):
         num_ecgs = len(ecgs)
         # pad missing ECGs with zeros
         if num_ecgs == 0:
-            print(f"⚠️ Skipping patient {item['patient_id']} (no valid ECGs)")
+            print(f"⚠️ Skipping patient (no valid ECGs)")
             continue
         pad_count = seq_len - num_ecgs
         if pad_count > 0:
