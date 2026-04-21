@@ -1,0 +1,15 @@
+numpy
+pyarrow
+pandas
+python-dateutil
+xmltodict
+h5py
+tqdm
+scipy
+scikit-learn
+torch
+torchvision
+torchaudio
+tensorflow
+keras
+performer-pytorch
