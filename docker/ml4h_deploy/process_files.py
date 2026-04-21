@@ -419,6 +419,15 @@ def process_ge_muse_hl7(filepath, space_dict, model):
             predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
             space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
 
+def resolve_ecg_path(basepath, finngenid, measid):
+    basename    = f"{finngenid}_{measid}"
+    patient_dir = os.path.join(basepath, finngenid)
+    for ext in [".xml", ".XML", ".ecg", ".ECG"]:
+        candidate = os.path.join(patient_dir, basename + ext)
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -428,23 +437,38 @@ def main():
                         help="Path to  Keras model (.keras)")
     parser.add_argument("--output_file",             required=True,
                         help="Output path")
+    parser.add_argument("--metadata",                required=True,
+                        help = "Metadata file")
     args = parser.parse_args()
 
     model = load_model(args.model_path)
+    meta_ecg = pd.read_csv(args.metadata, sep="\t")
+
+    paths = []
+
+    for _, row in meta_ecg.iterrows():
+        path = resolve_ecg_path(args.directory, row["FINNGENID"], row["MEASID"])
+        if path is not None:
+            paths.append(path)
+
+    print(f"Found {len(paths)} valid ECG files")
+
     # Iterate over all files in the specified directory
     space_dict = defaultdict(list)
-    for root, _, files in os.walk(args.directory):
-        for i, filename in enumerate(files):
-            filepath = os.path.join(root, filename)
-            if os.path.isfile(filepath):
+    #for root, _, files in os.walk(args.directory):
+    for filepath in paths:
+        #for i, filename in enumerate(files):
+            #filepath = os.path.join(root, filename)
+            #print(filepath)
+        if os.path.isfile(filepath):
+            try:
+                process_ge_muse_xml(filepath, space_dict, model)
+            except:
                 try:
-                    process_ge_muse_xml(filepath, space_dict, model)
+                    print(f'trying hl7 for {filepath}')
+                    process_ge_muse_hl7(filepath, space_dict, model)
                 except:
-                    try:
-                        print(f'trying hl7 for {filepath}')
-                        process_ge_muse_hl7(filepath, space_dict, model)
-                    except:
-                        print(f'skipped altogether for {filepath}')
+                    print(f'skipped altogether for {filepath}')
             # if i > 10000:
             #     break
 
