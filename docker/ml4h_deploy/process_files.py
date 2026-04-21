@@ -256,7 +256,8 @@ def process_ge_muse_xml(filepath, space_dict, model):
     ecg_array = np.array(temp).T
     ecg_array = ecg_array[:4096, :]
 
-    print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
+
+    #print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
     ecg_array -= ecg_array.mean()
     ecg_array /= (ecg_array.std() + 1e-6)
     #print(f"Got tensor: {tensor.mean():0.3f}")
@@ -292,7 +293,7 @@ def process_ge_muse_xml(filepath, space_dict, model):
 
 def process_ge_muse_hl7(filepath, space_dict, model):
 
-    def fix_length(ecg_, target_len=4096):
+    def fixed_length(ecg_, target_len=4096):
         if ecg_.shape[0] >= target_len:
             return ecg_[:target_len, :]
         pad = np.zeros((target_len - ecg_.shape[0], ecg_.shape[1]), dtype=ecg_.dtype)
@@ -383,13 +384,13 @@ def process_ge_muse_hl7(filepath, space_dict, model):
                 final_leads.append(ecg_aVF)
             elif l == "aVL":
                 final_leads.append(ecg_aVL)
-
     ecg = np.stack(final_leads, axis=1)
     ecg_array = fixed_length(ecg, target_len = 4096)
     ecg_array = ecg_array[:4096, :]
 
-
-
+    patient_id = "none"
+    acquisition_date_time = "none"
+    pharma_unique_ecg_id = "none"
 
 
     print(f'Writing row of ECG2AF predictions for hl7 ECG {patient_id}, at {acquisition_date_time}')
