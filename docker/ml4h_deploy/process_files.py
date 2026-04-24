@@ -141,7 +141,7 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
     byte_array = struct.unpack(unpack_symbols, arr)
     return np.array(byte_array)[::dwnsmpl]
 
-def process_ge_muse_xml(filepath, space_dict, model):
+def process_ge_muse_xml(filepath, space_dict, model, ecg_input_shp):
     """
 
     Upload the ECG as numpy array with shape=[2500,12,1] ([time, leads, 1]).
@@ -254,7 +254,7 @@ def process_ge_muse_xml(filepath, space_dict, model):
 
     # transpose to be [time, leads, ]
     ecg_array = np.array(temp).T
-    ecg_array = ecg_array[:4096, :]
+    ecg_array = ecg_array[:ecg_input_shp, :]
 
 
     #print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
@@ -291,7 +291,7 @@ def process_ge_muse_xml(filepath, space_dict, model):
 
 
 
-def process_ge_muse_hl7(filepath, space_dict, model):
+def process_ge_muse_hl7(filepath, space_dict, model, ecg_input_shp):
 
     def fixed_length(ecg_, target_len=4096):
         if ecg_.shape[0] >= target_len:
@@ -355,6 +355,11 @@ def process_ge_muse_hl7(filepath, space_dict, model):
 
     lead_idx = {l: i for i, l in enumerate(channels)}
 
+    required_direct = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
+    missing = [l for l in required_direct if l not in lead_idx]
+    if missing:
+        raise ValueError(f"Missing required leads: {missing}")
+
     # Derive missing leads if needed
     if "III" not in lead_idx:
         ecg_III = ecg[:, lead_idx["II"]] - ecg[:, lead_idx["I"]]
@@ -385,8 +390,8 @@ def process_ge_muse_hl7(filepath, space_dict, model):
             elif l == "aVL":
                 final_leads.append(ecg_aVL)
     ecg = np.stack(final_leads, axis=1)
-    ecg_array = fixed_length(ecg, target_len = 4096)
-    ecg_array = ecg_array[:4096, :]
+    ecg_array = fixed_length(ecg, target_len = ecg_input_shp)
+    #ecg_array = ecg_array[:4096, :]
 
     patient_id = "none"
     acquisition_date_time = "none"
@@ -439,10 +444,12 @@ def main():
                         help="Output path")
     parser.add_argument("--metadata",                required=True,
                         help = "Metadata file")
+    parser.add_argument("--ecg_input_shape",    type=int, default= 5000)
     args = parser.parse_args()
 
     model = load_model(args.model_path)
     meta_ecg = pd.read_csv(args.metadata, sep="\t")
+    ecg_input_shp = args.ecg_input_shape
 
     paths = []
 
@@ -462,11 +469,11 @@ def main():
             #print(filepath)
         if os.path.isfile(filepath):
             try:
-                process_ge_muse_xml(filepath, space_dict, model)
+                process_ge_muse_xml(filepath, space_dict, model, ecg_input_shp)
             except:
                 try:
                     print(f'trying hl7 for {filepath}')
-                    process_ge_muse_hl7(filepath, space_dict, model)
+                    process_ge_muse_hl7(filepath, space_dict, model, ecg_input_shp)
                 except:
                     print(f'skipped altogether for {filepath}')
             # if i > 10000:
