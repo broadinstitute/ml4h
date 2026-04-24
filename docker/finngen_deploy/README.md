@@ -4,7 +4,7 @@ Then build the docker image:
 ```bash 
 docker build -t multimodal_finngen_deploy .
 ```
-Then run the docker image:
+Then run the docker image:  
 For multimodal inference:  
 ```bash 
 docker run --rm -v "~/ecg_xml:/work" multimodal_finngen_deploy  --mode infer --path /work/xmls --metadata_path /work/ecg_info.tsv --encoder_path /app/encoder_ecg_4096_std.keras --encoder_layer activation_13 --longitudinal_path /app/transformer_ecg_only_v2026_03_04.keras --output /work/embeddings.csv –max_seq_len 256 --ecg_input_shape 4096
