@@ -5,7 +5,7 @@ Then build the docker image:
 docker build -t multimodal_finngen_deploy .
 ```
 Then run the docker image:
-For multimodal inference:
+For multimodal inference:  
 ```bash 
 docker run --rm -v "~/ecg_xml:/work" multimodal_finngen_deploy  --mode infer --path /work/xmls --metadata_path /work/ecg_info.tsv --encoder_path /app/encoder_ecg_4096_std.keras --encoder_layer activation_13 --longitudinal_path /app/transformer_ecg_only_v2026_03_04.keras --output /work/embeddings.csv –max_seq_len 256 --ecg_input_shape 4096
 ```
@@ -42,7 +42,7 @@ Load the docker image:
 cd ~
 docker load -i multimodal_finngen_deploy.tar
 ```
-Then run the docker image:
+Then run the docker image:  
 Example command for multimodal inference:
 ```
 docker run -v /finngen/library-red/EA3_HEART_FAILURE_1.0/data:/work -v /home/ivm/output:/output multimodal_finngen_deploy --mode infer --path /work/ecg --metadata_path /work/EA3_HEART_FAILURE_ecg_info_1.0.txt --encoder_path /app/encoder_ecg_4096_std.keras --encoder_layer activation_13 --longitudinal_path /app/transformer_ecg_only_v2026_03_04.keras --output /output/embeddings.csv –max_seq_len 256 --ecg_input_shape 4096
