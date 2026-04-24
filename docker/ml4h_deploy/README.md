@@ -6,9 +6,9 @@ docker build -t ecg_supervised_finngen_deploy .
 ```
 Then run the docker image:
 ```bash 
-docker run --rm -v "~/ecg_xml:/work" ecg_supervised_finngen_deploy --directory /work/xmls --model_path /app/ecg_cnn_scratch_26task_v2025_08_11.keras --output /work/supervised.csv --metadata /work/ecg_info.tsv --ecg_input_shape 4096
+docker run --rm -v "~/ecg_xml:/work" ecg_supervised_finngen_deploy --directory /work/xmls --model_path /app/ecg_cnn_scratch_26task_v2025_08_11.keras --output_file /work/supervised.csv --metadata /work/ecg_info.tsv --ecg_input_shape 4096
 ```
-If it works, you should see the output in `/home/sam`. Then save your docker image as tarball:
+If it works, you should see the output in `~/ecg_xml`. Then save your docker image as tarball:
 ```bash
 docker save ecg_supervised_finngen_deploy:latest -o ecg_supervised_finngen_deploy.tar
 ```
