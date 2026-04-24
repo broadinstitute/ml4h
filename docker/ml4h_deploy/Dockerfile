@@ -1,4 +1,4 @@
-FROM ghcr.io/broadinstitute/ml4h:tf2.19-latest-cpu
+FROM ghcr.io/broadinstitute/ml4h:tf2.19-latest-gpu
 # Set the working directory
 WORKDIR /app
 
