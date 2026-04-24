@@ -6,7 +6,7 @@ docker build -t multimodal_finngen_gpu_deploy .
 ```
 Then run the docker image:
 ```bash 
-docker run --rm -v "~/ecg_xml:/work" multimodal_finngen_gpu_deploy  --mode infer --path /work/xmls --metadata_path /work/ecg_info.tsv --encoder_path /app/encoder_ecg_4096_std.keras --encoder_layer activation_13 --longitudinal_path /app/transformer_ecg_only_v2026_03_04.keras --output /work/embeddings.csv –max_seq_len 256
+docker run --rm -v "~/ecg_xml:/work" multimodal_finngen_gpu_deploy  --mode infer --path /work/xmls --metadata_path /work/ecg_info.tsv --encoder_path /app/encoder_ecg_4096_std.keras --encoder_layer activation_13 --longitudinal_path /app/transformer_ecg_only_v2026_03_04.keras --output /work/embeddings.csv –max_seq_len 256 --ecg_input_shape 4096
 ```
 If it works, you should see the output in `/home/dsouzava/ecg_xml`. Then save your docker image as tarball:
 ```bash

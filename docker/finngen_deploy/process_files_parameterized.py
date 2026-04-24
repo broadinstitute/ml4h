@@ -21,6 +21,7 @@ Encode mode:
         --encoder_layer   activation_18 \\
         --output          embeddings.parquet \\
         --batch_size      8
+        --ecg_input_shape 5000
 
 Infer mode:
     python inference.py \\
@@ -33,6 +34,7 @@ Infer mode:
         --output            predictions.csv \\
         --batch_size        8 \\
         --delta_consider
+        --ecg_input_shape   5000
 ──────────────────────────────────────────────────────────────────────────────
 """
 
@@ -204,10 +206,11 @@ def resolve_ecg_path(basepath, finngenid, measid):
 class LongitudinalECGFromMetadata(Dataset):
     def __init__(self, metadata_csv, data_path,
                  decode_fn=decode_ekg_muse_to_array,
-                 transform=None, max_timestamps=50):
+                 transform=None, max_timestamps=50, ecg_input_shp=5000):
         self.decode_fn       = decode_fn
         self.transform       = transform
         self.max_timestamps  = max_timestamps
+        self.ecg_input_shp   = ecg_input_shp
 
         df              = pd.read_csv(metadata_csv, sep="\t")
         df["timestamp"] = df["APPROX_EVENT_DAY"] + "T" + df["TIME"]
@@ -255,7 +258,8 @@ class LongitudinalECGFromMetadata(Dataset):
         lead_data["aVL"] = (lead_data["I"] - lead_data["III"]) / 2
 
         ecg = np.stack([lead_data[l] for l in lead_order], axis=1).astype(np.float32)
-        ecg = ecg[:4096, :]
+        #ecg = ecg[:4096, :]
+        ecg = ecg[:self.ecg_input_shp,:]
         ecg -= ecg.mean(axis=0, keepdims=True)
         ecg /= ecg.std(axis=0, keepdims=True) + 1e-6
 
@@ -325,6 +329,11 @@ class LongitudinalECGFromMetadata(Dataset):
 
         lead_idx = {l: i for i, l in enumerate(channels)}
 
+        required_direct = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
+        missing = [l for l in required_direct if l not in lead_idx]
+        if missing:
+            raise ValueError(f"Missing required leads: {missing}")
+
         if "III" not in lead_idx:
             ecg_III = ecg[:, lead_idx["II"]] - ecg[:, lead_idx["I"]]
             lead_idx["III"] = None
@@ -353,7 +362,8 @@ class LongitudinalECGFromMetadata(Dataset):
                     final_leads.append(ecg_aVL)
 
         ecg = np.stack(final_leads, axis=1)
-        ecg = fixed_length(ecg, target_len = 4096)
+        #ecg = fixed_length(ecg, target_len = 4096)
+        ecg = fixed_length(ecg, target_len = self.ecg_input_shp)
         #ecg = ecg[:4096, :]
         ecg -= ecg.mean(axis=0, keepdims=True)
         ecg /= ecg.std(axis=0, keepdims=True) + 1e-6
@@ -726,6 +736,7 @@ def main():
     parser.add_argument("--flush_every",        type=int, default=100)
     # ── flags ─────────────────────────────────────────────────────
     parser.add_argument("--delta_consider", action="store_true")
+    parser.add_argument("--ecg_input_shape",    type=int, default= 5000)
     args = parser.parse_args()
 
     if args.mode == "infer" and args.longitudinal_path is None:
@@ -739,6 +750,7 @@ def main():
         args.metadata_path,
         data_path=args.path,
         max_timestamps=args.max_seq_len,
+        ecg_input_shp=args.ecg_input_shape
     )
     loader = DataLoader(
         dataset,
