@@ -37,7 +37,8 @@ def get_most_central_connected_area(segmentation):
     assert (labels.max() != 0)  # assume at least 1 CC
 
     central_region = labels == np.argmax(
-        np.bincount(labels[height // 2 - 100:height // 2 + 100, width // 2 - 100:width // 2 + 100].flat))
+        np.bincount(labels[height // 2 - 100:height // 2 + 100, width // 2 - 100:width // 2 + 100].flat),
+    )
     return central_region
 
 
@@ -76,8 +77,10 @@ def lmdb_to_gif(lmdb_folder, view, output_path=None):
     layers = []
     for frame in video_container.decode(video=0):
         layers.append(frame.to_image())
-    layers[0].save(f'{lmdb_folder}/{view}.gif',
-                   save_all=True, append_images=layers[1:], loop=0)
+    layers[0].save(
+        f'{lmdb_folder}/{view}.gif',
+        save_all=True, append_images=layers[1:], loop=0,
+    )
 
 
 def anonymize_echo(x):
@@ -219,10 +222,10 @@ def targz_to_avis(study_id, study_folder, tar):
                 video_path,
                 fps,
                 target_size,
-                leftmost_pixel
+                leftmost_pixel,
             )
 
-            # Save avi into lmdb       
+            # Save avi into lmdb
             with open(video_path, 'rb') as avi:
                 logging.info(f'Adding {dicom_filename} to the transaction')
                 txn.put(key=dicom_filename.encode('utf-8'), value=avi.read())
@@ -236,8 +239,10 @@ def targz_to_avis(study_id, study_folder, tar):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--df_path', help='path to a csv that must contain a column named study with unique identifiers'
-                                          'that correspond to directory names in the study_folder')
+    parser.add_argument(
+        '--df_path', help='path to a csv that must contain a column named study with unique identifiers'
+        'that correspond to directory names in the study_folder',
+    )
     parser.add_argument('--study_folder', help='path to the directory containing one subdirectory per echo study')
     parser.add_argument('--start', default=-1, help='optional, row in csv of the study to start processing')
     parser.add_argument('--end', default=-1, help='optional, row in csv of the study to end processing (inclusive)')

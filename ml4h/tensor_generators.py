@@ -25,6 +25,8 @@ from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
 
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
 from ml4h.defines import TENSOR_EXT, TensorGeneratorABC
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader
 from ml4h.TensorMap import TensorMap
@@ -127,7 +129,7 @@ class TensorGenerator(TensorGeneratorABC):
             self.batch_size *= 2
             self.batch_function_kwargs = {'alpha': mixup_alpha}
         elif siamese:
-            self.batch_function = _make_batch_siamese
+            self.batch_function = _identity_batch #_make_batch_siamese
         else:
             self.batch_function = _identity_batch
 
@@ -471,7 +473,8 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = True):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int,
+                                       batch_size: int = 16, keep_paths: bool = False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -483,9 +486,9 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    first_batch = next(generator)
+    first_batch = next(iter(generator))
+    #first_batch = generator.take(batch_size)
     saved_tensors = {}
-    batch_size = None
     for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
         shape = (batch_array.shape[0] * minibatches,) + batch_array.shape[1:]
         saved_tensors[key] = np.zeros(shape)
@@ -498,7 +501,8 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
         logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
-        next_batch = next(generator)
+        next_batch = next(iter(generator))
+        #next_batch = generator.take(batch_size)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
             saved_tensors[key][s:t] = next_batch[BATCH_INPUT_INDEX][key]
@@ -514,7 +518,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     if keep_paths:
         return inputs, outputs, paths
     else:
-        return inputs, outputs
+        return inputs, outputs, None
 
 
 def _get_train_valid_test_discard_ratios(
@@ -732,34 +736,7 @@ def get_train_valid_test_paths_split_by_csvs(
             logging.info(f"CSV:{balance_csvs[i-1]}\nhas: {len(train_paths[i])} train, {len(valid_paths[i])} valid, {len(test_paths[i])} test tensors.")
     return train_paths, valid_paths, test_paths
 
-def augment_using_layers(
-        images: Dict[str, tf.Tensor],
-        mask: Dict[str, tf.Tensor],
-        in_shapes: Dict[str, Tuple[int, int, int, int]],
-        out_shapes: Dict[str, Tuple[int, int, int, int]],
-        rotation_factor: float,
-        zoom_factor: float,
-        translation_factor: float,
-) -> Tuple[tf.Tensor, tf.Tensor]:
-    """
-    Applies random data augmentation (rotation, zoom and/or translation) to pairs of 2D images and segmentations.
-    :param images: a dictionary mapping an input tensor map's name to an image tensor
-    :param mask: a dictionary mapping an output tensor map's name to a segmentation tensor
-    :param in_shapes: a dictionary mapping an input tensor map's name to its shape (including the batch_size)
-    :param out_shapes: a dictionary mapping an output tensor map's name to its shape (including the batch_size)
-    :param rotation_factor: a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
-    :param zoom_factor: a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
-    :param translation_factor: a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
-    :return: an augmented image tensor and its corresponding augmented segmentation tensor
-    """
-
-    # Adapted from:
-    # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
-
-    assert(len(in_shapes) == 1, 'no support for multiple inputs')
-    assert(len(out_shapes) == 1, 'no support for mulitple outputs')
-
-    def aug():
+def aug_model(rotation_factor, zoom_factor, translation_factor):
         rota = tf.keras.layers.RandomRotation(factor=rotation_factor, fill_mode='constant')
 
         zoom = tf.keras.layers.RandomZoom(
@@ -779,25 +756,46 @@ def augment_using_layers(
 
         return aug_model
 
-    aug = aug()
+class ImageMaskAugmentor:
+    """
+    Applies random data augmentation (rotation, zoom and/or translation) to pairs of 2D images and segmentations.
+    :param images: a dictionary mapping an input tensor map's name to an image tensor
+    :param mask: a dictionary mapping an output tensor map's name to a segmentation tensor
+    :param in_shapes: a dictionary mapping an input tensor map's name to its shape (including the batch_size)
+    :param out_shapes: a dictionary mapping an output tensor map's name to its shape (including the batch_size)
+    :param rotation_factor: a float represented as fraction of 2 Pi, e.g., rotation_factor = 0.014 results in an output rotated by a random amount in the range [-5 degrees, 5 degrees]
+    :param zoom_factor: a float represented as fraction of value, e.g., zoom_factor = 0.05 results in an output zoomed in a random amount in the range [-5%, 5%]
+    :param translation_factor: a float represented as a fraction of value, e.g., translation_factor = 0.05 results in an output shifted by a random amount in the range [-5%, 5%] in the x- and y- directions
+    :return: an augmented image tensor and its corresponding augmented segmentation tensor
+    """
 
-    # we know there's just one
-    in_key = list(in_shapes.keys())[0]
-    out_key = list(out_shapes.keys())[0]
-    images = images[in_key]
-    mask = mask[out_key]
+    # Adapted from:
+    # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
 
-    # concatenate the inputs and outputs together into a single tensor, and do data augmentation
-    images_mask = tf.concat([images, mask], -1)
-    images_mask = aug(images_mask)
+    def __init__(self, rotation_factor: float, zoom_factor: float, translation_factor: float,
+                 in_shapes: Dict[str, Tuple[int, int, int, int]],
+                 out_shapes: Dict[str, Tuple[int, int, int, int]]):
+        self.model = aug_model(rotation_factor, zoom_factor, translation_factor)
+        self.in_shapes = in_shapes
+        self.out_shapes = out_shapes
 
-    # split the inputs and outputs again
-    assert(in_shapes[in_key][-1] == 1) # we are only handling one channel in the input
-    image = images_mask[..., 0]
-    image = image[..., tf.newaxis]
-    mask = images_mask[..., 1:]
+    def __call__(self, images: Dict[str, tf.Tensor], mask: Dict[str, tf.Tensor]) -> Tuple[tf.Tensor, tf.Tensor]:
+        assert len(self.in_shapes) == 1
+        assert len(self.out_shapes) == 1
 
-    return image, mask
+        in_key = next(iter(self.in_shapes))
+        out_key = next(iter(self.out_shapes))
+
+        image_tensor = images[in_key]
+        mask_tensor = mask[out_key]
+
+        combined = tf.concat([image_tensor, mask_tensor], axis=-1)
+        augmented = self.model(combined, training=True)
+
+        input_channels = self.in_shapes[in_key][-1]
+        image = augmented[..., :input_channels]
+        mask = augmented[..., input_channels:]
+        return image, mask
 
 def test_train_valid_tensor_generators(
     tensor_maps_in: List[TensorMap],
@@ -811,7 +809,7 @@ def test_train_valid_tensor_generators(
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
-    keep_paths_test: bool = True,
+    keep_paths_test: bool = False,
     mixup_alpha: float = -1.0,
     sample_csv: str = None,
     valid_ratio: float = None,
@@ -823,7 +821,7 @@ def test_train_valid_tensor_generators(
     rotation_factor: float = 0,
     zoom_factor: float = 0,
     translation_factor: float = 0,
-    wrap_with_tf_dataset: bool = False,
+    wrap_with_tf_dataset: bool = True,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
@@ -905,13 +903,14 @@ def test_train_valid_tensor_generators(
     )
 
     do_augmentation = bool(rotation_factor or zoom_factor or translation_factor)
-    logging.info(f'doing_augmentation {do_augmentation} with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
+    if do_augmentation:
+        logging.info(f'Augment with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
 
     if do_augmentation:
         assert(len(tensor_maps_in) == 1, 'no support for multiple input tensors')
         assert(len(tensor_maps_out) == 1, 'no support for multiple output tensors')
 
-    if wrap_with_tf_dataset or do_augmentation:
+    if wrap_with_tf_dataset and do_augmentation:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
         out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
 
@@ -920,14 +919,24 @@ def test_train_valid_tensor_generators(
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
             output_shapes=(in_shapes, out_shapes),
         )
-        train_dataset = train_dataset.map(
-            lambda x, y: augment_using_layers(
-                x, y, in_shapes, out_shapes,
-                rotation_factor, zoom_factor, translation_factor,
-            ),
+        augmentor = ImageMaskAugmentor(
+            rotation_factor,
+            zoom_factor,
+            translation_factor,
+            in_shapes,
+            out_shapes
         )
+        train_dataset = train_dataset.map(augmentor)
 
     if wrap_with_tf_dataset:
+        in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
+        out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
+
+        train_dataset = tf.data.Dataset.from_generator(
+            generate_train,
+            output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+            output_shapes=(in_shapes, out_shapes),
+        )
         valid_dataset = tf.data.Dataset.from_generator(
             generate_valid,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
@@ -1002,3 +1011,426 @@ def _make_batch_siamese(in_batch: Batch, out_batch: Batch, return_paths: bool, p
 
 def _weighted_batch(in_batch: Batch, out_batch: Batch, return_paths: bool, paths: List[Path]):
     return (in_batch, out_batch, paths) if return_paths else (in_batch, out_batch)
+
+
+def pad_1d(list_of_arrays, max_len, pad_value=0, dtype='int32'):
+    out = np.full((len(list_of_arrays), max_len), pad_value, dtype=dtype)
+    for i, a in enumerate(list_of_arrays):
+        L = min(len(a), max_len)
+        out[i, :L] = a[:L]
+    return out
+
+
+def pad_2d(list_of_arrays, max_len, feat, pad_value=0.0, dtype='float32'):
+    out = np.full((len(list_of_arrays), max_len, feat), pad_value, dtype=dtype)
+    for i, a in enumerate(list_of_arrays):
+        L = min(len(a), max_len)
+        out[i, :L, :] = a[:L]
+    return out
+
+
+def make_ds(Xv, Xn, m, y, w, BATCH, shuffle=False):
+    if Xv is not None:
+        ds = tf.data.Dataset.from_tensor_slices((
+            {'view': Xv, 'num': Xn, 'mask': m},
+            y,
+            w
+        ))
+    else:
+        ds = tf.data.Dataset.from_tensor_slices((
+            {'num': Xn, 'mask': m},
+            y,
+            w
+        ))
+    if shuffle:
+        ds = ds.shuffle(buffer_size=len(m), seed=42)
+    return ds.batch(BATCH).prefetch(tf.data.AUTOTUNE)
+
+
+def build_datasets(
+        df,
+        INPUT_NUMERIC_COLS,
+        input_categorical_column,
+        REGRESSION_TARGETS,
+        BINARY_TARGETS,
+        AGGREGATE_COLUMN,
+        sort_column,
+        MAX_LEN,
+        BATCH,
+):
+    TARGETS_ALL = REGRESSION_TARGETS + BINARY_TARGETS
+    # ---------- Checks ----------
+    required_cols = set(['mrn'] + INPUT_NUMERIC_COLS + TARGETS_ALL)
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise ValueError(f"df is missing required columns: {missing}")
+
+    # ============ Build MRN sequences ============
+    # Encode view_prediction to ids (0=PAD)
+    if input_categorical_column:
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+
+    df = df.sort_values([AGGREGATE_COLUMN, sort_column], ascending=[True, True]).reset_index(drop=True)
+
+    grouped = df.groupby(AGGREGATE_COLUMN, sort=False)
+    mrn_list = list(grouped.groups.keys())
+
+    # Log number of groups found
+    logging.info(f"Found {len(mrn_list)} groups (unique {AGGREGATE_COLUMN}s)")
+
+    # Collect sequences & MRN-level targets
+    seq_view_ids = []
+    seq_numeric = []
+    seq_len = []
+    y_dict = {t: [] for t in TARGETS_ALL}
+
+    for mrn, g in grouped:
+        if input_categorical_column:
+            seq_view_ids.append(g['_view_id'].values.astype('int32'))
+        seq_numeric.append(g[INPUT_NUMERIC_COLS].values.astype('float32'))  # (L, F)
+        seq_len.append(len(g))
+
+        # One MRN-level label per task (take first; or assert all equal)
+        for t in TARGETS_ALL:
+            y_dict[t].append(g[t].iloc[0] if t in g.columns else np.nan)
+
+    seq_len = np.array(seq_len, dtype='int32')
+    N = len(seq_len)
+    Feat = len(INPUT_NUMERIC_COLS)
+
+    # Log sequence length statistics
+    logging.info(f"Sequence length statistics across {N} groups:")
+    logging.info(f"  Mean: {seq_len.mean():.2f}")
+    logging.info(f"  Std:  {seq_len.std():.2f}")
+    logging.info(f"  Min:  {seq_len.min()}")
+    logging.info(f"  Max:  {seq_len.max()}")
+    logging.info(f"  Median: {np.median(seq_len):.2f}")
+
+    if input_categorical_column:
+        X_view = pad_1d(seq_view_ids, MAX_LEN, pad_value=0, dtype='int32')  # (N, T)
+    X_num = pad_2d(seq_numeric, MAX_LEN, Feat, pad_value=0.0, dtype='float32')  # (N, T, F)
+    mask_bt = (np.arange(MAX_LEN)[None, :] < seq_len[:, None])  # (N, T) True=real
+
+    # Targets as arrays + sample weights (1 if present, 0 if NaN)
+    y_arrays = {}
+    sw_arrays = {}
+    for t in TARGETS_ALL:
+        y = np.array(y_dict[t], dtype='float32')
+        sw = (~pd.Series(y).isna()).astype('float32').values
+        # replace NaN with 0 to keep shape; weights will drop them
+        y[np.isnan(y)] = 0.0
+        y_arrays[t] = y
+        sw_arrays[t] = sw
+
+    # Log summary statistics for each target
+    logging.info("Target summary statistics:")
+    for t in TARGETS_ALL:
+        y = y_arrays[t]
+        sw = sw_arrays[t]
+        valid_mask = sw > 0
+        if valid_mask.sum() > 0:
+            valid_y = y[valid_mask]
+            logging.info(f"  {t}:")
+            logging.info(f"    Valid samples: {valid_mask.sum()}/{len(y)} ({valid_mask.mean()*100:.1f}%)")
+            logging.info(f"    Mean: {valid_y.mean():.4f}")
+            logging.info(f"    Std:  {valid_y.std():.4f}")
+            logging.info(f"    Min:  {valid_y.min():.4f}")
+            logging.info(f"    Max:  {valid_y.max():.4f}")
+        else:
+            logging.info(f"  {t}: No valid samples")
+
+    # ============ Train/Val split by MRN ============
+    idx_train, idx_val = train_test_split(np.arange(N), test_size=0.2, random_state=42)
+
+    def sel(idx):
+        if input_categorical_column:
+            Xv = X_view[idx]
+        else:
+            Xv = None
+        Xn = X_num[idx]
+        m = mask_bt[idx]
+        ys = {t: y_arrays[t][idx] for t in TARGETS_ALL}
+        sw = {t: sw_arrays[t][idx] for t in TARGETS_ALL}
+        return Xv, Xn, m, ys, sw
+
+    Xv_tr, Xn_tr, m_tr, y_tr, w_tr = sel(idx_train)
+    Xv_va, Xn_va, m_va, y_va, w_va = sel(idx_val)
+
+    train_ds = make_ds(Xv_tr, Xn_tr, m_tr, y_tr, w_tr, BATCH, shuffle=True)
+    val_ds = make_ds(Xv_va, Xn_va, m_va, y_va, w_va, BATCH, shuffle=False)
+    return train_ds, val_ds
+
+
+
+def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, sort_column,
+                                  sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH, train_csv, valid_csv, test_csv):
+    if input_categorical_column:
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+    # Reproducible ordering
+    df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
+                               ascending=[True, sort_column_ascend]).reset_index(drop=True)
+
+    # ----- Train/Val/Test split by MRN based on CSV files -----
+    group_ids = df_sorted[AGGREGATE_COLUMN].drop_duplicates().to_numpy()
+
+    # Log number of groups found
+    logging.info(f"Found {len(group_ids)} groups (unique {AGGREGATE_COLUMN}s)")
+
+    # Get unique MRNs from the dataframe
+    unique_mrns = df_sorted['mrn'].drop_duplicates().to_numpy()
+    logging.info(f"Found {len(unique_mrns)} unique MRNs in dataframe")
+
+    # Check if CSV files are provided
+    if train_csv or valid_csv or test_csv:
+        # Read MRNs from CSV files
+        train_mrns = _sample_csv_to_set(train_csv) if train_csv else set()
+        valid_mrns = _sample_csv_to_set(valid_csv) if valid_csv else set()
+        test_mrns = _sample_csv_to_set(test_csv) if test_csv else set()
+
+        logging.info(f"CSV files contain: {len(train_mrns)} train MRNs, {len(valid_mrns)} valid MRNs, {len(test_mrns)} test MRNs")
+
+        # Log sample MRNs for debugging
+        if len(unique_mrns) > 0:
+            logging.info(f"Sample dataframe MRNs: {list(unique_mrns[:3])}")
+        if len(train_mrns) > 0:
+            logging.info(f"Sample train CSV MRNs: {list(list(train_mrns)[:3])}")
+
+        # Split MRNs into train/val/test based on CSV membership
+        train_mrn_set = set()
+        val_mrn_set = set()
+        test_mrn_set = set()
+
+        for mrn in unique_mrns:
+            mrn_str = str(mrn)
+            if train_mrns and mrn_str in train_mrns:
+                train_mrn_set.add(mrn)
+            elif valid_mrns and mrn_str in valid_mrns:
+                val_mrn_set.add(mrn)
+            elif test_mrns and mrn_str in test_mrns:
+                test_mrn_set.add(mrn)
+
+        logging.info(f"Matched MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test")
+    else:
+        # No CSV files provided - randomly split MRNs: 80% train, 10% valid, 10% test
+        logging.info("No CSV files provided. Randomly splitting MRNs: 80% train, 10% valid, 10% test")
+
+        from sklearn.model_selection import train_test_split
+
+        # First split: 80% train, 20% temp (for valid+test)
+        train_mrns_arr, temp_mrns = train_test_split(
+            unique_mrns, test_size=0.2, random_state=42
+        )
+
+        # Second split: split temp into 50% valid, 50% test (each 10% of total)
+        val_mrns_arr, test_mrns_arr = train_test_split(
+            temp_mrns, test_size=0.5, random_state=42
+        )
+
+        train_mrn_set = set(train_mrns_arr)
+        val_mrn_set = set(val_mrns_arr)
+        test_mrn_set = set(test_mrns_arr)
+
+        logging.info(f"Random split MRNs: {len(train_mrn_set)} train, {len(val_mrn_set)} valid, {len(test_mrn_set)} test")
+
+    # Now map group_ids to train/val/test based on their MRN
+    # Build a mapping from group_id to mrn
+    group_to_mrn = df_sorted.groupby(AGGREGATE_COLUMN)['mrn'].first().to_dict()
+
+    train_ids = set()
+    val_ids = set()
+    test_ids = set()
+
+    for gid in group_ids:
+        mrn = group_to_mrn.get(gid)
+        if mrn in train_mrn_set:
+            train_ids.add(gid)
+        elif mrn in val_mrn_set:
+            val_ids.add(gid)
+        elif mrn in test_mrn_set:
+            test_ids.add(gid)
+
+    # Log training, validation, and test set sizes
+    train_groups = len(train_ids)
+    val_groups = len(val_ids)
+    test_groups = len(test_ids)
+
+    # Calculate total rows for train, validation, and test sets
+    train_rows = 0
+    val_rows = 0
+    test_rows = 0
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        if gid in train_ids:
+            train_rows += len(g)
+        elif gid in val_ids:
+            val_rows += len(g)
+        elif gid in test_ids:
+            test_rows += len(g)
+
+    logging.info(f"Training set: {train_groups} groups, {train_rows} total rows")
+    logging.info(f"Validation set: {val_groups} groups, {val_rows} total rows")
+    logging.info(f"Test set: {test_groups} groups, {test_rows} total rows")
+
+    # Validate that we have at least some data in train set
+    if train_groups == 0:
+        if train_csv or valid_csv or test_csv:
+            raise ValueError(
+                f"Training set is empty! No MRNs from CSV files matched the dataframe. "
+                f"Check that MRN formats match between CSV and dataframe. "
+                f"Dataframe has {len(unique_mrns)} unique MRNs."
+            )
+        else:
+            raise ValueError(
+                f"Training set is empty! Dataframe has {len(unique_mrns)} unique MRNs but none were assigned to training."
+            )
+
+    Feat = len(INPUT_NUMERIC_COLS)
+
+    # ---------- Build once (unchanged index, no view used) ----------
+    group_index = {}
+    seq_lengths = []
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        first = g.index[0]
+        last = g.index[-1]
+        group_index[gid] = (first, last)  # inclusive row-span within df_sorted
+        seq_lengths.append(len(g))
+
+    # Log sequence length statistics
+    seq_lengths = np.array(seq_lengths)
+    logging.info(f"Sequence length statistics across {len(seq_lengths)} groups:")
+    logging.info(f"  Mean: {seq_lengths.mean():.2f}")
+    logging.info(f"  Std:  {seq_lengths.std():.2f}")
+    logging.info(f"  Min:  {seq_lengths.min()}")
+    logging.info(f"  Max:  {seq_lengths.max()}")
+    logging.info(f"  Median: {np.median(seq_lengths):.2f}")
+
+    # ----- tf.data from_generator + padded_batch (no giant tensors) -----
+    feature_sig = {
+        'num' : tf.TensorSpec(shape=(None, Feat), dtype=tf.float32),
+        'mask': tf.TensorSpec(shape=(None,), dtype=tf.bool),
+    }
+    if input_categorical_column:
+        feature_sig['view'] = tf.TensorSpec(shape=(None,), dtype=tf.int32)
+    label_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
+    weight_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
+
+    # ---------- Generator WITHOUT VIEW_COL ----------
+    def group_generator(selected_ids):
+        # Preload numeric block for fast slicing
+        arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
+        if input_categorical_column:
+            arr_view = df_sorted['_view_id'].to_numpy(np.int32)
+
+        # MRN-level targets (max of non-NA values per group); None if target missing in df
+        arr_tgts = {
+            t: (df_sorted.groupby(AGGREGATE_COLUMN)[t].max() if t in df_sorted.columns else None)
+            for t in TARGETS_ALL
+        }
+
+        # Log summary statistics for each target (only once per generator call)
+        if not hasattr(group_generator, '_logged_targets'):
+            logging.info("Target summary statistics:")
+            for t in TARGETS_ALL:
+                if arr_tgts[t] is not None:
+                    target_values = arr_tgts[t].values
+                    valid_mask = ~pd.isna(target_values)
+                    if valid_mask.sum() > 0:
+                        valid_values = target_values[valid_mask]
+                        logging.info(f"  {t}:")
+                        logging.info(f"    Valid samples: {valid_mask.sum()}/{len(target_values)} ({valid_mask.mean()*100:.1f}%)")
+                        logging.info(f"    Mean: {valid_values.mean():.4f}")
+                        logging.info(f"    Std:  {valid_values.std():.4f}")
+                        logging.info(f"    Min:  {valid_values.min():.4f}")
+                        logging.info(f"    Max:  {valid_values.max():.4f}")
+                    else:
+                        logging.info(f"  {t}: No valid samples")
+                else:
+                    logging.info(f"  {t}: Target not found in dataframe")
+            group_generator._logged_targets = True
+
+        for gid in selected_ids:
+            span = group_index.get(gid)
+            if span is None:
+                continue
+            start, last = span
+            end = last + 1
+
+            # Features: ONLY numeric + mask (truncated to MAX_LEN if needed)
+            num = arr_num[start:end, :]  # (T, F)
+            if input_categorical_column:
+                view = arr_view[start:end]  # (T,)
+            T = num.shape[0]
+
+            # Truncate to MAX_LEN if sequence is longer
+            if T > MAX_LEN:
+                num = num[:MAX_LEN, :]
+                if input_categorical_column:
+                    view = view[:MAX_LEN]
+                T = MAX_LEN
+
+            mask = np.ones((T,), dtype=bool)  # (T,)
+
+            # Labels + sample weights (one scalar per task)
+            y, sw = {}, {}
+            for t in TARGETS_ALL:
+                if arr_tgts[t] is not None:
+                    v = arr_tgts[t].get(gid, np.nan)
+                    has = not pd.isna(v)
+                    y[t] = np.float32(v if has else 0.0)
+                    sw[t] = np.float32(1.0 if has else 0.0)
+                else:
+                    y[t] = np.float32(0.0)
+                    sw[t] = np.float32(0.0)
+
+            if input_categorical_column:
+                yield {'view': view, 'num': num, 'mask': mask}, y, sw
+            else:
+                yield {'num': num, 'mask': mask}, y, sw
+
+    def make_tf_dataset_from_generator(id_set, shuffle=False):
+        ds = tf.data.Dataset.from_generator(
+            lambda: group_generator(id_set),
+            output_signature=(feature_sig, label_sig, weight_sig)
+        )
+        if shuffle and len(id_set) > 0:
+            ds = ds.shuffle(buffer_size=len(id_set), reshuffle_each_iteration=True)
+        # Pad sequences to max length *in the batch* (capped at MAX_LEN):
+        if 'view' in feature_sig:
+            ds = ds.padded_batch(
+                BATCH,
+                padded_shapes=(
+                    {'view': [MAX_LEN], 'num': [MAX_LEN, Feat], 'mask': [MAX_LEN]},
+                    {t: [] for t in TARGETS_ALL},
+                    {t: [] for t in TARGETS_ALL},
+                ),
+                padding_values=(
+                    {'view': np.int32(0), 'num': np.float32(0.0), 'mask': False},
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # labels
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # weights
+                ),
+                drop_remainder=False,
+            )
+        else:
+            ds = ds.padded_batch(
+                BATCH,
+                padded_shapes=(
+                    {'num': [MAX_LEN, Feat], 'mask': [MAX_LEN]},
+                    {t: [] for t in TARGETS_ALL},
+                    {t: [] for t in TARGETS_ALL},
+                ),
+                padding_values=(
+                    {'num': np.float32(0.0), 'mask': False},
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # labels
+                    {t: np.float32(0.0) for t in TARGETS_ALL},   # weights
+                ),
+                drop_remainder=False,
+            )
+        return ds.prefetch(tf.data.AUTOTUNE).repeat()
+
+    train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
+    val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
+    test_ds = make_tf_dataset_from_generator(test_ids, shuffle=False)
+    return train_ds, val_ds, test_ds

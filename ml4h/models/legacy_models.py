@@ -4,51 +4,41 @@
 
 # Imports
 import os
-import time
 import logging
 import numpy as np
 from enum import Enum, auto
-from itertools import chain
-from abc import ABC, abstractmethod
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Iterable, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
+from typing import Dict, List, Tuple, Union, Optional, Set, Sequence, Callable, DefaultDict, Any
 
 # Keras imports
 import tensorflow as tf
-import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.utils import model_to_dot
 from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
 from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 from tensorflow.keras.regularizers import L1, L2
-import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
 from ml4h.models.model_factory import get_custom_objects
-from ml4h.plots import plot_metric_history
 from ml4h.TensorMap import TensorMap, Interpretation
-from ml4h.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
-from ml4h.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+from ml4h.optimizers import get_optimizer
+from ml4h.defines import IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNERS_CHAR_2_IDX, PARTNERS_READ_TEXT
+from ml4h.models.merge_blocks import CosineLossLayer, L2LossLayer
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
-tfd = tfp.distributions
 
 
 class BottleneckType(Enum):
     FlattenRestructure = auto()  # All decoder outputs are flattened to put into embedding
     GlobalAveragePoolStructured = auto()  # Structured (not flat) decoder outputs are global average pooled
-    Variational = auto()  # All decoder outputs are flattened then variationally sampled to put into embedding
     NoBottleNeck = auto()  # only works when everything is u_connected
     PairLoss = auto()  # Distance between paired modalities is added to the loss
 
@@ -60,16 +50,15 @@ ACTIVATION_CLASSES = {
     'thresh_relu': ThresholdedReLU,
 }
 ACTIVATION_FUNCTIONS = {
-    'swish': tf.nn.swish,
-    'gelu': tfa.activations.gelu,
-    'lisht': tfa.activations.lisht,
-    'mish': tfa.activations.mish,
+    'swish': tf.keras.activations.silu,
+    'gelu': tf.keras.activations.gelu,
+    'mish': tf.keras.activations.mish,
 }
 NORMALIZATION_CLASSES = {
     'batch_norm': BatchNormalization,
     'layer_norm': LayerNormalization,
-    'instance_norm': tfa.layers.InstanceNormalization,
-    'poincare_norm': tfa.layers.PoincareNormalize,
+    #'instance_norm': tfa.layers.InstanceNormalization,
+    #'poincare_norm': tfa.layers.PoincareNormalize,
 }
 # PREPROCESS_CLASSES = {
 #     'zoom': RandomZoom,
@@ -352,13 +341,24 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
     if not target_layer:
         target_layer = parent_model.get_layer(output_layer_name)
         parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
+    
+    if parent_model.inputs:
+        parent_inputs = parent_model.inputs
+    else:
+        # Fallback: create synthetic inputs from tensor_maps_in
+        parent_inputs = []
+        for tm in tensor_maps_in:
+            input_tensor = Input(shape=tm.shape, name=tm.input_name())
+            parent_inputs.append(input_tensor)
+        # Optionally warn
+        logging.warning("parent_model.inputs was empty. Created synthetic Inputs.")
+    dummy_input = {
+        tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in tensor_maps_in
+    }
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
     intermediate_layer_model.predict(dummy_input, verbose=0)
     return intermediate_layer_model
-
-
 Tensor = tf.Tensor
 Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
 Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
@@ -550,126 +550,6 @@ class UConnectBottleNeck:
                 **{tmap_out: tensor for tmap_out in self.u_connect[tmap_in]},
             }
         return out
-
-
-def l2_norm(x, axis=None):
-    """
-    takes an input tensor and returns the l2 norm along specified axis
-    """
-
-    square_sum = K.sum(K.square(x), axis=axis, keepdims=True)
-    norm = K.sqrt(K.maximum(square_sum, K.epsilon()))
-
-    return norm
-
-
-def pairwise_cosine_difference(t1, t2):
-    t1_norm = t1 / l2_norm(t1, axis=-1)
-    t2_norm = t2 / l2_norm(t2, axis=-1)
-    dot = K.clip(K.batch_dot(t1_norm, t2_norm), -1, 1)
-    return K.mean(tf.acos(dot))
-
-
-class CosineLossLayer(Layer):
-    """Layer that creates an Cosine loss."""
-
-    def __init__(self, weight, **kwargs):
-        super(CosineLossLayer, self).__init__(**kwargs)
-        self.weight = weight
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({'weight': self.weight})
-        return config
-
-    def call(self, inputs):
-        # We use `add_loss` to create a regularization loss
-        # that depends on the inputs.
-        self.add_loss(self.weight * pairwise_cosine_difference(inputs[0], inputs[1]))
-        return inputs
-
-
-class L2LossLayer(Layer):
-    """Layer that creates an L2 loss."""
-
-    def __init__(self, weight, **kwargs):
-        super(L2LossLayer, self).__init__(**kwargs)
-        self.weight = weight
-
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({'weight': self.weight})
-        return config
-
-    def call(self, inputs):
-        self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
-        return inputs
-
-
-class VariationalDiagNormal(Layer):
-    def __init__(
-            self,
-            latent_size: int,
-            kl_divergence_weight: float = 1.,
-            **kwargs
-    ):
-        self.latent_size = latent_size
-        self.kl_divergence_weight = kl_divergence_weight
-        super(VariationalDiagNormal, self).__init__(**kwargs)
-        self.prior = tfd.MultivariateNormalDiag(loc=tf.zeros([latent_size]), scale_identity_multiplier=1.0)
-
-    def call(self, mu: Tensor, log_sigma: Tensor, **kwargs):
-        """mu and sigma must be shape (None, latent_size)"""
-        approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
-        kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
-        self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl, name='KL_divergence')
-        return approx_posterior.sample()
-
-    def get_config(self):
-        return {'latent_size': self.latent_size, 'kl_divergence_weight': self.kl_divergence_weight}
-
-
-class VariationalBottleNeck:
-    def __init__(
-            self,
-            activation: str,
-            normalization: str,
-            fully_connected_widths: List[int],
-            latent_size: int,
-            regularization: str,
-            regularization_rate: float,
-            pre_decoder_shapes: Dict[TensorMap, Optional[Tuple[int, ...]]],
-    ):
-        self.fully_connected = FullyConnected(
-            widths=fully_connected_widths,
-            activation=activation,
-            normalization=normalization,
-            regularization=regularization,
-            regularization_rate=regularization_rate,
-        ) if fully_connected_widths else None
-        self.restructures = {
-            tm: FlatToStructure(output_shape=shape, activation=activation, normalization=normalization)
-            for tm, shape in pre_decoder_shapes.items() if shape is not None
-        }
-        self.latent_size = latent_size
-        self.sampler: Layer = VariationalDiagNormal(latent_size, regularization_rate)
-        self.no_restructures = [tm for tm, shape in pre_decoder_shapes.items() if shape is None]
-
-    def __call__(self, encoder_outputs: Dict[TensorMap, Tensor]) -> Dict[TensorMap, Tensor]:
-        y = [Flatten()(x) for x in encoder_outputs.values()]
-        if len(y) > 1:
-            y = concatenate(y)
-        else:
-            y = y[0]
-        y = self.fully_connected(y) if self.fully_connected else y
-        mu = Dense(self.latent_size, name='embed')(y)
-        log_sigma = Dense(self.latent_size, name='log_sigma')(y)
-        y = self.sampler(mu, log_sigma)
-        return {
-            **{tm: restructure(y) for tm, restructure in self.restructures.items()},
-            **{tm: y for tm in self.no_restructures},
-        }
 
 
 class ConcatenateRestructure:
@@ -1123,7 +1003,7 @@ def legacy_multimodal_multitask_model(
                 activation=activation,
             )
 
-    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders)
+    m = _make_multimodal_multitask_model(encoders, bottleneck, decoders, tensor_maps_out,  kwargs.get('named_outputs', False))
 
     # load layers for transfer learning
     model_layers = kwargs.get('model_layers', False)
@@ -1157,6 +1037,8 @@ def _make_multimodal_multitask_model(
         encoders: Dict[TensorMap, Encoder],
         bottle_neck: BottleNeck,
         decoders: Dict[TensorMap, Decoder],  # Assumed to be topologically sorted according to parents hierarchy
+        tensor_maps_out: List[TensorMap],
+        named_outputs = False 
 ) -> Model:
     inputs: Dict[TensorMap, Input] = {}
     encoder_outputs: Dict[TensorMap, Tuple[Tensor, List[Tensor]]] = {}  # TensorMap -> embed, encoder_intermediates
@@ -1174,7 +1056,15 @@ def _make_multimodal_multitask_model(
     for tm, decoder in decoders.items():
         decoder_outputs[tm] = decoder(bottle_neck_outputs[tm], encoder_intermediates, decoder_outputs)
 
-    return Model(inputs=list(inputs.values()), outputs=list(decoder_outputs.values()))
+    if not named_outputs:
+        outputs = list(decoder_outputs.values())
+    else:
+        outputs = {
+                tm.output_name(): decoder_outputs[tm]
+                for tm in parent_sort(tensor_maps_out)
+            }
+
+    return Model(inputs=list(inputs.values()), outputs=outputs)
 
 
 def _transfer_layers_by_name(model_layers: str, freeze_model_layers: str, custom_dict: Dict[str, Any], m: Model):
@@ -1281,7 +1171,7 @@ def make_paired_autoencoder_model(
         multimodal_activation = _activation_layer(kwargs['activation'])(multimodal_activation)
     else:
         raise NotImplementedError(f'No merge architecture for method: {multimodal_merge}')
-    latent_inputs = Input(shape=(kwargs['dense_layers'][-1]), name='input_concept_space')
+    latent_inputs = Input(shape=(kwargs['dense_layers'][-1], ), name='input_concept_space')
 
     # build decoder models
     for tm in kwargs['tensor_maps_out']:

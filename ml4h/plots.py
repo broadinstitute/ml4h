@@ -181,8 +181,6 @@ def evaluate_predictions(
     :param height: Figure height in inches
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
-    print("y_predictions",y_predictions.shape)
-    print("y_truth",y_truth.shape)
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
@@ -427,6 +425,9 @@ def make_one_hot(y, num_labels):
 
 
 def plot_metric_history(history, training_steps: int, title: str, prefix="./figures/", dpi=300, width=3, height=3):
+    if len(history.history) < 2:
+        logging.info(f"Not enough history to plot metrics.")
+        return
     row = 0
     col = 0
     total_plots = int(
@@ -439,7 +440,10 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
     )
 
     for k in sorted(history.history.keys()):
-        if not k.startswith("val_"):
+        if len(history.history[k]) < 2:
+            logging.info(f"Not enough epochs to plot learning curves at:{k}")
+            return
+        if not k.startswith("val_") or k in ['val_kid', 'val_supervised_loss']:
             if isinstance(history.history[k][0], LearningRateSchedule):
                 history.history[k] = [
                     history.history[k][0](i * training_steps)
@@ -466,18 +470,23 @@ def plot_metric_history(history, training_steps: int, title: str, prefix="./figu
 
     plt.tight_layout()
     now_string = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    figure_path = os.path.join(prefix, f'metrics_{now_string}_{title}{IMAGE_EXT}')
+    figure_path = os.path.join(prefix, f'learning_curves_plot_{now_string}_{title}{IMAGE_EXT}')
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
-    if 'loss' in history.history:
-        logging.info(f'Starting training loss:   {history.history["loss"][0]:0.3f}, Final training loss:   {history.history["loss"][-1]:0.4f}')
-    if 'val_loss' in history.history:
+    for log_label in ['loss', 'mse', 'mae', 'val_loss', 'val_mse', 'val_mae', 'n_loss', 'val_n_loss',
+                      'val_supervised_loss', 'val_kid', 'val_is']:
+        if log_label not in history.history:
+            continue
         logging.info(
-            f'Starting validation loss: {history.history["val_loss"][0]:0.3f}, Final validation loss: {history.history["val_loss"][-1]:0.4f}, '
-            f'Minimum validation loss: {min(history.history["val_loss"]):0.4f}',
+            f'''
+            Starting {log_label.replace('val_', 'validation ')}: {history.history[log_label][0]:0.4f},
+            Final    {log_label.replace('val_', 'validation ')}: {history.history[log_label][-1]:0.4f},
+            Minimum  {log_label.replace('val_', 'validation ')}: {min(history.history[log_label]):0.4f}
+            '''
         )
     logging.info(f"Saved learning curves at:{figure_path}")
+    plt.close()
 
 
 def plot_rocs(
@@ -719,7 +728,7 @@ def bootstrap_confidence_interval(
 
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
-    bootstrap=True, dpi=300, width=4, height=4,
+    bootstrap=True, dpi=300, width=2, height=4,
 ):
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
@@ -770,14 +779,14 @@ def plot_scatter(
 
     ax1.set_xlabel("Predictions")
     ax1.set_ylabel("Actual")
-    ax1.set_title(f'{title} N = {len(prediction)}' )
+    ax1.set_title(f'{title} N = {len(prediction)}')
     ax1.legend(loc="lower right")
 
-    sns.distplot(prediction, label="Predicted", color="r", ax=ax2)
-    sns.distplot(truth, label="Truth", color="b", ax=ax2)
+    sns.histplot(prediction, label="Predicted", ax=ax2, color="blue", edgecolor="blue", bins=min(64, len(prediction)))
+    sns.histplot(truth, label="Truth", ax=ax2, color="red", edgecolor="red", bins=min(64, len(prediction)))
     ax2.legend(loc="upper left")
 
-    figure_path = os.path.join(prefix, "scatter_" + title + IMAGE_EXT)
+    figure_path = os.path.join(prefix, f"scatter_r_{pearson:0.4f}_{title}{IMAGE_EXT}")
     if not os.path.exists(os.path.dirname(figure_path)):
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save scatter plot at: {figure_path}")
@@ -1169,7 +1178,7 @@ def plot_survival_curves(
     cur_healthy = 0
     min_sick = num_curves * 0.1
     for i in range(truth.shape[0]):
-        p = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
+        p = i #os.path.basename(paths[i]).replace(TENSOR_EXT, "")
         if sick[i] == 1:
             sick_period = np.argmax(truth[i, intervals:])
             sick_day = sick_period * (days_window // intervals)
@@ -1229,29 +1238,6 @@ def plot_noise(noise):
     pearson2 = np.corrcoef(y2.flatten(), y2_real.flatten())[1, 0]
     ratio_pearson = np.corrcoef(y_ratio.flatten(), y_ratio_real.flatten())[1, 0]
     return pearson, pearson2, ratio_pearson
-
-
-def plot_noisy():
-    samples = 140
-    p1s = []
-    p2s = []
-    prats = []
-    noises = np.linspace(0.0, 0.01, samples)
-    for n in noises:
-        p1, p2, prat = plot_noise(n)
-        p1s.append(1.0 - p1)
-        p2s.append(1.0 - p2)
-        prats.append(1.0 - prat)
-
-    plt.figure(figsize=(28, 42))
-    matplotlib.rcParams.update({"font.size": 36})
-    plt.xlabel("Noise")
-    plt.ylabel("Error")
-    plt.scatter(noises, p1s, color="cyan", label="p1")
-    plt.scatter(noises, p2s, color="green", label="p2")
-    plt.scatter(noises, prats, color="red", label="p_ratio")
-    plt.legend(loc="lower right")
-    plt.savefig("./figures/noise_fxn.png")
 
 
 def plot_value_counter(categories, counts, title, prefix="./figures/"):
@@ -2253,7 +2239,7 @@ def plot_ecg_rest(
     tensor_paths: List[str],
     rows: List[int],
     out_folder: str,
-    is_blind: bool
+    is_blind: bool,
 ) -> None:
     """Plots resting ECGs including annotations and LVH criteria
 
@@ -2573,9 +2559,8 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
     plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
-    figure_path = os.path.join(prefix, "per_class_roc_" + title + IMAGE_EXT)
-    if not os.path.exists(os.path.dirname(figure_path)):
-        os.makedirs(os.path.dirname(figure_path))
+    figure_path = os.path.join(prefix, f"per_class_roc_auc_{roc_auc[labels[key]]:0.3f}_{title}{IMAGE_EXT}")
+    os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")
     return labels_to_areas
@@ -3166,11 +3151,11 @@ def plot_reconstruction(
     height: int = 7,
 ):
     logging.info(f"Plotting {num_samples} reconstructions of {tm}.")
-    if None in tm.shape or paths is None or len(paths) == 0:  # can't handle dynamic shapes
+    if None in tm.shape:  # can't handle dynamic shapes
         return
     os.makedirs(os.path.dirname(folder), exist_ok=True)
     for i in range(num_samples):
-        sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, "")
+        sample_id = i#os.path.basename(paths[i]).replace(TENSOR_EXT, "")
         title = f"{tm.name}_{sample_id}_reconstruction"
         y = y_true[i]
         yp = y_pred[i]
@@ -3485,9 +3470,109 @@ def regplot(
     )
     axes[1].axhline(0, ls="--", color="k")
 
-    sns.distplot(res.resid, ax=axes[2], bins=bins)
+    sns.histplot(res.resid, ax=axes[2], bins=bins)
 
     if destination is not None:
         fig.savefig(destination)
 
     return res
+
+
+def radar_performance(df, prefix, show=False, legend=True):
+    df['Task'] = (
+        df['Task']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
+    )
+    # Group by metric and generate radar plot for each
+    for metric_type, metric_df in df.groupby("Metric"):
+        # Keep best score per model-task pair
+        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
+
+        pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score").fillna(0)
+
+        # Radar plot setup
+        tasks = pivot_df.index.tolist()
+        angles = np.linspace(0, 2 * np.pi, len(tasks), endpoint=False).tolist()
+        print(f'TASKS: {tasks}')
+        angles += angles[:1]  # close the loop
+
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+
+        for model in pivot_df.columns:
+            values = pivot_df[model].tolist()
+            values += values[:1]  # close the loop
+            ax.plot(angles, values, label=model)
+            ax.fill(angles, values, alpha=0.1)
+
+        # Move labels outside
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels([])
+        for angle, label in zip(angles[:-1], tasks):
+            if '_lt_' in label:
+                label = label.replace('lvef_lt_', 'LVEF<')
+            if '_med' in label:
+                label = label.replace('hypertension_med', 'HTN MED')
+            label = label.replace('output_', '').replace('_continuous', '').replace('_categorical', '').replace('_',
+                                                                                                                ' ')
+            label = label.upper() if len(label) < 5 else label.capitalize()
+            ax.text(
+                angle,
+                ax.get_ylim()[1] + 0.08,  # push outside radius
+                label,
+                ha="center",
+                va="center",
+                fontsize=12,
+                # rotation=np.degrees(angle),
+                rotation_mode="anchor"
+            )
+
+        # Force radial axis to start at 0.5
+        if 'ROC' in metric_type:
+            ax.set_ylim(0.5, 1.0)
+
+        # ax.set_title(f'Model Performance by Task ({metric_type.upper()})', size=14, pad=20)
+        if legend:
+            ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=16)
+        #plt.tight_layout()
+        if show:
+            plt.show()
+        figure_path = f"{prefix}/radar_performance_{metric_type.lower()}.png"
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path)
+
+def heatmap_performance(df, prefix="./figures/", show=False):
+    df['Task'] = (
+        df['Task']
+        .str.replace('output_', '', regex=False)
+        .str.replace('_continuous', '', regex=False)
+        .str.replace('_categorical', '', regex=False)
+        .str.replace('_x', '', regex=False)
+    )
+    for metric_type, metric_df in df.groupby("Metric"):
+        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
+        pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
+
+        plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
+        im = plt.imshow(pivot_df.values, cmap="summer", aspect="auto")
+
+        for i in range(pivot_df.shape[0]):
+            for j in range(pivot_df.shape[1]):
+                value = pivot_df.iloc[i, j]
+                if not pd.isna(value):
+                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14)
+
+        plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=pivot_df.columns, rotation=45, ha="right")
+        plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=pivot_df.index)
+        plt.colorbar(im, label="Score")
+        plt.title(f"Model Performance by Task ({metric_type.upper()})")
+        plt.tight_layout()
+        if show:
+            plt.show()
+        figure_path = f"{prefix}/heatmap_performance_{metric_type.lower()}.png"
+        if not os.path.exists(os.path.dirname(figure_path)):
+            os.makedirs(os.path.dirname(figure_path))
+        plt.savefig(figure_path)

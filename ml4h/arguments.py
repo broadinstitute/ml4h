@@ -21,25 +21,21 @@ import datetime
 import importlib
 import numpy as np
 import multiprocessing
-from typing import Set, Dict, List, Optional, Tuple
 from collections import defaultdict
+from typing import Set, Dict, List, Optional, Tuple
 
 from ml4h.logger import load_config
 from ml4h.TensorMap import TensorMap, TimeSeriesOrder
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
-from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file
-from ml4h.models.legacy_models import parent_sort, BottleneckType, check_no_bottleneck
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
+    generate_latent_tensor_map_from_file
+
+from ml4h.models.legacy_models import parent_sort, check_no_bottleneck
 from ml4h.tensormap.tensor_map_maker import make_test_tensor_maps, generate_random_pixel_as_text_tensor_maps
 from ml4h.models.legacy_models import NORMALIZATION_CLASSES, CONV_REGULARIZATION_CLASSES, DENSE_REGULARIZATION_CLASSES
 from ml4h.tensormap.tensor_map_maker import generate_continuous_tensor_map_from_file, generate_random_text_tensor_maps
-
-BOTTLENECK_STR_TO_ENUM = {
-    'flatten_restructure': BottleneckType.FlattenRestructure,
-    'global_average_pool': BottleneckType.GlobalAveragePoolStructured,
-    'variational': BottleneckType.Variational,
-    'no_bottleneck': BottleneckType.NoBottleNeck,
-}
+from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, generate_latent_tensor_map_from_file
 
 
 def parse_args():
@@ -104,7 +100,57 @@ def parse_args():
         '--categorical_file_columns', nargs='*', default=[],
         help='Column headers in file from which categorical TensorMap(s) will be made.',
     )
-
+    parser.add_argument(
+        '--no_categorical_file_weighted_loss', dest='categorical_file_weighted_loss', default=True, action='store_false',
+        help='Disable weighted cross-entropy loss for categorical TensorMaps from file (enabled by default, with weights inverse to class prevalence).',
+    )
+    parser.add_argument(
+        '--latent_input_files', nargs='*', default=[], help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first input_tensors'
+        'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--latent_dimensions', default=256, type=int, help='Dimensionality (size) of latent space',
+    )
+    parser.add_argument(
+        '--latent_dimensions_start', default=0, type=int, help='Starting dimension of latent space',
+    )
+    parser.add_argument(
+        '--latent_output_files', nargs='*', default=[], help=
+        'Path to a file containing latent space values from which an input TensorMap will be made.'
+        'Note that setting this argument has the effect of linking the first output_tensors'
+        'argument to the TensorMap made from this file.',
+    )
+    parser.add_argument(
+        '--input_numeric_columns', nargs='*', default=[], help=
+        'List of columns with continuous numeric values to use as Transformer inputs.'
+    )
+    parser.add_argument(
+        '--input_categorical_columns', nargs='*', default=[], help=
+        'List of columns with categorical values to learn an embed as input into Transformer.'
+    )
+    parser.add_argument(
+        '--target_regression_columns', nargs='*', default=[], help=
+        'List of columns with continuous numeric values to predict.'
+    )
+    parser.add_argument(
+        '--target_binary_columns', nargs='*', default=[], help=
+        'List of columns with binary values to predict.'
+    )
+    parser.add_argument(
+        '--group_column', default=None, help='Column to group on for embedding transformer.'
+    )
+    parser.add_argument(
+        '--sort_column', default=None, help='Column to sort on for embedding transformer.'
+    )
+    parser.add_argument(
+        '--sort_column_ascend', default=False, action='store_true', help='Sort on for embedding transformer.',
+    )
+    parser.add_argument(
+        '--merge_columns', nargs='*', default=['mrn', 'view'], help=
+        'List of columns to merge on for input and labels Transformer.'
+    )
     parser.add_argument(
         '--categorical_field_ids', nargs='*', default=[], type=int,
         help='List of field ids from which input features will be collected.',
@@ -214,7 +260,6 @@ def parse_args():
         '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',
     )
-    parser.add_argument('--bottleneck_type', type=str, default=list(BOTTLENECK_STR_TO_ENUM)[0], choices=list(BOTTLENECK_STR_TO_ENUM))
     parser.add_argument('--hidden_layer', default='embed', help='Name of a hidden layer for inspections.')
     parser.add_argument('--language_layer', default='ecg_rest_text', help='Name of TensorMap for learning language models (eg train_char_model).')
     parser.add_argument('--language_prefix', default='ukb_ecg_rest', help='Path prefix for a TensorMap to learn language models (eg train_char_model)')
@@ -222,9 +267,65 @@ def parse_args():
     parser.add_argument('--hd5_as_text', default=None, help='Path prefix for a TensorMap to learn language models from flattened HD5 arrays.')
     parser.add_argument('--attention_heads', default=4, type=int, help='Number of attention heads in Multi-headed attention layers')
     parser.add_argument(
+        '--attention_window', default=4, type=int,
+        help='For diffusion models, when U-Net representation size is smaller than attention_window '
+             'Cross-Attention is applied',
+    )
+    parser.add_argument(
+        '--attention_modulo', default=3, type=int,
+        help='For diffusion models, this controls how frequently Cross-Attention is applied. '
+             '2 means every other residual block, 3 would mean every third.',
+    )
+    parser.add_argument(
+        '--diffusion_condition_strategy', default='cross_attention',
+        choices=['cross_attention', 'concat', 'film'],
+        help='For diffusion models, this controls conditional embeddings are integrated into the U-NET',
+    )
+    parser.add_argument(
+        '--diffusion_loss', default='sigmoid',
+        help='Loss function to use for diffusion models. Can be sigmoid, mean_absolute_error, or mean_squared_error',
+    )
+    parser.add_argument(
+        '--sigmoid_beta', default=-3, type=float,
+        help='Beta to use with sigmoid loss for diffusion models.',
+    )
+    parser.add_argument(
+        '--supervision_scalar', default=0.01, type=float,
+        help='For `train_diffusion_supervise` mode, this weights the supervision loss from phenotype prediction on denoised data.',
+    )
+    parser.add_argument('--encoder_file', help='Diffusion model encoder path for DiffAE training.')
+    parser.add_argument('--interpolate_min', type=float, default =-2.0,
+                        help='Diffusion model synthetic interpolation minimum continuous condition')
+    parser.add_argument('--interpolate_max', type=float, default =2.01,
+                        help='Diffusion model synthetic interpolation maximum continuous condition')
+    parser.add_argument('--interpolate_step', type=float, default =1.0,
+                        help='Diffusion model synthetic interpolation step size continuous condition')
+
+    parser.add_argument(
+         '--transformer_input_file', help='File with latent space input for transformers',
+    )
+    parser.add_argument(
+         '--transformer_label_file', help='File with target labels for transformers',
+    )
+    parser.add_argument(
          '--transformer_size', default=32, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
+    )
+    parser.add_argument(
+         '--transformer_layers', default=4, type=int, help='Number of residual attention layers in transformers',
+    )
+    parser.add_argument(
+         '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
+    )
+    parser.add_argument(
+         '--transformer_categorical_embed', default=4, type=int, help='Size of embedding of input categorical data',
+    )
+    parser.add_argument(
+         '--transformer_token_embed', default=32, type=int, help='Size of embedding of transformer input tokens',
+    )
+    parser.add_argument(
+         '--transformer_dropout_rate', default=0.1, type=float, help='Dropout rate for the longitudinal/embedding transformer.',
     )
     parser.add_argument('--pretrain_trainable', default=False, action='store_true', help='If set, do not freeze pretrained layers.')
 
@@ -250,6 +351,7 @@ def parse_args():
     parser.add_argument('--training_steps', default=96, type=int, help='Number of training batches to examine in an epoch.')
     parser.add_argument('--validation_steps', default=32, type=int, help='Number of validation batches to examine in an epoch validation.')
     parser.add_argument('--learning_rate', default=0.00005, type=float, help='Learning rate during training.')
+    parser.add_argument('--siamese', default=False, action='store_true', help='Use TensorGenerator.')
     parser.add_argument('--mixup_alpha', default=0, type=float, help='If positive apply mixup and sample from a Beta with this value as shape parameter alpha.')
     parser.add_argument(
         '--label_weights', nargs='*', type=float,
@@ -264,7 +366,7 @@ def parse_args():
         help='Maximum number of models for the hyper-parameter optimizer to evaluate before returning.',
     )
     parser.add_argument('--balance_csvs', default=[], nargs='*', help='Balances batches with representation from sample IDs in this list of CSVs')
-    parser.add_argument('--optimizer', default='radam', type=str, help='Optimizer for model training')
+    parser.add_argument('--optimizer', default='adam', type=str, help='Optimizer for model training')
     parser.add_argument('--learning_rate_schedule', default=None, type=str, choices=['triangular', 'triangular2', 'cosine_decay'], help='Adjusts learning rate during training.')
     parser.add_argument('--anneal_rate', default=0., type=float, help='Annealing rate in epochs of loss terms during training')
     parser.add_argument('--anneal_shift', default=0., type=float, help='Annealing offset in epochs of loss terms during training')
@@ -388,16 +490,24 @@ def parse_args():
 
     # Arguments for explorations/infer_stats_from_segmented_regions
     parser.add_argument('--analyze_ground_truth', default=False, action='store_true', help='Whether or not to filter by images with ground truth segmentations, for comparison')
-    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots')
-    parser.add_argument('--erosion_radius', default=1, type=int, help='Radius of the unit disk structuring element for erosion preprocessing')
+    parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots. Must be in the same order as the output channel map. Use + to merge structures before postprocessing, and ++ to merge structures after postprocessing. E.g., --structures_to_analyze interventricular_septum LV_free_wall anterolateral_pap posteromedial_pap interventricular_septum+LV_free_wall anterolateral_pap++posteromedial_pap')
+    parser.add_argument('--erosion_radius', nargs='*', default=[], type=int, help='Radius of the unit disk structuring element for erosion preprocessing, optionally as a list per structure to analyze')
     parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')
-    parser.add_argument('--intensity_thresh_percentile', type=float, help='Threshold percentile for preprocessing, between 0 and 100 inclusive')
-    parser.add_argument('--intensity_thresh_k_means', nargs='*', default=[], type=int, help='Preprocessing using k-means specified as two numbers, the first is the number of clusters and the second is the cluster index to keep')
     parser.add_argument('--intensity_thresh_in_structures', nargs='*', default=[], help='Structure names whose pixels should be replaced if the images has intensity above the threshold')
     parser.add_argument('--intensity_thresh_out_structure', help='Replacement structure name')
+    parser.add_argument('--intensity_thresh_auto', default=None, type=str, help='Preprocessing using histograms or k-means into two clusters, using the image or a region')
+    parser.add_argument('--intensity_thresh_auto_region_radius', default=5, type=int, help='Radius of the unit disk structuring element for auto-thresholidng in a region')
+    parser.add_argument('--intensity_thresh_auto_clip_low', default=0.65, type=float, help='Lower clip value before auto thresholding')
+    parser.add_argument('--intensity_thresh_auto_clip_high', default=2, type=float, help='Higher clip value before auto thresholding')
+
 
     # TensorMap prefix for convenience
     parser.add_argument('--tensormap_prefix', default="ml4h.tensormap", type=str, help="Module prefix path for TensorMaps. Defaults to \"ml4h.tensormap\"")
+
+    #Parent Sort enable or disable
+    parser.add_argument('--parent_sort', default=True, type=lambda x: x.lower() == 'true', help='disable or enable parent_sort on output tmaps')
+    #Dictionary outputs
+    parser.add_argument('--named_outputs', default=True, type=lambda x: x.lower() == 'true', help='pass output tmaps as dictionaries if true else pass as list')
 
     args = parser.parse_args()
     _process_args(args)
@@ -505,6 +615,15 @@ def _process_args(args):
         args.tensor_maps_in.append(input_map)
         args.tensor_maps_out.append(output_map)
 
+    # if len(args.latent_input_files) > 0:
+    #     new_pairs = []
+    #     for lif in args.latent_input_files:
+    #         tm = generate_latent_tensor_map_from_file(lif, args.input_tensors.pop(0))
+    #         args.tensor_maps_in.append(tm)
+    #         new_pairs.append(tm)
+    #     if len(args.pairs) > 0:
+    #         args.pairs = [new_pairs]
+
     args.tensor_maps_in.extend([tensormap_lookup(it, args.tensormap_prefix) for it in args.input_tensors])
 
     if args.continuous_file is not None:
@@ -527,15 +646,21 @@ def _process_args(args):
                     args.categorical_file,
                     column,
                     args.output_tensors.pop(0),
+                    args.categorical_file_weighted_loss,
                 ),
             )
+
+    # if len(args.latent_output_files) > 0:
+    #     for lof in args.latent_output_files:
+    #         args.tensor_maps_out.append(
+    #             generate_latent_tensor_map_from_file(lof, args.output_tensors.pop(0)),
+    #         )
+
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
 
-    args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
-    if args.bottleneck_type == BottleneckType.NoBottleNeck:
-        check_no_bottleneck(args.u_connect, args.tensor_maps_out)
+    check_no_bottleneck(args.u_connect, args.tensor_maps_out)
 
     if args.learning_rate_schedule is not None and args.patience < args.epochs:
         raise ValueError(f'learning_rate_schedule is not compatible with ReduceLROnPlateau. Set patience > epochs.')
