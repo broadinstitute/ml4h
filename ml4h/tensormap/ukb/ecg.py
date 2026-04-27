@@ -140,8 +140,8 @@ def _make_ecg_rest(
         if skip_poor and 'Poor data quality' in ecg_interpretation:
             raise ValueError(f'Poor data quality skipped by {tm.name}.')
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for k in hd5[tm.path_prefix]:
-            if k in tm.channel_map:
+        for k in tm.channel_map:
+            if (tm.path_prefix in hd5) and (k in hd5[tm.path_prefix]):
                 data = tm.hd5_first_dataset_in_group(
                     hd5, f'{tm.path_prefix}/{k}/instance_{instance}',
                 )
@@ -157,6 +157,8 @@ def _make_ecg_rest(
                     tensor[:, tm.channel_map[k]] = np.array(data, dtype=np.float32)[::downsample_steps]
                 else:
                     tensor[:, tm.channel_map[k]] = pad_or_crop_array_to_shape((tm.shape[0],), data)
+            else:
+                raise ValueError(f'Missing channel {k} in {tm.name}.')
         return tensor
     return ecg_rest_from_file
 
