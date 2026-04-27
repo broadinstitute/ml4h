@@ -220,14 +220,14 @@ fathers_age = TensorMap(
 )
 
 genetic_sex = TensorMap(
-    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_INDEX,
     path_prefix='categorical', annotation_units=2, loss='categorical_crossentropy',
     channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
 )
 partition_i = 128
 a_units = 128
 genetic_sex_partition = TensorMap(
-    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+    'Genetic-sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_INDEX,
     path_prefix='categorical', days_window=partition_i, annotation_units=a_units, loss='categorical_crossentropy',
     channel_map={'Genetic-sex_Female_0_0': 0, 'Genetic-sex_Male_0_0': 1},
 )
@@ -238,17 +238,17 @@ age_2_partition = TensorMap(
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 sex = TensorMap(
-    'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    'Sex_Male_0_0', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
 )
 
 sex_mgb = TensorMap(
-    'sex', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    'sex', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy', annotation_units=2,
 )
 
 is_male_mgb = TensorMap(
-    'is_male', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    'is_male', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
 
@@ -356,7 +356,7 @@ sex_dummy1 = TensorMap(
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
 sex_dummy2 = TensorMap(
-    'is_female', Interpretation.CATEGORICAL,
+    'is_female', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
      path_prefix='categorical', annotation_units=2,
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
@@ -534,14 +534,14 @@ diastolic_blood_pressure_2 = TensorMap(
 
 hypertension = TensorMap(
     'hypertension', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension': 0, 'hypertension': 1},
 )
 
 hypertension_diagnosis = TensorMap(
     'hypertension_diagnosis', Interpretation.CATEGORICAL,
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     loss='categorical_crossentropy',
     channel_map={'no_hypertension': 0, 'hypertension': 1},
 )
@@ -575,7 +575,7 @@ hypercholesterolemia = TensorMap(
 
 hypertension_med = TensorMap(
     'start_fu_hypertension_med', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'no_start_fu_hypertension_med':0, 'start_fu_hypertension_med': 1},
 )
 peak_vo2 = TensorMap(
@@ -585,7 +585,7 @@ peak_vo2 = TensorMap(
 )
 cad = TensorMap(
     'cad', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
-    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'no_coronary_artery_disease':0, 'coronary_artery_disease': 1},
 )
 
