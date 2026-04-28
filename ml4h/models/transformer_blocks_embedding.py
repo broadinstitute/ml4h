@@ -19,6 +19,18 @@ tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
+@keras.saving.register_keras_serializable(package="ml4h")
+def sparse_weighted_categorical_crossentropy(class_weights):
+    class_weights = tf.constant(class_weights, dtype=tf.float32)
+    def loss(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+        y_true = tf.reshape(y_true, [-1])
+        sample_weights = tf.gather(class_weights, y_true)
+        base_loss = keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return base_loss * sample_weights
+    return loss
+
+
 # Register serializable functions at module level
 @keras.saving.register_keras_serializable(package="ml4h")
 class PositionIndexLayer(keras.layers.Layer):
@@ -398,7 +410,11 @@ def build_general_embedding_transformer(
     num_heads,
     num_layers,
     dropout,
+    CATEGORICAL_TARGETS=None,
+    NUM_CLASSES=3,
+    LABEL_WEIGHTS=None,
 ):
+    CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
     # ------------------------------
     # INPUTS
     # ------------------------------
@@ -540,6 +556,8 @@ def build_general_embedding_transformer(
         outputs[t] = layers.Dense(1, name=t)(h)
     for t in binary_targets:
         outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
+    for t in CATEGORICAL_TARGETS:
+        outputs[t] = layers.Dense(NUM_CLASSES, activation="softmax", name=t)(h)
 
     # ------------------------------
     # MODEL
@@ -556,6 +574,13 @@ def build_general_embedding_transformer(
 
     losses = {t: "mse" for t in regression_targets}
     losses.update({t: "binary_crossentropy" for t in binary_targets})
+    if LABEL_WEIGHTS:
+        class_weights = [float(w) for w in LABEL_WEIGHTS]
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
+    else:
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics_dict = {
         t: [keras.metrics.MeanAbsoluteError(), keras.metrics.MeanSquaredError()]
@@ -567,6 +592,8 @@ def build_general_embedding_transformer(
             keras.metrics.AUC(name="auprc", curve="PR"),
             keras.metrics.BinaryAccuracy(name="acc"),
         ]
+    for t in CATEGORICAL_TARGETS:
+        metrics_dict[t] = [keras.metrics.SparseCategoricalAccuracy(name="acc")]
 
     model.compile(
         optimizer=keras.optimizers.Adam(1e-4, clipnorm=1.0),

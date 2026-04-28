@@ -139,6 +139,14 @@ def parse_args():
         'List of columns with binary values to predict.'
     )
     parser.add_argument(
+        '--target_categorical_columns', nargs='*', default=[],
+        help='List of columns with integer class labels to predict (multiclass).',
+    )
+    parser.add_argument(
+        '--num_classes', type=int, default=3,
+        help='Number of classes for categorical/multiclass targets.',
+    )
+    parser.add_argument(
         '--group_column', default=None, help='Column to group on for embedding transformer.'
     )
     parser.add_argument(
