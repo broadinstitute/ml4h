@@ -13,7 +13,7 @@ from sklearn.metrics import roc_curve, auc, average_precision_score
 from tensorflow.keras.applications.inception_v3 import InceptionV3, preprocess_input
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
-from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE, Dice
+from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE
 from keras.saving import register_keras_serializable
 
 
