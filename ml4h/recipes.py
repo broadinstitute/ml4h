@@ -1032,7 +1032,7 @@ def train_transformer_on_parquet_fast(args):
 
     train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
                                                               args.group_column, args.sort_column, args.sort_column_ascend,
-                                                              args.target_regression_columns + args.target_binary_columns,
+                                                              args.target_regression_columns + args.target_binary_columns + args.target_categorical_columns,
                                                               args.transformer_max_size, args.batch_size,
                                                               args.train_csv, args.valid_csv, args.test_csv)
 
@@ -1065,6 +1065,9 @@ def train_transformer_on_parquet_fast(args):
             view2id,
             args.learning_rate,
             binary_class_prevalences=binary_class_prevalences,
+            CATEGORICAL_TARGETS=args.target_categorical_columns,
+            NUM_CLASSES=args.num_classes,
+            LABEL_WEIGHTS=args.label_weights,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
@@ -1100,9 +1103,12 @@ def train_transformer_on_parquet_fast(args):
     )
     model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
-    metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
-    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    if len(args.target_categorical_columns) == 0:
+        metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+        radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+        heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    else:
+        metrics = {}
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 

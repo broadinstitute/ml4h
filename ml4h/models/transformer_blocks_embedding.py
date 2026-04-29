@@ -650,6 +650,9 @@ def build_embedding_transformer(
         view2id,
         learning_rate,
         binary_class_prevalences=None,
+        CATEGORICAL_TARGETS=None,
+        NUM_CLASSES=3,
+        LABEL_WEIGHTS=None,
 ):
     """
     Build an embedding transformer model.
@@ -662,6 +665,7 @@ def build_embedding_transformer(
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
     """
+    CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
     Feat = len(INPUT_NUMERIC_COLS)
 
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
@@ -729,6 +733,8 @@ def build_embedding_transformer(
         outputs[t] = layers.Dense(1, name=t)(h)  # linear
     for t in BINARY_TARGETS:
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
+    for t in CATEGORICAL_TARGETS:
+        outputs[t] = layers.Dense(NUM_CLASSES, activation='softmax', name=t)(h)
 
     if view2id is not None:
         model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
@@ -745,12 +751,21 @@ def build_embedding_transformer(
             logging.info(f"Using weighted BCE for {t}: prevalence={prevalence:.4f}, pos_weight={pos_weight:.2f}")
         else:
             losses[t] = 'binary_crossentropy'
+    if LABEL_WEIGHTS:
+        class_weights = [float(w) for w in LABEL_WEIGHTS]
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
+    else:
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),
                    keras.metrics.MeanSquaredError(name='mse')] for t in REGRESSION_TARGETS}
     metrics.update({t: [keras.metrics.AUC(name='auroc', curve='ROC'),
                         keras.metrics.AUC(name='auprc', curve='PR'),
                         keras.metrics.BinaryAccuracy(name='acc')] for t in BINARY_TARGETS})
+    for t in CATEGORICAL_TARGETS:
+        metrics[t] = [keras.metrics.SparseCategoricalAccuracy(name='acc')]
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate),
