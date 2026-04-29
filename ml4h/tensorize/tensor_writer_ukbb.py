@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
 from timeit import default_timer as timer
-from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
+from scipy.ndimage import binary_closing, binary_erosion  # Morphological operator
 
 from ml4h.plots import plot_value_counter, plot_histograms
 from ml4h.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_FRAMES

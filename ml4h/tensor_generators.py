@@ -756,8 +756,8 @@ def augment_using_layers(
     # Adapted from:
     # https://stackoverflow.com/questions/65475057/keras-data-augmentation-pipeline-for-image-segmentation-dataset-image-and-mask
 
-    assert(len(in_shapes) == 1, 'no support for multiple inputs')
-    assert(len(out_shapes) == 1, 'no support for mulitple outputs')
+    assert len(in_shapes) == 1, 'no support for multiple inputs'
+    assert len(out_shapes) == 1, 'no support for multiple outputs'
 
     def aug():
         rota = tf.keras.layers.RandomRotation(factor=rotation_factor, fill_mode='constant')
@@ -908,8 +908,8 @@ def test_train_valid_tensor_generators(
     logging.info(f'doing_augmentation {do_augmentation} with rotation {rotation_factor}, zoom {zoom_factor}, translation {translation_factor}')
 
     if do_augmentation:
-        assert(len(tensor_maps_in) == 1, 'no support for multiple input tensors')
-        assert(len(tensor_maps_out) == 1, 'no support for multiple output tensors')
+        assert len(tensor_maps_in) == 1, 'no support for multiple input tensors'
+        assert len(tensor_maps_out) == 1, 'no support for multiple output tensors'
 
     if wrap_with_tf_dataset or do_augmentation:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}

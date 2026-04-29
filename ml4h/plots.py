@@ -52,7 +52,7 @@ from sklearn.calibration import calibration_curve
 
 import seaborn as sns
 from biosppy.signals import ecg
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 from scipy import stats
 
 from pystrum.medipy.metrics import dice
