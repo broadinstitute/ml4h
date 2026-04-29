@@ -2,17 +2,32 @@
 
 import os
 import logging
+from functools import partial
 from typing import List, Tuple, Iterable, Union
 
+import tensorflow as tf
+import keras
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+import tensorflow as tf
+from ml4h.explorations import predictions_to_pngs
+
 from tensorflow.keras.callbacks import History
-from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 
 from ml4h.TensorMap import TensorMap
-from ml4h.plots import plot_metric_history
+
+from ml4h.models.diffusion_blocks import DiffusionModel, DiffusionController
+from ml4h.plots import plot_metric_history, plot_roc
 from ml4h.defines import IMAGE_EXT, MODEL_EXT
 from ml4h.models.inspect import plot_and_time_model
-from ml4h.models.model_factory import get_custom_objects
+from ml4h.models.model_factory import get_custom_objects, make_multimodal_multitask_model
+from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
 
 def train_model_from_generators(
@@ -74,7 +89,7 @@ def train_model_from_generators(
 
     logging.info('Model weights saved at: %s' % model_file)
     custom_dict = get_custom_objects(output_tensor_maps)
-    model = load_model(model_file, custom_objects=custom_dict, compile=False)
+    model = tf.keras.models.load_model(model_file, custom_objects=custom_dict, compile=False)
     model.compile(optimizer='adam', loss='mse')
     if plot:
         plot_metric_history(history, training_steps, run_id, os.path.dirname(model_file))
@@ -91,5 +106,5 @@ def _get_callbacks(
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=patience, verbose=1),
         ModelCheckpoint(filepath=model_file, verbose=1, save_best_only=not save_last_model),
     ]
-    
+
     return callbacks

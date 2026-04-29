@@ -2,12 +2,14 @@ import os
 import csv
 import logging
 import operator
+
+import h5py
 import numpy as np
 import pandas as pd
 from typing.io import TextIO
 from typing import List, Tuple
 
-from ml4h.metrics import sparse_cross_entropy
+from ml4h.metrics import sparse_cross_entropy, weighted_crossentropy
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.DatabaseClient import BigQueryDatabaseClient, DatabaseClient
 from ml4h.defines import TENSOR_MAPS_FILE_NAME, dataset_name_from_meaning
@@ -204,7 +206,7 @@ def _write_continuous_tensor_maps(f: TextIO, db_client: DatabaseClient):
         for i in range(0, row.max_array + 1):
             channel_map += f"'{name}{JOIN_CHAR}{i}': {i}, "
         channel_map += "}"
-        f.write(f"ukb_{row.FieldID}_{row.instance} = TensorMap('{name}{JOIN_CHAR}{i}', loss='logcosh', path_prefix='continuous', ")
+        f.write(f"ukb_{row.FieldID}_{row.instance} = TensorMap('{name}{JOIN_CHAR}{i}', loss='log_cosh', path_prefix='continuous', ")
         f.write(f"normalization={{'mean': {row.mean}, 'std': {row.std}}}, {channel_map})\n")
 
 
@@ -251,17 +253,55 @@ def generate_categorical_tensor_map_from_file(
     file_name: str,
     column_name: str,
     tensor_map_name: str,
+    weighted_loss: bool = True,
 ) -> TensorMap:
     ext = file_name.split('.')[1]
     delimiter = ',' if ext == 'csv' else '\t'
     df = pd.read_csv(file_name, delimiter=delimiter)
+    value_counts = df[column_name].value_counts()
     channel_map = {}
-    for i, k in enumerate(df[column_name].value_counts().keys()):
-        channel_map[k] = i
+    for i, k in enumerate(value_counts.keys()):
+        channel_map[f'val_{k}'] = i
+
+    loss = None
+    if weighted_loss:
+        total_samples = len(df)
+        # Weights are inverse of class prevalence, ordered by channel_map index
+        weights = [10*max(0.001, 1-(value_counts.iloc[i]/total_samples)) for i in range(len(value_counts))]
+        #weights = [0.2, 10.0, 0.5]
+        loss = weighted_crossentropy(weights, tensor_map_name)
+        logging.info(f"Weighted loss for {tensor_map_name} with weights: {weights}")
+
     return TensorMap(
             f'{tensor_map_name}', Interpretation.CATEGORICAL, channel_map=channel_map,
             tensor_from_file=build_categorical_tensor_from_file(file_name, column_name),
+            loss=loss,
     )
+
+
+def _space_tensor_from_file(df: pd.DataFrame, dimensions: int, sample_column: str = 'sample_id'):
+    def tensor_from_file(tm: TensorMap, hd5: h5py.File, dependents=None):
+        sample_id = int(os.path.basename(hd5.filename).replace('.hd5', ''))
+        row = df[df[sample_column] == sample_id]
+        if len(row) == 0:
+            raise KeyError(f'Sample id not in dataframe.')
+        values = row.iloc[0].tolist()[1:dimensions+1]
+        return np.array(values, dtype=np.float32)
+    return tensor_from_file
+
+
+def generate_latent_tensor_map_from_file(
+    file_name: str,
+    tensor_map_name: str,
+) -> TensorMap:
+    delimiter = ',' if file_name.split('.')[1].lower() == 'csv' else '\t'
+    df = pd.read_csv(file_name, delimiter=delimiter)
+    dimensions = len(df.columns)-1
+    return TensorMap(
+            f'{tensor_map_name}', Interpretation.CONTINUOUS, shape=(dimensions,),
+            tensor_from_file=_space_tensor_from_file(df, dimensions), metrics=[],
+    )
+
 
 def generate_random_text_tensor_maps(text_file: str, window_size: int) -> Tuple[TensorMap, TensorMap]:
     name = os.path.basename(text_file).split('.')[0]

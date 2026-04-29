@@ -1,20 +1,25 @@
 # metrics.py
+import json
+import os
+import time
 import logging
+
+import keras
 import numpy as np
 import tensorflow as tf
+from scipy.linalg import sqrtm
 import tensorflow.keras.backend as K
-
 from sklearn.metrics import roc_curve, auc, average_precision_score
-
+from tensorflow.keras.applications.inception_v3 import InceptionV3, preprocess_input
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
-from tensorflow.keras.losses import logcosh, cosine_similarity, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
+from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE, Dice
+from keras.saving import register_keras_serializable
 
-from neurite.tf.losses import Dice
 
 STRING_METRICS = [
     'categorical_crossentropy','binary_crossentropy','mean_absolute_error','mae',
-    'mean_squared_error', 'mse', 'cosine_similarity', 'logcosh', 'sparse_categorical_crossentropy',
+    'mean_squared_error', 'mse', 'cosine_similarity', 'log_cosh', 'sparse_categorical_crossentropy',
 ]
 
 
@@ -46,6 +51,7 @@ def weighted_crossentropy(weights, name='anonymous'):
     string_fxn += '\treturn loss\n'
     exec(string_fxn, globals(), locals())
     loss_fxn = eval(name + fxn_postfix, globals(), locals())
+    loss_fxn = register_keras_serializable()(loss_fxn)
     return loss_fxn
 
 
@@ -107,39 +113,39 @@ def paired_angle_between_batches(tensors):
 
 def ignore_zeros_l2(y_true, y_pred):
     mask = K.cast(K.not_equal(y_true, 0), K.floatx())
-    return mean_squared_error(y_true * mask, y_pred * mask)
+    return MSE(y_true * mask, y_pred * mask)
 
 
 def ignore_zeros_logcosh(y_true, y_pred):
     mask = K.cast(K.not_equal(y_true, 0), K.floatx())
-    return logcosh(y_true * mask, y_pred * mask)
+    return LogCosh(y_true * mask, y_pred * mask)
 
 
 def sentinel_logcosh_loss(sentinel: float):
     def ignore_sentinel_logcosh(y_true, y_pred):
         mask = K.cast(K.not_equal(y_true, sentinel), K.floatx())
-        return logcosh(y_true * mask, y_pred * mask)
+        return LogCosh(y_true * mask, y_pred * mask)
     return ignore_sentinel_logcosh
 
 
 def y_true_times_mse(y_true, y_pred):
-    return K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(y_true, 1.0)*MSE(y_true, y_pred)
 
 
 def mse_10x(y_true, y_pred):
-    return 10.0*mean_squared_error(y_true, y_pred)
+    return 10.0*MSE(y_true, y_pred)
 
 
 def y_true_squared_times_mse(y_true, y_pred):
-    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*MSE(y_true, y_pred)
 
 
 def y_true_cubed_times_mse(y_true, y_pred):
-    return K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*mean_squared_error(y_true, y_pred)
+    return K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*K.maximum(y_true, 1.0)*MSE(y_true, y_pred)
 
 
 def y_true_squared_times_logcosh(y_true, y_pred):
-    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*logcosh(y_true, y_pred)
+    return K.maximum(1.0+y_true, 1.0)*K.maximum(1.0+y_true, 1.0)*LogCosh(y_true, y_pred)
 
 
 def two_batch_euclidean(tensors):
@@ -263,6 +269,7 @@ def survival_likelihood_loss(n_intervals):
     return loss
 
 def dice(y_true, y_pred):
+    return Dice()(y_true, y_pred)
     return Dice(laplace_smoothing=1e-05).mean_loss(y_true, y_pred)
 
 def per_class_dice(labels):
@@ -271,12 +278,13 @@ def per_class_dice(labels):
         label_idx = labels[label_key]
         fxn_name = label_key.replace('-', '_').replace(' ', '_')
         string_fxn = 'def ' + fxn_name + '_dice(y_true, y_pred):\n'
-        string_fxn += '\tdice = Dice(laplace_smoothing=1e-05).dice(y_true, y_pred)\n'
-        string_fxn += '\tdice = K.mean(dice, axis=0)['+str(label_idx)+']\n'
+        string_fxn += '\tdice = tf.keras.losses.Dice()(y_true, y_pred)\n'
+        #string_fxn += '\tdice = K.mean(dice, axis=0)['+str(label_idx)+']\n'
         string_fxn += '\treturn dice'
 
         exec(string_fxn)
         dice_fxn = eval(fxn_name + '_dice')
+        dice_fxn = register_keras_serializable()(dice_fxn)
         dice_fxns.append(dice_fxn)
 
     return dice_fxns
@@ -297,6 +305,7 @@ def per_class_recall(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_name + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -315,6 +324,7 @@ def per_class_precision(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_name + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -333,6 +343,7 @@ def per_class_recall_3d(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_prefix + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -351,6 +362,7 @@ def per_class_precision_3d(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_prefix + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -369,6 +381,7 @@ def per_class_recall_4d(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_prefix + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -387,6 +400,8 @@ def per_class_precision_4d(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_prefix + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
+
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -405,6 +420,7 @@ def per_class_recall_5d(labels):
 
         exec(string_fxn)
         recall_fxn = eval(fxn_prefix + '_recall')
+        recall_fxn = register_keras_serializable()(recall_fxn)
         recall_fxns.append(recall_fxn)
 
     return recall_fxns
@@ -423,6 +439,7 @@ def per_class_precision_5d(labels):
 
         exec(string_fxn)
         precision_fxn = eval(fxn_prefix + '_precision')
+        precision_fxn = register_keras_serializable()(precision_fxn)
         precision_fxns.append(precision_fxn)
 
     return precision_fxns
@@ -447,15 +464,15 @@ def get_metric_dict(output_tensor_maps):
         elif tm.loss == 'binary_crossentropy':
             losses.append(binary_crossentropy)
         elif tm.loss == 'mean_absolute_error' or tm.loss == 'mae':
-            losses.append(mean_absolute_error)
+            losses.append(MSE)
         elif tm.loss == 'mean_squared_error' or tm.loss == 'mse':
-            losses.append(mean_squared_error)
+            losses.append(MSE)
         elif tm.loss == 'cosine_similarity':
-            losses.append(cosine_similarity)
-        elif tm.loss == 'logcosh':
-            losses.append(logcosh)
+            losses.append(CosineSimilarity)
+        elif tm.loss == 'log_cosh':
+            losses.append(LogCosh)
         elif tm.loss == 'mape':
-            losses.append(mean_absolute_percentage_error)
+            losses.append(MAPE)
         elif hasattr(tm.loss,  '__name__'):
             metrics[tm.loss.__name__] = tm.loss
             losses.append(tm.loss)
@@ -714,3 +731,337 @@ def concordance_index_censored(event_indicator, event_time, estimate, tied_tol=1
     """
     w = np.ones_like(estimate)
     return _estimate_concordance_index(event_indicator, event_time, estimate, w, tied_tol)
+
+
+class KernelInceptionDistance(keras.metrics.Metric):
+    def __init__(self, name, input_shape, kernel_image_size, **kwargs):
+        super().__init__(name=name, **kwargs)
+
+        # KID is estimated per batch and is averaged across batches
+        self.kid_tracker = keras.metrics.Mean(name="kid_tracker")
+
+        # a pretrained InceptionV3 is used without its classification layer
+        # transform the pixel values to the 0-255 range, then use the same
+        # preprocessing as during pretraining
+        self.encoder = keras.Sequential(
+            [
+                keras.Input(shape=input_shape), # TODO: handle multi-channel
+                keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),
+                keras.layers.Rescaling(255.0),
+                keras.layers.Resizing(height=kernel_image_size, width=kernel_image_size),
+                keras.layers.Lambda(keras.applications.inception_v3.preprocess_input),
+                keras.applications.InceptionV3(
+                    include_top=False,
+                    input_shape=(kernel_image_size, kernel_image_size, 3),
+                    weights="imagenet",
+                ),
+                keras.layers.GlobalAveragePooling2D(),
+            ],
+            name="inception_encoder",
+        )
+
+    def polynomial_kernel(self, features_1, features_2):
+        feature_dimensions = tf.cast(tf.shape(features_1)[1], dtype=tf.float32)
+        return (features_1 @ tf.transpose(features_2) / feature_dimensions + 1.0) ** 3.0
+
+    def update_state(self, real_images, generated_images, sample_weight=None):
+        real_features = self.encoder(real_images, training=False)
+        generated_features = self.encoder(generated_images, training=False)
+
+        # compute polynomial kernels using the two sets of features
+        kernel_real = self.polynomial_kernel(real_features, real_features)
+        kernel_generated = self.polynomial_kernel(
+            generated_features, generated_features
+        )
+        kernel_cross = self.polynomial_kernel(real_features, generated_features)
+
+        # estimate the squared maximum mean discrepancy using the average kernel values
+        batch_size = tf.shape(real_features)[0]
+        batch_size_f = tf.cast(batch_size, dtype=tf.float32)
+        mean_kernel_real = tf.reduce_sum(kernel_real * (1.0 - tf.eye(batch_size))) / (
+            batch_size_f * (batch_size_f - 1.0)
+        )
+        mean_kernel_generated = tf.reduce_sum(
+            kernel_generated * (1.0 - tf.eye(batch_size))
+        ) / (batch_size_f * (batch_size_f - 1.0))
+        mean_kernel_cross = tf.reduce_mean(kernel_cross)
+        kid = mean_kernel_real + mean_kernel_generated - 2.0 * mean_kernel_cross
+
+        # update the average KID estimate
+        self.kid_tracker.update_state(kid)
+
+    def result(self):
+        return self.kid_tracker.result()
+
+    def reset_state(self):
+        self.kid_tracker.reset_state()
+
+
+class InceptionScore(keras.metrics.Metric):
+    def __init__(self, name, input_shape, kernel_image_size, **kwargs):
+        super().__init__(name=name, **kwargs)
+
+        # Inception score is estimated per batch and averaged across batches
+        self.is_tracker = keras.metrics.Mean(name="is_tracker")
+
+        # A pretrained InceptionV3 is used without its classification layer
+        # We preprocess the images as during the pretraining of InceptionV3
+        self.encoder = keras.Sequential(
+            [
+                keras.Input(shape=input_shape),  # TODO: handle multi-channel
+                keras.layers.Lambda(lambda x: tf.tile(x, [1, 1, 1, 3])),  # Ensure 3 channels
+                keras.layers.Rescaling(255.0),
+                keras.layers.Resizing(height=kernel_image_size, width=kernel_image_size),
+                keras.layers.Lambda(keras.applications.inception_v3.preprocess_input),
+                keras.applications.InceptionV3(
+                    include_top=True,  # Include the classification layer for IS
+                    input_shape=(kernel_image_size, kernel_image_size, 3),
+                    weights="imagenet",
+                ),
+            ],
+            name="inception_encoder",
+        )
+
+    def update_state(self, generated_images, sample_weight=None):
+        # Get the predicted class probabilities from the InceptionV3 model
+        logits = self.encoder(generated_images, training=False)
+        softmax_probs = tf.nn.softmax(logits, axis=-1)
+
+        # Compute p(y|x) for each generated image (softmax probabilities)
+        p_y_given_x = softmax_probs
+
+        # Compute the marginal distribution p(y) across all generated images
+        p_y = tf.reduce_mean(p_y_given_x, axis=0)
+
+        # Compute KL divergence between p(y|x) and p(y) for each image
+        kl_divergence = tf.reduce_sum(p_y_given_x * (tf.math.log(p_y_given_x) - tf.math.log(p_y)), axis=-1)
+
+        # Inception score is the exponentiation of the mean KL divergence
+        is_score = tf.exp(tf.reduce_mean(kl_divergence))
+
+        # Update the average IS estimate
+        self.is_tracker.update_state(is_score)
+
+    def result(self):
+        return self.is_tracker.result()
+
+    def reset_state(self):
+        self.is_tracker.reset_state()
+
+
+class MultiScaleSSIM(keras.metrics.Metric):
+    def __init__(self, name="multi_scale_ssim", **kwargs):
+        super(MultiScaleSSIM, self).__init__(name=name, **kwargs)
+        self.total_ssim = self.add_weight(name="total_ssim", initializer="zeros")
+        self.count = self.add_weight(name="count", initializer="zeros")
+
+    def update_state(self, y_true, y_pred, max_val, sample_weight=None):
+        # Calculate MS-SSIM for the batch
+        ssim = tf.image.ssim_multiscale(y_true, y_pred, max_val=max_val, power_factors=[0.25, 0.25, 0.25, 0.25])
+        if sample_weight is not None:
+            ssim = tf.multiply(ssim, sample_weight)
+
+        # Update total MS-SSIM and count
+        self.total_ssim.assign_add(tf.reduce_sum(ssim))
+        self.count.assign_add(tf.cast(tf.size(ssim), tf.float32))
+
+    def result(self):
+        # Return the mean MS-SSIM over all batches
+        return tf.divide(self.total_ssim, self.count)
+
+    def reset_state(self):
+        # Reset the metric state variables
+        self.total_ssim.assign(0.0)
+        self.count.assign(0.0)
+
+
+def calculate_kid(real, generated):
+    """
+    Compute the Kernel Inception Distance (KID) between two sets of images.
+
+    Parameters:
+      real: np.ndarray of shape (N, 224, 224, 1) – real images (grayscale)
+      generated: np.ndarray of shape (N, 224, 224, 1) – generated images (grayscale)
+
+    Returns:
+      kid_value: float – the estimated KID value.
+
+    Note: This function assumes that the image pixel values are in the [0, 255] range.
+    """
+    # Convert grayscale images to 3 channels by repeating the channel dimension
+    if real.shape[-1] == 1:
+        real = np.repeat(real, 3, axis=-1)
+    if generated.shape[-1] == 1:
+        generated = np.repeat(generated, 3, axis=-1)
+
+    # Convert to TensorFlow tensors and resize images to 299x299 (the InceptionV3 input size)
+    real_tensor = tf.convert_to_tensor(real, dtype=tf.float32)
+    generated_tensor = tf.convert_to_tensor(generated, dtype=tf.float32)
+
+    real_resized = tf.image.resize(real_tensor, (299, 299)).numpy()
+    generated_resized = tf.image.resize(generated_tensor, (299, 299)).numpy()
+
+    # Preprocess images for InceptionV3
+    # real_preprocessed = preprocess_input(real_resized)
+    # generated_preprocessed = preprocess_input(generated_resized)
+
+    # Load InceptionV3 model for feature extraction.
+    # Using include_top=False with global average pooling gives a 2048-D feature vector per image.
+    model = InceptionV3(include_top=False, pooling='avg', input_shape=(299, 299, 3))
+
+    # Extract features for both sets.
+    features_real = model.predict(real_resized, verbose=0)
+    features_generated = model.predict(generated_resized, verbose=0)
+
+    # Determine feature dimension
+    d = features_real.shape[1]
+
+    # Define the third-order polynomial kernel: k(x, y) = (x^T y / d + 1)^3
+    def poly_kernel(X, Y):
+        return (np.dot(X, Y.T) / d + 1) ** 3
+
+    subset_real = features_real
+    subset_generated = features_generated
+
+    # Compute the kernel matrices
+    K_rr = poly_kernel(subset_real, subset_real)
+    K_gg = poly_kernel(subset_generated, subset_generated)
+    K_rg = poly_kernel(subset_real, features_generated)
+
+    m = subset_real.shape[0]
+
+    # For an unbiased estimator, exclude the diagonal elements from the intra-set kernel sums.
+    sum_K_rr = np.sum(K_rr) - np.sum(np.diag(K_rr))
+    sum_K_gg = np.sum(K_gg) - np.sum(np.diag(K_gg))
+
+    # Unbiased MMD^2 estimate (i.e. KID) as described in the literature:
+    kid_value = (sum_K_rr / (m * (m - 1)) +
+                 sum_K_gg / (m * (m - 1)) -
+                 2 * np.mean(K_rg))
+
+    return kid_value
+
+
+def calculate_fid(real, generated):
+    """
+    Calculate the Frechet Inception Distance (FID) between two sets of images.
+
+    Parameters:
+        real (np.ndarray): Array of real images.
+        generated (np.ndarray): Array of generated images.
+        num_subsets (int): Number of subsets to sample for calculating mean FID.
+        subset_size (int): Number of images in each subset.
+
+    Returns:
+        float: Mean FID value over the subsets.
+    """
+
+    # Convert grayscale images to 3 channels by repeating the channel dimension
+    if real.shape[-1] == 1:
+        real = np.repeat(real, 3, axis=-1)
+    if generated.shape[-1] == 1:
+        generated = np.repeat(generated, 3, axis=-1)
+
+    # Convert to TensorFlow tensors and resize images to 299x299 (the InceptionV3 input size)
+    real_tensor = tf.convert_to_tensor(real, dtype=tf.float32)
+    generated_tensor = tf.convert_to_tensor(generated, dtype=tf.float32)
+
+    real_resized = tf.image.resize(real_tensor, (299, 299)).numpy()
+    generated_resized = tf.image.resize(generated_tensor, (299, 299)).numpy()
+
+    model = InceptionV3(include_top=False, pooling='avg', input_shape=(299, 299, 3))
+
+    n_real = real.shape[0]
+    n_generated = generated.shape[0]
+
+    subset_real = real_resized
+    subset_generated = generated_resized
+
+    # Ensure images are resized to (299,299) as expected by InceptionV3.
+    # If they are already 299x299, this step will have minimal cost.
+    if subset_real.shape[1] != 299 or subset_real.shape[2] != 299:
+        subset_real = tf.image.resize(subset_real, (299, 299)).numpy()
+    if subset_generated.shape[1] != 299 or subset_generated.shape[2] != 299:
+        subset_generated = tf.image.resize(subset_generated, (299, 299)).numpy()
+
+    # Preprocess the images as required by InceptionV3 (scaling pixels to [-1, 1])
+    subset_real = preprocess_input(subset_real)
+    subset_generated = preprocess_input(subset_generated)
+
+    # Extract features using the InceptionV3 model.
+    features_real = model.predict(subset_real, verbose=0)
+    features_generated = model.predict(subset_generated, verbose=0)
+
+    # Compute mean and covariance for each set of features.
+    mu_real = np.mean(features_real, axis=0)
+    mu_generated = np.mean(features_generated, axis=0)
+    sigma_real = np.cov(features_real, rowvar=False)
+    sigma_generated = np.cov(features_generated, rowvar=False)
+
+    # Compute the squared difference between the means.
+    diff = mu_real - mu_generated
+    diff_squared = np.sum(diff ** 2)
+
+    # Compute the square root of the product of covariances.
+    covmean, _ = sqrtm(sigma_real.dot(sigma_generated), disp=False)
+    # Handle numerical errors: if imaginary numbers appear, discard the imaginary part.
+    if np.iscomplexobj(covmean):
+        covmean = covmean.real
+
+    # Compute the FID for the subset.
+    fid = diff_squared + np.trace(sigma_real) + np.trace(sigma_generated) - 2 * np.trace(covmean)
+    return fid
+
+
+def _register_all(module_globals):
+    for name, obj in module_globals.items():
+        if callable(obj) and not name.startswith("_"):
+            module_globals[name] = register_keras_serializable()(obj)
+
+_register_all(globals())
+
+class JsonLossMetricsCallback(tf.keras.callbacks.Callback):
+    """
+    Writes one JSON line per epoch with training + validation metrics.
+
+    Example output line:
+    {"epoch": 7, "time": 12.34, "loss": 0.42, "val_loss": 0.38, "val_auc_mean": 0.81}
+    """
+
+    def __init__(self, output_dir, filename="loss_metrics.json", flush=True):
+        super().__init__()
+        self.output_dir = output_dir
+        self.filename = filename
+        self.flush = flush
+        self._epoch_start_time = None
+
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.path = os.path.join(self.output_dir, self.filename)
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self._epoch_start_time = time.time()
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        elapsed = None
+        if self._epoch_start_time is not None:
+            elapsed = time.time() - self._epoch_start_time
+
+        record = {
+            "epoch": int(epoch),
+            "time": elapsed,
+        }
+
+        # Convert tensors / numpy scalars → Python scalars
+        for k, v in logs.items():
+            try:
+                record[k] = float(v)
+            except Exception:
+                pass
+
+        with open(self.path, "a") as f:
+            f.write(json.dumps(record) + "\n")
+            if self.flush:
+                f.flush()
+                os.fsync(f.fileno())
+

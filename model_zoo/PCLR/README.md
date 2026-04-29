@@ -22,8 +22,64 @@ python -i get_representations.py  # test the setup worked
 You can get ECG representations using [get_representations.py](./get_representations.py).
 `get_representations.get_representations` builds `N x 320` ECG representations from `N` ECGs.
 
-The model expects 10s 12-lead ECGs with a specific lead order and interpolated to be 4,096 samples long.
+The model expects 10s 12-lead ECGs meaured in milli-volts with a specific lead order and interpolated to be 4,096 samples long.
 [preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing.
+
+### Use git LFS to localize the model file
+Make sure git lfs is installed on your system and then from within the ml4h repo on your machine run:
+`git lfs pull --include model_zoo/PCLR/PCLR.h5` 
+
+### Example inference with UKB ECGs tensorized with ML4H
+This code snippet produces a CSV of a latent space from ECGs stored in HD5s.
+The HD5s can be made from XMLs by with [ml4h/tensorize/tensor_writer_ukbb.py](ml4h/tensorize/tensor_writer_ukbb.py).
+```python
+import os
+from typing import List, Dict
+
+import csv
+import h5py
+import numpy as np
+import pandas as pd
+from tensorflow.keras.models import load_model, Model
+
+from preprocess_ecg import process_ecg, LEADS
+
+tensors = '/mnt/disks/ecg-rest-68k-tensors/2023_09_17/' # Replace this with path to your tensors
+model = load_model("./PCLR.h5")
+model.summary()
+
+leads = [
+    'I', 'II', 'III', 'aVR', 'aVL', 'aVF',
+    'V1', 'V2', 'V3', 'V4', 'V5', 'V6',
+]
+
+latent_dimensions = 320
+
+with open('./pclr_ukb_inferences_v2023_10_24.tsv', mode='w') as inference_file:
+    inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    header = ['sample_id']
+    header += [f'latent_{i}' for i in range(latent_dimensions)]
+    inference_writer.writerow(header)
+    
+    for i,f in enumerate(sorted(os.listdir(tensors))):
+        with h5py.File(f'{tensors}{f}', 'r') as hd5:
+            ecg = np.zeros((1, 4096, 12))
+            for k,l in enumerate(leads):
+                lead = np.array(hd5[f'/ukb_ecg_rest/strip_{l}/instance_0'])
+                interpolated_lead = np.interp(np.linspace(0, 1, 4096),
+                                              np.linspace(0, 1, lead.shape[0]),
+                                              lead,
+                                             )
+                ecg[0, :, k] = interpolated_lead/1000
+            ls = model(ecg)
+            sample_id = os.path.basename(f).replace('.hd5', '')
+            csv_row = [sample_id]
+            csv_row += [f'{ls[0, i]}' for i in range(latent_dimensions)]
+            inference_writer.writerow(csv_row)
+        if i % 500 == 0:
+            print(f'ECGs found in {i} files, last tensor was {f}')
+```
+
 
 ### Building un-trained PCLR and comparison models
 
@@ -46,6 +102,24 @@ the model only takes lead I of the ECG as input.
 
 ## Lead II PCLR
 [Lead II PCLR](./PCLR_lead_II.h5) is like lead I PCLR except it was trained with all ECGs sampled to 250Hz.
+
+## C3PO PCLR and AUG C3PO PCLR
+We also provide PCLR models trained using subjects from the C3PO cohort, with and without augmentation.
+The model files are available via:
+
+`git lfs pull --include model_zoo/PCLR/c3po_pclr.h5`
+
+`git lfs pull --include model_zoo/PCLR/aug_c3po_pclr.h5`
+
+You can get ECG representations using for example [get_representations.py(ecgs, model_name='c3po_pclr')](./get_representations.py).
+`get_representations.get_representations` builds `N x 320` ECG representations from `N` ECGs.
+
+The model expects 10s 12-lead ECGs measured in milli-volts with a specific lead order and interpolated to be 2,500 samples long. Note that this interpolation is different from the standard PCLR model.
+[preprocess_ecg.py](./preprocess_ecg.py) shows how to do the pre-processing; when calling it remember to set `ecg_samples=2500`.
+
+The code snippet above showing example inference with UKB ECGs is also appropriate for these models. Remember to:
+1. Load `c3po_pclr.h5` or `aug_c3po_pclr.h5` instead of `PCLR.h5`.
+2. Interpolate to 2500 instead of 4096.
 
 ## Alternative save format
 The newer keras saved model format is available for the 12-lead and single lead models at [PCLR](./PCLR)
