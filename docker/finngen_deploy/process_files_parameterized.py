@@ -373,8 +373,8 @@ class LongitudinalECGFromMetadata(Dataset):
 
     def __getitem__(self, idx):
         pid   = self.patient_ids[idx]
-        group = self.groups.get_group(pid).sort_values("timestamp")
-        group = group.tail(self.max_timestamps)
+        group = self.groups.get_group(pid).sort_values("timestamp", ascending = False)
+        #group = group.tail(self.max_timestamps)
 
 
         arrays, timestamps, event_ages, age_deltas = [], [], [], []
@@ -430,10 +430,10 @@ def collate_longitudinal(batch, fixed_max_seq_len=50):
     age_deltas_list  = []
 
     for item in batch:
-        ecgs = item["ecgs"][-max_seq:]
-        timestamps = item["timestamps"][-max_seq:]
-        event_ages = item["event_ages"][-max_seq:]
-        age_deltas = item["age_deltas"][-max_seq:]
+        ecgs = item["ecgs"][:max_seq]
+        timestamps = item["timestamps"][:max_seq]
+        event_ages = item["event_ages"][:max_seq]
+        age_deltas = item["age_deltas"][:max_seq]
 
 
 
