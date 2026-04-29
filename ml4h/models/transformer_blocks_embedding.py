@@ -411,10 +411,15 @@ def build_general_embedding_transformer(
     num_layers,
     dropout,
     CATEGORICAL_TARGETS=None,
-    NUM_CLASSES=3,
+    NUM_CLASSES=None,
     LABEL_WEIGHTS=None,
 ):
     CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
+    if CATEGORICAL_TARGETS and NUM_CLASSES is None:
+        raise ValueError(
+            "NUM_CLASSES must be specified when using CATEGORICAL_TARGETS. "
+            "It is auto-detected from the label column in recipes.py."
+        )
     # ------------------------------
     # INPUTS
     # ------------------------------
@@ -651,7 +656,7 @@ def build_embedding_transformer(
         learning_rate,
         binary_class_prevalences=None,
         CATEGORICAL_TARGETS=None,
-        NUM_CLASSES=3,
+        NUM_CLASSES=None,
         LABEL_WEIGHTS=None,
 ):
     """
@@ -666,6 +671,11 @@ def build_embedding_transformer(
             10% of samples are positive for that target.
     """
     CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
+    if CATEGORICAL_TARGETS and NUM_CLASSES is None:
+        raise ValueError(
+            "NUM_CLASSES must be specified when using CATEGORICAL_TARGETS. "
+            "It is auto-detected from the label column in recipes.py."
+        )
     Feat = len(INPUT_NUMERIC_COLS)
 
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')

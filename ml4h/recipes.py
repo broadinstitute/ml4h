@@ -922,6 +922,16 @@ def train_transformer_on_parquet(args):
             max_id = dataset.to_table(columns=[col]).column(col).to_numpy().max()
             cat_cardinalities[col] = int(max_id)
 
+    if args.target_categorical_columns and args.num_classes is None:
+        label_file = args.transformer_label_file if args.transformer_label_file else args.transformer_input_file
+        _label_tbl = ds.dataset(label_file, format="parquet").to_table(columns=[args.target_categorical_columns[0]])
+        _col = _label_tbl.column(args.target_categorical_columns[0]).drop_null().to_pylist()
+        vc = pd.Series(_col).value_counts()
+        num_classes = len(vc)
+        logging.info(f"Auto-detected num_classes={num_classes} for {args.target_categorical_columns[0]}: {vc.to_dict()}")
+    else:
+        num_classes = args.num_classes
+
     logging.info("Building and Training model...")
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
@@ -943,7 +953,7 @@ def train_transformer_on_parquet(args):
             num_layers=args.transformer_layers,
             dropout=args.transformer_dropout_rate,
             CATEGORICAL_TARGETS=args.target_categorical_columns,
-            NUM_CLASSES=args.num_classes,
+            NUM_CLASSES=num_classes,
             LABEL_WEIGHTS=args.label_weights,
         )
 
@@ -1046,6 +1056,13 @@ def train_transformer_on_parquet_fast(args):
     #         train_csv=args.train_csv,
     #     )
 
+    if args.target_categorical_columns and args.num_classes is None:
+        vc = df[args.target_categorical_columns[0]].value_counts()
+        num_classes = len(vc)
+        logging.info(f"Auto-detected num_classes={num_classes} for {args.target_categorical_columns[0]}: {vc.to_dict()}")
+    else:
+        num_classes = args.num_classes
+
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
         keras.config.enable_unsafe_deserialization()
@@ -1066,7 +1083,7 @@ def train_transformer_on_parquet_fast(args):
             args.learning_rate,
             binary_class_prevalences=binary_class_prevalences,
             CATEGORICAL_TARGETS=args.target_categorical_columns,
-            NUM_CLASSES=args.num_classes,
+            NUM_CLASSES=num_classes,
             LABEL_WEIGHTS=args.label_weights,
         )
     if args.inspect_model:

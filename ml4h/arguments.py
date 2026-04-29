@@ -143,7 +143,7 @@ def parse_args():
         help='List of columns with integer class labels to predict (multiclass).',
     )
     parser.add_argument(
-        '--num_classes', type=int, default=3,
+        '--num_classes', type=int, default=None,
         help='Number of classes for categorical/multiclass targets.',
     )
     parser.add_argument(
