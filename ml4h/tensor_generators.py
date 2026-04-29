@@ -474,7 +474,7 @@ class _MultiModalMultiTaskWorker:
 
 
 def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int,
-                                       batch_size: int = 16, keep_paths: bool = False):
+                                       batch_size: int = 16, keep_paths: bool = True):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -668,7 +668,7 @@ def get_train_valid_test_paths(
                 choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
                 choices[choice][0].append(path)
 
-    logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
+    #logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
     if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
         raise ValueError(
@@ -809,7 +809,7 @@ def test_train_valid_tensor_generators(
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
-    keep_paths_test: bool = False,
+    keep_paths_test: bool = True,
     mixup_alpha: float = -1.0,
     sample_csv: str = None,
     valid_ratio: float = None,
@@ -821,7 +821,7 @@ def test_train_valid_tensor_generators(
     rotation_factor: float = 0,
     zoom_factor: float = 0,
     translation_factor: float = 0,
-    wrap_with_tf_dataset: bool = True,
+    wrap_with_tf_dataset: bool = False,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
@@ -910,7 +910,7 @@ def test_train_valid_tensor_generators(
         assert len(tensor_maps_in) == 1, 'no support for multiple input tensors'
         assert len(tensor_maps_out) == 1, 'no support for multiple output tensors'
 
-    if wrap_with_tf_dataset and do_augmentation:
+    if wrap_with_tf_dataset or do_augmentation:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
         out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
 
