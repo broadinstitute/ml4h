@@ -1533,6 +1533,7 @@ class LongitudinalDataloader:
         train_csv: Optional[str] = None,
         valid_csv: Optional[str] = None,
         test_csv: Optional[str] = None,
+        categorical_label_columns=None,
     ):
         self.input_ds = ds.dataset(input_file_path, format="parquet")
         self.label_ds = (
@@ -1546,6 +1547,7 @@ class LongitudinalDataloader:
         self.numeric_columns = numeric_columns
         self.categorical_columns = categorical_columns
         self.label_columns = label_columns
+        self.categorical_label_columns = categorical_label_columns or []
         self.max_seq_len = max_seq_len
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -1807,10 +1809,13 @@ class LongitudinalDataloader:
                 y, sw = {}, {}
                 for i, c in enumerate(self.label_columns):
                     if np.isnan(vals[i]):
-                        y[c] = 0.0
+                        y[c] = 0 if c in self.categorical_label_columns else 0.0
                         sw[c] = 0.0
                     else:
-                        y[c] = float(vals[i])
+                        if c in self.categorical_label_columns:
+                            y[c] = int(vals[i])
+                        else:
+                            y[c] = float(vals[i])
                         sw[c] = 1.0
 
                 yield x, y, sw
@@ -1842,7 +1847,13 @@ class LongitudinalDataloader:
                     for c in self.categorical_columns
                 },
             },
-            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+            {
+                c: tf.TensorSpec(
+                    (),
+                    tf.int32 if c in self.categorical_label_columns else tf.float32,
+                )
+                for c in self.label_columns
+            },
             {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
         )
 
@@ -2035,10 +2046,13 @@ class _QueueIterator:
 
             for i, c in enumerate(self.loader.label_columns):
                 if np.isnan(vals[i]):
-                    y[c] = 0.0
+                    y[c] = 0 if c in self.loader.categorical_label_columns else 0.0
                     sw[c] = 0.0
                 else:
-                    y[c] = float(vals[i])
+                    if c in self.loader.categorical_label_columns:
+                        y[c] = int(vals[i])
+                    else:
+                        y[c] = float(vals[i])
                     sw[c] = 1.0
 
             self._group_idx += 1
@@ -2063,6 +2077,7 @@ class LongitudinalDataloaderFast:
         train_csv: Optional[str] = None,
         valid_csv: Optional[str] = None,
         test_csv: Optional[str] = None,
+        categorical_label_columns=None,
     ):
         self.input_ds = ds.dataset(input_file_path, format="parquet")
         self.label_ds = (
@@ -2085,6 +2100,7 @@ class LongitudinalDataloaderFast:
         self.numeric_columns = numeric_columns
         self.categorical_columns = categorical_columns
         self.label_columns = label_columns
+        self.categorical_label_columns = categorical_label_columns or []
         self.max_seq_len = max_seq_len
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -2286,7 +2302,13 @@ class LongitudinalDataloaderFast:
                     for c in self.categorical_columns
                 },
             },
-            {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
+            {
+                c: tf.TensorSpec(
+                    (),
+                    tf.int32 if c in self.categorical_label_columns else tf.float32,
+                )
+                for c in self.label_columns
+            },
             {c: tf.TensorSpec((), tf.float32) for c in self.label_columns},
         )
         self._start_producer(groups)

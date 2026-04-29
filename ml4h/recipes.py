@@ -899,7 +899,7 @@ def train_transformer_on_parquet(args):
         sort_column=args.sort_column,
         numeric_columns=args.input_numeric_columns,
         categorical_columns=args.input_categorical_columns,
-        label_columns=args.target_regression_columns + args.target_binary_columns,
+        label_columns=args.target_regression_columns + args.target_binary_columns + args.target_categorical_columns,
         batch_size=args.batch_size,
         max_seq_len=args.transformer_max_size,
         shuffle=True,
@@ -907,6 +907,7 @@ def train_transformer_on_parquet(args):
         train_csv=args.train_csv,
         valid_csv=args.valid_csv,
         test_csv=args.test_csv,
+        categorical_label_columns=args.target_categorical_columns,
     )
 
     train_ds, val_ds, test_ds = loader.get_train_valid_test_datasets()
@@ -920,6 +921,16 @@ def train_transformer_on_parquet(args):
         for col in args.input_categorical_columns:
             max_id = dataset.to_table(columns=[col]).column(col).to_numpy().max()
             cat_cardinalities[col] = int(max_id)
+
+    if args.target_categorical_columns and args.num_classes is None:
+        label_file = args.transformer_label_file if args.transformer_label_file else args.transformer_input_file
+        _label_tbl = ds.dataset(label_file, format="parquet").to_table(columns=[args.target_categorical_columns[0]])
+        _col = _label_tbl.column(args.target_categorical_columns[0]).drop_null().to_pylist()
+        vc = pd.Series(_col).value_counts()
+        num_classes = len(vc)
+        logging.info(f"Auto-detected num_classes={num_classes} for {args.target_categorical_columns[0]}: {vc.to_dict()}")
+    else:
+        num_classes = args.num_classes
 
     logging.info("Building and Training model...")
     if args.model_file:
@@ -941,6 +952,9 @@ def train_transformer_on_parquet(args):
             num_heads=args.attention_heads,
             num_layers=args.transformer_layers,
             dropout=args.transformer_dropout_rate,
+            CATEGORICAL_TARGETS=args.target_categorical_columns,
+            NUM_CLASSES=num_classes,
+            LABEL_WEIGHTS=args.label_weights,
         )
 
     if args.inspect_model:
@@ -981,16 +995,19 @@ def train_transformer_on_parquet(args):
     plot_metric_history(
         history, args.training_steps, args.id, f"{args.output_folder}/{args.id}/"
     )
-    metrics = evaluate_multitask_on_dataset(
-        args.id,
-        model,
-        test_ds,
-        args.target_regression_columns,
-        args.target_binary_columns,
-        steps=args.test_steps,
-    )
-    radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
-    heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    if len(args.target_categorical_columns) == 0:
+        metrics = evaluate_multitask_on_dataset(
+            args.id,
+            model,
+            test_ds,
+            args.target_regression_columns,
+            args.target_binary_columns,
+            steps=args.test_steps,
+        )
+        radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+        heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
+    else:
+        metrics = {}
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 
@@ -1025,7 +1042,7 @@ def train_transformer_on_parquet_fast(args):
 
     train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
                                                               args.group_column, args.sort_column, args.sort_column_ascend,
-                                                              args.target_regression_columns + args.target_binary_columns,
+                                                              args.target_regression_columns + args.target_binary_columns + args.target_categorical_columns,
                                                               args.transformer_max_size, args.batch_size,
                                                               args.train_csv, args.valid_csv, args.test_csv)
 
@@ -1038,6 +1055,13 @@ def train_transformer_on_parquet_fast(args):
     #         binary_targets=args.target_binary_columns,
     #         train_csv=args.train_csv,
     #     )
+
+    if args.target_categorical_columns and args.num_classes is None:
+        vc = df[args.target_categorical_columns[0]].value_counts()
+        num_classes = len(vc)
+        logging.info(f"Auto-detected num_classes={num_classes} for {args.target_categorical_columns[0]}: {vc.to_dict()}")
+    else:
+        num_classes = args.num_classes
 
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
@@ -1058,6 +1082,9 @@ def train_transformer_on_parquet_fast(args):
             view2id,
             args.learning_rate,
             binary_class_prevalences=binary_class_prevalences,
+            CATEGORICAL_TARGETS=args.target_categorical_columns,
+            NUM_CLASSES=num_classes,
+            LABEL_WEIGHTS=args.label_weights,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
@@ -1093,9 +1120,12 @@ def train_transformer_on_parquet_fast(args):
     )
     model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
-    metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
-    radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    if len(args.target_categorical_columns) == 0:
+        metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+        radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+        heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
+    else:
+        metrics = {}
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 

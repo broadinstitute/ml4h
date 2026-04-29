@@ -19,6 +19,18 @@ tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
+@keras.saving.register_keras_serializable(package="ml4h")
+def sparse_weighted_categorical_crossentropy(class_weights):
+    class_weights = tf.constant(class_weights, dtype=tf.float32)
+    def loss(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+        y_true = tf.reshape(y_true, [-1])
+        sample_weights = tf.gather(class_weights, y_true)
+        base_loss = keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return base_loss * sample_weights
+    return loss
+
+
 # Register serializable functions at module level
 @keras.saving.register_keras_serializable(package="ml4h")
 class PositionIndexLayer(keras.layers.Layer):
@@ -398,7 +410,16 @@ def build_general_embedding_transformer(
     num_heads,
     num_layers,
     dropout,
+    CATEGORICAL_TARGETS=None,
+    NUM_CLASSES=None,
+    LABEL_WEIGHTS=None,
 ):
+    CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
+    if CATEGORICAL_TARGETS and NUM_CLASSES is None:
+        raise ValueError(
+            "NUM_CLASSES must be specified when using CATEGORICAL_TARGETS. "
+            "It is auto-detected from the label column in recipes.py."
+        )
     # ------------------------------
     # INPUTS
     # ------------------------------
@@ -540,6 +561,8 @@ def build_general_embedding_transformer(
         outputs[t] = layers.Dense(1, name=t)(h)
     for t in binary_targets:
         outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
+    for t in CATEGORICAL_TARGETS:
+        outputs[t] = layers.Dense(NUM_CLASSES, activation="softmax", name=t)(h)
 
     # ------------------------------
     # MODEL
@@ -556,6 +579,13 @@ def build_general_embedding_transformer(
 
     losses = {t: "mse" for t in regression_targets}
     losses.update({t: "binary_crossentropy" for t in binary_targets})
+    if LABEL_WEIGHTS:
+        class_weights = [float(w) for w in LABEL_WEIGHTS]
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
+    else:
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics_dict = {
         t: [keras.metrics.MeanAbsoluteError(), keras.metrics.MeanSquaredError()]
@@ -567,6 +597,8 @@ def build_general_embedding_transformer(
             keras.metrics.AUC(name="auprc", curve="PR"),
             keras.metrics.BinaryAccuracy(name="acc"),
         ]
+    for t in CATEGORICAL_TARGETS:
+        metrics_dict[t] = [keras.metrics.SparseCategoricalAccuracy(name="acc")]
 
     model.compile(
         optimizer=keras.optimizers.Adam(1e-4, clipnorm=1.0),
@@ -623,6 +655,9 @@ def build_embedding_transformer(
         view2id,
         learning_rate,
         binary_class_prevalences=None,
+        CATEGORICAL_TARGETS=None,
+        NUM_CLASSES=None,
+        LABEL_WEIGHTS=None,
 ):
     """
     Build an embedding transformer model.
@@ -635,6 +670,12 @@ def build_embedding_transformer(
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
     """
+    CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
+    if CATEGORICAL_TARGETS and NUM_CLASSES is None:
+        raise ValueError(
+            "NUM_CLASSES must be specified when using CATEGORICAL_TARGETS. "
+            "It is auto-detected from the label column in recipes.py."
+        )
     Feat = len(INPUT_NUMERIC_COLS)
 
     inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
@@ -702,6 +743,8 @@ def build_embedding_transformer(
         outputs[t] = layers.Dense(1, name=t)(h)  # linear
     for t in BINARY_TARGETS:
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
+    for t in CATEGORICAL_TARGETS:
+        outputs[t] = layers.Dense(NUM_CLASSES, activation='softmax', name=t)(h)
 
     if view2id is not None:
         model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
@@ -718,12 +761,21 @@ def build_embedding_transformer(
             logging.info(f"Using weighted BCE for {t}: prevalence={prevalence:.4f}, pos_weight={pos_weight:.2f}")
         else:
             losses[t] = 'binary_crossentropy'
+    if LABEL_WEIGHTS:
+        class_weights = [float(w) for w in LABEL_WEIGHTS]
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
+    else:
+        for t in CATEGORICAL_TARGETS:
+            losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),
                    keras.metrics.MeanSquaredError(name='mse')] for t in REGRESSION_TARGETS}
     metrics.update({t: [keras.metrics.AUC(name='auroc', curve='ROC'),
                         keras.metrics.AUC(name='auprc', curve='PR'),
                         keras.metrics.BinaryAccuracy(name='acc')] for t in BINARY_TARGETS})
+    for t in CATEGORICAL_TARGETS:
+        metrics[t] = [keras.metrics.SparseCategoricalAccuracy(name='acc')]
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate),
