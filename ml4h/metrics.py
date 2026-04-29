@@ -319,7 +319,7 @@ def _batch_channel_flatten(x):
     return _flatten_axes(x, range(1, K.ndim(x) - 1))
 
 # From neurite package
-class DiceMetric:
+class _DiceMetric:
     """
     Dice of two Tensors. 
     Enables both 'soft' and 'hard' Dice, and weighting per label (or per batch entry)
@@ -502,7 +502,7 @@ class DiceMetric:
         return - self.mean_dice(y_true, y_pred)
     
 # From neurite package
-class Dice(DiceMetric):
+class _Dice(_DiceMetric):
     """
     inherits DiceMetric
 
@@ -555,7 +555,7 @@ class Dice(DiceMetric):
 
 # Actual dice loss function
 def dice(y_true, y_pred):
-    return Dice(laplace_smoothing=1e-05).mean_loss(y_true, y_pred)
+    return _Dice(laplace_smoothing=1e-05).mean_loss(y_true, y_pred)
 
 # Actual dice metrics
 def per_class_dice(labels):
@@ -564,12 +564,13 @@ def per_class_dice(labels):
         label_idx = labels[label_key]
         fxn_name = label_key.replace('-', '_').replace(' ', '_')
         string_fxn = 'def ' + fxn_name + '_dice(y_true, y_pred):\n'
-        string_fxn += '\tdice = Dice(laplace_smoothing=1e-05).dice(y_true, y_pred)\n'
+        string_fxn += '\tdice = _Dice(laplace_smoothing=1e-05).dice(y_true, y_pred)\n'
         string_fxn += '\tdice = K.mean(dice, axis=0)['+str(label_idx)+']\n'
         string_fxn += '\treturn dice'
 
         exec(string_fxn)
         dice_fxn = eval(fxn_name + '_dice')
+        dice_fxn = register_keras_serializable()(dice_fxn)
         dice_fxns.append(dice_fxn)
 
     return dice_fxns
