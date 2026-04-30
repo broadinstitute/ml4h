@@ -545,7 +545,14 @@ def test_multimodal_scalar_tasks(args):
 
 
 def compare_multimodal_multitask_models(args):
-    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    # HACK - image dice score computation don't play well with the default wrap_with_df_dataset option,
+    # so if an output is an image, then try not wrapping it
+    additional_args = {}
+    for tm in args.tensor_maps_out:
+        if tm.is_categorical() and tm.axes() == 3:
+            additional_args = {'wrap_with_tf_dataset':False}
+            
+    _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__, **additional_args)
     models_inputs_outputs = get_model_inputs_outputs(
         args.model_files, args.tensor_maps_in, args.tensor_maps_out
     )
