@@ -548,16 +548,20 @@ def compare_multimodal_multitask_models(args):
     # HACK - image dice score computation don't play well with the default wrap_with_df_dataset option,
     # so if an output is an image, then try not wrapping it
     additional_args = {}
+    additional_big_batch_args = {}
     for tm in args.tensor_maps_out:
         if tm.is_categorical() and tm.axes() == 3:
-            additional_args = {'wrap_with_tf_dataset':False}
-            
+            additional_args = {'wrap_with_tf_dataset':False,
+                               'keep_paths_test':True}
+            additional_big_batch_args = {'keep_paths':True}
+    # end HACK
+
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__, **additional_args)
     models_inputs_outputs = get_model_inputs_outputs(
         args.model_files, args.tensor_maps_in, args.tensor_maps_out
     )
     input_data, output_data, paths = big_batch_from_minibatch_generator(
-        generate_test, args.test_steps
+        generate_test, args.test_steps, **additional_big_batch_args
     )
     common_outputs = _get_common_outputs(models_inputs_outputs, "output")
     predictions = _get_predictions(
