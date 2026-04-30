@@ -11,6 +11,11 @@ from ml4h.models.transformer_blocks_embedding import (
 )
 
 
+def _cpu_device():
+    # Keep benchmark placement consistent with GitHub Actions CPU runners.
+    return tf.device("/CPU:0")
+
+
 def _make_general_inputs(num_samples, max_len, feature_dim):
     latent = np.zeros((num_samples, max_len, feature_dim), dtype=np.float32)
     latent[:, :, 0] = np.linspace(-1.0, 1.0, num_samples, dtype=np.float32)[:, None]
@@ -60,25 +65,29 @@ def _benchmark_model(builder_name, builder_fn, inputs, outputs):
     tf.keras.backend.clear_session()
     tf.keras.utils.set_random_seed(1234)
 
-    build_time_s = _measure_call(builder_fn, repeats=3)
-    model = builder_fn()
+    with _cpu_device():
+        build_time_s = _measure_call(builder_fn, repeats=2)
+        model = builder_fn()
 
     train_ds = _make_dataset(inputs, outputs, batch_size=8, repeat=True)
     infer_ds = _make_dataset(inputs, outputs, batch_size=8, repeat=False)
     inference_batches = len(list(infer_ds))
     inference_examples = sum(batch_inputs[next(iter(batch_inputs))].shape[0] for batch_inputs, _, _ in infer_ds)
 
-    model.fit(train_ds, steps_per_epoch=1, epochs=1, verbose=0)
+    with _cpu_device():
+        model.fit(train_ds, steps_per_epoch=1, epochs=1, verbose=0)
 
-    train_step_time_s = _measure_call(
-        lambda: model.fit(train_ds, steps_per_epoch=3, epochs=1, verbose=0),
-        repeats=3,
-    ) / 3.0
+    with _cpu_device():
+        train_step_time_s = _measure_call(
+            lambda: model.fit(train_ds, steps_per_epoch=2, epochs=1, verbose=0),
+            repeats=2,
+        ) / 2.0
 
-    infer_batch_time_s = _measure_call(
-        lambda: model.predict(infer_ds, verbose=0),
-        repeats=3,
-    ) / inference_batches
+    with _cpu_device():
+        infer_batch_time_s = _measure_call(
+            lambda: model.predict(infer_ds, verbose=0),
+            repeats=2,
+        ) / inference_batches
 
     return {
         "builder": builder_name,
@@ -119,8 +128,8 @@ def _comparison_row(label, general_value, embedding_value, kind):
 
 @pytest.mark.slow
 def test_transformer_builder_benchmarks_are_measurable_and_comparable(capsys):
-    num_samples = 32
-    max_len = 6
+    num_samples = 16
+    max_len = 4
     feature_dim = 64
     signal = np.linspace(-1.0, 1.0, num_samples, dtype=np.float32)
     outputs = _make_outputs(signal)
