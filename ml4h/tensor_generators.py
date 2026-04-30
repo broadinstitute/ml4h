@@ -910,6 +910,7 @@ def test_train_valid_tensor_generators(
         assert len(tensor_maps_in) == 1, 'no support for multiple input tensors'
         assert len(tensor_maps_out) == 1, 'no support for multiple output tensors'
 
+    # First handle the training dataset
     if wrap_with_tf_dataset or do_augmentation:
         in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
         out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
@@ -919,6 +920,8 @@ def test_train_valid_tensor_generators(
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
             output_shapes=(in_shapes, out_shapes),
         )
+        # Still ok if do_augmentation is false, because rotation_factor, zoom_factor and translation_factor
+        # will all be zero
         augmentor = ImageMaskAugmentor(
             rotation_factor,
             zoom_factor,
@@ -928,15 +931,8 @@ def test_train_valid_tensor_generators(
         )
         train_dataset = train_dataset.map(augmentor)
 
+    # Now handle the validation/testing datasets - these should not be augmented
     if wrap_with_tf_dataset:
-        in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
-        out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
-
-        train_dataset = tf.data.Dataset.from_generator(
-            generate_train,
-            output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-            output_shapes=(in_shapes, out_shapes),
-        )
         valid_dataset = tf.data.Dataset.from_generator(
             generate_valid,
             output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
