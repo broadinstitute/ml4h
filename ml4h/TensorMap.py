@@ -181,6 +181,8 @@ class TensorMap(object):
         # Infer loss from interpretation
         if self.loss is None and self.is_categorical() and self.shape[0] == 1:
             self.loss = 'sparse_categorical_crossentropy'
+        elif self.loss is None and self.is_categorical() and self.shape[0] == 2:
+            self.loss = 'binary_crossentropy'
         elif self.loss is None and self.is_categorical():
             self.loss = 'categorical_crossentropy'
         elif self.loss is None and self.is_continuous() and self.sentinel is not None:
@@ -222,6 +224,9 @@ class TensorMap(object):
             self.validator = lambda tm, x, hd5: None
 
     def __repr__(self):
+        return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
+
+    def __str__(self):
         return f'TensorMap({self.name}, {self.shape}, {self.interpretation})'
 
     def __eq__(self, other):

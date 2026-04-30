@@ -45,4 +45,4 @@ RUN apt-get install -y wget unzip curl python3-pydot graphviz git ffmpeg
 # Requirements for the tensorflow project
 RUN pip3 install --upgrade pip
 #RUN pip3 install -r pre_requirements.txt
-RUN pip3 install -r tensorflow-requirements.txt
+RUN pip3 install -r tensorflow-requirements.txt -c constraints.txt

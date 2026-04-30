@@ -88,7 +88,10 @@ class TensorMapSampleGetter:
                         dependents = {dep.name: dep for dep in tm.dependent_map}
                     else:
                         dependents = {tm.dependent_map.name: tm.dependent_map}
-                out_batch[tm.output_name()] = tm.postprocess_tensor(
+                if tm in dependents:
+                    out_batch[tm.output_name()] = dependents[tm]
+                else:
+                    out_batch[tm.output_name()] = tm.postprocess_tensor(
                     tm.tensor_from_file(tm, hd5, dependents),
                     augment=self.augment, hd5=hd5,
                 )

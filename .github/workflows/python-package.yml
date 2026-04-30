@@ -34,7 +34,7 @@ jobs:
         pip cache purge
         python -m pip install --upgrade pip
         # Install the ml4h Python package.
-        pip install .
+        pip install . -c constraints.txt
     - name: Test with pytest and pytest-xdist
       run: |
         pytest tests -m "not slow" -n auto
