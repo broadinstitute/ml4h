@@ -150,6 +150,7 @@ def run(args):
                 args.min_sample_id,
                 args.max_sample_id,
                 args.min_values,
+                args.do_not_tensorize_cardiac_overlays,
             )
         elif "tensorize_pngs" == args.mode:
             write_tensors_from_dicom_pngs(
