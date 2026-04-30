@@ -1,5 +1,5 @@
 ## ECG To Heart Failure (ECG2HF)
-This directory contains the model file for predicting incident heart failure from ECGs.  
+This directory contains the model file for predicting incident heart failure from ECGs as described in our [Circulation: Heart Failure paper](https://www.ahajournals.org/doi/abs/10.1161/CIRCHEARTFAILURE.125.013927).  
 The model is a multitask convolutional neural network the primary task is to predict the survival curve for incident heart failure as defined by a previously [published NLP model](https://pubmed.ncbi.nlm.nih.gov/36939660/).
 The four auxiliary task are prediction of incident heart failure as defined by primary ICD code, incident mortality, age regression, and sex classification.
 The model expects a 10 second 12-lead resting ECG as input sampled at 500Hz with voltages normalized per-ECG to have a mean of 0 and standard deviation of 1.
