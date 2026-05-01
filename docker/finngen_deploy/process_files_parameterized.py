@@ -655,12 +655,12 @@ def run_infer(full_model, encoder, long_model, loader,
         # Single-ECG prediction per patient (latest valid visit)
         for i in range(B):
             seq_len       = int(masks[i].sum().item())
-            latest_ecg_np = ecgs[i, seq_len - 1].numpy()[np.newaxis]
+            latest_ecg_np = ecgs[i, 0].numpy()[np.newaxis]
             #single_out    = full_model(latest_ecg_np, training=False)
             #single_norm   = extract_prediction(single_out, output_key)
-            latest_age    = event_ages_list[i][seq_len - 1]
-            latest_ts     = timestamps_list[i][seq_len - 1] if timestamps_list[i] else None
-            latest_delta  = age_deltas_list[i][seq_len - 1] if age_deltas_list[i] else None
+            latest_age    = event_ages_list[i][0]
+            latest_ts     = timestamps_list[i][0] if timestamps_list[i] else None
+            latest_delta  = age_deltas_list[i][0] if age_deltas_list[i] else None
 
             row_long_out = {k: float(v[i].squeeze()) for k, v in long_out_np.items()}
             
