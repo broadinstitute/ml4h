@@ -998,7 +998,10 @@ def infer_stats_from_segmented_regions(args):
                 y_true = labels[tm_out.output_name()]
 
             sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
-            date = dates_dict[sample_id]
+            if sample_id in dates_dict:
+                date = dates_dict[sample_id]
+            else:
+                date = 'unknown'
 
             if do_intensity_thresh:
                 if args.intensity_thresh_auto:
