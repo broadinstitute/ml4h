@@ -21,6 +21,13 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 from multiprocessing import Process, Queue
+import multiprocessing
+import platform
+
+# On macOS, 'fork' after TF initialization is unreliable; use 'spawn' instead.
+if platform.system() == 'Darwin' and multiprocessing.get_start_method(allow_none=True) is None:
+    multiprocessing.set_start_method('spawn')
+
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
 
