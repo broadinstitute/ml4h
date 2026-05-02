@@ -10,7 +10,7 @@ recalibration that corrects this without retraining the encoder.
 
 Usage
 -----
-    from ml4h.calibration import IsotonicRecalibrator, LinearRecalibrator
+    from ml4h.recalibration_utils import IsotonicRecalibrator, LinearRecalibrator
 
     cal = IsotonicRecalibrator()
     cal.fit(raw_predictions, ground_truth)

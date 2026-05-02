@@ -1,4 +1,4 @@
-"""Tests for ml4h.calibration."""
+"""Tests for ml4h.recalibration_utils."""
 
 import os
 import tempfile
