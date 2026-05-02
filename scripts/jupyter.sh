@@ -100,7 +100,7 @@ mkdir -p /home/${USER}/jupyter/
 chmod o+w /home/${USER}/jupyter/
 
 
-${DOCKER_COMMAND} run -it \
+${DOCKER_COMMAND} run -d \
 ${GPU_DEVICE} \
 --rm \
 --ipc=host \
@@ -111,3 +111,14 @@ ${ENV} \
 ${DOCKER_IMAGE} /bin/bash -c "pip3 install --upgrade pip
 pip3 install /home/${USER}/ml4h;
 jupyter notebook --no-browser --ip=0.0.0.0 --port=${PORT} --NotebookApp.token= --allow-root --notebook-dir=/home/${USER}"
+
+echo "Waiting for Jupyter server to answer on port ${PORT}..."
+for i in {1..30}; do
+    if curl -sf http://127.0.0.1:${PORT} > /dev/null; then
+        echo "Jupyter server is ready!"
+        exit 0
+    fi
+    sleep 2
+done
+echo "WARNING: Jupyter did not answer within 60 seconds."
+
