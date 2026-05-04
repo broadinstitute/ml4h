@@ -206,7 +206,7 @@ def resolve_ecg_path(basepath, finngenid, measid):
 class LongitudinalECGFromMetadata(Dataset):
     def __init__(self, metadata_csv, data_path,
                  decode_fn=decode_ekg_muse_to_array,
-                 transform=None, max_timestamps=50, ecg_input_shp=5000):
+                 transform=None, max_timestamps=50, ecg_input_shp=5000, age_delta_mean=2135.02, age_delta_std=2361.80):
         self.decode_fn       = decode_fn
         self.transform       = transform
         self.max_timestamps  = max_timestamps
@@ -225,8 +225,8 @@ class LongitudinalECGFromMetadata(Dataset):
 
         max_age_per_person = df.groupby("FINNGENID")["EVENT_AGE"].transform("max")
         df["age_delta"] = (max_age_per_person - df["EVENT_AGE"]) * 365.25  # days from most recent ECG
-        age_delta_mean = 2135.022283470709#df["age_delta"].mean()
-        age_delta_std = 2361.7968570069415#df["age_delta"].std()
+        #age_delta_mean = 2135.022283470709#df["age_delta"].mean()
+        #age_delta_std = 2361.7968570069415#df["age_delta"].std()
         df["age_delta_norm"] = (df["age_delta"] - age_delta_mean) / age_delta_std
 
 
@@ -750,7 +750,9 @@ def main():
         args.metadata_path,
         data_path=args.path,
         max_timestamps=args.max_seq_len,
-        ecg_input_shp=args.ecg_input_shape
+        ecg_input_shp=args.ecg_input_shape,
+        age_delta_mean=args.mean_norm,
+        age_delta_std=args.std_norm,
     )
     loader = DataLoader(
         dataset,
