@@ -88,16 +88,8 @@ def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_outpu
 
 
 # ---------- Adaptation for regression + classification ---------- #
-def create_regressor_classifier(
-        encoder,
-        trainable=True,
-        input_shape=(224, 224, 3),
-        n_output_features=0,
-        categories={},
-        category_order=None,
-        survival_heads=None,
-        add_dense={'regressor': False, 'classifier': False, 'survival': False},
-):
+def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 3), n_output_features=0, categories={},
+                                category_order=None, add_dense={'regressor': False, 'classifier': False}):
     for layer in encoder.layers:
         layer.trainable = trainable
 
@@ -106,7 +98,6 @@ def create_regressor_classifier(
     features = tf.keras.layers.Dropout(dropout_rate)(features)
     features = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
     features = tf.keras.layers.Dropout(dropout_rate)(features)
-    survival_heads = survival_heads or {}
 
     outputs = []
     if n_output_features > 0:
@@ -126,19 +117,6 @@ def create_regressor_classifier(
             activation = 'softmax'
             n_classes = categories[category]
             outputs.append(tf.keras.layers.Dense(n_classes, name='cls_'+category, activation=activation)(features))
-    if len(survival_heads) > 0:
-        features_surv = features
-        if add_dense.get('survival', False):
-            features_surv = tf.keras.layers.Dense(hidden_units, activation="relu")(features_surv)
-            features_surv = tf.keras.layers.Dropout(dropout_rate)(features_surv)
-        for head_name, n_intervals_twice in survival_heads.items():
-            outputs.append(
-                tf.keras.layers.Dense(
-                    n_intervals_twice,
-                    name=head_name,
-                    activation='sigmoid',
-                )(features_surv),
-            )
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name="regressor_classifier")
 
@@ -157,7 +135,7 @@ def train_model(
         es_flags,
         class_weight=None
 ):
-    tb_callback = tf.keras.callbacks.TensorBoard(f'{output_folder}/logs', profile_batch=0)
+    tb_callback = tf.keras.callbacks.TensorBoard(f'{output_folder}/logs', profile_batch=[160, 170])
     es_callback = tf.keras.callbacks.EarlyStopping(monitor=es_flags['es_loss2monitor'],
                                                    patience=es_flags['es_patience'])
     cp_callback = tf.keras.callbacks.ModelCheckpoint(

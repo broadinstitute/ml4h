@@ -7,9 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from pandas.api.types import is_numeric_dtype
 
-from ml4h.metrics import survival_likelihood_loss
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
@@ -46,16 +44,8 @@ def main(
         output_labels_types,
         add_separate_dense_reg,
         add_separate_dense_cls,
-        add_separate_dense_surv,
         loss_weights,
         randomize_start_frame,
-        survival_date_column,
-        survival_age_column,
-        survival_censor_age_column,
-        survival_event_age_column,
-        survival_follow_up_years,
-        survival_intervals,
-        survival_incidence_only,
 ):
     lmdb_vois = '_'.join(selected_views)
     olabels = '_'.join(output_labels)
@@ -74,49 +64,36 @@ def main(
             # A wrong number of task type labels was given (empty or different from 1 or 'len(output_labels)')
             raise TypeError(
                 f"The lengths of '{var_type}' and '{var_type}_types' do not match (should be equal or 'len({var_type}_types)=1').")
-        if not set(unq_lbl_types) <= {'r', 'c', 's'}:
-            raise TypeError(f"'{var_type}_types' contains unrecognized letters (should include 'r', 'c' and/or 's' only).")
-
-        if len(o_lbls_types) == 1:
-            expanded_types = o_lbls_types.lower() * len(o_lbls)
-        else:
-            expanded_types = o_lbls_types.lower()
-
-        grouped_output_names = (
-            [label for label, label_type in zip(o_lbls, expanded_types) if label_type == 'r'] +
-            [label for label, label_type in zip(o_lbls, expanded_types) if label_type == 'c'] +
-            [label for label, label_type in zip(o_lbls, expanded_types) if label_type == 's']
-        )
-        reg_o_names = [label for label, label_type in zip(o_lbls, expanded_types) if label_type == 'r']
-        cls_o_names = [label for label, label_type in zip(o_lbls, expanded_types) if label_type == 'c']
-        surv_o_names = [label for label, label_type in zip(o_lbls, expanded_types) if label_type == 's']
+        if not set(unq_lbl_types) <= {'r', 'c'}:
+            raise TypeError(f"'{var_type}_types' contains unrecognized letters (should include 'r' and/or 'c' only).")
 
         if len(unq_lbl_types) > 1:
-            logging.info(f'Updated {var_type} order: {grouped_output_names}')
-        if var_type == 'output_labels':
-            logging.info(
-                f"Training heads: regression={len(reg_o_names)}, classification={len(cls_o_names)}, survival={len(surv_o_names)}",
-            )
+            output_label_types_int = [0 if (ch == 'r') else 1 for ch in o_lbls_types.lower()]
+            o_reg_len = len(output_label_types_int) - sum(output_label_types_int)
+            cls_o_names = [o_lbls[i_c] for i_c, c in enumerate(output_label_types_int) if c == 1]
+            output_order = np.argsort(output_label_types_int)
+            o_lbls = [o_lbls[i] for i in output_order]
+            if var_type == 'output_labels':
+                logging.info('Training with regression and classification heads')
+            else:
+                logging.info('Loaded model has regression and classification heads')
+            logging.info(f'Updated {var_type} order: {o_lbls}')
+        elif 'r' in unq_lbl_types:
+            o_reg_len = len(o_lbls)
+            cls_o_names = []
+            if var_type == 'output_labels':
+                logging.info('Training only with a regression head')
+            else:
+                logging.info('Loaded model has only a regression head')
         else:
-            logging.info(
-                f"Loaded model heads: regression={len(reg_o_names)}, classification={len(cls_o_names)}, survival={len(surv_o_names)}",
-            )
+            o_reg_len = 0
+            cls_o_names = o_lbls
+            if var_type == 'output_labels':
+                logging.info('Training only with a classification head')
+            else:
+                logging.info('Loaded model has only a classification head')
 
-        return grouped_output_names, reg_o_names, cls_o_names, surv_o_names
-
-    def infer_survival_event_age_column(label_name):
-        if survival_event_age_column:
-            return survival_event_age_column
-        if label_name in {'survival_curve_af', 'af_event', 'surv_af'}:
-            return 'af_age'
-        if label_name.endswith('_event'):
-            return label_name.replace('_event', '_age')
-        return f'{label_name}_age'
-
-    def age_series_to_timedelta(series):
-        if is_numeric_dtype(series):
-            return pd.to_timedelta(series.astype(float), unit='D')
-        return pd.to_timedelta(series)
+        return o_lbls, o_reg_len, cls_o_names
 
     def process_class_categories(df, cls_o_names, var_type='output_labels'):
         # Creating dictionaries specifying number of classes for each output_label name
@@ -169,12 +146,8 @@ def main(
         return tf.data.Dataset.from_generator(generator, output_signature=output_signature).prefetch(1)
 
     # ---------------------------------------------------------------- #
-    output_labels, reg_output_names, cls_output_names, surv_output_names = process_labels_types(
-        output_labels,
-        output_labels_types,
-        var_type='output_labels',
-    )
-    output_reg_len = len(reg_output_names)
+    output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
+                                                                           var_type='output_labels')
     # ---------------------------------------------------------------- #
     wide_df = pd.read_parquet(wide_file)
 
@@ -190,58 +163,8 @@ def main(
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
         ]
 
-    survival_task_configs = [
-        {
-            'name': label_name,
-            'event_column': label_name,
-            'event_age_column': infer_survival_event_age_column(label_name),
-            'date_column': survival_date_column,
-            'age_column': survival_age_column,
-            'censor_age_column': survival_censor_age_column,
-            'follow_up_years': survival_follow_up_years,
-            'intervals': survival_intervals,
-            'incidence_only': survival_incidence_only,
-        }
-        for label_name in surv_output_names
-    ]
-
     # Drop entries without echolab measurements and get all sample_ids
-    required_output_columns = list(output_labels)
-    required_survival_columns = []
-    for config in survival_task_configs:
-        required_survival_columns.extend(
-            [
-                config['event_column'],
-                config['date_column'],
-                config['age_column'],
-                config['censor_age_column'],
-            ],
-        )
-    required_columns = list(dict.fromkeys(required_output_columns + required_survival_columns))
-    wide_df_selected = wide_df_selected.dropna(subset=required_columns)
-    for config in survival_task_configs:
-        missing_event_age_mask = (
-            wide_df_selected[config['event_column']].astype(bool) &
-            wide_df_selected[config['event_age_column']].isna()
-        )
-        if missing_event_age_mask.any():
-            logging.info(
-                f"Dropping {int(missing_event_age_mask.sum())} event-positive samples with missing {config['event_age_column']} for survival head {config['name']}.",
-            )
-            wide_df_selected = wide_df_selected.loc[~missing_event_age_mask]
-    if survival_incidence_only and survival_task_configs:
-        for config in survival_task_configs:
-            event_ages = age_series_to_timedelta(wide_df_selected[config['event_age_column']])
-            assess_ages = age_series_to_timedelta(wide_df_selected[config['age_column']])
-            prevalent_mask = (
-                wide_df_selected[config['event_column']].astype(bool) &
-                (event_ages <= assess_ages)
-            )
-            if prevalent_mask.any():
-                logging.info(
-                    f"Dropping {int(prevalent_mask.sum())} prevalent samples for incident-only survival head {config['name']}.",
-                )
-                wide_df_selected = wide_df_selected.loc[~prevalent_mask]
+    wide_df_selected = wide_df_selected.dropna(subset=output_labels)
     working_ids = wide_df_selected['sample_id'].values.tolist()
 
     # Read splits and partition dataset
@@ -263,21 +186,17 @@ def main(
     # If scale_outputs, normalize by summary stats of training set
     if scale_outputs:
         wide_df_train = wide_df_selected[wide_df_selected['sample_id'].isin(train_ids)]
-        output_labels_to_scale = np.array([l for l in output_labels if l not in cls_output_names and l not in surv_output_names])
-        if len(output_labels_to_scale) > 0:
-            output_labels_to_scale = list(output_labels_to_scale[
-                                              np.logical_and(wide_df_train[output_labels_to_scale].dtypes != 'object',
-                                                             wide_df_train[output_labels_to_scale].dtypes != 'string')])
-        else:
-            output_labels_to_scale = []
+        output_labels_to_scale = np.array([l for l in output_labels if l not in cls_output_names])
+        output_labels_to_scale = list(output_labels_to_scale[
+                                          np.logical_and(wide_df_train[output_labels_to_scale].dtypes != 'object',
+                                                         wide_df_train[output_labels_to_scale].dtypes != 'string')])
         logging.info(
-            f'Not scaling classification/survival columns and columns containing strings/objects, unscaled columns: {[l for l in output_labels if l not in output_labels_to_scale]}')
-        if output_labels_to_scale:
-            mean_outputs = np.mean(wide_df_train[output_labels_to_scale].values, axis=0)
-            std_outputs = np.std(wide_df_train[output_labels_to_scale].values, axis=0)
-            wide_df_selected.loc[:, output_labels_to_scale] = (wide_df_selected[output_labels_to_scale].values - mean_outputs) / std_outputs
-            logging.info(mean_outputs)
-            logging.info(std_outputs)
+            f'Not scaling classification columns and columns containing strings/objects, unscaled columns: {[l for l in output_labels if l not in output_labels_to_scale]}')
+        mean_outputs = np.mean(wide_df_train[output_labels_to_scale].values, axis=0)
+        std_outputs = np.std(wide_df_train[output_labels_to_scale].values, axis=0)
+        wide_df_selected.loc[:, output_labels_to_scale] = (wide_df_selected[output_labels_to_scale].values - mean_outputs) / std_outputs
+        logging.info(mean_outputs)
+        logging.info(std_outputs)
 
     valid_ids = list(set(valid_ids).intersection(set(working_ids)))
     print(f"valid_ids: {len(valid_ids)}") 
@@ -323,26 +242,13 @@ def main(
         randomize_start_frame = False
     )
 
-    output_dd_columns = ['sample_id'] + output_labels
-    for config in survival_task_configs:
-        output_dd_columns.extend(
-            [
-                config['event_age_column'],
-                config['date_column'],
-                config['age_column'],
-                config['censor_age_column'],
-            ],
-        )
-    output_dd_columns = list(dict.fromkeys(output_dd_columns))
-
     OUTPUT_DD = EcholabDataDescription(
-        wide_df=wide_df_selected[output_dd_columns].drop_duplicates(),
+        wide_df=wide_df_selected[['sample_id'] + output_labels].drop_duplicates(),
         sample_id_column='sample_id',
         column_names=output_labels,
         name='echolab',
         # ---------- Adaptation for regression + classification ---------- #
         cls_categories_map=cls_category_map_dicts if cls_output_names else None,
-        survival_task_configs=survival_task_configs,
         # ---------------------------------------------------------------- #
     )
 
@@ -358,9 +264,6 @@ def main(
         output_shapes.append((batch_size, output_reg_len))
     output_shapes.extend(
         [(batch_size, cls_category_len_dict[c]) for c in cls_category_map_dicts['cls_output_order']]
-    )
-    output_shapes.extend(
-        [(batch_size, config['intervals'] * 2) for config in survival_task_configs]
     )
     if len(output_shapes) > 1:
         output_signatures = (
@@ -409,12 +312,10 @@ def main(
         func_args = {'input_shape': (n_input_frames, 224, 224, 3), 'trainable': not fine_tune,
                      'n_output_features': output_reg_len,
                      'categories': cls_category_len_dict,
-                     'survival_heads': {config['name']: config['intervals'] * 2 for config in survival_task_configs},
                      'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
                      'add_dense': {
                          'regressor': add_separate_dense_reg,
                          'classifier': add_separate_dense_cls,
-                         'survival': add_separate_dense_surv,
                      }}
 
         model = create_regressor_classifier(encoder, **func_args)
@@ -429,16 +330,13 @@ def main(
                 'add_separate_dense_reg'] if 'add_separate_dense_reg' in signature_model_params.keys() else False
             sig_add_separate_dense_cls = signature_model_params[
                 'add_separate_dense_cls'] if 'add_separate_dense_cls' in signature_model_params.keys() else False
-            sig_add_separate_dense_surv = signature_model_params[
-                'add_separate_dense_surv'] if 'add_separate_dense_surv' in signature_model_params.keys() else False
             output_signature_labels_types = signature_model_params[
                 'output_labels_types'] if 'output_labels_types' in signature_model_params.keys() else 'r'
             output_signature_labels = signature_model_params['output_labels']
             logging.info(f'output_labels of loaded model: {output_signature_labels}')
 
-            output_signature_labels, output_signature_reg_names, cls_output_signature_names, surv_output_signature_names = process_labels_types(
+            output_signature_labels, output_signature_reg_len, cls_output_signature_names = process_labels_types(
                 output_signature_labels, output_signature_labels_types, var_type='output_signature_labels')
-            output_signature_reg_len = len(output_signature_reg_names)
 
             if 'c' in output_signature_labels_types.lower():
                 cls_category_signature_len_dict = {}
@@ -453,20 +351,17 @@ def main(
                 trainable=not fine_tune,
                 n_output_features=output_signature_reg_len,
                 categories=cls_category_signature_len_dict,
-                survival_heads={label_name: survival_intervals * 2 for label_name in surv_output_signature_names},
                 category_order=cls_category_signature_map_dicts[
                     'cls_output_order'] if cls_category_signature_len_dict else None,
                 add_dense={
                     'regressor': sig_add_separate_dense_reg,
                     'classifier': sig_add_separate_dense_cls,
-                    'survival': sig_add_separate_dense_surv,
                 }
             )
             model.load_weights(pretrained_chkp_dir)
 
             if (output_labels != output_signature_labels) or (output_signature_reg_len != output_reg_len) or (
-                    cls_output_signature_names != cls_output_names) or (
-                    surv_output_signature_names != surv_output_names) or define_new_heads:
+                    cls_output_signature_names != cls_output_names) or define_new_heads:
                 logging.info('Redefining regression and/or classification heads due to differences in outputs used')
                 # ---------- Adaptation for regression + classification ---------- #
                 model = create_regressor_classifier(encoder, **func_args)
@@ -500,8 +395,6 @@ def main(
         if output_reg_len > 0:
             loss['echolab'] = tf.keras.losses.MeanSquaredError()
             metrics['echolab'] = tf.keras.metrics.MeanAbsoluteError()
-        for config in survival_task_configs:
-            loss[config['name']] = survival_likelihood_loss(config['intervals'])
 
         model.compile(
             optimizer=optimizer,
@@ -586,29 +479,13 @@ if __name__ == "__main__":
     parser.add_argument('--randomize_start_frame', action='store_true')
     # ---------- Adaptation for regression + classification ---------- #
     parser.add_argument('--output_labels_types', default='r', type=str,
-                        help='A string indicating task types: r for regression, c for classification, s for survival. Should be of length 1 or the same length of the specified output_labels variable, e.g. "r" or "rrcs".')
+                        help='A string indicating task types: r for regression, c for classification. Should be of length 1 or the same length of the specified output_labels variable, e.g. "r" or "rrcr".')
     parser.add_argument('--add_separate_dense_reg', action='store_true',
                         help='Adds an additional dense layer trained separately for the regression head')
     parser.add_argument('--add_separate_dense_cls', action='store_true',
                         help='Adds an additional dense layer trained separately for the classification head')
-    parser.add_argument('--add_separate_dense_surv', action='store_true',
-                        help='Adds an additional dense layer trained separately for the survival head')
     parser.add_argument('-lw', '--loss_weights', action='append', type=float,
-                        help='Loss weights, number of weights should match the number of active heads after grouping regression, classification, and survival outputs.')
-    parser.add_argument('--survival_date_column', default='echo_datetime', type=str,
-                        help='Datetime column used as the assessment date for survival heads.')
-    parser.add_argument('--survival_age_column', default='echo_age', type=str,
-                        help='Age-at-study column used as the assessment age for survival heads.')
-    parser.add_argument('--survival_censor_age_column', default='last_encounter', type=str,
-                        help='Age-at-censoring column used for survival heads.')
-    parser.add_argument('--survival_event_age_column', default='af_age', type=str,
-                        help='Age-at-event column used for survival heads.')
-    parser.add_argument('--survival_follow_up_years', default=5, type=int,
-                        help='Follow-up horizon in years for survival heads.')
-    parser.add_argument('--survival_intervals', default=25, type=int,
-                        help='Number of survival intervals. Output width will be intervals * 2.')
-    parser.add_argument('--survival_incidence_only', action='store_true',
-                        help='Drop prevalent events and train survival heads on incident events only.')
+                        help='Loss weights, number of weights to specify should be: No. classification tasks (columns) + 1 if there are regression variables. For example, for output_labels_types="rrcc", the length should be 2+1=3.')
     # ---------------------------------------------------------------- #
     args = parser.parse_args()
 
@@ -647,15 +524,7 @@ if __name__ == "__main__":
         output_labels_types=args.output_labels_types,
         add_separate_dense_reg=args.add_separate_dense_reg,
         add_separate_dense_cls=args.add_separate_dense_cls,
-        add_separate_dense_surv=args.add_separate_dense_surv,
         loss_weights=args.loss_weights,
         # ---------------------------------------------------------------- #
         randomize_start_frame=args.randomize_start_frame,
-        survival_date_column=args.survival_date_column,
-        survival_age_column=args.survival_age_column,
-        survival_censor_age_column=args.survival_censor_age_column,
-        survival_event_age_column=args.survival_event_age_column,
-        survival_follow_up_years=args.survival_follow_up_years,
-        survival_intervals=args.survival_intervals,
-        survival_incidence_only=args.survival_incidence_only,
     )
