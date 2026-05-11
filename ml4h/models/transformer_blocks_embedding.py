@@ -697,10 +697,9 @@ def build_embedding_transformer(
     x = layers.Dropout(DROPOUT)(x)
 
     # Positional embedding (learnable)
-    if view2id is not None:
-        pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_view)
-        pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
-        x = layers.Add(name='add_pos')([x, pos_emb])
+    pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_num)
+    pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
+    x = layers.Add(name='add_pos')([x, pos_emb])
 
     # Build (B,T,T) attention mask from (B,T)
     m_q = ExpandDimsLayer(axis=2, name='mask_q')(inp_mask)
