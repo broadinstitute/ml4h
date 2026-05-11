@@ -421,7 +421,17 @@ mgb_cad_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
-
+mgb_stroke_wrt_instance2 = TensorMap(
+    'stroke_event',
+    Interpretation.SURVIVAL_CURVE,
+    shape=(50,),
+    days_window=DAYS_IN_10_YEARS,
+    tensor_from_file=_survival_tensor(
+        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
+        disease_name_override='stroke',
+        start_date_is_attribute=True, incidence_only=True,
+    ),
+)
 
 prevalent_hf_wrt_instance2 = TensorMap(
     'heart_failure', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,

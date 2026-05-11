@@ -21,6 +21,7 @@ MOUNTS=""
 PYTHON_COMMAND="python"
 TEST_COMMAND="python -m pytest"
 SCRIPT_NAME=$( echo $0 | sed 's#.*/##g' )
+ENV=""
 
 ################### USERNAME & GROUPS ####################################
 
@@ -72,13 +73,16 @@ usage()
         -h                  Print this help text.
 
         -i      <image>     Run Docker with the specified custom <image>. The default image is '${DOCKER_IMAGE}'.
+
+        -e                  Run Docker with the specified environment variables set.
+
         -T                  Run tests
 USAGE_MESSAGE
 }
 
 ################### OPTION PARSING #######################################
 
-while getopts ":i:d:m:ctjuhT" opt ; do
+while getopts ":i:d:m:e:ctjuhT" opt ; do
     case ${opt} in
         h)
             usage
@@ -121,6 +125,9 @@ while getopts ":i:d:m:ctjuhT" opt ; do
             ;;
         T)
             PYTHON_COMMAND=${TEST_COMMAND}
+            ;;
+        e)
+            ENV="--env $OPTARG"
             ;;
         :)
             echo "ERROR: Option -${OPTARG} requires an argument." 1>&2
@@ -179,6 +186,7 @@ Attempting to run Docker with
     -v ${WORKDIR}/:${WORKDIR}/ \
     -v ${HOME}/:${HOME}/ \
     ${MOUNTS} \
+    ${ENV} \
     ${DOCKER_IMAGE} /bin/bash -c "pip install ${WORKDIR};
         eval ${CALL_DOCKER_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"
 LAUNCH_MESSAGE
@@ -195,6 +203,7 @@ ${GPU_DEVICE} \
 -v ${WORKDIR}/:${WORKDIR}/ \
 -v ${HOME}/:${HOME}/ \
 ${MOUNTS} \
+${ENV} \
 ${DOCKER_IMAGE} /bin/bash -c "pip install --quiet --upgrade pip
 pip install ${WORKDIR}
 eval ${CALL_DOCKER_AS_USER} ${PYTHON_COMMAND} ${PYTHON_ARGS}"

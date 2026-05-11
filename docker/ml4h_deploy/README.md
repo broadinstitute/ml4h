@@ -19,9 +19,11 @@ Download the tarball (maybe a huge 20GB+ file). Then split it into smaller files
 split -b 2300M ecg_supervised_finngen_deploy.tar ecg_supervised_finngen_deploy_part_
 ```
 Login to your finngen account and navigate to the green bucket Google Console page. 
+
 The address depends on the sandbox version. Currently, it is at: [https://console.cloud.google.com/storage/browser/fg-production-sandbox-54_greenuploads/<folder_name>](https://console.cloud.google.com/storage/browser/fg-production-sandbox-54_greenuploads/<folder_name>).
 Upload all the parts here. Then after they pass the virus scan, which takes ~20 minutes, they will show up in your FinnGEN IVM at the path `/finngen/green/<folder_name>`.
 You can replace `<folder_name>` with any folder name you want, but must be consistent between the upload and the IVM path.
+
 
 
 More docs are here: [https://docs.finngen.fi/working-in-the-sandbox/quirks-and-features/how-to-upload-to-your-own-ivm-via-finngen-green](https://docs.finngen.fi/working-in-the-sandbox/quirks-and-features/how-to-upload-to-your-own-ivm-via-finngen-green)

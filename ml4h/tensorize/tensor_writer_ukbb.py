@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
 from timeit import default_timer as timer
-from scipy.ndimage.morphology import binary_closing, binary_erosion  # Morphological operator
+from scipy.ndimage import binary_closing, binary_erosion  # Morphological operator
 
 from ml4h.plots import plot_value_counter, plot_histograms
 from ml4h.defines import ECG_BIKE_LEADS, ECG_BIKE_MEDIAN_SIZE, ECG_BIKE_STRIP_SIZE, ECG_BIKE_FULL_SIZE, MRI_FRAMES
@@ -54,13 +54,13 @@ MRI_CARDIAC_SERIES = [
     'cine_segmented_sax_b3', 'cine_segmented_sax_b4', 'cine_segmented_sax_b5', 'cine_segmented_sax_b6', 'cine_segmented_sax_b7',
     'cine_segmented_sax_b8', 'cine_segmented_sax_b9', 'cine_segmented_sax_b10', 'cine_segmented_sax_b11', 'cine_segmented_sax_b12',
     'cine_segmented_sax_b13', 'cine_segmented_sax_inlinevf', 'cine_segmented_lax_inlinevf', 'cine_segmented_ao_dist',
-    'cine_segmented_lvot', 'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag',
+    'cine_segmented_lvot', 'cine_tagging_3sl_sax_b1s', 'cine_tagging_3sl_sax_b2s', 'cine_tagging_3sl_sax_b3s', 'flow_250_tp_aov_bh_epat@c_p', 'flow_250_tp_aov_bh_epat@c', 'flow_250_tp_aov_bh_epat@c_mag',
     'shmolli_192i_b1_sax_b1s_sax_b1s_sax_b1s_t1map', 'shmolli_192i_sax_b2s_sax_b2s_sax_b2s_t1map',
     'shmolli_192i_b2_sax_b2s_sax_b2s_sax_b2s_t1map',
     'shmolli_192i_b3_sax_b3s_sax_b3s_sax_b3s_t1map', 'shmolli_192i_b4_sax_b4s_sax_b4s_sax_b4s_t1map',
     'shmolli_192i_b5_sax_b5s_sax_b5s_sax_b5s_t1map', 'shmolli_192i_b6_sax_b6s_sax_b6s_sax_b6s_t1map',
     'shmolli_192i_b7_sax_b7s_sax_b7s_sax_b7s_t1map',
-
+    'shmolli_192i_sax_b2s', 'shmolli_192i_sax_b2s_sax_b2s_fitparams',
 ]
 MRI_PANCREAS_SERIES = ['shmolli_192i_pancreas_t1map']
 MRI_CARDIAC_SERIES_SEGMENTED = [series+'_segmented' for series in MRI_CARDIAC_SERIES]
@@ -71,7 +71,7 @@ MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimi
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
 DICOM_MRI_FIELDS = [
-    '20209', '20208', '20210', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
+    '20209', '20208', '20210', '20211', '20212', '20213', '20214', '20204', '20203', '20254', '20216', '20220', '20218',
     '20227', '20225', '20217', '20158', '20259',
 ]
 
@@ -103,6 +103,7 @@ def write_tensors(
     min_sample_id: int,
     max_sample_id: int,
     min_values_to_print: int,
+    do_not_tensorize_cardiac_overlays: bool = False,
 ) -> None:
     """Write tensors as HD5 files containing any kind of data from UK BioBank
 
@@ -122,7 +123,7 @@ def write_tensors(
     :param max_sample_id: Maximum sample id to generate, for parallelization
     :param min_values_to_print: Minimum number of samples that have responded to question for it to be included in the
             categorical or continuous dictionaries printed after tensor generation
-
+    :param do_not_tensorize_cardiac_overlays: Do not tensorize the masks and systole/diastole for cardiac
     :return: None
     """
     stats = Counter()
@@ -143,7 +144,7 @@ def write_tensors(
 
         try:
             with h5py.File(tp, 'w') as hd5:
-                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats)
+                _write_tensors_from_zipped_dicoms(write_pngs, tensors, mri_unzip, mri_field_ids, zip_folder, hd5, sample_id, stats, do_not_tensorize_cardiac_overlays)
                 _write_tensors_from_zipped_niftis(zip_folder, mri_field_ids, hd5, sample_id, stats)
                 _write_tensors_from_xml(xml_field_ids, xml_folder, hd5, sample_id, write_pngs, stats, continuous_stats)
                 stats['Tensors written'] += 1
@@ -384,6 +385,7 @@ def _write_tensors_from_zipped_dicoms(
     hd5: h5py.File,
     sample_id: int,
     stats: Dict[str, int],
+    do_not_tensorize_cardiac_overlays: bool = False,
 ) -> None:
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
@@ -398,7 +400,7 @@ def _write_tensors_from_zipped_dicoms(
                 zip_ref.extractall(dicom_folder)
                 _write_tensors_from_dicoms(
                     write_pngs, tensors, dicom_folder,
-                    hd5, instance, stats,
+                    hd5, instance, stats, do_not_tensorize_cardiac_overlays,
                 )
                 stats['MRI fields written'] += 1
             shutil.rmtree(dicom_folder)
@@ -418,6 +420,7 @@ def _write_tensors_from_zipped_niftis(zip_folder: str, mri_field_ids: List[str],
 def _write_tensors_from_dicoms(
     write_pngs: bool, tensors: str,
     dicom_folder: str, hd5: h5py.File, instance: str, stats: Dict[str, int],
+    do_not_tensorize_cardiac_overlays: bool = False,
 ) -> None:
     """Convert a folder of DICOMs from a sample into tensors for each series
 
@@ -430,6 +433,7 @@ def _write_tensors_from_dicoms(
         :param hd5: Tensor file in which to create datasets for each series and each segmented slice
         :param instance: The current instance index as a string
         :param stats: Counter to keep track of summary statistics
+        :param do_not_tensorize_cardiac_overlays: Do not tensorize the masks and systole/diastole for cardiac
 
     """
     views = defaultdict(list)
@@ -471,12 +475,11 @@ def _write_tensors_from_dicoms(
         else:
             mri_group = 'ukb_mri'
 
-        if v == MRI_TO_SEGMENT:
+        if v == MRI_TO_SEGMENT and (not do_not_tensorize_cardiac_overlays):
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
-
-        else:
+        elif v != MRI_TO_SEGMENT:
             mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
                 _save_pixel_dimensions_if_missing(slicer, v, hd5)
@@ -661,15 +664,15 @@ def _get_overlay_from_dicom(d, debug=False) -> Tuple[np.ndarray, np.ndarray]:
         small_radius = max(MRI_MIN_RADIUS, short_side * MRI_SMALL_RADIUS_FACTOR)
         big_radius = max(MRI_MIN_RADIUS+1, short_side * MRI_BIG_RADIUS_FACTOR)
         small_structure = unit_disk(small_radius)
-        m1 = binary_closing(overlay, small_structure).astype(np.int)
+        m1 = binary_closing(overlay, small_structure).astype(np.int32)
         big_structure = unit_disk(big_radius)
-        m2 = binary_closing(overlay, big_structure).astype(np.int)
+        m2 = binary_closing(overlay, big_structure).astype(np.int32)
         anatomical_mask = m1 + m2
         ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
         myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         if ventricle_pixels == 0 and myocardium_pixels > MRI_MAX_MYOCARDIUM:  # try to rescue small ventricles
             erode_structure = unit_disk(small_radius * 1.5)
-            anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int)
+            anatomical_mask = anatomical_mask - binary_erosion(m1, erode_structure).astype(np.int32)
             ventricle_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['ventricle'])
             myocardium_pixels = np.count_nonzero(anatomical_mask == MRI_SEGMENTED_CHANNEL_MAP['myocardium'])
         return overlay, anatomical_mask, ventricle_pixels, myocardium_pixels
