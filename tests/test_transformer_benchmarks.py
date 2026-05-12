@@ -11,6 +11,13 @@ from ml4h.models.transformer_blocks_embedding import (
 )
 
 
+try:
+    tf.config.set_visible_devices([], "GPU")
+except (RuntimeError, ValueError):
+    # Fine if devices are already initialized or GPU is unavailable.
+    pass
+
+
 def _cpu_device():
     # Keep benchmark placement consistent with GitHub Actions CPU runners.
     return tf.device("/CPU:0")
@@ -144,15 +151,15 @@ def test_transformer_builder_benchmarks_are_measurable_and_comparable(capsys):
             numeric_columns=[],
             categorical_columns=[],
             categorical_vocabs={},
-            REGRESSION_TARGETS=["regression_task"],
-            BINARY_TARGETS=["binary_task"],
-            MAX_LEN=max_len,
-            EMB_DIM=16,
-            TOKEN_HIDDEN=16,
-            TRANSFORMER_DIM=16,
-            NUM_HEADS=2,
-            NUM_LAYERS=1,
-            DROPOUT=0.0,
+            regression_targets=["regression_task"],
+            binary_targets=["binary_task"],
+            max_len=max_len,
+            scalar_embed=8,
+            latent_embed=8,
+            transformer_dim=16,
+            num_heads=2,
+            num_layers=1,
+            dropout=0.0,
         ),
         general_inputs,
         outputs,
@@ -166,12 +173,13 @@ def test_transformer_builder_benchmarks_are_measurable_and_comparable(capsys):
             BINARY_TARGETS=["binary_task"],
             MAX_LEN=max_len,
             EMB_DIM=16,
-            TOKEN_HIDDEN=16,
-            TRANSFORMER_DIM=16,
+            TOKEN_HIDDEN=12,
+            TRANSFORMER_DIM=12,
             NUM_HEADS=2,
             NUM_LAYERS=1,
             DROPOUT=0.0,
             view2id=None,
+            learning_rate=1e-3,
         ),
         embedding_inputs,
         outputs,
