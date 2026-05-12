@@ -17,12 +17,12 @@ from ml4h.metrics import weighted_crossentropy
 
 n_intervals = 25
 
-ecg_tmap = TensorMap(
-    'ecg_4096_std',
-    Interpretation.CONTINUOUS,
-    shape=(4096, 12),
-    channel_map=ECG_REST_AMP_LEADS,
-)
+#ecg_tmap = TensorMap(
+    #'ecg_4096_std',
+    #Interpretation.CONTINUOUS,
+    #shape=(4096, 12),
+    #channel_map=ECG_REST_AMP_LEADS,
+#)
 
 lvef_tmap = TensorMap('lvef', Interpretation.CONTINUOUS, channel_map={'lvef': 0})
 nlp_as_tmap = TensorMap('nlp_as_label', Interpretation.CATEGORICAL, 
@@ -42,7 +42,7 @@ af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CAT
                             loss=weighted_crossentropy([1.0, 10.0], 'af_in_read'),
                             channel_map={'no_af_in_read': 0, 'af_in_read':1})
 
-input_tmaps = [ecg_tmap]
+#input_tmaps = [ecg_tmap]
 output_tmaps = [lvef_tmap, nlp_as_tmap, echo_age_tmap, ecg_age_tmap, lbbb_tmap, rbbb_tmap, avb_tmap, af_in_read_tmap]
 ecg_label_tmaps = [ecg_age_tmap, lbbb_tmap, rbbb_tmap, avb_tmap, af_in_read_tmap]
 ecg_labels = ['is_male', 'lvh', 'aortic_stenosis', 'dm', 'cad', 'mi', 'htn', 'valve_dz', 'hypertension_med', 'afib', 'obesity', 'ckd']
@@ -70,7 +70,7 @@ custom_dict = get_custom_objects(list(output_tensormaps.values()))
 #output_file = '/output/ecg2hf_quintuplet.csv'
 #space_dict = defaultdict(list)
 
-def process_ukb_hd5(filepath, space_dict, model):
+def process_ukb_hd5(filepath, space_dict, model,ecg_tmap):
     # Placeholder for file processing logic
     print(f"Processing file: {filepath}")
     with h5py.File(filepath, 'r') as hd5:
@@ -445,6 +445,14 @@ def main():
     model = load_model(args.model_path)
     meta_ecg = pd.read_csv(args.metadata, sep="\t")
     ecg_input_shp = args.ecg_input_shape
+
+
+    ecg_tmap = TensorMap(
+        f'ecg_{ecg_input_shp}_std',
+        Interpretation.CONTINUOUS,
+        shape=(ecg_input_shp, 12),
+        channel_map=ECG_REST_AMP_LEADS,
+        )
 
     paths = []
 
