@@ -80,12 +80,10 @@ def process_ukb_hd5(filepath, space_dict, model):
 
         ecg_array -= ecg_array.mean()
         ecg_array /= (ecg_array.std() + 1e-6)
-        #print(f"Got tensor: {tensor.mean():0.3f}")
         prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
         if len(model.output_names) == 1:
             prediction = [prediction]
         predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
-        #print(f"Got predictions: {predictions_dict}")
         space_dict['sample_id'].append(os.path.basename(filepath).replace('.hd5', ''))
         space_dict['ecg_path'].append(filepath)
         if '/dates/atrial_fibrillation_or_flutter_date' in hd5:
@@ -260,12 +258,10 @@ def process_ge_muse_xml(filepath, space_dict, model, ecg_input_shp):
     #print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
     ecg_array -= ecg_array.mean()
     ecg_array /= (ecg_array.std() + 1e-6)
-    #print(f"Got tensor: {tensor.mean():0.3f}")
     prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
     if len(model.output_names) == 1:
         prediction = [prediction]
     predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
-    #print(f"Got predictions: {predictions_dict}")
     space_dict['filepath'].append(os.path.basename(filepath))
     space_dict['patient_id'].append(patient_id)
     space_dict['acquisition_datetime'].append(acquisition_date_time)
@@ -398,15 +394,14 @@ def process_ge_muse_hl7(filepath, space_dict, model, ecg_input_shp):
     pharma_unique_ecg_id = "none"
 
 
-    print(f'Writing row of ECG2AF predictions for hl7 ECG {patient_id}, at {acquisition_date_time}')
+    #print(f'Writing row of ECG2AF predictions for hl7 ECG {patient_id}, at {acquisition_date_time}')
+    print(f'Writing row of predictions for hl7 ECG [redacted]')
     ecg_array -= ecg_array.mean()
     ecg_array /= (ecg_array.std() + 1e-6)
-    #print(f"Got tensor: {tensor.mean():0.3f}")
     prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
     if len(model.output_names) == 1:
         prediction = [prediction]
     predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
-    #print(f"Got predictions: {predictions_dict}")
     space_dict['filepath'].append(os.path.basename(filepath))
     space_dict['patient_id'].append(patient_id)
     space_dict['acquisition_datetime'].append(acquisition_date_time)

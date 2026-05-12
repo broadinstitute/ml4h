@@ -1,18 +1,17 @@
-#FROM ghcr.io/broadinstitute/ml4h:tf2.19-latest-gpu
-FROM python:3.12-slim
+FROM ghcr.io/broadinstitute/ml4h:tf2.19-latest-gpu
+# Set the working directory
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install TensorFlow (or any other necessary libraries)
+RUN pip install tensorflow
 
-COPY encoder_ecg_4096_std.keras /app/encoder_ecg_4096_std.keras
-COPY transformer_ecg_only_v2026_03_04.keras /app/transformer_ecg_only_v2026_03_04.keras
-COPY transformer_ecg_only_512d_v2026_04_01.keras /app/transformer_ecg_only_512d_v2026_04_01.keras
-COPY encoder_ecg_5000_std.keras /app/encoder_ecg_5000_std.keras
-COPY ecgs2age_v2026_03_31.keras /app/ecgs2age_v2026_03_31.keras
-COPY ecgs2age_v2026_04_27.keras /app/ecgs2age_v2026_04_27.keras
-COPY transformer_crossmodal_ecg_only_with_delta_v2026_05_03.keras /app/transformer_crossmodal_ecg_only_with_delta_v2026_05_03.keras
+# Copy the Keras model file into the Docker image
+COPY ecg_cnn_scratch_26task_v2025_08_11.keras /app/ecg_cnn_scratch_26task_v2025_08_11.keras
 
-COPY process_files_parameterized.py .
+# Copy the Python script
+COPY process_files.py .
 
-ENTRYPOINT ["python", "process_files_parameterized.py"]
+RUN pip install ml4h
+
+# Define the command to run the script
+ENTRYPOINT ["python", "process_files.py"]
