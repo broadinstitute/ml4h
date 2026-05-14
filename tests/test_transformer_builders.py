@@ -9,6 +9,13 @@ from ml4h.models.transformer_blocks_embedding import (
 )
 
 
+try:
+    tf.config.set_visible_devices([], "GPU")
+except (RuntimeError, ValueError):
+    # It's fine if devices are already initialized or no GPU backend exists.
+    pass
+
+
 def _cpu_device():
     # These tests run in GitHub Actions on CPU-only runners; force placement so
     # local GPU availability does not change behavior or runtime characteristics.
@@ -155,15 +162,15 @@ def test_build_general_embedding_transformer_learns_easy_tasks(use_categorical, 
             numeric_columns=numeric_columns,
             categorical_columns=categorical_columns,
             categorical_vocabs=categorical_vocabs,
-            REGRESSION_TARGETS=["regression_task"],
-            BINARY_TARGETS=["binary_task"],
-            MAX_LEN=max_len,
-            EMB_DIM=8,
-            TOKEN_HIDDEN=8,
-            TRANSFORMER_DIM=8,
-            NUM_HEADS=2,
-            NUM_LAYERS=1,
-            DROPOUT=0.0,
+            regression_targets=["regression_task"],
+            binary_targets=["binary_task"],
+            max_len=max_len,
+            scalar_embed=4,
+            latent_embed=4,
+            transformer_dim=8,
+            num_heads=2,
+            num_layers=1,
+            dropout=0.0,
         )
         model = _recompile_for_fair_test(model)
 
@@ -233,12 +240,13 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
             BINARY_TARGETS=["binary_task"],
             MAX_LEN=max_len,
             EMB_DIM=8,
-            TOKEN_HIDDEN=16,
-            TRANSFORMER_DIM=16,
+            TOKEN_HIDDEN=12,
+            TRANSFORMER_DIM=12,
             NUM_HEADS=2,
             NUM_LAYERS=1,
             DROPOUT=0.0,
             view2id=view2id,
+            learning_rate=1e-3,
         )
         model = _recompile_for_fair_test(model)
 
