@@ -325,6 +325,10 @@ def parse_args():
          '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
     )
     parser.add_argument(
+         '--transformer_positional_embedding', default=False, action='store_true',
+         help='Enable the learnable positional embedding in build_embedding_transformer.',
+    )
+    parser.add_argument(
          '--transformer_scalar_embed', default=4, type=int, help='Size of embedding of input categorical / continuous scalar column data',
     )
     parser.add_argument(

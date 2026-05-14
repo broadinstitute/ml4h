@@ -653,11 +653,12 @@ def build_embedding_transformer(
         NUM_LAYERS,
         DROPOUT,
         view2id,
-        learning_rate,
+        learning_rate=0.00005,
         binary_class_prevalences=None,
         CATEGORICAL_TARGETS=None,
         NUM_CLASSES=None,
         LABEL_WEIGHTS=None,
+        USE_POSITIONAL_EMBEDDING=False,
 ):
     """
     Build an embedding transformer model.
@@ -669,6 +670,8 @@ def build_embedding_transformer(
             uses weighted binary cross entropy with weights inversely proportional
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
+        USE_POSITIONAL_EMBEDDING: Whether to add a learnable positional embedding
+            to each token before the transformer blocks.
     """
     CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
     if CATEGORICAL_TARGETS and NUM_CLASSES is None:
@@ -696,10 +699,11 @@ def build_embedding_transformer(
         x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
     x = layers.Dropout(DROPOUT)(x)
 
-    # Positional embedding (learnable)
-    pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_num)
-    pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
-    x = layers.Add(name='add_pos')([x, pos_emb])
+    if USE_POSITIONAL_EMBEDDING:
+        # Positional embedding (learnable)
+        pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_num)
+        pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
+        x = layers.Add(name='add_pos')([x, pos_emb])
 
     # Build (B,T,T) attention mask from (B,T)
     m_q = ExpandDimsLayer(axis=2, name='mask_q')(inp_mask)

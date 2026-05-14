@@ -76,6 +76,39 @@ def _recompile_for_fair_test(model):
     return model
 
 
+def test_build_embedding_transformer_positional_embedding_toggle():
+    params = dict(
+        INPUT_NUMERIC_COLS=["feature_0", "feature_1"],
+        REGRESSION_TARGETS=["regression_task"],
+        BINARY_TARGETS=[],
+        MAX_LEN=3,
+        EMB_DIM=4,
+        TOKEN_HIDDEN=4,
+        TRANSFORMER_DIM=4,
+        NUM_HEADS=1,
+        NUM_LAYERS=1,
+        DROPOUT=0.0,
+        view2id=None,
+    )
+
+    with _cpu_device():
+        model_with_pos = build_embedding_transformer(
+            **params,
+            USE_POSITIONAL_EMBEDDING=True,
+        )
+        model_without_pos = build_embedding_transformer(
+            **params,
+        )
+
+    with_pos_layer_names = {layer.name for layer in model_with_pos.layers}
+    without_pos_layer_names = {layer.name for layer in model_without_pos.layers}
+
+    assert "pos_embedding" in with_pos_layer_names
+    assert "add_pos" in with_pos_layer_names
+    assert "pos_embedding" not in without_pos_layer_names
+    assert "add_pos" not in without_pos_layer_names
+
+
 @pytest.mark.parametrize("use_categorical", [False, True])
 def test_build_general_embedding_transformer_learns_easy_tasks(use_categorical, capsys):
     tf.keras.utils.set_random_seed(1234)

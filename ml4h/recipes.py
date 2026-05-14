@@ -1085,6 +1085,7 @@ def train_transformer_on_parquet_fast(args):
             CATEGORICAL_TARGETS=args.target_categorical_columns,
             NUM_CLASSES=num_classes,
             LABEL_WEIGHTS=args.label_weights,
+            USE_POSITIONAL_EMBEDDING=args.transformer_positional_embedding,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
