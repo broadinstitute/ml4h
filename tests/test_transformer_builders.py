@@ -85,23 +85,23 @@ def _recompile_for_fair_test(model):
 
 def test_build_embedding_transformer_positional_embedding_toggle():
     params = dict(
-        INPUT_NUMERIC_COLS=["feature_0", "feature_1"],
-        REGRESSION_TARGETS=["regression_task"],
-        BINARY_TARGETS=[],
-        MAX_LEN=3,
-        EMB_DIM=4,
-        TOKEN_HIDDEN=4,
-        TRANSFORMER_DIM=4,
-        NUM_HEADS=1,
-        NUM_LAYERS=1,
-        DROPOUT=0.0,
+        input_numeric_cols=["feature_0", "feature_1"],
+        regression_targets=["regression_task"],
+        binary_targets=[],
+        max_len=3,
+        emb_dim=4,
+        token_hidden=4,
+        transformer_dim=4,
+        num_heads=1,
+        num_layers=1,
+        dropout=0.0,
         view2id=None,
     )
 
     with _cpu_device():
         model_with_pos = build_embedding_transformer(
             **params,
-            USE_POSITIONAL_EMBEDDING=True,
+            use_positional_embedding=True,
         )
         model_without_pos = build_embedding_transformer(
             **params,
@@ -235,16 +235,16 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
 
     with _cpu_device():
         model = build_embedding_transformer(
-            INPUT_NUMERIC_COLS=[f"feature_{i}" for i in range(num_features)],
-            REGRESSION_TARGETS=["regression_task"],
-            BINARY_TARGETS=["binary_task"],
-            MAX_LEN=max_len,
-            EMB_DIM=8,
-            TOKEN_HIDDEN=12,
-            TRANSFORMER_DIM=12,
-            NUM_HEADS=2,
-            NUM_LAYERS=1,
-            DROPOUT=0.0,
+            input_numeric_cols=[f"feature_{i}" for i in range(num_features)],
+            regression_targets=["regression_task"],
+            binary_targets=["binary_task"],
+            max_len=max_len,
+            emb_dim=8,
+            token_hidden=12,
+            transformer_dim=12,
+            num_heads=2,
+            num_layers=1,
+            dropout=0.0,
             view2id=view2id,
             learning_rate=1e-3,
         )

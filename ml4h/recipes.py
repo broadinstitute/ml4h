@@ -889,7 +889,7 @@ def train_xdl_af(args):
             plot_scatter(y_preds[otm.name], y_trues[otm.name], f"{otm.name} Scatter")
 
 
-def train_transformer_on_parquet(args):
+def train_transformer_on_parquet_stream(args):
 
     loader = LongitudinalDataloaderFast(
         input_file_path=args.transformer_input_file,
@@ -952,9 +952,9 @@ def train_transformer_on_parquet(args):
             num_heads=args.attention_heads,
             num_layers=args.transformer_layers,
             dropout=args.transformer_dropout_rate,
-            CATEGORICAL_TARGETS=args.target_categorical_columns,
-            NUM_CLASSES=num_classes,
-            LABEL_WEIGHTS=args.label_weights,
+            categorical_targets=args.target_categorical_columns,
+            num_classes=num_classes,
+            label_weights=args.label_weights,
         )
 
     if args.inspect_model:
@@ -1012,7 +1012,7 @@ def train_transformer_on_parquet(args):
         json.dump(metrics, f)
 
 
-def train_transformer_on_parquet_fast(args):
+def train_transformer_on_parquet(args):
     if args.transformer_input_file.endswith('.pq'):
         df = pd.read_parquet(args.transformer_input_file)
     else:
@@ -1069,23 +1069,23 @@ def train_transformer_on_parquet_fast(args):
         model = keras.models.load_model(args.model_file)
     else:
         model = build_embedding_transformer(
-            input_numeric_columns,
-            args.target_regression_columns,
-            args.target_binary_columns,
-            args.transformer_max_size,
-            args.transformer_scalar_embed,
-            args.transformer_latent_embed,
-            args.transformer_size,
-            args.attention_heads,
-            args.transformer_layers,
-            args.transformer_dropout_rate,
-            view2id,
-            args.learning_rate,
+            input_numeric_cols=input_numeric_columns,
+            regression_targets=args.target_regression_columns,
+            binary_targets=args.target_binary_columns,
+            max_len=args.transformer_max_size,
+            emb_dim=args.transformer_scalar_embed,
+            token_hidden=args.transformer_latent_embed,
+            transformer_dim=args.transformer_size,
+            num_heads=args.attention_heads,
+            num_layers=args.transformer_layers,
+            dropout=args.transformer_dropout_rate,
+            view2id=view2id,
+            learning_rate=args.learning_rate,
             binary_class_prevalences=binary_class_prevalences,
-            CATEGORICAL_TARGETS=args.target_categorical_columns,
-            NUM_CLASSES=num_classes,
-            LABEL_WEIGHTS=args.label_weights,
-            USE_POSITIONAL_EMBEDDING=args.transformer_positional_embedding,
+            categorical_targets=args.target_categorical_columns,
+            num_classes=num_classes,
+            label_weights=args.label_weights,
+            use_positional_embedding=args.transformer_positional_embedding,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)
