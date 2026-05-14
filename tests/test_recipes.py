@@ -10,8 +10,8 @@ from types import SimpleNamespace
 from ml4h.recipes import inference_file_name, _hidden_file_name,save_to_google_cloud
 from ml4h.recipes import train_legacy, train_multimodal_multitask
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
-from ml4h.recipes import infer_transformer_on_parquet_fast
-from ml4h.recipes import infer_trajectory_transformer_on_parquet_fast
+from ml4h.recipes import infer_transformer_on_parquet
+from ml4h.recipes import infer_trajectory_transformer_on_parquet
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
 from ml4h.explorations import _categorical_explore_header, _should_error_detect, explore
 # Imports with test in their name
@@ -74,7 +74,7 @@ class TestRecipes:
             id='fast_infer_test',
         )
 
-        infer_transformer_on_parquet_fast(args)
+        infer_transformer_on_parquet(args)
 
         output_df = pd.read_parquet(tmp_path / 'fast_infer_test' / 'predictions_fast_infer_test.pq')
         assert output_df['mrn'].tolist() == [202]
@@ -134,7 +134,7 @@ class TestRecipes:
             id='trajectory_infer_test',
         )
 
-        infer_trajectory_transformer_on_parquet_fast(args)
+        infer_trajectory_transformer_on_parquet(args)
 
         output_df = pd.read_parquet(tmp_path / 'trajectory_infer_test' / 'trajectory_predictions_trajectory_infer_test.pq')
         assert output_df['mrn'].tolist() == [101, 101, 101]

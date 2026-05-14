@@ -181,14 +181,14 @@ def run(args):
             train_xdl(args)
         elif "train_xdl_af" == args.mode:
             train_xdl_af(args)
+        elif "train_transformer_on_parquet_stream" == args.mode:
+            train_transformer_on_parquet_stream(args)
         elif "train_transformer_on_parquet" == args.mode:
             train_transformer_on_parquet(args)
-        elif "train_transformer_on_parquet_fast" == args.mode:
-            train_transformer_on_parquet_fast(args)
-        elif "infer_transformer_on_parquet_fast" == args.mode:
-            infer_transformer_on_parquet_fast(args)
-        elif "infer_trajectory_transformer_on_parquet_fast" == args.mode:
-            infer_trajectory_transformer_on_parquet_fast(args)
+        elif "infer_transformer_on_parquet" == args.mode:
+            infer_transformer_on_parquet(args)
+        elif "infer_trajectory_transformer_on_parquet" == args.mode:
+            infer_trajectory_transformer_on_parquet(args)
         elif "test" == args.mode:
             test_multimodal_multitask(args)
         elif "compare" == args.mode:
@@ -1131,7 +1131,7 @@ def train_transformer_on_parquet(args):
         json.dump(metrics, f)
 
 
-def infer_transformer_on_parquet_fast(args):
+def infer_transformer_on_parquet(args):
     """
     Generate inference parquet files containing all predictions from a transformer model
     trained with train_transformer_on_parquet_fast.
@@ -1374,7 +1374,7 @@ def infer_transformer_on_parquet_fast(args):
     logging.info(f"Saved predictions to {output_path}")
 
 
-def infer_trajectory_transformer_on_parquet_fast(args):
+def infer_trajectory_transformer_on_parquet(args):
     """
     Generate inference parquet files with trajectory predictions from a transformer model
     trained with train_transformer_on_parquet_fast.
