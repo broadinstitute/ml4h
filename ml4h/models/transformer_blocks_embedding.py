@@ -19,6 +19,18 @@ tf.random.set_seed(1234)
 Tensor = tf.Tensor
 
 
+@keras.saving.register_keras_serializable(package="ml4h")
+def sparse_weighted_categorical_crossentropy(class_weights):
+    class_weights = tf.constant(class_weights, dtype=tf.float32)
+    def loss(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+        y_true = tf.reshape(y_true, [-1])
+        sample_weights = tf.gather(class_weights, y_true)
+        base_loss = keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
+        return base_loss * sample_weights
+    return loss
+
+
 # Register serializable functions at module level
 @keras.saving.register_keras_serializable(package="ml4h")
 class PositionIndexLayer(keras.layers.Layer):
@@ -398,7 +410,16 @@ def build_general_embedding_transformer(
     num_heads,
     num_layers,
     dropout,
+    categorical_targets=None,
+    num_classes=None,
+    label_weights=None,
 ):
+    categorical_targets = categorical_targets or []
+    if categorical_targets and num_classes is None:
+        raise ValueError(
+            "NUM_CLASSES must be specified when using CATEGORICAL_TARGETS. "
+            "It is auto-detected from the label column in recipes.py."
+        )
     # ------------------------------
     # INPUTS
     # ------------------------------
@@ -540,6 +561,8 @@ def build_general_embedding_transformer(
         outputs[t] = layers.Dense(1, name=t)(h)
     for t in binary_targets:
         outputs[t] = layers.Dense(1, activation="sigmoid", name=t)(h)
+    for t in categorical_targets:
+        outputs[t] = layers.Dense(num_classes, activation="softmax", name=t)(h)
 
     # ------------------------------
     # MODEL
@@ -556,6 +579,13 @@ def build_general_embedding_transformer(
 
     losses = {t: "mse" for t in regression_targets}
     losses.update({t: "binary_crossentropy" for t in binary_targets})
+    if label_weights:
+        class_weights = [float(w) for w in label_weights]
+        for t in categorical_targets:
+            losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
+    else:
+        for t in categorical_targets:
+            losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics_dict = {
         t: [keras.metrics.MeanAbsoluteError(), keras.metrics.MeanSquaredError()]
@@ -567,6 +597,8 @@ def build_general_embedding_transformer(
             keras.metrics.AUC(name="auprc", curve="PR"),
             keras.metrics.BinaryAccuracy(name="acc"),
         ]
+    for t in categorical_targets:
+        metrics_dict[t] = [keras.metrics.SparseCategoricalAccuracy(name="acc")]
 
     model.compile(
         optimizer=keras.optimizers.Adam(1e-4, clipnorm=1.0),
@@ -610,19 +642,23 @@ class WeightedBinaryCrossentropy(keras.losses.Loss):
 
 
 def build_embedding_transformer(
-        INPUT_NUMERIC_COLS,
-        REGRESSION_TARGETS,
-        BINARY_TARGETS,
-        MAX_LEN,
-        EMB_DIM,
-        TOKEN_HIDDEN,
-        TRANSFORMER_DIM,
-        NUM_HEADS,
-        NUM_LAYERS,
-        DROPOUT,
+        input_numeric_cols,
+        regression_targets,
+        binary_targets,
+        max_len,
+        emb_dim,
+        token_hidden,
+        transformer_dim,
+        num_heads,
+        num_layers,
+        dropout,
         view2id,
-        learning_rate,
+        learning_rate=0.00005,
         binary_class_prevalences=None,
+        categorical_targets=None,
+        num_classes=None,
+        label_weights=None,
+        use_positional_embedding=False,
 ):
     """
     Build an embedding transformer model.
@@ -634,31 +670,39 @@ def build_embedding_transformer(
             uses weighted binary cross entropy with weights inversely proportional
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
+        use_positional_embedding: Whether to add a learnable positional embedding
+            to each token before the transformer blocks.
     """
-    Feat = len(INPUT_NUMERIC_COLS)
+    categorical_targets = categorical_targets or []
+    if categorical_targets and num_classes is None:
+        raise ValueError(
+            "num_classes must be specified when using categorical_targets. "
+            "It is auto-detected from the label column in recipes.py."
+        )
+    feat = len(input_numeric_cols)
 
-    inp_num = keras.Input(shape=(MAX_LEN, Feat), dtype='float32', name='num')
-    inp_mask = keras.Input(shape=(MAX_LEN,), dtype='bool', name='mask')  # True = valid
+    inp_num = keras.Input(shape=(max_len, feat), dtype='float32', name='num')
+    inp_mask = keras.Input(shape=(max_len,), dtype='bool', name='mask')  # True = valid
 
     if view2id is not None:
-        inp_view = keras.Input(shape=(MAX_LEN,), dtype='int32', name='view')
+        inp_view = keras.Input(shape=(max_len,), dtype='int32', name='view')
         view_emb = layers.Embedding(
             input_dim=int(max(view2id.values())) + 1,  # include PAD
-            output_dim=EMB_DIM,
+            output_dim=emb_dim,
             mask_zero=True,
             name='view_embedding'
-        )(inp_view)  # (B,T,EMB_DIM)
+        )(inp_view)  # (B,T,emb_dim)
         # Token features: [embed(view) || numeric features]
-        x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,EMB_DIM+F)
-        x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(x)
+        x = layers.Concatenate(name='token_concat')([view_emb, inp_num])  # (B,T,emb_dim+F)
+        x = layers.Dense(token_hidden, activation='relu', name='token_proj')(x)
     else:
-        x = layers.Dense(TOKEN_HIDDEN, activation='relu', name='token_proj')(inp_num)
-    x = layers.Dropout(DROPOUT)(x)
+        x = layers.Dense(token_hidden, activation='relu', name='token_proj')(inp_num)
+    x = layers.Dropout(dropout)(x)
 
-    # Positional embedding (learnable)
-    if view2id is not None:
-        pos_idx = PositionIndexLayer(max_len=MAX_LEN, name='pos_idx')(inp_view)
-        pos_emb = layers.Embedding(input_dim=MAX_LEN, output_dim=TOKEN_HIDDEN, name='pos_embedding')(pos_idx)
+    if use_positional_embedding:
+        # Positional embedding (learnable)
+        pos_idx = PositionIndexLayer(max_len=max_len, name='pos_idx')(inp_num)
+        pos_emb = layers.Embedding(input_dim=max_len, output_dim=token_hidden, name='pos_embedding')(pos_idx)
         x = layers.Add(name='add_pos')([x, pos_emb])
 
     # Build (B,T,T) attention mask from (B,T)
@@ -667,49 +711,51 @@ def build_embedding_transformer(
     mask_2d = LogicalAndLayer(name='mask_qk')([m_q, m_k])
 
     # Transformer blocks
-    for i in range(NUM_LAYERS):
-        attn = layers.MultiHeadAttention(num_heads=NUM_HEADS, key_dim=TRANSFORMER_DIM // NUM_HEADS,
-                                         dropout=DROPOUT, name=f'mha_{i}')(x, x, attention_mask=mask_2d)
-        attn = layers.Dropout(DROPOUT)(attn)
+    for i in range(num_layers):
+        attn = layers.MultiHeadAttention(num_heads=num_heads, key_dim=transformer_dim // num_heads,
+                                         dropout=dropout, name=f'mha_{i}')(x, x, attention_mask=mask_2d)
+        attn = layers.Dropout(dropout)(attn)
         x = layers.LayerNormalization(epsilon=1e-6, name=f'ln1_{i}')(layers.Add()([x, attn]))
 
-        ff = layers.Dense(TRANSFORMER_DIM, activation='relu', name=f'ff1_{i}')(x)
-        ff = layers.Dropout(DROPOUT)(ff)
-        ff = layers.Dense(TOKEN_HIDDEN, name=f'ff2_{i}')(ff)
+        ff = layers.Dense(transformer_dim, activation='relu', name=f'ff1_{i}')(x)
+        ff = layers.Dropout(dropout)(ff)
+        ff = layers.Dense(token_hidden, name=f'ff2_{i}')(ff)
         x = layers.LayerNormalization(epsilon=1e-6, name=f'ln2_{i}')(layers.Add()([x, ff]))
 
     # Attention pooling over time (mask-aware via very negative)
-    score_h = layers.Dense(TOKEN_HIDDEN, activation='tanh', name='attn_h')(x)  # (B,T,D)
+    score_h = layers.Dense(token_hidden, activation='tanh', name='attn_h')(x)  # (B,T,D)
     score = layers.Dense(1, name='attn_score')(score_h)  # (B,T,1)
-    score = layers.Reshape((MAX_LEN,), name='attn_score_squeeze')(score)  # (B,T)
+    score = layers.Reshape((max_len,), name='attn_score_squeeze')(score)  # (B,T)
 
     mask_f = CastToFloatLayer(name='mask_cast')(inp_mask)
 
     very_neg = ApplyVeryNegativeLayer(name='veryneg')(mask_f)
     score_m = layers.Add(name='score_masked')([score, very_neg])
     wts = layers.Softmax(axis=-1, name='attn_wts')(score_m)  # (B,T)
-    wts_e = layers.Reshape((MAX_LEN, 1), name='wts_e')(wts)
+    wts_e = layers.Reshape((max_len, 1), name='wts_e')(wts)
     ctx = layers.Multiply(name='apply_wts')([x, wts_e])  # (B,T,D)
     ctx = SumOverTimeLayer(name='pool')(ctx)  # (B,D)
 
     # Shared tower
     h = layers.Dense(128, activation='relu')(ctx)
-    h = layers.Dropout(DROPOUT)(h)
+    h = layers.Dropout(dropout)(h)
 
     # Task heads (names must match keys used in y/sample_weight dicts)
     outputs = {}
-    for t in REGRESSION_TARGETS:
+    for t in regression_targets:
         outputs[t] = layers.Dense(1, name=t)(h)  # linear
-    for t in BINARY_TARGETS:
+    for t in binary_targets:
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
+    for t in categorical_targets:
+        outputs[t] = layers.Dense(num_classes, activation='softmax', name=t)(h)
 
     if view2id is not None:
         model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     else:
         model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)
     # Losses / metrics
-    losses = {t: 'mse' for t in REGRESSION_TARGETS}
-    for t in BINARY_TARGETS:
+    losses = {t: 'mse' for t in regression_targets}
+    for t in binary_targets:
         if binary_class_prevalences is not None and t in binary_class_prevalences:
             prevalence = binary_class_prevalences[t]
             # pos_weight = (1 - prevalence) / prevalence balances classes
@@ -718,12 +764,21 @@ def build_embedding_transformer(
             logging.info(f"Using weighted BCE for {t}: prevalence={prevalence:.4f}, pos_weight={pos_weight:.2f}")
         else:
             losses[t] = 'binary_crossentropy'
+    if label_weights:
+        class_weights = [float(w) for w in label_weights]
+        for t in categorical_targets:
+            losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
+    else:
+        for t in categorical_targets:
+            losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),
-                   keras.metrics.MeanSquaredError(name='mse')] for t in REGRESSION_TARGETS}
+                   keras.metrics.MeanSquaredError(name='mse')] for t in regression_targets}
     metrics.update({t: [keras.metrics.AUC(name='auroc', curve='ROC'),
                         keras.metrics.AUC(name='auprc', curve='PR'),
-                        keras.metrics.BinaryAccuracy(name='acc')] for t in BINARY_TARGETS})
+                        keras.metrics.BinaryAccuracy(name='acc')] for t in binary_targets})
+    for t in categorical_targets:
+        metrics[t] = [keras.metrics.SparseCategoricalAccuracy(name='acc')]
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate),

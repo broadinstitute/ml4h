@@ -139,6 +139,14 @@ def parse_args():
         'List of columns with binary values to predict.'
     )
     parser.add_argument(
+        '--target_categorical_columns', nargs='*', default=[],
+        help='List of columns with integer class labels to predict (multiclass).',
+    )
+    parser.add_argument(
+        '--num_classes', type=int, default=None,
+        help='Number of classes for categorical/multiclass targets.',
+    )
+    parser.add_argument(
         '--group_column', default=None, help='Column to group on for embedding transformer.'
     )
     parser.add_argument(
@@ -317,6 +325,10 @@ def parse_args():
     )
     parser.add_argument(
          '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
+    )
+    parser.add_argument(
+         '--transformer_positional_embedding', default=False, action='store_true',
+         help='Enable the learnable positional embedding in build_embedding_transformer.',
     )
     parser.add_argument(
          '--transformer_scalar_embed', default=4, type=int, help='Size of embedding of input categorical / continuous scalar column data',

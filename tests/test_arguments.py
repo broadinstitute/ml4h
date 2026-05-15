@@ -76,3 +76,23 @@ class TestUConnect:
         assert len(args.u_connect) == 2
         assert args.u_connect[MOCK_TMAPS[key1]] == {MOCK_TMAPS[key1]}
         assert args.u_connect[MOCK_TMAPS[key2]] == {MOCK_TMAPS[key2]}
+
+
+class TestTransformerPositionalEmbedding:
+
+    def test_transformer_positional_embedding_default(self, tmpdir):
+        sys.argv = [
+            'train',
+            '--output_folder', str(tmpdir),
+        ]
+        args = parse_args()
+        assert args.transformer_positional_embedding is False
+
+    def test_transformer_positional_embedding(self, tmpdir):
+        sys.argv = [
+            'train',
+            '--output_folder', str(tmpdir),
+            '--transformer_positional_embedding',
+        ]
+        args = parse_args()
+        assert args.transformer_positional_embedding is True

@@ -4,7 +4,7 @@
 `ML4H` is best described with Five Verbs: Ingest, Tensorize, TensorMap, Model, Evaluate
 * **Ingest**: collect files onto one system
 * **Tensorize**: write raw files (XML, DICOM, NIFTI, PNG) into HD5 files
-* **TensorMap**: tag data (typically from an HD5) with an interpretation and a method for generation
+* **TensorMap**: tag data (typically from an HD5) with an interpretation and a method for generation. See the [TensorMap Parameters Guide](docs/tensormap_guide.md) for details.
 * **ModelFactory**: connect TensorMaps with a trainable neural network architecture loss function, and optimization strategy
 * **Evaluate**: generate plots that enable domain-driven inspection of models and results
 
@@ -15,6 +15,8 @@
 * [Contributing Code](#contributing-code)
 * [Releases and Versioning](#releases)
 * [Command line interface](#command-line-interface)
+* [TensorMap Parameters Guide](docs/tensormap_guide.md)
+
 
 Advanced Topics:
 * Tensorizing Data (going from raw data to arrays suitable for modeling, in `ml4h/tensorize/README.md, TENSORIZE.md` )
