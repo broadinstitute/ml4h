@@ -1,21 +1,125 @@
 import os
-import xmltodict
-import pandas as pd
-from datetime import datetime
-from dateutil import parser as date_parser
-from multiprocessing import Pool, cpu_count
-from functools import partial
-
-import os
 import sys
 import base64
 import struct
 from collections import defaultdict
 
+import argparse
 import h5py
 import xmltodict
 import numpy as np
 import pandas as pd
+from tensorflow.keras.models import load_model
+from ml4h.TensorMap import TensorMap, Interpretation
+from ml4h.defines import ECG_REST_AMP_LEADS
+from ml4h.models.model_factory import get_custom_objects
+from ml4h.metrics import weighted_crossentropy
+
+n_intervals = 25
+
+#ecg_tmap = TensorMap(
+    #'ecg_4096_std',
+    #Interpretation.CONTINUOUS,
+    #shape=(4096, 12),
+    #channel_map=ECG_REST_AMP_LEADS,
+#)
+
+lvef_tmap = TensorMap('lvef', Interpretation.CONTINUOUS, channel_map={'lvef': 0})
+nlp_as_tmap = TensorMap('nlp_as_label', Interpretation.CATEGORICAL, 
+                        channel_map={'no_as': 0, 'severe_as':1, 'prosthetic_valve':2, 'no_data':3})
+ecg_age_tmap = TensorMap('ecg_age', Interpretation.CONTINUOUS, channel_map={'ecg_age': 0})
+echo_age_tmap = TensorMap('echo_age', Interpretation.CONTINUOUS, channel_map={'echo_age': 0})
+lbbb_tmap = TensorMap(name='lbbb', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'lbbb'),
+                            channel_map={'no_lbbb': 0, 'lbbb':1})
+rbbb_tmap = TensorMap(name='rbbb', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'rbbb'),
+                            channel_map={'no_rbbb': 0, 'rbbb':1})
+avb_tmap = TensorMap(name='avb', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'avb'),
+                            channel_map={'no_avb': 0, 'avb':1})
+af_in_read_tmap = TensorMap(name='af_in_read', interpretation=Interpretation.CATEGORICAL, 
+                            loss=weighted_crossentropy([1.0, 10.0], 'af_in_read'),
+                            channel_map={'no_af_in_read': 0, 'af_in_read':1})
+
+#input_tmaps = [ecg_tmap]
+output_tmaps = [lvef_tmap, nlp_as_tmap, echo_age_tmap, ecg_age_tmap, lbbb_tmap, rbbb_tmap, avb_tmap, af_in_read_tmap]
+ecg_label_tmaps = [ecg_age_tmap, lbbb_tmap, rbbb_tmap, avb_tmap, af_in_read_tmap]
+ecg_labels = ['is_male', 'lvh', 'aortic_stenosis', 'dm', 'cad', 'mi', 'htn', 'valve_dz', 'hypertension_med', 'afib', 'obesity', 'ckd']
+for d in ecg_labels:
+    d_tmap = TensorMap(d, Interpretation.CATEGORICAL, channel_map={f'no_{d}': 0, f'{d}':1})
+    output_tmaps.append(d_tmap)
+    ecg_label_tmaps.append(d_tmap)
+                        
+cutpoints = [30, 35, 40, 45, 50, 55]
+for cutpoint in cutpoints:
+    output_tmaps.append(
+        TensorMap(name=f'lvef_lt_{cutpoint}', interpretation=Interpretation.CATEGORICAL, 
+                  channel_map={f'no_lvef_lt_{cutpoint}':0, f'lvef_lt_{cutpoint}': 1})
+    )
+
+
+
+
+
+
+
+output_tensormaps = {tm.output_name(): tm for tm in output_tmaps}
+custom_dict = get_custom_objects(list(output_tensormaps.values()))
+#model = load_model('ecg_5000_hf_quintuplet_dropout_v2023_04_17.keras')
+#output_file = '/output/ecg2hf_quintuplet.csv'
+#space_dict = defaultdict(list)
+
+def process_ukb_hd5(filepath, space_dict, model,ecg_tmap):
+    # Placeholder for file processing logic
+    print(f"Processing file: {filepath}")
+    with h5py.File(filepath, 'r') as hd5:
+        ecg_array = np.zeros(ecg_tmap.shape, dtype=np.float32)
+        for lead in ecg_tmap.channel_map:
+            ecg_array[:, ecg_tmap.channel_map[lead]] = hd5[f'/ukb_ecg_rest/strip_{lead}/instance_0']
+
+        ecg_array -= ecg_array.mean()
+        ecg_array /= (ecg_array.std() + 1e-6)
+        prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
+        if len(model.output_names) == 1:
+            prediction = [prediction]
+        predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+        space_dict['sample_id'].append(os.path.basename(filepath).replace('.hd5', ''))
+        space_dict['ecg_path'].append(filepath)
+        if '/dates/atrial_fibrillation_or_flutter_date' in hd5:
+            space_dict['has_af'].append(1)
+        else:
+            space_dict['has_af'].append(0)
+
+        for otm in output_tensormaps.values():
+            y = predictions_dict[otm.output_name()]
+            if otm.is_categorical():
+                space_dict[f'{otm.name}_prediction'].append(y[0, 1])
+            elif otm.is_continuous():
+                space_dict[f'{otm.name}_prediction'].append(y[0, 0])
+            elif otm.is_survival_curve():
+                intervals = otm.shape[-1] // 2
+                days_per_bin = 1 + (2 * otm.days_window) // intervals
+                predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+                space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
+                # print(f' got target: {target[otm.output_name()].numpy().shape}')
+                # sick = np.sum(target[otm.output_name()].numpy()[:, intervals:], axis=-1)
+                # follow_up = np.cumsum(target[otm.output_name()].numpy()[:, :intervals], axis=-1)[:, -1] * days_per_bin
+                # space_dict[f'{otm.name}_event'].append(str(sick[b]))
+                # space_dict[f'{otm.name}_follow_up'].append(str(follow_up[b]))
+    # Example: Use the model to make a prediction (add real processing logic here)
+
+def decode_ekg_muse(raw_wave):
+    """
+    Ingest the base64 encoded waveforms and transform to numeric
+    """
+    # covert the waveform from base64 to byte array
+    arr = base64.b64decode(bytes(raw_wave, 'utf-8'))
+
+    # unpack every 2 bytes, little endian (16 bit encoding)
+    unpack_symbols = ''.join([char * int(len(arr) / 2) for char in 'h'])
+    byte_array = struct.unpack(unpack_symbols, arr)
+    return byte_array
 
 def decode_ekg_muse_to_array(raw_wave, downsample=1):
     """
@@ -29,340 +133,358 @@ def decode_ekg_muse_to_array(raw_wave, downsample=1):
         print("You must downsample by more than 0")
     # covert the waveform from base64 to byte array
     arr = base64.b64decode(bytes(raw_wave, 'utf-8'))
+
     # unpack every 2 bytes, little endian (16 bit encoding)
     unpack_symbols = ''.join([char * int(len(arr) / 2) for char in 'h'])
     byte_array = struct.unpack(unpack_symbols, arr)
     return np.array(byte_array)[::dwnsmpl]
 
-import torch
-import os
-import xmltodict
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from datetime import datetime
+def process_ge_muse_xml(filepath, space_dict, model, ecg_input_shp):
+    """
+
+    Upload the ECG as numpy array with shape=[2500,12,1] ([time, leads, 1]).
+
+    The voltage unit should be in 1 mv/unit and the sampling rate should be 250/second (total 10 second).
+
+    The leads should be ordered as follow I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6.
+
+    """
+    try:
+        with open(filepath, 'rb') as fd:
+            content = fd.read()
+            if not content.strip():
+                print(f"Skipping empty file: {filepath}")
+                return
+            try:
+                decoded = content.decode('utf-8')
+            except UnicodeDecodeError:
+                print(f"Skipping non-UTF8 file: {filepath}")
+                return
+
+            dic = xmltodict.parse(decoded)
+            print(f"Successfully parsed XML from: {filepath}")
+            # continue processing dic...
+
+    except xmltodict.expat.ExpatError as e:
+        print(f"XML parsing error in file {filepath}: {e}")
+        raise#return
+    except Exception as e:
+        print(f"Unexpected error processing {filepath}: {e}")
+        raise#return
+
+    try:
+        patient_id = dic['RestingECG']['PatientDemographics']['PatientID']
+    except:
+        print("no PatientID")
+        patient_id = "none"
+    try:
+        pharma_unique_ecg_id = dic['RestingECG']['PharmaData']['PharmaUniqueECGID']
+    except:
+        print("no PharmaUniqueECGID")
+        pharma_unique_ecg_id = "none"
+    try:
+        acquisition_date_time = dic['RestingECG']['TestDemographics']['AcquisitionDate'] + "_" + \
+                              dic['RestingECG']['TestDemographics']['AcquisitionTime'].replace(":", "-")
+    except:
+        print("no AcquisitionDateTime")
+        acquisition_date_time = "none"
+
+        # try:
+    #     requisition_number = dic['RestingECG']['Order']['RequisitionNumber']
+    # except:
+    #     print("no requisition_number")
+    #     requisition_number = "none"
+
+    # need to instantiate leads in the proper order for the model
+    lead_order = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+
+    """
+    Each EKG will have this data structure:
+    lead_data = {
+        'I': np.array
+    }
+    """
+
+    lead_data = dict.fromkeys(lead_order)
+    # lead_data = {leadid: None for k in lead_order}
+
+    #     for all_lead_data in dic['RestingECG']['Waveform']:
+    #         for single_lead_data in lead['LeadData']:
+    #             leadname =  single_lead_data['LeadID']
+    #             if leadname in (lead_order):
+    if 'RestingECG' not in dic or 'Waveform' not in dic['RestingECG']:
+        print(f"Missing 'RestingECG' or 'Waveform' in file {filepath}, returning.")
+        return
+    for lead in dic['RestingECG']['Waveform']:
+        if not isinstance(lead, dict) or 'LeadData' not in lead:
+            print(f"Lead data is not a dictionary with LeadData key at {filepath}, returning.")
+            return
+        for leadid in range(len(lead['LeadData'])):
+            try:
+                sample_length = len(decode_ekg_muse_to_array(lead['LeadData'][leadid]['WaveFormData']))
+            except:
+                print("Failed to decode lead data to array, returning.")
+                return
+            # sample_length is equivalent to dic['RestingECG']['Waveform']['LeadData']['LeadSampleCountTotal']
+            if sample_length == 5000:
+                lead_data[lead['LeadData'][leadid]['LeadID']] = decode_ekg_muse_to_array(
+                    lead['LeadData'][leadid]['WaveFormData'], downsample=1)
+            elif sample_length == 2500:
+                lead_data[lead['LeadData'][leadid]['LeadID']] = decode_ekg_muse_to_array(
+                    lead['LeadData'][leadid]['WaveFormData'], downsample=2)
+            else:
+                continue
+        # ensures all leads have 2500 samples and also passes over the 3 second waveform
+
+    lead_data['III'] = (np.array(lead_data["II"]) - np.array(lead_data["I"]))
+    lead_data['aVR'] = -(np.array(lead_data["I"]) + np.array(lead_data["II"])) / 2
+    lead_data['aVF'] = (np.array(lead_data["II"]) + np.array(lead_data["III"])) / 2
+    lead_data['aVL'] = (np.array(lead_data["I"]) - np.array(lead_data["III"])) / 2
+
+    lead_data = {k: lead_data[k] for k in lead_order}
+    # drops V3R, V4R, and V7 if it was a 15-lead ECG
+
+    # now construct and reshape the array
+    # converting the dictionary to an np.array
+    temp = []
+    for key, value in lead_data.items():
+        temp.append(value)
+
+    # transpose to be [time, leads, ]
+    ecg_array = np.array(temp).T
+    ecg_array = ecg_array[:ecg_input_shp, :]
+
+
+    #print(f'Writing row of ECG2AF predictions for ECG {patient_id}, at {acquisition_date_time}')
+    ecg_array -= ecg_array.mean()
+    ecg_array /= (ecg_array.std() + 1e-6)
+    prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
+    if len(model.output_names) == 1:
+        prediction = [prediction]
+    predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+    space_dict['filepath'].append(os.path.basename(filepath))
+    space_dict['patient_id'].append(patient_id)
+    space_dict['acquisition_datetime'].append(acquisition_date_time)
+    space_dict['pharma_unique_ecg_id'].append(pharma_unique_ecg_id)
+
+    for otm in output_tensormaps.values():
+        y = predictions_dict[otm.output_name()]
+        if otm.is_categorical():
+            space_dict[f'{otm.name}_prediction'].append(y[0, 1])
+        elif otm.is_continuous():
+            space_dict[f'{otm.name}_prediction'].append(y[0, 0])
+        elif otm.is_survival_curve():
+            intervals = otm.shape[-1] // 2
+            days_per_bin = 1 + (2 * otm.days_window) // intervals
+            predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+            space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
+            # print(f' got target: {target[otm.output_name()].numpy().shape}')
+            # sick = np.sum(target[otm.output_name()].numpy()[:, intervals:], axis=-1)
+            # follow_up = np.cumsum(target[otm.output_name()].numpy()[:, :intervals], axis=-1)[:, -1] * days_per_bin
+            # space_dict[f'{otm.name}_event'].append(str(sick[b]))
+            # space_dict[f'{otm.name}_follow_up'].append(str(follow_up[b]))
+# Example: Use the model to make a prediction (add real processing logic here)
+
+
+
+def process_ge_muse_hl7(filepath, space_dict, model, ecg_input_shp):
+
+    def fixed_length(ecg_, target_len=4096):
+        if ecg_.shape[0] >= target_len:
+            return ecg_[:target_len, :]
+        pad = np.zeros((target_len - ecg_.shape[0], ecg_.shape[1]), dtype=ecg_.dtype)
+        return np.vstack([ecg_, pad])
+
+    with open(filepath, "rt") as ecg:
+        line = ecg.readline()
+        field4 = line.split("|")[3]
+
+        # --- Step 1: Find CHN line ---
+        while field4 != "CHN":
+            line = ecg.readline()
+            field4 = line.split("|")[3]
+
+        raw_channels = line.split("|")[5].split("~")
+
+        # Extract "I" from "1^I^..."
+        def extract_lead(x):
+            parts = x.strip().split("^")
+            return parts[1].strip().upper()
+
+        channels = [extract_lead(x) for x in raw_channels]
+
+        # --- Step 2: Read OBX waveform rows ---
+        rows = []
+
+        while line.startswith("OBX"):
+            line = ecg.readline()
+            if not line:
+                break
+
+            parts = line.split("|")
+            if len(parts) < 6:
+                continue
+
+            values = parts[5].split("^")
+
+            # Ensure correct number of leads
+            if len(values) != len(channels):
+                continue
+
+            try:
+                row = [float(v) for v in values]
+                rows.append(row)
+            except:
+                continue
+
+    if len(rows) == 0:
+        raise ValueError("No waveform data found")
+
+    # --- Step 3: Convert to array ---
+    ecg = np.array(rows, dtype=np.float32)  # shape: (time, leads)
+
+    print("Raw ECG shape:", ecg.shape)  # should be (~4000, 12)
+
+    # --- Step 4: Reorder leads ---
+    lead_order = ["I","II","III","aVR","aVL","aVF",
+                  "V1","V2","V3","V4","V5","V6"]
+
+    lead_idx = {l: i for i, l in enumerate(channels)}
+
+    required_direct = ["I", "II", "V1", "V2", "V3", "V4", "V5", "V6"]
+    missing = [l for l in required_direct if l not in lead_idx]
+    if missing:
+        raise ValueError(f"Missing required leads: {missing}")
+
+    # Derive missing leads if needed
+    if "III" not in lead_idx:
+        ecg_III = ecg[:, lead_idx["II"]] - ecg[:, lead_idx["I"]]
+        lead_idx["III"] = None
+    if "aVR" not in lead_idx:
+        ecg_aVR = -(ecg[:, lead_idx["I"]] + ecg[:, lead_idx["II"]]) / 2
+        lead_idx["aVR"] = None
+    if "aVF" not in lead_idx:
+        ecg_aVF = (ecg[:, lead_idx["II"]] + ecg[:, lead_idx["III"]]) / 2
+        lead_idx["aVF"] = None
+    if "aVL" not in lead_idx:
+        ecg_aVL = (ecg[:, lead_idx["I"]] - ecg[:, lead_idx["III"]]) / 2
+        lead_idx["aVL"] = None
+
+    # Build final matrix
+    final_leads = []
+    for l in lead_order:
+        if l in lead_idx and lead_idx[l] is not None:
+            final_leads.append(ecg[:, lead_idx[l]])
+        else:
+            # use derived leads
+            if l == "III":
+                final_leads.append(ecg_III)
+            elif l == "aVR":
+                final_leads.append(ecg_aVR)
+            elif l == "aVF":
+                final_leads.append(ecg_aVF)
+            elif l == "aVL":
+                final_leads.append(ecg_aVL)
+    ecg = np.stack(final_leads, axis=1)
+    ecg_array = fixed_length(ecg, target_len = ecg_input_shp)
+    #ecg_array = ecg_array[:4096, :]
+
+    patient_id = "none"
+    acquisition_date_time = "none"
+    pharma_unique_ecg_id = "none"
+
+
+    #print(f'Writing row of ECG2AF predictions for hl7 ECG {patient_id}, at {acquisition_date_time}')
+    print(f'Writing row of predictions for hl7 ECG [redacted]')
+    ecg_array -= ecg_array.mean()
+    ecg_array /= (ecg_array.std() + 1e-6)
+    prediction = model.predict(np.expand_dims(ecg_array, axis=0), verbose=0)
+    if len(model.output_names) == 1:
+        prediction = [prediction]
+    predictions_dict = {name: pred for name, pred in zip(model.output_names, prediction)}
+    space_dict['filepath'].append(os.path.basename(filepath))
+    space_dict['patient_id'].append(patient_id)
+    space_dict['acquisition_datetime'].append(acquisition_date_time)
+    space_dict['pharma_unique_ecg_id'].append(pharma_unique_ecg_id)
+
+    for otm in output_tensormaps.values():
+        y = predictions_dict[otm.output_name()]
+        if otm.is_categorical():
+            space_dict[f'{otm.name}_prediction'].append(y[0, 1])
+        elif otm.is_continuous():
+            space_dict[f'{otm.name}_prediction'].append(y[0, 0])
+        elif otm.is_survival_curve():
+            intervals = otm.shape[-1] // 2
+            days_per_bin = 1 + (2 * otm.days_window) // intervals
+            predicted_survivals = np.cumprod(y[:, :intervals], axis=1)
+            space_dict[f'{otm.name}_prediction'].append(str(1 - predicted_survivals[0, -1]))
 
 def resolve_ecg_path(basepath, finngenid, measid):
-    basename = f"{finngenid}_{measid}"
+    basename    = f"{finngenid}_{measid}"
     patient_dir = os.path.join(basepath, finngenid)
-
     for ext in [".xml", ".XML", ".ecg", ".ECG"]:
         candidate = os.path.join(patient_dir, basename + ext)
         if os.path.exists(candidate):
             return candidate
-
     return None
 
+def main():
 
-class LongitudinalECGFromMetadata(Dataset):
-    def __init__(self, metadata_csv, data_path, decode_fn=decode_ekg_muse_to_array,
-                 transform=None, max_timestamps=50):
-        """
-        Args:
-            metadata_csv (str): Path to prebuilt metadata CSV.
-            decode_fn (callable): Function to decode WaveFormData → np.array.
-            transform (callable): Optional transform on ECG arrays.
-            max_timestamps (int): Max # of ECGs per patient.
-        """
-        self.decode_fn = decode_fn
-        self.transform = transform
-        self.max_timestamps = max_timestamps
-
-        '''
-        # Load metadata
-        self.df = pd.read_csv(metadata_csv, parse_dates=["timestamp"])
-        # Sort globally for consistency
-        print("Dataframe head is ,", self.df.head(5))
-        self.df.sort_values(["patient_id", "timestamp"], inplace=True)
-        self.groups = self.df.groupby("patient_id")
-        self.patient_ids = list(self.groups.groups.keys())
-        print(f"Loaded metadata for {len(self.patient_ids)} patients.")
-        print(f"groups are ,", self.groups)
-        '''
-
-        self.df = pd.read_csv(metadata_csv, sep='\t')
-        # columns are FINNGENID,MEASID,EVENT_AGE,APPROX_EVENT_DAY,TIME
-        self.df["timestamp"] = self.df["APPROX_EVENT_DAY"] + "T" + self.df["TIME"]
-        self.basepath = data_path
-        paths = []
-        for _, row in self.df.iterrows():
-            path = resolve_ecg_path(
-                self.basepath,
-                row["FINNGENID"],
-                row["MEASID"],
-            )
-            paths.append(path)
-        
-        self.df["path"] = paths
-        missing = self.df["path"].isna().sum()
-        if missing > 0:
-            print(f"⚠️ Dropping {missing} rows with missing ECG files")
-
-        self.df = self.df.dropna(subset=["path"])
-
-
-        self.groups = self.df.groupby("FINNGENID")
-        self.patient_ids = list(self.groups.groups.keys())
-
-    def __len__(self):
-        return len(self.patient_ids)
-
-    def __getitem__(self, idx):
-        pid = self.patient_ids[idx]
-        group = self.groups.get_group(pid).sort_values("timestamp")
-
-        # Limit to most recent `max_timestamps`
-        group = group.tail(self.max_timestamps)
-        print("Processing patient record with ", len(group), " timestamps.")
-        arrays, timestamps, event_ages = [], [], []
-
-        for _, row in group.iterrows():
-            path = row["path"]
-            try:
-                with open(path, "rb") as fd:
-                    dic = xmltodict.parse(fd.read().decode("utf-8"))
-                
-                #print("Parsed XML for path ", path, dic.keys(), dic["RestingECG"].keys())
-
-                # Extract and decode leads
-                lead_order = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF',
-                              'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
-                lead_data = dict.fromkeys(lead_order)
-                #print("Lead data initialized ", lead_data)
-
-                for wave in dic["RestingECG"]["Waveform"][1]["LeadData"]:
-                    lid = wave["LeadID"]
-                    if lid in lead_order:
-                        #print(f"We got waveform data {len(wave["WaveFormData"])} and type is {type(wave["WaveFormData"])} for lead {lid}")
-                        lead_data[lid] = self.decode_fn(wave["WaveFormData"])  # downsample to 250 Hz
-                        #print(f"Decoded lead {lid} with shape {lead_data[lid].shape}")
-                
-
-                # Compute derived leads
-                lead_data['III'] = lead_data['II'] - lead_data['I']
-                lead_data['aVR'] = -(lead_data['I'] + lead_data['II']) / 2
-                lead_data['aVF'] = (lead_data['II'] + lead_data['III']) / 2
-                lead_data['aVL'] = (lead_data['I'] - lead_data['III']) / 2
-
-                ecg = np.stack([lead_data[l] for l in lead_order], axis=1)  # [5000,12]
-                #print("ECG is ",ecg.shape)
-                ecg -= ecg.mean(axis=0, keepdims=True)
-                ecg /= (ecg.std(axis=0, keepdims=True) + 1e-6)
-
-                if self.transform:
-                    ecg = self.transform(ecg)
-                #print("ECG after transform is ", ecg.shape)
-                arrays.append(ecg)
-                timestamps.append(row["timestamp"])
-                event_ages.append(row["EVENT_AGE"])
-                if len(arrays) == 0:
-                    return {
-                        "patient_id": pid,
-                        "timestamps": [],
-                        "event_ages": [],
-                        "ecgs": [],
-                    }
-
-
-            except Exception as e:
-                print(f"⚠️ Failed to parse {path}: {e}")
-                continue
-
-        return {
-            "patient_id": pid,
-            "timestamps": timestamps,
-            "event_ages": event_ages,      
-            "ecgs": arrays,   # list of np.arrays [5000,12]
-        }
-
-
-# -----------------------------
-# Collate Function (Variable Length)
-# -----------------------------
-def collate_longitudinal(batch):
-    """
-    Collate function for variable # of ECGs per patient.
-    Returns lists, not stacked tensors.
-    """
-    batch_size = len(batch)
-    if batch_size == 0:
-        return None
-    # Find max number of ECGs in this batch
-    max_seq_len = max(len(item["ecgs"]) for item in batch)
-    seq_len = max_seq_len
-
-    # Initialize padded tensors
-    ecgs_padded = []
-    masks = []
-    patient_ids = []
-    event_ages = []
-
-
-    for item in batch:
-        #print(item)
-        ecgs = item["ecgs"]
-        num_ecgs = len(ecgs)
-        # pad missing ECGs with zeros
-        if num_ecgs == 0:
-            print(f"⚠️ Skipping patient (no valid ECGs)")
-            continue
-        pad_count = seq_len - num_ecgs
-        if pad_count > 0:
-            pad_ecgs = [np.zeros_like(ecgs[0]) for _ in range(pad_count)]
-            ecgs = ecgs + pad_ecgs
-
-        ecgs_tensor = torch.tensor(np.stack(ecgs)).float()   # [T, 5000, 12]
-        mask_tensor = torch.zeros(seq_len, dtype=torch.bool)
-        mask_tensor[:num_ecgs] = True
-
-        ecgs_padded.append(ecgs_tensor)
-        masks.append(mask_tensor)
-        patient_ids.append(item["patient_id"])
-        event_ages.append(item["event_ages"])
-
-    if len(ecgs_padded) == 0:
-        return None
-
-    # Stack into tensors
-    ecgs_padded = torch.stack(ecgs_padded, dim=0)   # [B, T, 5000, 12]
-    masks = torch.stack(masks, dim=0)               # [B, T]
-
-    return ecgs_padded, masks, patient_ids, event_ages
-
-#Inference
-
-#!/usr/bin/env python3
-import torch
-from torch.utils.data import DataLoader
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-from scipy.stats import pearsonr
-from tensorflow.keras.models import load_model
-
-from Tranformer import ECGKerasEncoderWrapper
-
-# --- Normalization constants ---
-MEAN_AGE = 54.4974
-STD_AGE = 20.7367
-
-def denorm(x):
-    return x * STD_AGE + MEAN_AGE
-
-
-# --------- Single ECG (Keras) inference ---------
-def predict_single(keras_model, ecgs, masks):
-    latest_ecgs = []
-    for i in range(ecgs.shape[0]):
-        seq_len = masks[i].sum().item()
-        latest_ecgs.append(ecgs[i, seq_len - 1].numpy())
-    latest_ecgs = np.stack(latest_ecgs, axis=0)
-    preds = keras_model.predict(latest_ecgs, verbose=0)
-    preds = preds["output_age_continuous"].flatten()
-    return preds
-
-
-# --------- Longitudinal (Torch) inference ---------
-def predict_longitudinal(model, ecgs, masks, device):
-    ecgs, masks = ecgs.to(device), masks.to(device)
-    with torch.no_grad():
-        out = model(ecgs, mask=masks)
-    return out.cpu().numpy().flatten()
-
-
-
-
-import argparse
-
-if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", type=str, required=True, help="The path to the data file.")
-    parser.add_argument("--metadata_path", type=str, required=True, help="The path to the data file.")
+    parser.add_argument("--directory",               required=True,
+                        help="Root directory containing patient ECG folders")
+    parser.add_argument("--model_path",       required=True,
+                        help="Path to  Keras model (.keras)")
+    parser.add_argument("--output_file",             required=True,
+                        help="Output path")
+    parser.add_argument("--metadata",                required=True,
+                        help = "Metadata file")
+    parser.add_argument("--ecg_input_shape",    type=int, default= 5000)
     args = parser.parse_args()
-    '''First create a metadata file, it may take some time but it will be useful later for
-       analysis as well
-    '''
-    print("Path is ,", args.path)
-    #metadata_csv_path = build_metadata_parallel(args.path)
-    metadata_csv_path = args.metadata_path
-    print("Metadata csv path is ,", metadata_csv_path)
+
+    model = load_model(args.model_path)
+    meta_ecg = pd.read_csv(args.metadata, sep="\t")
+    ecg_input_shp = args.ecg_input_shape
 
 
-    '''
-    Creates longitudinal dataset from metadata
-    '''
-    dataset = LongitudinalECGFromMetadata(metadata_csv_path, data_path=args.path)
+    ecg_tmap = TensorMap(
+        f'ecg_{ecg_input_shp}_std',
+        Interpretation.CONTINUOUS,
+        shape=(ecg_input_shp, 12),
+        channel_map=ECG_REST_AMP_LEADS,
+        )
 
-    loader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn = collate_longitudinal)
+    paths = []
 
-    # --- Load models ---
-    keras_model = load_model(
-        "ecg2age_v2025_09_11.keras", compile=False
-    )
-    print("Keras single-ECG model loaded.")
+    for _, row in meta_ecg.iterrows():
+        path = resolve_ecg_path(args.directory, row["FINNGENID"], row["MEASID"])
+        if path is not None:
+            paths.append(path)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    long_model = ECGKerasEncoderWrapper(
-        transformer_dim=64, num_layers=4, num_heads=4, dropout=0.2,
-        keras_model_path="ecg2age_v2025_09_11.keras"
-    ).to(device)
+    print(f"Found {len(paths)} valid ECG files")
 
-    checkpoint = torch.load(
-        "longitudinal_ecg2age_performerage.pt", map_location=device
-    )
-    long_model.load_state_dict(checkpoint["model_state_dict"])
-    long_model.eval()
-    print("Longitudinal Transformer model loaded.")
+    # Iterate over all files in the specified directory
+    space_dict = defaultdict(list)
+    #for root, _, files in os.walk(args.directory):
+    for filepath in paths:
+        #for i, filename in enumerate(files):
+            #filepath = os.path.join(root, filename)
+            #print(filepath)
+        if os.path.isfile(filepath):
+            try:
+                process_ge_muse_xml(filepath, space_dict, model, ecg_input_shp)
+            except:
+                try:
+                    print(f'trying hl7 for {filepath}')
+                    process_ge_muse_hl7(filepath, space_dict, model, ecg_input_shp)
+                except:
+                    print(f'skipped altogether for {filepath}')
+            # if i > 10000:
+            #     break
 
-    # --- Prepare CSV ---
-    out_csv = "/output/finngen_inference_comparison_single_vs_longitudinal.csv"
-    header_written = False
-    buffer = []
+    df = pd.DataFrame.from_dict(space_dict)
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+    df.to_csv(args.output_file, index=False)
 
-    # --- Run inference both models ---
-
-    for batch_idx, batch in enumerate(tqdm(loader, desc = "Inference for both models")):
-        if batch is None:
-            continue
-        ecgs, masks, patient_ids, event_ages = batch
-        pid = patient_ids[0]
-
-
-        # --- Single ECG (Keras model) ---
-        seq_len = masks[0].sum().item()
-        latest_event_age = event_ages[0][seq_len - 1]
-
-        latest_ecg = ecgs[0, seq_len - 1].cpu().numpy()[np.newaxis, ...]  # [1, 5000, 12]
-        y_pred_single_norm = keras_model.predict(latest_ecg, verbose=0)["output_age_continuous"].flatten()[0]
-        y_pred_single = denorm(y_pred_single_norm)
-
-        # --- Longitudinal ---
-        y_pred_long_norm = predict_longitudinal(long_model, ecgs, masks, device)[0]
-        y_pred_long = denorm(y_pred_long_norm)
-
-        # --- Compose identifier ---
-
-        # --- Append result ---
-        buffer.append({
-            "patient_id": pid,
-            "num_ecgs": masks[0].sum().item(),
-            "true_age": latest_event_age,
-            "pred_single_norm": y_pred_single_norm,
-            "pred_single": y_pred_single,
-            "pred_long_norm": y_pred_long_norm,
-            "pred_long": y_pred_long,
-        })
-
-        # --- Flush every 100 patients ---
-        if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(dataset):
-            df = pd.DataFrame(buffer)
-            df.to_csv(out_csv, mode="a", header=not header_written, index=False)
-            header_written = True
-            buffer = []
-            print(f"Flushed {batch_idx + 1} patients to {out_csv}")
-
-    print(f"✅ Finished. All predictions saved in {out_csv}")
-
-
-
-    
+if __name__ == "__main__":
+    main()
