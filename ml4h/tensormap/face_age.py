@@ -34,6 +34,8 @@ face_age_norm = TensorMap('face_age', shape=(1,), tensor_from_file=age_from_hd5,
 face_image_norm_192 = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1())
 face_image_norm_224 = TensorMap('face_image_224', shape=(224, 224, 3), tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1())
 
+face_image_norm_1024 = TensorMap('face_image_1024', shape=(1024, 1024, 3), tensor_from_file=image_from_hd5, normalization=ZeroMeanStd1())
+
 sharp_kernel = np.c_[
     [0, -1, 0],
     [-1, 5, -1],
@@ -76,5 +78,8 @@ face_image_norm_192_rotate = TensorMap('face_image_192', shape=(192, 192, 3), te
                                         normalization=ZeroMeanStd1(),
                                         augmentations=[_make_rotate(-15, 15), ])
 face_image_norm_192_augment = TensorMap('face_image_192', shape=(192, 192, 3), tensor_from_file=image_from_hd5,
+                                        normalization=ZeroMeanStd1(),
+                                        augmentations=[_gaussian_noise, _sharpen, _make_rotate(-15, 15), ])
+face_image_norm_1024_augment = TensorMap('face_image_1024', shape=(1024, 1024, 3), tensor_from_file=image_from_hd5,
                                         normalization=ZeroMeanStd1(),
                                         augmentations=[_gaussian_noise, _sharpen, _make_rotate(-15, 15), ])

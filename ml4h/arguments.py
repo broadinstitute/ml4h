@@ -139,6 +139,14 @@ def parse_args():
         'List of columns with binary values to predict.'
     )
     parser.add_argument(
+        '--target_categorical_columns', nargs='*', default=[],
+        help='List of columns with integer class labels to predict (multiclass).',
+    )
+    parser.add_argument(
+        '--num_classes', type=int, default=None,
+        help='Number of classes for categorical/multiclass targets.',
+    )
+    parser.add_argument(
         '--group_column', default=None, help='Column to group on for embedding transformer.'
     )
     parser.add_argument(
@@ -308,7 +316,7 @@ def parse_args():
          '--transformer_label_file', help='File with target labels for transformers',
     )
     parser.add_argument(
-         '--transformer_size', default=32, type=int,
+         '--transformer_size', default=64, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
               'the number of internal neurons and the number of layers are set by the --dense_layers',
     )
@@ -319,10 +327,14 @@ def parse_args():
          '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
     )
     parser.add_argument(
-         '--transformer_categorical_embed', default=4, type=int, help='Size of embedding of input categorical data',
+         '--transformer_positional_embedding', default=False, action='store_true',
+         help='Enable the learnable positional embedding in build_embedding_transformer.',
     )
     parser.add_argument(
-         '--transformer_token_embed', default=32, type=int, help='Size of embedding of transformer input tokens',
+         '--transformer_scalar_embed', default=4, type=int, help='Size of embedding of input categorical / continuous scalar column data',
+    )
+    parser.add_argument(
+         '--transformer_latent_embed', default=32, type=int, help='Size of embedding of transformer input latent space tokens',
     )
     parser.add_argument(
          '--transformer_dropout_rate', default=0.1, type=float, help='Dropout rate for the longitudinal/embedding transformer.',

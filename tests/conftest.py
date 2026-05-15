@@ -1,6 +1,10 @@
 import sys
 import pytest
 
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from ml4h.arguments import parse_args
 from ml4h.test_utils import TMAPS as MOCK_TMAPS
 from ml4h.test_utils import build_hdf5s

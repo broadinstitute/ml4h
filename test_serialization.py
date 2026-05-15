@@ -27,16 +27,16 @@ def test_model_serialization():
 
     print("Building model...")
     model = build_embedding_transformer(
-        INPUT_NUMERIC_COLS=INPUT_NUMERIC_COLS,
-        REGRESSION_TARGETS=REGRESSION_TARGETS,
-        BINARY_TARGETS=BINARY_TARGETS,
-        MAX_LEN=MAX_LEN,
-        EMB_DIM=EMB_DIM,
-        TOKEN_HIDDEN=TOKEN_HIDDEN,
-        TRANSFORMER_DIM=TRANSFORMER_DIM,
-        NUM_HEADS=NUM_HEADS,
-        NUM_LAYERS=NUM_LAYERS,
-        DROPOUT=DROPOUT,
+        input_numeric_cols=INPUT_NUMERIC_COLS,
+        regression_targets=REGRESSION_TARGETS,
+        binary_targets=BINARY_TARGETS,
+        max_len=MAX_LEN,
+        emb_dim=EMB_DIM,
+        token_hidden=TOKEN_HIDDEN,
+        transformer_dim=TRANSFORMER_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        dropout=DROPOUT,
         view2id=view2id,
     )
 
@@ -107,16 +107,16 @@ def test_model_without_view2id():
 
     print("\nBuilding model without view2id...")
     model = build_embedding_transformer(
-        INPUT_NUMERIC_COLS=INPUT_NUMERIC_COLS,
-        REGRESSION_TARGETS=REGRESSION_TARGETS,
-        BINARY_TARGETS=BINARY_TARGETS,
-        MAX_LEN=MAX_LEN,
-        EMB_DIM=EMB_DIM,
-        TOKEN_HIDDEN=TOKEN_HIDDEN,
-        TRANSFORMER_DIM=TRANSFORMER_DIM,
-        NUM_HEADS=NUM_HEADS,
-        NUM_LAYERS=NUM_LAYERS,
-        DROPOUT=DROPOUT,
+        input_numeric_cols=INPUT_NUMERIC_COLS,
+        regression_targets=REGRESSION_TARGETS,
+        binary_targets=BINARY_TARGETS,
+        max_len=MAX_LEN,
+        emb_dim=EMB_DIM,
+        token_hidden=TOKEN_HIDDEN,
+        transformer_dim=TRANSFORMER_DIM,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
+        dropout=DROPOUT,
         view2id=view2id,
     )
 
