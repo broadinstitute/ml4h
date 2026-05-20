@@ -183,7 +183,7 @@ vtk==9.0.3
 wcwidth==0.2.5
 webencodings==0.5.1
 websocket-client==1.4.2
-werkzeug==2.2.2
+werkzeug==2.2.3
 wrapt==1.14.1
 wslink==1.10.0
 xmltodict==0.13.0
