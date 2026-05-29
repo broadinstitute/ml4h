@@ -273,7 +273,7 @@ def _create_ecg_rest_filter_and_extract_peaks(
 
 def _make_ecg_rest_random_beats(
         instance: int = 0, num_beats: int = 1,
-        skip_poor: bool = False, strip_len=5000, len_before=240, len_after=360, sampling_rate=500,
+        skip_poor: bool = False, strip_len=5000, len_before=240, len_after=360,
 ):
     def ecg_rest_random_beats_from_file(tm, hd5, dependents={}):
         if skip_poor:
