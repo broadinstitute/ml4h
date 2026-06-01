@@ -396,8 +396,11 @@ class PairLossBlock(Block):
     #@tf.function()
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
+        pair_outputs = []
         for left, right in self.pairs:
-            y.extend(self.loss_layer([intermediates[left][-1], intermediates[right][-1]]))
+            pair_output = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
+            pair_outputs.append(pair_output)
+            y.extend(pair_output)
         if self.pair_merge == 'average':
             return Average()(y)
         elif self.pair_merge == 'concat':
@@ -406,8 +409,8 @@ class PairLossBlock(Block):
             return DropoutMergeLayer()(y)
         elif self.pair_merge == 'kronecker':
             krons = []
-            for left, right in self.pairs:
-                kron = KroneckerProductLayer(self.encoding_size)(y)
+            for pair_output in pair_outputs:
+                kron = KroneckerProductLayer()(pair_output)
                 krons.append(kron)
             if len(self.pairs) > 1:
                 kron = concatenate(krons)
