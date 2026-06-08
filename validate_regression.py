@@ -688,7 +688,7 @@ def _write_sheet(ws, title, col_headers, rows, footnotes, col_widths):
 # =========================================================================
 # === MASTER ANALYSE-FUNCTIE ==============================================
 # =========================================================================
-def run_analysis(results, cohort_name, output_dir):
+def run_analysis(results, cohort_name, output_dir, is_normalized=False):
     """Voert de volledige analyse-pipeline uit op de gegeven (gefilterde) DataFrame.
 
     Parameters
@@ -714,6 +714,28 @@ def run_analysis(results, cohort_name, output_dir):
         return
 
     results = results.reset_index(drop=True).copy()
+
+    # --- Label-mapping voor (Ratio to ULN) normalisatie ---------------
+    # Bepaalt of plots/Excel labels worden weergegeven in originele
+    # eenheden (g, g/m^2) of in dimensieloze ratio-vorm (Ratio to ULN).
+    if is_normalized:
+        unit_abs       = "Absolute LVM (Ratio to ULN)"
+        unit_ix        = "Indexed LVM (Ratio to ULN)"
+        unit_abs_short = "Ratio to ULN"
+        unit_ix_short  = "Ratio to ULN"
+        suffix_abs     = ""
+        suffix_ix      = ""
+        NORM_NOTE      = ("Values expressed as ratio to the sex-specific ULN for LVH "
+                          "(Males: 72 g/m², Females: 55 g/m²). A value of 1.0 "
+                          "represents the clinical threshold for exercise-induced LVH.")
+    else:
+        unit_abs       = "LVM (g)"
+        unit_ix        = "LVM (g/m²)"
+        unit_abs_short = "g"
+        unit_ix_short  = "g/m²"
+        suffix_abs     = ", g"
+        suffix_ix      = ", g/m²"
+        NORM_NOTE      = ""
 
     # --- 1. ABSOLUTE LVM - OLS-kalibratie -----------------------------
     lvm_cmr  = results["lvm_cmr"].values
@@ -773,7 +795,7 @@ def run_analysis(results, cohort_name, output_dir):
              ba_x_lim1, ba_y_lim1, color_by=lvh_arr, color_map=cmap)
     ba_panel_relative(ax1[1,2], lvm_pred_cal, lvm_cmr, "OLS-gerecalibreerd",
                       ba_x_lim1, ba_y_lim1_pct, color_by=lvh_arr, color_map=cmap)
-    fig1.suptitle(f"[{cohort_name}] LVM-AI vs CMR - Absolute LVM (g), OLS-kalibratie  (Predicted - CMR)", fontsize=14)
+    fig1.suptitle(f"[{cohort_name}] LVM-AI vs CMR - {unit_abs}, OLS-kalibratie  (Predicted - CMR)", fontsize=14)
     fig1.tight_layout()
     fig1.savefig(os.path.join(output_dir, "fig1_absoluut.png"), dpi=150)
     print(f"\n  Figuur 1 opgeslagen: {output_dir}/fig1_absoluut.png")
@@ -840,7 +862,7 @@ def run_analysis(results, cohort_name, output_dir):
                      ba_x_lim2, ba_y_lim2, color_by=lvh_arr_ix, color_map=cmap)
             ba_panel_relative(ax2[1,2], lvm_pred_ix_cal, lvm_cmr_ix, "Geindexeerd OLS-gerecalibreerd",
                               ba_x_lim2, ba_y_lim2_pct, color_by=lvh_arr_ix, color_map=cmap)
-            fig2.suptitle(f"[{cohort_name}] LVM-AI vs CMR - Geindexeerde LVM (g/m^2), OLS-kalibratie  (Predicted - CMR)", fontsize=14)
+            fig2.suptitle(f"[{cohort_name}] LVM-AI vs CMR - {unit_ix}, OLS-kalibratie  (Predicted - CMR)", fontsize=14)
             fig2.tight_layout()
             fig2.savefig(os.path.join(output_dir, "fig2_indexed.png"), dpi=150)
             print(f"  Figuur 2 opgeslagen: {output_dir}/fig2_indexed.png")
@@ -1143,7 +1165,7 @@ def run_analysis(results, cohort_name, output_dir):
 
     scatter_panel_en(
         ax5[0, 0], lvm_pred_cal, lvm_cmr,
-        xlabel="LVM-AI LVM (g)", ylabel="CMR-derived LVM (g)",
+        xlabel=f"LVM-AI {unit_abs}", ylabel=f"CMR-derived {unit_abs}",
         panel_letter="A", panel_title="Linear Recalibrated",
         xlim=sc_lim1, ylim=sc_lim1,
         color_by=lvh_arr, color_map=cmap,
@@ -1157,8 +1179,8 @@ def run_analysis(results, cohort_name, output_dir):
         lvh_b  = results.loc[ix_mask_b, "lvh_label_int"].values if has_lvh else None
         scatter_panel_en(
             ax5[0, 1], pred_b, cmr_b,
-            xlabel="LVM-AI indexed LVM (g/m²)",
-            ylabel="CMR-derived indexed LVM (g/m²)",
+            xlabel=f"LVM-AI {unit_ix}",
+            ylabel=f"CMR-derived {unit_ix}",
             panel_letter="B", panel_title="Indexed Linear Recalibrated",
             xlim=sc_lim2, ylim=sc_lim2,
             color_by=lvh_b, color_map=cmap,
@@ -1168,7 +1190,7 @@ def run_analysis(results, cohort_name, output_dir):
 
     scatter_panel_en(
         ax5[1, 0], lvm_pred_pb, lvm_cmr,
-        xlabel="LVM-AI LVM (g)", ylabel="CMR-derived LVM (g)",
+        xlabel=f"LVM-AI {unit_abs}", ylabel=f"CMR-derived {unit_abs}",
         panel_letter="C", panel_title="Passing-Bablok Recalibrated",
         xlim=sc_lim1, ylim=sc_lim1,
         color_by=lvh_arr, color_map=cmap,
@@ -1182,8 +1204,8 @@ def run_analysis(results, cohort_name, output_dir):
         lvh_d  = results.loc[ix_mask_d, "lvh_label_int"].values if has_lvh else None
         scatter_panel_en(
             ax5[1, 1], pred_d, cmr_d,
-            xlabel="LVM-AI indexed LVM (g/m²)",
-            ylabel="CMR-derived indexed LVM (g/m²)",
+            xlabel=f"LVM-AI {unit_ix}",
+            ylabel=f"CMR-derived {unit_ix}",
             panel_letter="D", panel_title="Indexed Passing-Bablok Recalibrated",
             xlim=sc_lim2, ylim=sc_lim2,
             color_by=lvh_d, color_map=cmap,
@@ -1246,10 +1268,10 @@ def run_analysis(results, cohort_name, output_dir):
             color_by=lvh_ix_ba, color_map=cmap, relative=True,
         )
         for a in ax6:
-            a.set_xlabel("Mean of CMR and predicted indexed LVM (g/m²)")
+            a.set_xlabel(f"Mean of CMR and predicted {unit_ix}")
 
         fig6.suptitle(
-            f"[{cohort_name}] Relative Bland-Altman - indexed LVM (g/m²)  (Predicted - CMR)",
+            f"[{cohort_name}] Relative Bland-Altman - {unit_ix}  (Predicted - CMR)",
             fontsize=14, y=0.99,
         )
         foot6 = (
@@ -1259,6 +1281,8 @@ def run_analysis(results, cohort_name, output_dir):
             f"{pb_intercept_ix:+.2f}  (univariate). "
             f"Positive = AI overestimates; negative = AI underestimates."
         )
+        if NORM_NOTE:
+            foot6 = foot6 + "  " + NORM_NOTE
         fig6.text(0.5, 0.01, foot6, ha="center", va="bottom", fontsize=9,
                   style="italic")
         fig6.tight_layout(rect=[0, 0.04, 1, 0.97])
@@ -1303,11 +1327,11 @@ def run_analysis(results, cohort_name, output_dir):
         color_by=lvh_arr, color_map=cmap, relative=False,
     )
     for a in ax7:
-        a.set_xlabel("Mean of CMR and predicted LVM (g)")
-        a.set_ylabel("Predicted - CMR LVM (g)")
+        a.set_xlabel(f"Mean of CMR and predicted {unit_abs}")
+        a.set_ylabel(f"Predicted - CMR {unit_abs}")
 
     fig7.suptitle(
-        f"[{cohort_name}] Absolute Bland-Altman - LVM (g)  (Predicted - CMR)",
+        f"[{cohort_name}] Absolute Bland-Altman - {unit_abs}  (Predicted - CMR)",
         fontsize=14, y=0.99,
     )
     foot7 = (
@@ -1317,6 +1341,8 @@ def run_analysis(results, cohort_name, output_dir):
         f"{pb_intercept_abs:+.2f}  (univariate). "
         f"Positive = AI overestimates; negative = AI underestimates."
     )
+    if NORM_NOTE:
+        foot7 = foot7 + "  " + NORM_NOTE
     fig7.text(0.5, 0.01, foot7, ha="center", va="bottom", fontsize=9, style="italic")
     fig7.tight_layout(rect=[0, 0.04, 1, 0.97])
     fig7.savefig(os.path.join(output_dir, "fig7_BA_absolute.png"), dpi=150)
@@ -1368,8 +1394,8 @@ def run_analysis(results, cohort_name, output_dir):
     stats_A = ba_relative_strict(
         ax8[0], pred_A, truth_A,
         panel_letter="A",
-        subplot_title="Raw Uncalibrated LVM (g)",
-        xlabel="Mean LVM (g)",
+        subplot_title=f"Raw Uncalibrated {unit_abs}",
+        xlabel=f"Mean {unit_abs}",
         xlim=xlim_A, ylim_sym=ylim_sym_8,
         color_by=lvh_A, color_map=cmap,
     )
@@ -1382,16 +1408,16 @@ def run_analysis(results, cohort_name, output_dir):
         stats_B = ba_relative_strict(
             ax8[1], pred_B, truth_BC,
             panel_letter="B",
-            subplot_title="Indexed Calibrated OLS LVM (g/m²)",
-            xlabel="Mean Indexed LVM (g/m²)",
+            subplot_title=f"OLS Calibrated {unit_ix}",
+            xlabel=f"Mean {unit_ix}",
             xlim=xlim_BC, ylim_sym=ylim_sym_8,
             color_by=lvh_BC, color_map=cmap,
         )
         stats_C = ba_relative_strict(
             ax8[2], pred_C, truth_BC,
             panel_letter="C",
-            subplot_title="Indexed Calibrated Passing-Bablok LVM (g/m²)",
-            xlabel="Mean Indexed LVM (g/m²)",
+            subplot_title=f"Passing-Bablok Calibrated {unit_ix}",
+            xlabel=f"Mean {unit_ix}",
             xlim=xlim_BC, ylim_sym=ylim_sym_8,
             color_by=lvh_BC, color_map=cmap,
         )
@@ -1403,8 +1429,10 @@ def run_analysis(results, cohort_name, output_dir):
 
     fig8.suptitle(f"[{cohort_name}] LVM-AI vs CMR-derived LVM - Bland-Altman Plots  (Predicted - CMR)",
                   fontsize=14, y=0.995)
-    fig8.text(0.5, 0.005,
-              "Positive values = AI overestimates LVM; negative values = AI underestimates LVM.",
+    foot8 = "Positive values = AI overestimates LVM; negative values = AI underestimates LVM."
+    if NORM_NOTE:
+        foot8 = foot8 + "  " + NORM_NOTE
+    fig8.text(0.5, 0.005, foot8,
               ha="center", va="bottom", fontsize=9, style="italic")
     fig8.tight_layout(rect=[0, 0.03, 1, 0.97])
     fig8.savefig(os.path.join(output_dir, "fig8_BA_relative_1x3.png"), dpi=150)
@@ -1540,31 +1568,31 @@ def run_analysis(results, cohort_name, output_dir):
     COLS_ABS_TOT = ["Uncalibrated", "Linear (OLS)", "Passing-Bablok"]
 
     rows_a1 = []
-    rows_a1.append(("Absolute LVM (g)", ["", "", ""], True))
-    rows_a1.append(("Reference CMR LVM (g)",
+    rows_a1.append((unit_abs, ["", "", ""], True))
+    rows_a1.append((f"Reference CMR {unit_abs}",
                     [f_ref(results["lvm_cmr"].values), "", ""], False))
-    rows_a1.append(("Predicted LVM (g)",
+    rows_a1.append((f"Predicted {unit_abs}",
                     [f_ref(results["lvm_predicted"].values),
                      f_ref(results["lvm_predicted_calibrated"].values),
                      f_ref(results["lvm_predicted_pb"].values)], False))
     rows_a1.append(("Spearman ρ (95% CI)",
                     [f_rho(M_TOT["uncal_abs"]), f_rho(M_TOT["ols_abs"]),
                      f_rho(M_TOT["pb_abs"])], False))
-    rows_a1.append(("MAE, g (95% CI)",
+    rows_a1.append((f"MAE{suffix_abs} (95% CI)",
                     [f_mae(M_TOT["uncal_abs"]), f_mae(M_TOT["ols_abs"]),
                      f_mae(M_TOT["pb_abs"])], False))
-    rows_a1.append(("Mean Bias, g (Predicted - CMR)",
+    rows_a1.append((f"Mean Bias{suffix_abs} (Predicted - CMR)",
                     [f_bias_abs(M_TOT["uncal_abs"]), f_bias_abs(M_TOT["ols_abs"]),
                      f_bias_abs(M_TOT["pb_abs"])], False))
-    rows_a1.append(("95% LoA, g",
+    rows_a1.append((f"95% LoA{suffix_abs}",
                     [f_loa_abs(M_TOT["uncal_abs"]), f_loa_abs(M_TOT["ols_abs"]),
                      f_loa_abs(M_TOT["pb_abs"])], False))
 
     if has_indexed:
-        rows_a1.append(("Indexed LVMi (g/m²)", ["", "", ""], True))
-        rows_a1.append(("Reference CMR LVMi (g/m²)",
+        rows_a1.append((unit_ix, ["", "", ""], True))
+        rows_a1.append((f"Reference CMR {unit_ix}",
                         [f_ref(results["lvm_cmr_indexed"].dropna().values), "", ""], False))
-        rows_a1.append(("Predicted LVMi (g/m²)",
+        rows_a1.append((f"Predicted {unit_ix}",
                         [f_ref(results["lvm_predicted_indexed"].dropna().values)
                            if "lvm_predicted_indexed" in results.columns else "-",
                          f_ref(results["lvm_predicted_indexed_calibrated"].dropna().values)
@@ -1574,18 +1602,19 @@ def run_analysis(results, cohort_name, output_dir):
         rows_a1.append(("Spearman ρ (95% CI)",
                         [f_rho(M_TOT["uncal_ix"]), f_rho(M_TOT["ols_ix"]),
                          f_rho(M_TOT["pb_ix"])], False))
-        rows_a1.append(("MAE, g/m² (95% CI)",
+        rows_a1.append((f"MAE{suffix_ix} (95% CI)",
                         [f_mae(M_TOT["uncal_ix"]), f_mae(M_TOT["ols_ix"]),
                          f_mae(M_TOT["pb_ix"])], False))
-        rows_a1.append(("Mean Bias, g/m² (Predicted - CMR)",
+        rows_a1.append((f"Mean Bias{suffix_ix} (Predicted - CMR)",
                         [f_bias_abs(M_TOT["uncal_ix"]), f_bias_abs(M_TOT["ols_ix"]),
                          f_bias_abs(M_TOT["pb_ix"])], False))
-        rows_a1.append(("95% LoA, g/m²",
+        rows_a1.append((f"95% LoA{suffix_ix}",
                         [f_loa_abs(M_TOT["uncal_ix"]), f_loa_abs(M_TOT["ols_ix"]),
                          f_loa_abs(M_TOT["pb_ix"])], False))
 
     foots_a1 = [SIGN_NOTE, FORMULA_OLS_ABS + " " + FORMULA_PB_ABS]
     if FORMULA_OLS_IX: foots_a1.append(FORMULA_OLS_IX + " " + FORMULA_PB_IX)
+    if NORM_NOTE: foots_a1.append(NORM_NOTE)
     foots_a1.append(ABBR_ABS)
 
     _write_sheet(
@@ -1599,41 +1628,41 @@ def run_analysis(results, cohort_name, output_dir):
         COLS_LVH = [f"Exercise-Induced LVH\n(n = {n_pos})",
                     f"No Exercise-Induced LVH\n(n = {n_neg})"]
         rows_a2 = []
-        rows_a2.append(("Uncalibrated absolute LVM (g)", ["", ""], True))
-        rows_a2.append(("Reference CMR LVM (g)",
+        rows_a2.append((f"Uncalibrated {unit_abs}", ["", ""], True))
+        rows_a2.append((f"Reference CMR {unit_abs}",
                         [f_ref(g_pos_x["lvm_cmr"].values),
                          f_ref(g_neg_x["lvm_cmr"].values)], False))
         rows_a2.append(("Spearman ρ (95% CI)",
                         [f_rho(M_POS["uncal_abs"]), f_rho(M_NEG["uncal_abs"])], False))
-        rows_a2.append(("MAE, g (95% CI)",
+        rows_a2.append((f"MAE{suffix_abs} (95% CI)",
                         [f_mae(M_POS["uncal_abs"]), f_mae(M_NEG["uncal_abs"])], False))
-        rows_a2.append(("Mean Bias, g (Predicted - CMR)*",
+        rows_a2.append((f"Mean Bias{suffix_abs} (Predicted - CMR)*",
                         [f_bias_abs(M_POS["uncal_abs"]), f_bias_abs(M_NEG["uncal_abs"])], False))
-        rows_a2.append(("95% LoA, g",
+        rows_a2.append((f"95% LoA{suffix_abs}",
                         [f_loa_abs(M_POS["uncal_abs"]), f_loa_abs(M_NEG["uncal_abs"])], False))
 
-        rows_a2.append(("Linear recalibrated absolute LVM (g)", ["", ""], True))
+        rows_a2.append((f"Linear recalibrated {unit_abs}", ["", ""], True))
         rows_a2.append(("Spearman ρ (95% CI)",
                         [f_rho(M_POS["ols_abs"]), f_rho(M_NEG["ols_abs"])], False))
-        rows_a2.append(("MAE, g (95% CI)",
+        rows_a2.append((f"MAE{suffix_abs} (95% CI)",
                         [f_mae(M_POS["ols_abs"]), f_mae(M_NEG["ols_abs"])], False))
-        rows_a2.append(("Mean Bias, g (Predicted - CMR)†",
+        rows_a2.append((f"Mean Bias{suffix_abs} (Predicted - CMR)†",
                         [f_bias_abs(M_POS["ols_abs"]), f_bias_abs(M_NEG["ols_abs"])], False))
-        rows_a2.append(("95% LoA, g",
+        rows_a2.append((f"95% LoA{suffix_abs}",
                         [f_loa_abs(M_POS["ols_abs"]), f_loa_abs(M_NEG["ols_abs"])], False))
 
         if has_indexed:
-            rows_a2.append(("Linear recalibrated indexed LVMi (g/m²)", ["", ""], True))
-            rows_a2.append(("Reference CMR LVMi (g/m²)",
+            rows_a2.append((f"Linear recalibrated {unit_ix}", ["", ""], True))
+            rows_a2.append((f"Reference CMR {unit_ix}",
                             [f_ref(g_pos_x["lvm_cmr_indexed"].dropna().values),
                              f_ref(g_neg_x["lvm_cmr_indexed"].dropna().values)], False))
             rows_a2.append(("Spearman ρ (95% CI)",
                             [f_rho(M_POS["ols_ix"]), f_rho(M_NEG["ols_ix"])], False))
-            rows_a2.append(("MAE, g/m² (95% CI)",
+            rows_a2.append((f"MAE{suffix_ix} (95% CI)",
                             [f_mae(M_POS["ols_ix"]), f_mae(M_NEG["ols_ix"])], False))
-            rows_a2.append(("Mean Bias, g/m² (Predicted - CMR)‡",
+            rows_a2.append((f"Mean Bias{suffix_ix} (Predicted - CMR)‡",
                             [f_bias_abs(M_POS["ols_ix"]), f_bias_abs(M_NEG["ols_ix"])], False))
-            rows_a2.append(("95% LoA, g/m²",
+            rows_a2.append((f"95% LoA{suffix_ix}",
                             [f_loa_abs(M_POS["ols_ix"]), f_loa_abs(M_NEG["ols_ix"])], False))
 
         foots_a2 = [
@@ -1644,6 +1673,7 @@ def run_analysis(results, cohort_name, output_dir):
         if has_indexed:
             foots_a2.append(
                 f"‡ Bias LVH+ vs LVH- (OLS recalibrated indexed): Mann-Whitney U, {f_p(mw['ols_ix'])}.")
+        if NORM_NOTE: foots_a2.append(NORM_NOTE)
         foots_a2.append(ABBR_ABS)
 
         _write_sheet(
@@ -1655,31 +1685,31 @@ def run_analysis(results, cohort_name, output_dir):
 
         ws = wb.create_sheet("Abs-LVH-PB")
         rows_a3 = []
-        rows_a3.append(("Passing-Bablok recalibrated absolute LVM (g)", ["", ""], True))
-        rows_a3.append(("Reference CMR LVM (g)",
+        rows_a3.append((f"Passing-Bablok recalibrated {unit_abs}", ["", ""], True))
+        rows_a3.append((f"Reference CMR {unit_abs}",
                         [f_ref(g_pos_x["lvm_cmr"].values),
                          f_ref(g_neg_x["lvm_cmr"].values)], False))
         rows_a3.append(("Spearman ρ (95% CI)",
                         [f_rho(M_POS["pb_abs"]), f_rho(M_NEG["pb_abs"])], False))
-        rows_a3.append(("MAE, g (95% CI)",
+        rows_a3.append((f"MAE{suffix_abs} (95% CI)",
                         [f_mae(M_POS["pb_abs"]), f_mae(M_NEG["pb_abs"])], False))
-        rows_a3.append(("Mean Bias, g (Predicted - CMR)*",
+        rows_a3.append((f"Mean Bias{suffix_abs} (Predicted - CMR)*",
                         [f_bias_abs(M_POS["pb_abs"]), f_bias_abs(M_NEG["pb_abs"])], False))
-        rows_a3.append(("95% LoA, g",
+        rows_a3.append((f"95% LoA{suffix_abs}",
                         [f_loa_abs(M_POS["pb_abs"]), f_loa_abs(M_NEG["pb_abs"])], False))
 
         if has_indexed:
-            rows_a3.append(("Passing-Bablok recalibrated indexed LVMi (g/m²)", ["", ""], True))
-            rows_a3.append(("Reference CMR LVMi (g/m²)",
+            rows_a3.append((f"Passing-Bablok recalibrated {unit_ix}", ["", ""], True))
+            rows_a3.append((f"Reference CMR {unit_ix}",
                             [f_ref(g_pos_x["lvm_cmr_indexed"].dropna().values),
                              f_ref(g_neg_x["lvm_cmr_indexed"].dropna().values)], False))
             rows_a3.append(("Spearman ρ (95% CI)",
                             [f_rho(M_POS["pb_ix"]), f_rho(M_NEG["pb_ix"])], False))
-            rows_a3.append(("MAE, g/m² (95% CI)",
+            rows_a3.append((f"MAE{suffix_ix} (95% CI)",
                             [f_mae(M_POS["pb_ix"]), f_mae(M_NEG["pb_ix"])], False))
-            rows_a3.append(("Mean Bias, g/m² (Predicted - CMR)†",
+            rows_a3.append((f"Mean Bias{suffix_ix} (Predicted - CMR)†",
                             [f_bias_abs(M_POS["pb_ix"]), f_bias_abs(M_NEG["pb_ix"])], False))
-            rows_a3.append(("95% LoA, g/m²",
+            rows_a3.append((f"95% LoA{suffix_ix}",
                             [f_loa_abs(M_POS["pb_ix"]), f_loa_abs(M_NEG["pb_ix"])], False))
 
         foots_a3 = [
@@ -1691,6 +1721,7 @@ def run_analysis(results, cohort_name, output_dir):
                 f"† Bias LVH+ vs LVH- (PB recalibrated indexed): Mann-Whitney U, {f_p(mw['pb_ix'])}.")
         foots_a3.append("Sensitivity analysis: Passing-Bablok is non-parametric and does "
                         "not include sex as a covariate.")
+        if NORM_NOTE: foots_a3.append(NORM_NOTE)
         foots_a3.append(ABBR_ABS)
 
         _write_sheet(
@@ -1702,7 +1733,7 @@ def run_analysis(results, cohort_name, output_dir):
 
     ws = wb.create_sheet("Rel-Total")
     rows_r1 = []
-    rows_r1.append(("Relative agreement - absolute LVM (%)", ["", "", ""], True))
+    rows_r1.append((f"Relative agreement - {unit_abs} (%)", ["", "", ""], True))
     rows_r1.append(("Spearman ρ (95% CI)",
                     [f_rho(M_TOT["uncal_abs"]), f_rho(M_TOT["ols_abs"]),
                      f_rho(M_TOT["pb_abs"])], False))
@@ -1717,7 +1748,7 @@ def run_analysis(results, cohort_name, output_dir):
                      f_loa_pct(M_TOT["pb_abs"])], False))
 
     if has_indexed:
-        rows_r1.append(("Relative agreement - indexed LVMi (%)", ["", "", ""], True))
+        rows_r1.append((f"Relative agreement - {unit_ix} (%)", ["", "", ""], True))
         rows_r1.append(("Spearman ρ (95% CI)",
                         [f_rho(M_TOT["uncal_ix"]), f_rho(M_TOT["ols_ix"]),
                          f_rho(M_TOT["pb_ix"])], False))
@@ -1733,6 +1764,7 @@ def run_analysis(results, cohort_name, output_dir):
 
     foots_r1 = [SIGN_NOTE, FORMULA_OLS_ABS + " " + FORMULA_PB_ABS]
     if FORMULA_OLS_IX: foots_r1.append(FORMULA_OLS_IX + " " + FORMULA_PB_IX)
+    if NORM_NOTE: foots_r1.append(NORM_NOTE)
     foots_r1.append(ABBR_REL)
 
     _write_sheet(
@@ -1783,6 +1815,7 @@ def run_analysis(results, cohort_name, output_dir):
         if has_indexed:
             foots_r2.append(
                 f"‡ Bias LVH+ vs LVH- (OLS recalibrated indexed): Mann-Whitney U, {f_p(mw['ols_ix'])}.")
+        if NORM_NOTE: foots_r2.append(NORM_NOTE)
         foots_r2.append(ABBR_REL)
 
         _write_sheet(
@@ -1824,6 +1857,7 @@ def run_analysis(results, cohort_name, output_dir):
                 f"† Bias LVH+ vs LVH- (PB recalibrated indexed): Mann-Whitney U, {f_p(mw['pb_ix'])}.")
         foots_r3.append("Sensitivity analysis: Passing-Bablok is non-parametric and does "
                         "not include sex as a covariate.")
+        if NORM_NOTE: foots_r3.append(NORM_NOTE)
         foots_r3.append(ABBR_REL)
 
         _write_sheet(
@@ -1877,6 +1911,7 @@ def run_analysis(results, cohort_name, output_dir):
             "* P-value calculated using Mann-Whitney U test comparing the relative bias (Predicted - CMR) between LVH+ and LVH- groups.",
             "Note: Positive values indicate AI overestimation; negative values indicate AI underestimation."
         ]
+        if NORM_NOTE: foots_main.append(NORM_NOTE)
 
         _write_sheet(
             ws_main,
@@ -1995,6 +2030,7 @@ def run_analysis(results, cohort_name, output_dir):
                 "CMR, cardiovascular magnetic resonance; LVH, left ventricular "
                 "hypertrophy; LVM, left ventricular mass; OLS, ordinary least squares."
             ]
+            if NORM_NOTE: foots_roc.insert(0, NORM_NOTE)
 
             _write_sheet(
                 ws_roc,
@@ -2023,8 +2059,30 @@ cohorts = [
 for name, df_cohort, path in cohorts:
     run_analysis(df_cohort, name, path)
 
+# --- 4e cohort: Pooled Normalized (Ratio to ULN) -------------------------
+# Klinische LVH-drempel is sex-specifiek (Mannen: 72 g/m^2, Vrouwen: 55 g/m^2).
+# Door zowel absolute als geindexeerde LVM te delen door de patient-specifieke
+# ULN ontstaat een dimensieloze ratio waarin sex-bias is verwijderd, zodat we
+# de gehele cohort poolen zonder geslachts-vertekening. NB: na deze
+# normalisatie zijn de absolute en indexed ratio-kolommen per patient
+# mathematisch identiek (lvm_cmr / (uln_ix * bsa) == (lvm_cmr / bsa) / uln_ix).
+# Beide worden geproduceerd voor structurele consistentie met de andere drie
+# cohorten.
+df_norm = full_results.copy()
+df_norm["uln_ix"]                = df_norm["sex"].map({1: 72.0, 0: 55.0})
+df_norm["uln_abs"]               = df_norm["uln_ix"] * df_norm["bsa"]
+df_norm["lvm_cmr"]               = df_norm["lvm_cmr"]               / df_norm["uln_abs"]
+df_norm["lvm_predicted"]         = df_norm["lvm_predicted"]         / df_norm["uln_abs"]
+df_norm["lvm_cmr_indexed"]       = df_norm["lvm_cmr_indexed"]       / df_norm["uln_ix"]
+df_norm["lvm_predicted_indexed"] = df_norm["lvm_predicted_indexed"] / df_norm["uln_ix"]
+
+norm_cohort = ("Genormaliseerd", df_norm, os.path.join(BASE_OUTPUT_DIR, "Genormaliseerd"))
+run_analysis(norm_cohort[1], norm_cohort[0], norm_cohort[2], is_normalized=True)
+
+cohorts.append(norm_cohort)
+
 print("\n" + "="*72)
-print("KLAAR. Alle drie cohort-analyses zijn voltooid.")
+print("KLAAR. Alle vier cohort-analyses zijn voltooid.")
 for name, df_cohort, path in cohorts:
-    print(f"  - {name:<8s} (n={len(df_cohort):3d})  ->  {path}/")
+    print(f"  - {name:<16s} (n={len(df_cohort):3d})  ->  {path}/")
 print("="*72)
