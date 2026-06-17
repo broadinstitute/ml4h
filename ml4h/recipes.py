@@ -1217,14 +1217,6 @@ def infer_transformer_on_parquet(args):
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
-    _, _, test_group_ids = split_group_ids_from_dataframe(
-        df_sorted,
-        AGGREGATE_COLUMN,
-        train_csv=args.train_csv,
-        valid_csv=args.valid_csv,
-        test_csv=args.test_csv,
-    )
-
     # Build group index
     group_index = {}
     for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
@@ -1232,9 +1224,19 @@ def infer_transformer_on_parquet(args):
         last = g.index[-1]
         group_index[gid] = (first, last)
 
-    # Match the exact evaluation cohort used by training.
-    group_ids = test_group_ids
-    logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
+    if args.test_csv:
+        # Match the exact evaluation cohort used by training when a test cohort is supplied.
+        _, _, group_ids = split_group_ids_from_dataframe(
+            df_sorted,
+            AGGREGATE_COLUMN,
+            train_csv=args.train_csv,
+            valid_csv=args.valid_csv,
+            test_csv=args.test_csv,
+        )
+        logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
+    else:
+        group_ids = list(group_index.keys())
+        logging.info(f"No test_csv provided; selected all {len(group_ids)} groups for inference")
 
     # Limit samples if max_samples is set
     if args.max_samples and args.max_samples < len(group_ids):
