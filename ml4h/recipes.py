@@ -190,6 +190,8 @@ def run(args):
             infer_transformer_on_parquet(args)
         elif "infer_trajectory_transformer_on_parquet" == args.mode:
             infer_trajectory_transformer_on_parquet(args)
+        elif "infer_even_only_trajectory_transformer_on_parquet" == args.mode:
+            infer_even_only_trajectory_transformer_on_parquet(args)
         elif "test" == args.mode:
             test_multimodal_multitask(args)
         elif "compare" == args.mode:
@@ -1671,6 +1673,293 @@ def infer_trajectory_transformer_on_parquet(args):
     logging.info(f"Unique MRNs: {output_df['mrn'].nunique()}")
     logging.info(f"Columns: {list(output_df.columns)}")
     logging.info(f"n_rows distribution: min={output_df['n_rows'].min()}, max={output_df['n_rows'].max()}, mean={output_df['n_rows'].mean():.2f}")
+    for t in all_targets:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        logging.info(f"\n{t}:")
+        logging.info(f"  Predictions - mean: {output_df[pred_col].mean():.4f}, std: {output_df[pred_col].std():.4f}")
+        valid_true = output_df[true_col].dropna()
+        if len(valid_true) > 0:
+            logging.info(f"  True labels - mean: {valid_true.mean():.4f}, std: {valid_true.std():.4f}, n_valid: {len(valid_true)}")
+        else:
+            logging.info(f"  True labels - no valid values")
+
+
+def infer_even_only_trajectory_transformer_on_parquet(args):
+    """
+    Generate inference parquet files with two trajectory predictions per even-sized group.
+
+    This mode is similar to infer_trajectory_transformer_on_parquet, but it only
+    processes groups with an even number of rows. For each selected group it runs
+    inference twice:
+        - once with the 1st, 3rd, 5th, ... rows after sorting
+        - once with the 2nd, 4th, 6th, ... rows after sorting
+
+    Outputs a parquet file with columns:
+        - {label}_prediction for each model output
+        - {label} (true label value from the first row in that parity split)
+        - mrn (group identifier)
+        - {sort_column} (the sort column value from the first row in that parity split)
+        - row_parity ("odd" or "even")
+        - n_rows (number of rows available in that parity split)
+    """
+    if not args.model_file:
+        raise ValueError("model_file is required for infer_even_only_trajectory_transformer_on_parquet mode")
+
+    # Load the input data
+    if args.transformer_input_file.endswith('.pq'):
+        df = pd.read_parquet(args.transformer_input_file)
+    else:
+        df = pd.read_csv(args.transformer_input_file, sep='\t')
+
+    # Handle optional label file merge (same as training)
+    if args.transformer_label_file is not None:
+        if args.transformer_label_file.endswith('.pq'):
+            label_df = pd.read_parquet(args.transformer_label_file)
+        else:
+            label_df = pd.read_csv(args.transformer_label_file, sep='\t')
+
+        if 'ecg_datetime' in args.merge_columns:
+            label_df['ecg_datetime'] = pd.to_datetime(label_df.ecg_datetime)
+            df.ecg_datetime = pd.to_datetime(df.ecg_datetime)
+
+        df = pd.merge(df, label_df, on=args.merge_columns, how='inner')
+
+    # Build input columns (same as training)
+    input_numeric_columns = list(args.input_numeric_columns)
+    input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions + args.latent_dimensions_start)]
+
+    # Handle categorical column
+    if len(args.input_categorical_columns) == 1:
+        input_categorical_column = args.input_categorical_columns[0]
+        view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
+        view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
+        df['_view_id'] = df[input_categorical_column].astype(str).map(view2id).fillna(0).astype(int)
+    else:
+        input_categorical_column = None
+        view2id = None
+
+    # Load the trained model
+    logging.info(f"Loading model from {args.model_file}")
+    keras.config.enable_unsafe_deserialization()
+    model = keras.models.load_model(args.model_file)
+
+    # Get target columns from model output names
+    all_targets = args.target_regression_columns + args.target_binary_columns
+    logging.info(f"Model output names: {model.output_names}")
+    logging.info(f"Target columns: {all_targets}")
+
+    # Sort data by group and sort column
+    AGGREGATE_COLUMN = args.group_column
+    sort_column = args.sort_column
+    sort_column_ascend = args.sort_column_ascend
+    MAX_LEN = args.transformer_max_size
+
+    df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
+                               ascending=[True, sort_column_ascend]).reset_index(drop=True)
+
+    _, _, test_group_ids = split_group_ids_from_dataframe(
+        df_sorted,
+        AGGREGATE_COLUMN,
+        train_csv=args.train_csv,
+        valid_csv=args.valid_csv,
+        test_csv=args.test_csv,
+    )
+
+    # Build group index
+    group_index = {}
+    for gid, g in df_sorted.groupby(AGGREGATE_COLUMN, sort=False):
+        first = g.index[0]
+        last = g.index[-1]
+        group_index[gid] = (first, last)
+
+    # Match the exact evaluation cohort used by training.
+    group_ids = test_group_ids
+    logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
+
+    even_group_ids = []
+    skipped_odd_groups = 0
+    for gid in group_ids:
+        span = group_index.get(gid)
+        if span is None:
+            continue
+        start, last = span
+        if (last - start + 1) % 2 == 0:
+            even_group_ids.append(gid)
+        else:
+            skipped_odd_groups += 1
+
+    group_ids = even_group_ids
+    logging.info(f"Selected {len(group_ids)} even-row groups; skipped {skipped_odd_groups} odd-row groups")
+
+    # Limit samples if max_samples is set. Keep complete odd/even pairs for each group.
+    if args.max_samples and args.max_samples < len(group_ids):
+        group_ids = group_ids[:args.max_samples]
+        logging.info(f"Limited to {len(group_ids)} even-row groups based on max_samples")
+
+    # Preload arrays for fast slicing
+    arr_num = df_sorted[input_numeric_columns].to_numpy(np.float32)
+    arr_sort_col = df_sorted[sort_column].to_numpy()
+    if input_categorical_column:
+        arr_view = df_sorted['_view_id'].to_numpy(np.int32)
+
+    # Row-level targets (get target value for each row if available)
+    arr_tgts = {}
+    for t in all_targets:
+        if t in df_sorted.columns:
+            arr_tgts[t] = df_sorted[t].to_numpy()
+        else:
+            arr_tgts[t] = None
+
+    # Storage for results
+    results = {
+        'mrn': [],
+        sort_column: [],
+        'row_parity': [],
+        'n_rows': [],
+    }
+    for t in all_targets:
+        results[f'{t}_prediction'] = []
+        results[t] = []
+
+    processed_predictions = 0
+
+    # Process each even-sized group
+    logging.info(f"Starting even-only trajectory inference over {len(group_ids)} groups...")
+    for i, gid in enumerate(group_ids):
+        if (i + 1) % 1000 == 0:
+            logging.info(f"Processed {i + 1}/{len(group_ids)} groups ({processed_predictions} predictions)")
+
+        span = group_index.get(gid)
+        if span is None:
+            continue
+        start, last = span
+        end = last + 1
+
+        # Get all features for this group
+        group_num = arr_num[start:end, :]  # (T_group, F)
+        group_sort_col = arr_sort_col[start:end]  # (T_group,)
+        if input_categorical_column:
+            group_view = arr_view[start:end]  # (T_group,)
+
+        for row_parity, row_offset in (('odd', 0), ('even', 1)):
+            # Select 1-based odd/even positions after sorting.
+            num = group_num[row_offset::2, :]
+            if input_categorical_column:
+                view = group_view[row_offset::2]
+            n_rows = num.shape[0]
+            first_row_idx = start + row_offset
+
+            T = num.shape[0]
+
+            # Truncate to MAX_LEN if sequence is longer, matching trajectory inference.
+            if T > MAX_LEN:
+                num = num[:MAX_LEN, :]
+                if input_categorical_column:
+                    view = view[:MAX_LEN]
+                T = MAX_LEN
+
+            mask = np.ones((T,), dtype=bool)  # (T,)
+
+            # Pad to MAX_LEN
+            pad_len = MAX_LEN - T
+            if pad_len > 0:
+                num = np.pad(num, ((0, pad_len), (0, 0)), mode='constant', constant_values=0.0)
+                mask = np.pad(mask, (0, pad_len), mode='constant', constant_values=False)
+                if input_categorical_column:
+                    view = np.pad(view, (0, pad_len), mode='constant', constant_values=0)
+
+            # Add batch dimension
+            num = np.expand_dims(num, axis=0)  # (1, MAX_LEN, F)
+            mask = np.expand_dims(mask, axis=0)  # (1, MAX_LEN)
+            if input_categorical_column:
+                view = np.expand_dims(view, axis=0)  # (1, MAX_LEN)
+
+            # Prepare input dict
+            if input_categorical_column:
+                inputs = {'view': view, 'num': num, 'mask': mask}
+            else:
+                inputs = {'num': num, 'mask': mask}
+
+            # Run inference
+            outputs = model(inputs, training=False)
+
+            # Store results
+            results['mrn'].append(gid)
+            results[sort_column].append(group_sort_col[row_offset])
+            results['row_parity'].append(row_parity)
+            results['n_rows'].append(n_rows)
+
+            for t in all_targets:
+                # Get prediction (flatten from (1, 1) to scalar)
+                pred = outputs[t].numpy().flatten()[0]
+                results[f'{t}_prediction'].append(float(pred))
+
+                # Get true label from the first row in this parity split.
+                if arr_tgts[t] is not None:
+                    true_val = arr_tgts[t][first_row_idx]
+                    results[t].append(float(true_val) if not pd.isna(true_val) else np.nan)
+                else:
+                    results[t].append(np.nan)
+
+            processed_predictions += 1
+
+    logging.info(f"Completed even-only trajectory inference: {processed_predictions} predictions from {len(group_ids)} groups")
+
+    # Create output dataframe
+    output_df = pd.DataFrame(results)
+
+    # Calculate and report performance metrics before saving
+    logging.info(f"\n=== Performance Metrics ===")
+    logging.info(f"Total samples: {len(output_df)}")
+
+    # Regression targets - report R^2
+    for t in args.target_regression_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                r2 = r2_score(y_true, y_pred)
+                logging.info(f"{t}: R^2 = {r2:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: R^2 calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for R^2 calculation")
+
+    # Binary targets - report auROC
+    for t in args.target_binary_columns:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        valid_mask = output_df[true_col].notna()
+        if valid_mask.sum() > 0:
+            y_true = output_df.loc[valid_mask, true_col].values
+            y_pred = output_df.loc[valid_mask, pred_col].values
+            try:
+                auroc = roc_auc_score(y_true, y_pred)
+                logging.info(f"{t}: auROC = {auroc:.4f} (n={valid_mask.sum()})")
+            except ValueError as e:
+                logging.info(f"{t}: auROC calculation failed - {e}")
+        else:
+            logging.info(f"{t}: No valid labels for auROC calculation")
+
+    # Ensure output directory exists
+    os.makedirs(f'{args.output_folder}/{args.id}', exist_ok=True)
+
+    # Save to parquet
+    output_path = f'{args.output_folder}/{args.id}/even_only_trajectory_predictions_{args.id}.pq'
+    output_df.to_parquet(output_path, index=False)
+    logging.info(f"Saved even-only trajectory predictions to {output_path}")
+
+    # Log summary statistics
+    logging.info(f"\n=== Even-Only Trajectory Inference Summary ===")
+    logging.info(f"Total predictions: {len(output_df)}")
+    logging.info(f"Unique MRNs: {output_df['mrn'].nunique()}")
+    logging.info(f"Columns: {list(output_df.columns)}")
+    if len(output_df) > 0:
+        logging.info(f"n_rows distribution: min={output_df['n_rows'].min()}, max={output_df['n_rows'].max()}, mean={output_df['n_rows'].mean():.2f}")
     for t in all_targets:
         pred_col = f'{t}_prediction'
         true_col = t

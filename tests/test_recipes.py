@@ -12,6 +12,7 @@ from ml4h.recipes import train_legacy, train_multimodal_multitask
 from ml4h.recipes import infer_multimodal_multitask, infer_hidden_layer_multimodal_multitask
 from ml4h.recipes import infer_transformer_on_parquet
 from ml4h.recipes import infer_trajectory_transformer_on_parquet
+from ml4h.recipes import infer_even_only_trajectory_transformer_on_parquet
 from ml4h.recipes import compare_multimodal_scalar_task_models, _find_learning_rate
 from ml4h.explorations import _categorical_explore_header, _should_error_detect, explore
 # Imports with test in their name
@@ -142,6 +143,69 @@ class TestRecipes:
         assert output_df['n_rows'].tolist() == [3, 2, 1]
         assert output_df['target'].tolist() == [0.1, 0.2, 0.3]
         assert output_df['target_prediction'].tolist() == [6.0, 5.0, 3.0]
+
+    def test_infer_even_only_trajectory_transformer_on_parquet_uses_odd_even_rows(self, monkeypatch, tmp_path):
+        class FakeModel:
+            output_names = ['target']
+
+            def __call__(self, inputs, training=False):
+                masked_num = inputs['num'] * inputs['mask'][..., None]
+                preds = masked_num.sum(axis=(1, 2), keepdims=True)
+                return {'target': tf.convert_to_tensor(preds, dtype=tf.float32)}
+
+        monkeypatch.setattr('ml4h.recipes.keras.config.enable_unsafe_deserialization', lambda: None)
+        monkeypatch.setattr('ml4h.recipes.keras.models.load_model', lambda _: FakeModel())
+
+        df = pd.DataFrame(
+            {
+                'mrn': [101, 101, 101, 101, 202, 202, 202],
+                'visit_time': [1, 2, 3, 4, 1, 2, 3],
+                'value': [1.0, 2.0, 3.0, 4.0, 10.0, 20.0, 30.0],
+                'target': [0.1, 0.2, 0.3, 0.4, 1.0, 2.0, 3.0],
+            },
+        )
+        input_path = tmp_path / 'input.pq'
+        df.to_parquet(input_path, index=False)
+
+        test_csv = tmp_path / 'test.csv'
+        pd.DataFrame([101, 202]).to_csv(test_csv, index=False, header=False)
+
+        args = SimpleNamespace(
+            model_file=str(tmp_path / 'fake.keras'),
+            transformer_input_file=str(input_path),
+            transformer_label_file=None,
+            merge_columns=[],
+            input_numeric_columns=['value'],
+            latent_dimensions_start=0,
+            latent_dimensions=0,
+            input_categorical_columns=[],
+            target_regression_columns=['target'],
+            target_binary_columns=[],
+            group_column='mrn',
+            sort_column='visit_time',
+            sort_column_ascend=True,
+            transformer_max_size=8,
+            train_csv=None,
+            valid_csv=None,
+            test_csv=str(test_csv),
+            max_samples=None,
+            batch_size=1,
+            test_steps=10,
+            output_folder=str(tmp_path),
+            id='even_only_trajectory_infer_test',
+        )
+
+        infer_even_only_trajectory_transformer_on_parquet(args)
+
+        output_df = pd.read_parquet(
+            tmp_path / 'even_only_trajectory_infer_test' / 'even_only_trajectory_predictions_even_only_trajectory_infer_test.pq',
+        )
+        assert output_df['mrn'].tolist() == [101, 101]
+        assert output_df['visit_time'].tolist() == [1, 2]
+        assert output_df['row_parity'].tolist() == ['odd', 'even']
+        assert output_df['n_rows'].tolist() == [2, 2]
+        assert output_df['target'].tolist() == [0.1, 0.2]
+        assert output_df['target_prediction'].tolist() == [4.0, 6.0]
 
     def test_train(self, default_arguments):
         default_arguments.named_outputs = True
