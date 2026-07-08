@@ -1,0 +1,60 @@
+name: Publish Python 🐍 distribution 📦 to PyPI
+
+on:
+  push:
+    tags:
+      - '*'           # Push events to every tag not containing /
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        pip cache purge
+        python -m pip install --upgrade pip
+        # Install the ml4h Python package.
+        pip install . -c constraints.txt
+        pip install -r docker/vm_boot_images/config/tensorflow-requirements.txt -c constraints.txt
+    - name: Install pypa/build
+      run: >-
+        python -m pip install build --user
+    - name: Build a binary wheel and a source tarball
+      run: python -m build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions-${{ matrix.python-version }}
+        path: dist/
+
+  publish-to-pypi:
+    name: >-
+      Publish Python 🐍 distribution 📦 to PyPI
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ml4h
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions-3.12
+        path: dist/
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
