@@ -577,6 +577,11 @@ def build_general_embedding_transformer(
 
     model = keras.Model(inputs, outputs)
 
+    # explain_model: same weights, adds attention maps + pooling weights as outputs
+    explain_outputs = {**outputs}
+    explain_outputs["attn_wts"] = wts
+    model_explain = keras.Model(inputs, explain_outputs, name="explain_model")
+
     losses = {t: "mse" for t in regression_targets}
     losses.update({t: "binary_crossentropy" for t in binary_targets})
     if label_weights:
@@ -606,7 +611,7 @@ def build_general_embedding_transformer(
         metrics=metrics_dict,
     )
 
-    return model
+    return model, model_explain
 
 
 @keras.saving.register_keras_serializable(package="ml4h")
@@ -750,9 +755,16 @@ def build_embedding_transformer(
         outputs[t] = layers.Dense(num_classes, activation='softmax', name=t)(h)
 
     if view2id is not None:
-        model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
+        model_inputs = {'view': inp_view, 'num': inp_num, 'mask': inp_mask}
     else:
-        model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)
+        model_inputs = {'num': inp_num, 'mask': inp_mask}
+
+    model = keras.Model(inputs=model_inputs, outputs=outputs)
+
+    explain_outputs = {**outputs}
+    explain_outputs["attn_wts"] = wts
+    model_explain = keras.Model(inputs=model_inputs, outputs=explain_outputs, name="explain_model")
+
     # Losses / metrics
     losses = {t: 'mse' for t in regression_targets}
     for t in binary_targets:
@@ -786,7 +798,7 @@ def build_embedding_transformer(
         metrics=metrics
     )
 
-    return model
+    return model, model_explain
 
 
 def evaluate_multitask_on_dataset(

@@ -950,7 +950,7 @@ def train_transformer_on_parquet_stream(args):
         keras.config.enable_unsafe_deserialization()
         model = keras.models.load_model(args.model_file)
     else:
-        model = build_general_embedding_transformer(
+        model, _ = build_general_embedding_transformer(
             latent_dim=args.latent_dimensions,
             numeric_columns=args.input_numeric_columns,
             categorical_columns=args.input_categorical_columns,
@@ -1080,7 +1080,7 @@ def train_transformer_on_parquet(args):
         keras.config.enable_unsafe_deserialization()
         model = keras.models.load_model(args.model_file)
     else:
-        model = build_embedding_transformer(
+        model, _ = build_embedding_transformer(
             input_numeric_cols=input_numeric_columns,
             regression_targets=args.target_regression_columns,
             binary_targets=args.target_binary_columns,

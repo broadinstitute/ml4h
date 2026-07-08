@@ -1,9 +1,0 @@
-fastparquet
-blosc
-xxhash
-zstandard
-cv2
-scipy
-pandas
-numpy
-h5py
