@@ -513,16 +513,21 @@ def build_general_embedding_transformer(
 
     attn_mask = AttentionMaskLayer(name="attn_mask")(inp_mask)  # (B,1,T)
 
+    #Collect Attention scores for explainability
+    all_attn_scores = []
     # ------------------------------
     # TRANSFORMER LAYERS
     # ------------------------------
     for i in range(num_layers):
-        attn = layers.MultiHeadAttention(
+        attn_layer = layers.MultiHeadAttention(
             num_heads=num_heads,
             key_dim=transformer_dim // num_heads,
             dropout=dropout,
             name=f"mha_{i}",
-        )(x, x, attention_mask=attn_mask)
+        )
+        attn, scores = attn_layer(x, x, attention_mask=attn_mask, return_attention_scores=True)
+
+        all_attn_scores.append(scores)  # (B, heads, T, T)
 
         attn = layers.Dropout(dropout, name=f"attn_dropout_{i}")(attn)
         x = layers.Add(name=f"attn_residual_{i}")([x, attn])
@@ -580,6 +585,9 @@ def build_general_embedding_transformer(
     # explain_model: same weights, adds attention maps + pooling weights as outputs
     explain_outputs = {**outputs}
     explain_outputs["attn_wts"] = wts
+
+    for i, s in enumerate(all_attn_scores):
+        explain_outputs[f"mha_{i}_scores"] = s
     model_explain = keras.Model(inputs, explain_outputs, name="explain_model")
 
     losses = {t: "mse" for t in regression_targets}
@@ -715,10 +723,14 @@ def build_embedding_transformer(
     m_k = ExpandDimsLayer(axis=1, name='mask_k')(inp_mask)
     mask_2d = LogicalAndLayer(name='mask_qk')([m_q, m_k])
 
+    all_attn_scores = []
     # Transformer blocks
     for i in range(num_layers):
-        attn = layers.MultiHeadAttention(num_heads=num_heads, key_dim=transformer_dim // num_heads,
-                                         dropout=dropout, name=f'mha_{i}')(x, x, attention_mask=mask_2d)
+        attn_layer = layers.MultiHeadAttention(num_heads=num_heads, key_dim=transformer_dim // num_heads,
+                                         dropout=dropout, name=f'mha_{i}')
+        attn, scores = attn_layer(x, x, attention_mask=mask_2d, return_attention_scores=True)
+        all_attn_scores.append(scores)
+
         attn = layers.Dropout(dropout)(attn)
         x = layers.LayerNormalization(epsilon=1e-6, name=f'ln1_{i}')(layers.Add()([x, attn]))
 
@@ -761,9 +773,13 @@ def build_embedding_transformer(
 
     model = keras.Model(inputs=model_inputs, outputs=outputs)
 
+    # explain_model: same weights, adds attention maps + pooling weights as outputs
     explain_outputs = {**outputs}
     explain_outputs["attn_wts"] = wts
-    model_explain = keras.Model(inputs=model_inputs, outputs=explain_outputs, name="explain_model")
+
+    for i, s in enumerate(all_attn_scores):
+        explain_outputs[f"mha_{i}_scores"] = s
+    model_explain = keras.Model(model_inputs, explain_outputs, name="explain_model")
 
     # Losses / metrics
     losses = {t: 'mse' for t in regression_targets}

@@ -15,366 +15,551 @@ Usage (inference only — model weights are never modified):
 """
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import keras
 from keras import layers as klayers
 import matplotlib.pyplot as plt
 
+def detect_transformer_builder_type(model):
+    input_names = [x.name.split(":")[0] for x in model.inputs]
 
-# ---------------------------------------------------------------------------
-# Step 1 — Layer traversal helpers
-# ---------------------------------------------------------------------------
+    if "latent" in input_names:
+        return "general_embedding_transformer"
 
-def _run_pretransformer_embedding(model, inputs, training=False):
+    if "num" in input_names and "mask" in input_names:
+        return "embedding_transformer"
+
+    raise ValueError(f"Unknown transformer type. Inputs found: {input_names}")
+
+
+def extract_build_args_from_transformer_model(model):
+    builder_type = detect_transformer_builder_type(model)
+
+    output_names = model.output_names
+
+    regression_targets = []
+    binary_targets = []
+    categorical_targets = []
+    num_classes = None
+
+    for name in output_names:
+        layer = model.get_layer(name)
+        units = int(layer.units)
+        activation = layer.activation.__name__
+
+        if units == 1 and activation == "linear":
+            regression_targets.append(name)
+        elif units == 1 and activation == "sigmoid":
+            binary_targets.append(name)
+        elif units > 1 and activation == "softmax":
+            categorical_targets.append(name)
+            num_classes = units
+        else:
+            raise ValueError(
+                f"Cannot classify output {name}: units={units}, activation={activation}"
+            )
+
+    mha_layers = sorted(
+        [l for l in model.layers if l.name.startswith("mha_")],
+        key=lambda l: int(l.name.split("_")[1])
+    )
+
+    if not mha_layers:
+        raise ValueError("No mha_0, mha_1, ... layers found.")
+
+    num_layers = len(mha_layers)
+    num_heads = int(mha_layers[0].num_heads)
+    dropout = float(mha_layers[0].dropout)
+
+    if builder_type == "embedding_transformer":
+        inp = {x.name.split(":")[0]: x for x in model.inputs}
+
+        max_len = int(inp["num"].shape[1])
+        feat = int(inp["num"].shape[2])
+
+        token_hidden = int(model.get_layer("token_proj").units)
+
+        # In your builder, MHA key_dim uses transformer_dim // num_heads.
+        # So recover transformer_dim from key_dim * num_heads.
+        transformer_dim = int(mha_layers[0].key_dim * num_heads)
+
+        has_view = "view" in inp
+
+        view2id = None
+        emb_dim = None
+
+        if has_view:
+            view_emb = model.get_layer("view_embedding")
+            emb_dim = int(view_emb.output_dim)
+
+            # We cannot recover original category strings, only IDs.
+            # This dummy mapping preserves max id / vocab size.
+            max_id = int(view_emb.input_dim - 1)
+            view2id = {str(i): i for i in range(1, max_id + 1)}
+        else:
+            emb_dim = None
+
+        use_positional_embedding = any(l.name == "pos_embedding" for l in model.layers)
+
+        return {
+            "builder_type": builder_type,
+            "build_args": {
+                "input_numeric_cols": [f"feature_{i}" for i in range(feat)],
+                "regression_targets": regression_targets,
+                "binary_targets": binary_targets,
+                "max_len": max_len,
+                "emb_dim": emb_dim,
+                "token_hidden": token_hidden,
+                "transformer_dim": transformer_dim,
+                "num_heads": num_heads,
+                "num_layers": num_layers,
+                "dropout": dropout,
+                "view2id": view2id,
+                "learning_rate": 0.00005,
+                "binary_class_prevalences": None,
+                "categorical_targets": categorical_targets,
+                "num_classes": num_classes,
+                "label_weights": None,
+                "use_positional_embedding": use_positional_embedding,
+            },
+        }
+
+    if builder_type == "general_embedding_transformer":
+        inp = {x.name.split(":")[0]: x for x in model.inputs}
+
+        max_len = int(inp["latent"].shape[1])
+        latent_dim = int(inp["latent"].shape[2])
+
+        numeric_columns = [
+            name.replace("num_", "", 1)
+            for name in inp
+            if name.startswith("num_")
+        ]
+
+        categorical_columns = [
+            name.replace("cat_", "", 1)
+            for name in inp
+            if name.startswith("cat_")
+        ]
+
+        latent_embed = int(model.get_layer("latent_emb").units)
+        transformer_dim = int(model.get_layer("emb_projection").units)
+
+        if numeric_columns:
+            scalar_embed = int(model.get_layer(f"num_{numeric_columns[0]}_emb").units)
+        elif categorical_columns:
+            scalar_embed = int(model.get_layer(f"cat_{categorical_columns[0]}_emb").output_dim)
+        else:
+            raise ValueError("Cannot infer scalar_embed.")
+
+        categorical_vocabs = {}
+        for col in categorical_columns:
+            emb = model.get_layer(f"cat_{col}_emb")
+            categorical_vocabs[col] = int(emb.input_dim - 1)
+
+        return {
+            "builder_type": builder_type,
+            "build_args": {
+                "latent_dim": latent_dim,
+                "numeric_columns": numeric_columns,
+                "categorical_columns": categorical_columns,
+                "categorical_vocabs": categorical_vocabs,
+                "regression_targets": regression_targets,
+                "binary_targets": binary_targets,
+                "max_len": max_len,
+                "scalar_embed": scalar_embed,
+                "latent_embed": latent_embed,
+                "transformer_dim": transformer_dim,
+                "num_heads": num_heads,
+                "num_layers": num_layers,
+                "dropout": dropout,
+                "categorical_targets": categorical_targets,
+                "num_classes": num_classes,
+                "label_weights": None,
+            },
+        }
+
+def chefer_rollout_keras(
+    model_explain,
+    batch_inputs,
+    target_name,
+    class_index=None,
+    residual_weight=0.5,
+    attention_weight=0.5,
+    use_abs_grad=True,
+    positive_only=False,
+    pool_mode="attention",  # "attention" or "uniform"
+):
     """
-    Runs the pre-transformer layers for build_embedding_transformer.
+    Returns token/timestamp relevance: shape (B, T)
 
-    Returns:
-        x        (B, T, token_hidden)  — ready for transformer blocks
-        mask     (B, T, T) bool        — 2-D attention mask for MHA
-        inp_mask (B, T) bool           — 1-D mask needed for pooling
+    pool_mode:
+        "attention" = collapse rollout using model attention-pooling weights
+        "uniform"   = collapse rollout by averaging over valid query tokens
     """
-    inp_mask = tf.cast(inputs['mask'], dtype='bool')
 
-    if 'view' in inputs:
-        view_emb = model.get_layer('view_embedding')(inputs['view'], training=training)
-        x = model.get_layer('token_concat')([view_emb, inputs['num']])
+    with tf.GradientTape() as tape:
+        outputs = model_explain(batch_inputs, training=False)
+
+        attn_keys = sorted(
+            [
+                k for k in outputs.keys()
+                if k.startswith("mha_") and k.endswith("_scores")
+            ],
+            key=lambda x: int(x.split("_")[1]),
+        )
+        print(f"Found {len(attn_keys)} attention score outputs: {attn_keys}")
+        attn_scores = [outputs[k] for k in attn_keys]
+        tape.watch(attn_scores)
+
+        y = outputs[target_name]
+
+        if class_index is not None:
+            target_score = y[:, class_index]
+        else:
+            target_score = tf.reshape(y, [tf.shape(y)[0], -1])[:, 0]
+
+    grads = tape.gradient(target_score, attn_scores)
+
+    B = tf.shape(attn_scores[0])[0]
+    T = tf.shape(attn_scores[0])[-1]
+
+    mask = tf.cast(batch_inputs["mask"], tf.float32)
+    pair_mask = mask[:, :, None] * mask[:, None, :]
+
+    I = tf.eye(T, batch_shape=[B]) * mask[:, :, None]
+    R = I
+
+    for A, G in zip(attn_scores, grads):
+        if use_abs_grad:
+            cam = A * tf.abs(G)
+        else:
+            cam = A * G
+
+        if positive_only:
+            cam = tf.nn.relu(cam)
+
+        cam = tf.reduce_mean(cam, axis=1)
+        cam = cam * pair_mask
+
+        cam = cam / (tf.reduce_sum(cam, axis=-1, keepdims=True) + 1e-8)
+
+        cam = residual_weight * I + attention_weight * cam
+        cam = cam * pair_mask
+        cam = cam / (tf.reduce_sum(cam, axis=-1, keepdims=True) + 1e-8)
+
+        R = tf.matmul(cam, R)
+
+    if pool_mode == "attention":
+        query_wts = outputs["attn_wts"]
+
+    elif pool_mode == "uniform":
+        valid_count = tf.reduce_sum(mask, axis=-1, keepdims=True)
+        query_wts = mask / (valid_count + 1e-8)
+
     else:
-        x = inputs['num']
+        raise ValueError(f"Unknown pool_mode: {pool_mode}")
 
-    x = model.get_layer('token_proj')(x, training=training)
+    relevance = tf.reduce_sum(R * query_wts[:, :, None], axis=1)
 
-    # Learnable positional embedding (optional — not all models have it)
-    try:
-        pos_idx = model.get_layer('pos_idx')(x)
-        pos_emb = model.get_layer('pos_embedding')(pos_idx, training=training)
-        x = model.get_layer('add_pos')([x, pos_emb])
-    except ValueError:
-        pass
+    relevance = relevance * mask
+    relevance = relevance / (
+        tf.reduce_sum(relevance, axis=-1, keepdims=True) + 1e-8
+    )
 
-    # Build 2-D (B, T, T) attention mask
-    m_q = model.get_layer('mask_q')(inp_mask)
-    m_k = model.get_layer('mask_k')(inp_mask)
-    mask_2d = model.get_layer('mask_qk')([m_q, m_k])
-
-    return x, mask_2d, inp_mask
+    return relevance.numpy(), outputs
 
 
-def _run_pretransformer_general(model, inputs, training=False):
+def normalize_rows(A, eps=1e-8):
+    row_sum = A.sum(axis=-1, keepdims=True)
+    return A / (row_sum + eps)
+
+
+def _ordered_attn_score_keys(outputs, n_layers=None):
     """
-    Runs the pre-transformer layers for build_general_embedding_transformer.
+    Return attention-score output keys in layer order.
 
-    Returns:
-        x        (B, T, transformer_dim)  — ready for transformer blocks
-        mask     (B, 1, T) bool           — 1-D expanded attention mask for MHA
-        inp_mask (B, T) bool              — 1-D mask needed for pooling
+    Supports both naming conventions:
+        notebook style: attn_scores_0, attn_scores_1, ...
+        ml4h builder:   mha_0_scores, mha_1_scores, ...
     """
-    inp_mask = tf.cast(inputs['mask'], dtype='bool')
-
-    # Numeric columns
-    num_keys = sorted(k for k in inputs if k.startswith('num_'))
-    num_embs = []
-    for key in num_keys:
-        col = key[len('num_'):]
-        xc = model.get_layer(f'num_{col}_expand')(inputs[key])
-        xc = model.get_layer(f'num_{col}_emb')(xc, training=training)
-        num_embs.append(xc)
-
-    if len(num_embs) > 1:
-        num_emb = model.get_layer('num_emb_sum')(num_embs)
-    elif len(num_embs) == 1:
-        num_emb = num_embs[0]
-    else:
-        num_emb = None
-
-    # Categorical columns
-    cat_keys = sorted(k for k in inputs if k.startswith('cat_'))
-    cat_embs = []
-    for key in cat_keys:
-        col = key[len('cat_'):]
-        xc = model.get_layer(f'cat_{col}_emb')(inputs[key], training=training)
-        cat_embs.append(xc)
-
-    if len(cat_embs) > 1:
-        cat_emb = model.get_layer('cat_emb_sum')(cat_embs)
-    elif len(cat_embs) == 1:
-        cat_emb = cat_embs[0]
-    else:
-        cat_emb = None
-
-    # Latent + concat + projection
-    latent_emb = model.get_layer('latent_emb')(inputs['latent'], training=training)
-    to_concat = [latent_emb]
-    if num_emb is not None:
-        to_concat.append(num_emb)
-    if cat_emb is not None:
-        to_concat.append(cat_emb)
-
-    x = model.get_layer('total_emb')(to_concat)
-    x = model.get_layer('emb_projection')(x, training=training)
-
-    # Positional embedding
-    pos_idx = model.get_layer('pos_indices')(x)
-    pos_emb = model.get_layer('pos_embedding')(pos_idx, training=training)
-    x = model.get_layer('add_pos')([x, pos_emb])
-
-    # Attention mask: (B, T) → (B, 1, T)
-    mask_1d = model.get_layer('attn_mask')(inp_mask)
-
-    return x, mask_1d, inp_mask
+    keys = sorted(
+        [k for k in outputs if k.startswith("attn_scores_")],
+        key=lambda x: int(x.split("_")[-1]),
+    )
+    if not keys:
+        keys = sorted(
+            [k for k in outputs if k.startswith("mha_") and k.endswith("_scores")],
+            key=lambda x: int(x.split("_")[1]),
+        )
+    if not keys:
+        raise ValueError(
+            "No attention-score outputs found "
+            "(expected attn_scores_* or mha_*_scores)."
+        )
+    if n_layers is not None:
+        keys = keys[:n_layers]
+    return keys
 
 
-def _run_block_remainder_embedding(model, i, x_pre, mha_out, training=False):
+def grad_weighted_attention_rollout(
+    explainable_model,
+    batch_inputs,
+    actual_len,
+    n_layers=None,
+    target_key="prediction",
+    residual_weight=0.5,
+    attention_weight=0.5,
+    use_abs_grad=True,
+    positive_only=False,
+):
     """
-    Runs everything after the MHA call for block i in build_embedding_transformer.
-    Unnamed Dropout layers are skipped (no-op at inference).
+    Single-sample gradient-weighted attention rollout (Chefer et al., CVPR 2021).
 
-      x_pre + mha_out → ln1_{i} → ff1_{i} → ff2_{i} → ln2_{i}
+    This is a direct port of the reference notebook implementation
+    (grad_weighted_attention_rollout in visTrans.ipynb). It runs per layer in
+    NumPy, mixes a residual/identity path with the gradient-weighted attention
+    path, rolls the per-layer matrices together, and collapses the rollout to a
+    per-token relevance vector using a *uniform* mean over query tokens.
+
+    Inputs
+    ------
+    explainable_model:
+        Keras model whose outputs include `target_key` and per-layer attention
+        scores named either `attn_scores_{i}` or `mha_{i}_scores`.
+    batch_inputs:
+        dict of model inputs for a single sample, e.g.
+        {"num": [1, T, F], "mask": [1, T] bool} (plus "view": [1, T] if the
+        model was built with a categorical/view input). Passed to the model
+        as-is, so every required input must be present.
+    actual_len:
+        number of real (non-padded) tokens for this sample
+    n_layers:
+        number of transformer layers to use; if None, all attention-score
+        outputs are used in order.
+    target_key:
+        model output to explain (scalar head, e.g. "prediction").
+
+    use_abs_grad:
+        True:  cam = A * |dy/dA|
+        False + positive_only=True:  cam = ReLU(A * dy/dA)
+        False + positive_only=False: cam = A * dy/dA (raw signed)
+
+    Returns
+    -------
+    relevance_real:   [actual_len] normalized token relevance
+    rollout_real:     [actual_len, actual_len] rollout matrix
+    outputs_np:       dict of model outputs (numpy)
+    layer_debug_df:   per-layer diagnostics
+    layer_mats:       list of per-layer mixed matrices
     """
-    x = model.get_layer(f'ln1_{i}')(x_pre + mha_out)
-    ff = model.get_layer(f'ff1_{i}')(x, training=training)
-    ff = model.get_layer(f'ff2_{i}')(ff, training=training)
-    x = model.get_layer(f'ln2_{i}')(x + ff)
-    return x
 
-
-def _run_block_remainder_general(model, i, x_pre, mha_out, training=False):
-    """
-    Runs everything after the MHA call for block i in build_general_embedding_transformer.
-
-      attn_dropout_{i} → attn_residual_{i} → attn_norm_{i}
-      → ffn_dense_1_{i} → ffn_dropout_{i} → ffn_dense_2_{i} → ffn_dropout_{i}
-      → ffn_residual_{i} → ffn_norm_{i}
-    """
-    attn = model.get_layer(f'attn_dropout_{i}')(mha_out, training=training)
-    x = model.get_layer(f'attn_residual_{i}')([x_pre, attn])
-    x = model.get_layer(f'attn_norm_{i}')(x)
-
-    ff = model.get_layer(f'ffn_dense_1_{i}')(x, training=training)
-    ff = model.get_layer(f'ffn_dropout_1_{i}')(ff, training=training)
-    ff = model.get_layer(f'ffn_dense_2_{i}')(ff, training=training)
-    ff = model.get_layer(f'ffn_dropout_2_{i}')(ff, training=training)
-    x = model.get_layer(f'ffn_residual_{i}')([x, ff])
-    x = model.get_layer(f'ffn_norm_{i}')(x)
-    return x
-
-
-def _run_pooling(model, x, inp_mask):
-    """
-    Runs the attention pooling shared by both builders.
-
-    Returns:
-        attn_wts  (B, T)  — softmax pooling weights (used for Chefer weighting)
-        ctx       (B, D)  — pooled context vector
-    """
-    score_h = model.get_layer('attn_h')(x)
-    score = model.get_layer('attn_score')(score_h)
-    score = model.get_layer('attn_score_squeeze')(score)
-    mask_f = model.get_layer('mask_cast')(inp_mask)
-    very_neg = model.get_layer('veryneg')(mask_f)
-    score_m = model.get_layer('score_masked')([score, very_neg])
-    attn_wts = model.get_layer('attn_wts')(score_m)
-    wts_e = model.get_layer('wts_e')(attn_wts)
-    ctx = model.get_layer('apply_wts')([x, wts_e])
-    ctx = model.get_layer('pool')(ctx)
-    return attn_wts, ctx
-
-
-def _find_head_layers(model, target_name):
-    """
-    Walks back from the named target output layer to find the two unnamed
-    shared-tower layers: Dense(128, relu) and Dropout.
-
-    Both builders share the same structure:
-        pool → Dense(128, relu) → Dropout → Dense(target)
-
-    Returns:
-        dense_128  — the Dense(128) layer
-        dropout    — the Dropout layer immediately before the target head
-    """
-    target_layer = model.get_layer(target_name)
-    dropout_layer = target_layer._inbound_nodes[0].input_tensors[0]._keras_history.operation
-    dense_128_layer = dropout_layer._inbound_nodes[0].input_tensors[0]._keras_history.operation
-    return dense_128_layer, dropout_layer
-
-
-# ---------------------------------------------------------------------------
-# Step 2 — GradientTape forward pass
-# Step 3 — Chefer rollout + final relevancy
-# ---------------------------------------------------------------------------
-
-def compute_relevancy_scores(
-    model: keras.Model,
-    inputs: dict,
-    target_name: str,
-    num_layers: int,
-) -> np.ndarray:
-    """
-    Compute per-token relevancy scores using Chefer et al., CVPR 2021.
-
-    Args:
-        model        — trained keras.Model from build_embedding_transformer or
-                       build_general_embedding_transformer
-        inputs       — same input dict you would pass to model.predict()
-        target_name  — name of the output head to explain (key in model.outputs)
-        num_layers   — number of transformer blocks the model was built with
-
-    Returns:
-        np.ndarray of shape (B, T) — per-token relevancy scores.
-        Each row sums to ~1.0. Higher = more relevant to the prediction.
-    """
-    # Detect model variant
-    is_general = 'latent' in inputs
-
-    # Convert all float/int inputs to tensors (mask stays bool)
-    tensor_inputs = {
-        k: tf.cast(v, tf.float32) if k != 'mask' else tf.cast(v, tf.bool)
-        for k, v in inputs.items()
-    }
-
-    # Retrieve head layers before entering the tape
-    dense_128, dropout_layer = _find_head_layers(model, target_name)
-
-    # ------------------------------------------------------------------
-    # Step 2: Manual forward pass inside GradientTape
-    # tape.watch(A_i) is called right after each A_i is produced,
-    # before it flows into block remainder → ensures gradient path exists.
-    # ------------------------------------------------------------------
-    attn_maps = []
+    mask_input = np.asarray(batch_inputs["mask"])
+    valid = mask_input[0].astype(bool)
+    valid_idx = np.where(valid)[0]
 
     with tf.GradientTape(persistent=True) as tape:
+        outputs = explainable_model(batch_inputs, training=False)
 
-        # Pre-transformer
-        if is_general:
-            x, mask, inp_mask = _run_pretransformer_general(model, tensor_inputs)
+        target = outputs[target_key][0, 0]
+
+        attn_keys = _ordered_attn_score_keys(outputs, n_layers)
+        attn_scores_list = [outputs[k] for k in attn_keys]
+
+    layer_mats = []
+    layer_debug = []
+
+    for i, attn_scores in enumerate(attn_scores_list):
+        grads = tape.gradient(target, attn_scores)
+
+        if grads is None:
+            raise ValueError(f"Gradient is None for {attn_keys[i]}")
+
+        A = attn_scores[0]  # [heads, T, T]
+        G = grads[0]        # [heads, T, T]
+
+        if use_abs_grad:
+            cam = A * tf.abs(G)
         else:
-            x, mask, inp_mask = _run_pretransformer_embedding(model, tensor_inputs)
+            cam = A * G
+            if positive_only:
+                cam = tf.nn.relu(cam)
 
-        # Transformer blocks
-        for i in range(num_layers):
-            mha_layer = model.get_layer(f'mha_{i}')
-            mha_out, A_i = mha_layer(x, x, attention_mask=mask,
-                                     return_attention_scores=True, training=False)
-            tape.watch(A_i)           # watch BEFORE A_i is used downstream
-            attn_maps.append(A_i)
+        # Average across heads
+        cam = tf.reduce_mean(cam, axis=0).numpy()  # [T, T]
 
-            if is_general:
-                x = _run_block_remainder_general(model, i, x, mha_out)
-            else:
-                x = _run_block_remainder_embedding(model, i, x, mha_out)
+        # Remove padded positions
+        cam[~valid, :] = 0.0
+        cam[:, ~valid] = 0.0
 
-        # Pooling
-        attn_wts, ctx = _run_pooling(model, x, inp_mask)
+        # Normalize gradient-weighted attention
+        cam = normalize_rows(cam)
 
-        # Shared tower + target head
-        h = dense_128(ctx, training=False)
-        h = dropout_layer(h, training=False)
-        pred = model.get_layer(target_name)(h, training=False)
-        pred_scalar = tf.reduce_sum(pred)
+        # Residual matrix only on real tokens
+        I = np.zeros_like(cam)
+        I[valid_idx, valid_idx] = 1.0
 
-    # ------------------------------------------------------------------
-    # Step 3: Gradient computation + Chefer rollout
-    # ------------------------------------------------------------------
+        # Mix residual path and gradient-weighted attention path
+        M = residual_weight * I + attention_weight * cam
 
-    # Gradient of scalar prediction w.r.t. each attention map
-    grads = [tape.gradient(pred_scalar, A) for A in attn_maps]
-    del tape  # release persistent tape
+        # Remove padding again
+        M[~valid, :] = 0.0
+        M[:, ~valid] = 0.0
 
-    # Chefer per-layer relevancy matrices
-    B = tf.shape(attn_maps[0])[0].numpy()
-    T = tf.shape(attn_maps[0])[2].numpy()
-    I = np.eye(T)[np.newaxis]          # (1, T, T) identity
+        # Normalize rows
+        M = normalize_rows(M)
 
-    R = np.broadcast_to(I, (B, T, T)).copy()   # (B, T, T), start as identity
+        M_real = M[:actual_len, :actual_len]
+        offdiag = M_real.copy()
+        np.fill_diagonal(offdiag, 0.0)
 
-    for A, G in zip(attn_maps, grads):
-        A_np = A.numpy()               # (B, h, T, T)
-        G_np = G.numpy()               # (B, h, T, T)
+        layer_debug.append({
+            "layer": i,
+            "attn_scores_min": float(A.numpy()[:, :actual_len, :actual_len].min()),
+            "attn_scores_max": float(A.numpy()[:, :actual_len, :actual_len].max()),
+            "grad_min": float(G.numpy()[:, :actual_len, :actual_len].min()),
+            "grad_max": float(G.numpy()[:, :actual_len, :actual_len].max()),
+            "cam_sum_real": float(cam[:actual_len, :actual_len].sum()),
+            "M_diag_mean": float(np.diag(M_real).mean()),
+            "M_diag_min": float(np.diag(M_real).min()),
+            "M_diag_max": float(np.diag(M_real).max()),
+            "M_offdiag_sum": float(offdiag.sum()),
+            "M_offdiag_max": float(offdiag.max()),
+        })
 
-        # Element-wise grad × attn, relu, mean over heads → (B, T, T)
-        cam = np.mean(np.maximum(G_np * A_np, 0), axis=1)
+        layer_mats.append(M)
 
-        # Add identity for residual connection, normalize rows
-        cam = cam + I
-        row_sums = cam.sum(axis=-1, keepdims=True)
-        cam = cam / np.where(row_sums == 0, 1.0, row_sums)
+    del tape
 
-        R = cam @ R                    # (B, T, T) rollout
+    # Start rollout from identity over valid tokens
+    rollout = np.zeros_like(layer_mats[0])
+    rollout[valid_idx, valid_idx] = 1.0
 
-    # Weight rollout by learned attention pooling weights
-    w = attn_wts.numpy()               # (B, T)
-    relevancy = np.einsum('bt,btj->bj', w, R)   # (B, T)
+    for M in layer_mats:
+        rollout = M @ rollout
 
-    return relevancy
+    rollout_real = rollout[:actual_len, :actual_len]
+
+    # Since the model later pools all tokens, summarize source-token relevance
+    relevance_real = rollout_real.mean(axis=0)
+    relevance_real = relevance_real / (relevance_real.sum() + 1e-12)
+
+    outputs_np = {k: v.numpy() for k, v in outputs.items()}
+    layer_debug_df = pd.DataFrame(layer_debug)
+
+    return relevance_real, rollout_real, outputs_np, layer_debug_df, layer_mats
 
 
-def plot_relevancy_by_position(
-    relevancy: np.ndarray,
-    mask: np.ndarray,
-    n_bins: int = 10,
-    ax=None,
-    title: str = "Average rollout importance across sequence",
-    xlabel: str = "Relative position within sequence",
-    ylabel: str = "Rollout relevance / uniform",
-    ci_alpha: float = 0.2,
-) -> plt.Axes:
-    """
-    Plot mean rollout relevance (normalized by uniform baseline) vs relative
-    position within the valid sequence.
+def plot_average_rollout_importance_from_results_binned(
+    results,
+    target,
+    output_folder,
+    run_id,
+    n_position_bins=10,
+):
+    import os
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
-    Args:
-        relevancy   — (B, T) float array from compute_relevancy_scores
-        mask        — (B, T) bool array, True = valid token (same mask passed to model)
-        n_bins      — number of equal-width bins along the relative-position axis
-        ax          — existing matplotlib Axes to draw on; creates a new figure if None
-        title       — plot title
-        xlabel      — x-axis label
-        ylabel      — y-axis label
-        ci_alpha    — opacity of the ±1-std confidence band
+    rel_col = f"{target}_relevance"
+    rows = []
 
-    Returns:
-        ax — the matplotlib Axes object
-    """
-    relevancy = np.asarray(relevancy, dtype=float)
-    mask = np.asarray(mask, dtype=bool)
+    for sample_id, rel, n_rows in zip(
+        results["mrn"],
+        results[rel_col],
+        results["n_rows"],
+    ):
+        rel = np.asarray(rel, dtype=float)[: int(n_rows)]
+        n = len(rel)
 
-    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
-    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-
-    # Collect normalized relevance values per bin across all sequences
-    bin_values = [[] for _ in range(n_bins)]
-
-    for b in range(relevancy.shape[0]):
-        valid_idx = np.where(mask[b])[0]
-        T_valid = len(valid_idx)
-        if T_valid == 0:
+        if n == 0:
             continue
+        if n < 2:
+                continue
 
-        uniform = 1.0 / T_valid
-        rel_positions = np.arange(T_valid) / T_valid  # [0, 1)
+        uniform = 1.0 / n
 
-        for rank, t in enumerate(valid_idx):
-            rel_pos = rel_positions[rank]
-            norm_rel = relevancy[b, t] / uniform
-            bin_idx = min(int(rel_pos * n_bins), n_bins - 1)
-            bin_values[bin_idx].append(norm_rel)
+        for pos, score in enumerate(rel):
+            relative_position = pos / (n-1)
 
-    means = np.array([np.mean(v) if v else np.nan for v in bin_values])
-    stds  = np.array([np.std(v)  if v else np.nan for v in bin_values])
+            rows.append({
+                "sample_id": sample_id,
+                "position_index": pos,
+                "n_rows": n,
+                "relative_position": relative_position,
+                "rollout": float(score),
+                "rollout_ratio_uniform": float(score / uniform),
+            })
 
-    if ax is None:
-        _, ax = plt.subplots(figsize=(8, 5))
+    global_rollout_df = pd.DataFrame(rows)
 
-    ax.fill_between(bin_centers, means - stds, means + stds,
-                    alpha=ci_alpha, color="steelblue")
-    ax.plot(bin_centers, means, marker="o", color="steelblue",
-            label="Mean rollout / uniform")
-    ax.axhline(1.0, linestyle="--", color="steelblue", alpha=0.6,
-               label="Uniform baseline")
+    overall_position_summary = (
+        global_rollout_df
+        .assign(
+            position_bin=lambda x: pd.cut(
+                x["relative_position"],
+                bins=np.linspace(0, 1, n_position_bins + 1),
+                include_lowest=True,
+            )
+        )
+        .groupby("position_bin", observed=False)
+        .agg(
+            mean_rollout_ratio=("rollout_ratio_uniform", "mean"),
+            median_rollout_ratio=("rollout_ratio_uniform", "median"),
+            sem_rollout_ratio=(
+                "rollout_ratio_uniform",
+                lambda x: x.std() / np.sqrt(len(x)),
+            ),
+            n_ecgs=("rollout_ratio_uniform", "count"),
+            n_patients=("sample_id", "nunique"),
+        )
+        .reset_index()
+    )
 
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.legend()
+    overall_position_summary["position_mid"] = (
+        overall_position_summary["position_bin"]
+        .apply(lambda x: x.mid)
+        .astype(float)
+    )
 
-    return ax
+    os.makedirs(output_folder, exist_ok=True)
+
+    summary_path = os.path.join(
+        output_folder,
+        f"overall_position_rollout_summary_{target}_{run_id}.csv",
+    )
+    overall_position_summary.to_csv(summary_path, index=False)
+
+    fig = plt.figure(figsize=(9, 5))
+
+    x = overall_position_summary["position_mid"].astype(float).values
+    y = overall_position_summary["mean_rollout_ratio"].astype(float).values
+    sem = overall_position_summary["sem_rollout_ratio"].astype(float).values
+
+    plt.plot(x, y, marker="o", label="Mean rollout / uniform")
+    plt.fill_between(x, y - sem, y + sem, alpha=0.2)
+
+    plt.axhline(
+        1.0,
+        linestyle="--",
+        linewidth=1,
+        label="Uniform baseline",
+    )
+
+    plt.xlabel("Relative Token position within patient sequence")
+    plt.ylabel("Rollout relevance / uniform")
+    plt.title("Average rollout importance across all Token-count groups")
+    plt.legend()
+    plt.tight_layout()
+
+    plot_path = os.path.join(
+        output_folder,
+        f"overall_mean_rollout_ratio_by_position_{target}_{run_id}.png",
+    )
+
+    fig.savefig(plot_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+    return global_rollout_df, overall_position_summary, summary_path, plot_path
