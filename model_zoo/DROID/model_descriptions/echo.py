@@ -87,9 +87,10 @@ def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_outpu
     return model
 
 
-# ---------- Adaptation for regression + classification ---------- #
+# ---------- Adaptation for regression + classification + survival ---------- #
 def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 3), n_output_features=0, categories={},
-                                category_order=None, add_dense={'regressor': False, 'classifier': False}):
+                                category_order=None, survival_heads=None,
+                                add_dense={'regressor': False, 'classifier': False}):
     for layer in encoder.layers:
         layer.trainable = trainable
 
@@ -117,6 +118,15 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
             activation = 'softmax'
             n_classes = categories[category]
             outputs.append(tf.keras.layers.Dense(n_classes, name='cls_'+category, activation=activation)(features))
+
+    for task_name, intervals in (survival_heads or {}).items():
+        outputs.append(
+            tf.keras.layers.Dense(
+                intervals,
+                name=f'survival_{task_name}',
+                activation='sigmoid',
+            )(features),
+        )
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name="regressor_classifier")
 

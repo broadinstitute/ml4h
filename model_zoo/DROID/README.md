@@ -44,6 +44,22 @@ Memory-Mapped Database (lmdb) files. We create one lmdb per echo study in which 
 the values are echo movies that have been anonymized, cropped, and converted to avis. See `echo_to_lmdb.py` for an
 example.
 
+### Survival training
+
+`echo_supervised_training_recipe.py` supports one discrete-time survival task alongside ordinary regression and classification outputs. Supply the task name and each required survival argument:
+
+```commandline
+python echo_supervised_training_recipe.py \
+    --survival_task incident_hf \
+    --survival_event_column hf_event \
+    --survival_follow_up_days_column hf_follow_up_days \
+    --survival_intervals 25 \
+    --survival_days_window 3650 \
+    ...standard training arguments...
+```
+
+The model predicts one conditional survival probability per interval. The recipe encodes the label internally as survival indicators plus an event-bin indicator and treats an event at or before the index time as a first-interval event by default. Add `--survival_prevalent_policy exclude` to remove those cases, or `--survival_blanking_days 30` to apply a 30-day blanking period. If `--survival_task` is present, the recipe raises an error unless every required survival argument is supplied.
+
 ### Inference
 `echo_supervised_inference_recipe.py` can be used to obtain predictions from echo movies given either the DROID-LA or
 DROID-LV specialized encoders.

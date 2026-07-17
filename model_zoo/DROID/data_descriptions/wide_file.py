@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -20,6 +20,7 @@ class EcholabDataDescription(DataDescription):
             name: str,
             categories: Dict = None,
             cls_categories_map: Dict = None,
+            survival_task_configs: Optional[List[Dict]] = None,
             transforms=None,
     ):
         """
@@ -32,6 +33,37 @@ class EcholabDataDescription(DataDescription):
         self.prep_df()
         self.transforms = transforms or []
         self.cls_categories_map = cls_categories_map
+        self.survival_task_configs = survival_task_configs or []
+
+    @staticmethod
+    def _survival_tensor_from_row(row, config):
+        """Encode one event/censoring observation for discrete survival loss.
+
+        The first half marks intervals that were survived.  The second half is
+        one-hot only when an event occurs within the prediction horizon.  The
+        corresponding model head predicts one conditional-survival probability
+        per interval, so its width is ``intervals`` rather than ``2 * intervals``.
+        """
+        intervals = config['intervals']
+        days_window = config['days_window']
+        has_event = float(row[config['event_column']]) == 1.0
+        follow_up_days = float(row[config['follow_up_days_column']]) - config['blanking_days']
+        days_per_interval = days_window / intervals
+        target = np.zeros(2 * intervals, dtype=np.float32)
+
+        if has_event and follow_up_days <= 0:
+            # A prevalent event is represented as a failure in the first bin.
+            target[intervals] = 1.0
+            return target
+
+        for interval, interval_start in enumerate(np.arange(0, days_window, days_per_interval)):
+            interval_end = interval_start + days_per_interval
+            # Only intervals completed before the event/censoring time count as
+            # survived.  The event bin is represented solely in the second half.
+            target[interval] = float(interval_end <= follow_up_days)
+            if has_event and interval_start <= follow_up_days < interval_end:
+                target[intervals + interval] = 1.0
+        return target
 
     def prep_df(self):
         self.wide_df.index = self.wide_df[self.sample_id_column]
@@ -66,21 +98,33 @@ class EcholabDataDescription(DataDescription):
             output_data = np.zeros(len(self.categories), dtype=np.float32)
             output_data[self.categories[data[0]]['index']] = 1.0
             return output_data
-        # ---------- Adaptation for regression + classification ---------- #
-        if self.cls_categories_map:
-            # If training include classification tasks:
+        # ---------- Adaptation for regression + classification + survival ---------- #
+        if self.cls_categories_map or self.survival_task_configs:
             data = []
-            reg_data = row[self.column_names].drop(self.cls_categories_map['cls_output_order']).values
+            if self.column_names:
+                regression_columns = self.column_names
+            else:
+                regression_columns = []
+            if self.cls_categories_map:
+                regression_columns = [
+                    column for column in regression_columns
+                    if column not in self.cls_categories_map['cls_output_order']
+                ]
+            reg_data = row[regression_columns].values
             if len(reg_data) > 0:
                 data.append(np.squeeze(np.array(reg_data, dtype=np.float32)))
 
-            for k in self.cls_categories_map['cls_output_order']:
-                # Changing values to class labels:
-                row_cls_lbl = self.cls_categories_map[k][row[k]]
-                # Changing class indices to one hot vectors
-                cls_one_hot = tf.keras.utils.to_categorical(row_cls_lbl,
-                                                            num_classes=len(self.cls_categories_map[k]))
-                data.append(cls_one_hot)
+            if self.cls_categories_map:
+                for k in self.cls_categories_map['cls_output_order']:
+                    # Changing values to class labels:
+                    row_cls_lbl = self.cls_categories_map[k][row[k]]
+                    # Changing class indices to one hot vectors
+                    cls_one_hot = tf.keras.utils.to_categorical(row_cls_lbl,
+                                                                num_classes=len(self.cls_categories_map[k]))
+                    data.append(cls_one_hot)
+
+            for config in self.survival_task_configs:
+                data.append(self._survival_tensor_from_row(row, config))
 
             if len(data) == 1:
                 data = data[0]
