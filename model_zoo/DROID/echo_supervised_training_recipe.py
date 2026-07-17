@@ -291,7 +291,13 @@ def main(
             raise ValueError(f"Survival task {task['name']} follow_up_days_column must contain finite values.")
         invalid_censoring = (events == 0) & (follow_up_days < 0)
         if invalid_censoring.any():
-            raise ValueError(f"Survival task {task['name']} has censored samples with negative follow-up days.")
+            logging.info(
+                'Excluding %d samples for survival task %s with censored negative follow-up days.',
+                int(invalid_censoring.sum()), task['name'],
+            )
+            wide_df_selected = wide_df_selected.loc[~invalid_censoring]
+            events = events.loc[~invalid_censoring]
+            follow_up_days = follow_up_days.loc[~invalid_censoring]
         if task['prevalent_policy'] == 'exclude':
             prevalent_mask = (events == 1) & (follow_up_days <= task['blanking_days'])
             if prevalent_mask.any():
