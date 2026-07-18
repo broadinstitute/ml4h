@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import io
 import json
 import logging
 import os
@@ -571,30 +572,37 @@ def main(
     io_train_ds = io_train_ds.with_options(options)
     io_valid_ds = io_valid_ds.with_options(options)
 
+    # Unique per-run folder derived from the model parameters and date/time. output_dir may be a
+    # local path or a gs:// bucket path; all writes below go through tf.io.gfile, which handles
+    # both transparently, so checkpoints, TensorBoard logs, and params all land in one place.
     fine_tune_string = f'_fine_tune' if fine_tune else ''
-    output_folder = os.path.join(output_dir,
-                                 f'{datetime.datetime.now().strftime("%Y%m%d%H%M")}_{lmdb_vois}_{olabels}_{n_input_frames}frames{fine_tune_string}_{n_train_patients}')
+    run_name = f'{datetime.datetime.now().strftime("%Y%m%d%H%M")}_{lmdb_vois}_{olabels}_{n_input_frames}frames{fine_tune_string}_{n_train_patients}'
+    output_folder = f'{output_dir.rstrip("/")}/{run_name}'
 
-    os.makedirs(output_folder, exist_ok=True)
-    with open(f'{output_folder}/model_params.json', 'w') as json_file:
+    tf.io.gfile.makedirs(output_folder)
+    with tf.io.gfile.GFile(f'{output_folder}/model_params.json', 'w') as json_file:
         json.dump(model_params, json_file)
 
-    wide_df_selected.to_parquet(f'{output_folder}/wide_df_selected.pq')
+    parquet_buffer = io.BytesIO()
+    wide_df_selected.to_parquet(parquet_buffer)
+    with tf.io.gfile.GFile(f'{output_folder}/wide_df_selected.pq', 'wb') as pq_file:
+        pq_file.write(parquet_buffer.getvalue())
 
     # ---------- Adaptation for regression + classification ---------- #
     # Record output labels new order (after possible reordering of regression and classification):
-    with open(f'{output_folder}/output_labels_final_ordering.json', 'w') as json_file:
+    with tf.io.gfile.GFile(f'{output_folder}/output_labels_final_ordering.json', 'w') as json_file:
         json.dump(output_labels, json_file)
     # Record output mapping for classification tasks (dictionary that contains column names as well):
     if cls_output_names:
         cls_category_map_dicts['add_separate_dense_cls'] = add_separate_dense_cls
         cls_category_map_dicts['add_separate_dense_reg'] = add_separate_dense_reg
-        with open(f'{output_folder}/classification_class_label_mapping_per_output.json', 'w') as json_file:
+        with tf.io.gfile.GFile(f'{output_folder}/classification_class_label_mapping_per_output.json', 'w') as json_file:
             json.dump(cls_category_map_dicts, json_file)
     # ---------------------------------------------------------------- #
 
     es_flags = {'es_patience': es_patience, 'es_loss2monitor': es_loss2monitor}
 
+    logging.info(f'Writing run artifacts (checkpoints, logs, params) to {output_folder}')
     logging.info(model.summary())
     trained_model = train_model(
         model,
@@ -630,7 +638,11 @@ if __name__ == "__main__":
     parser.add_argument('--fine_tune', action='store_true')
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)
-    parser.add_argument('--output_dir', type=str)
+    parser.add_argument('--output_dir', type=str,
+                        default='gs://mgb-home/alalusim/droid-af/artifacts/training_runs/',
+                        help='Base directory for all run artifacts (checkpoints, TensorBoard logs, params). '
+                             'May be a local path or a gs:// bucket path. A unique per-run subfolder named '
+                             'from the model parameters and date/time is created under it.')
     parser.add_argument('--splits_file')
     parser.add_argument('--adam', default=None, type=float)
     parser.add_argument('--scale_outputs', action='store_true')
