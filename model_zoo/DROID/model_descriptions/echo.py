@@ -80,7 +80,9 @@ def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_outpu
     features = tf.keras.layers.Dropout(dropout_rate)(features)
     features = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
     features = tf.keras.layers.Dropout(dropout_rate)(features)
-    outputs = tf.keras.layers.Dense(n_output_features, activation=None, name='echolab')(features)
+    # Force this layer's output to float32: under a mixed-precision policy, output layers should
+    # compute/emit float32 so the loss isn't computed on lower-precision activations.
+    outputs = tf.keras.layers.Dense(n_output_features, activation=None, name='echolab', dtype='float32')(features)
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name="regressor")
 
@@ -100,14 +102,17 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
     features = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
     features = tf.keras.layers.Dropout(dropout_rate)(features)
 
+    # Every head below is the model's final layer for its output, so each is pinned to dtype='float32'.
+    # Under a mixed-precision policy (e.g. mixed_float16), this keeps the emitted logits/probabilities
+    # (and the losses computed from them) in float32 instead of the lower-precision compute dtype.
     outputs = []
     if n_output_features > 0:
         if add_dense['regressor']:
             features_reg = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
             features_reg = tf.keras.layers.Dropout(dropout_rate)(features_reg)
-            outputs.append(tf.keras.layers.Dense(n_output_features, activation=None, name='echolab')(features_reg))
+            outputs.append(tf.keras.layers.Dense(n_output_features, activation=None, name='echolab', dtype='float32')(features_reg))
         else:
-            outputs.append(tf.keras.layers.Dense(n_output_features, activation=None, name='echolab')(features))
+            outputs.append(tf.keras.layers.Dense(n_output_features, activation=None, name='echolab', dtype='float32')(features))
     if len(categories.keys()) > 0:
         if add_dense['classifier']:
             features = tf.keras.layers.Dense(hidden_units, activation="relu")(features)
@@ -117,7 +122,7 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
             # (dictionary items ordering is not necessarily consistent)
             activation = 'softmax'
             n_classes = categories[category]
-            outputs.append(tf.keras.layers.Dense(n_classes, name='cls_'+category, activation=activation)(features))
+            outputs.append(tf.keras.layers.Dense(n_classes, name='cls_'+category, activation=activation, dtype='float32')(features))
 
     for task_name, intervals in (survival_heads or {}).items():
         outputs.append(
@@ -125,6 +130,7 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
                 intervals,
                 name=f'survival_{task_name}',
                 activation='sigmoid',
+                dtype='float32',
             )(features),
         )
 
