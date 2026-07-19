@@ -612,7 +612,7 @@ def main(
         n_train_steps,
         n_valid_steps,
         output_folder,
-        es_flags
+        es_flags,
     )
 
 
