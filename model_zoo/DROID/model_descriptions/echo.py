@@ -167,6 +167,19 @@ def train_model(
         # Profiler window that captures GPU/CPU/memory/VRAM utilization (Profile tab).
         profile_batch=[20, 30],
     )
+    tb_callback = tf.keras.callbacks.TensorBoard(
+        log_dir=f'{output_folder}/logs',
+        # Log weight histograms/distributions every epoch.
+        histogram_freq=1,
+        # Scalar (loss/metric) summaries are written once per epoch.
+        update_freq='epoch',
+        # Model graph for the Graphs tab.
+        write_graph=True,
+        # Throughput scalar, complements the profiler's utilization traces.
+        write_steps_per_second=True,
+        # Profiler window that captures GPU/CPU/memory/VRAM utilization (Profile tab).
+        profile_batch=[20, 30],
+    )
     es_callback = tf.keras.callbacks.EarlyStopping(monitor=es_flags['es_loss2monitor'],
                                                    patience=es_flags['es_patience'])
     cp_callback = tf.keras.callbacks.ModelCheckpoint(

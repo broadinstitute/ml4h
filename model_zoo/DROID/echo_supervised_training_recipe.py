@@ -630,6 +630,7 @@ def main(
         output_folder,
         es_flags,
 <<<<<<< HEAD
+<<<<<<< HEAD
         batch_size=batch_size,
         valid_ids=valid_ids,
         output_labels=output_labels,
@@ -637,6 +638,8 @@ def main(
         cls_category_map_dicts=cls_category_map_dicts,
         survival_tasks=survival_tasks,
         run_summary=run_summary,
+=======
+>>>>>>> 8b196cb (add tensorboard profiling)
 =======
 >>>>>>> 8b196cb (add tensorboard profiling)
     )
