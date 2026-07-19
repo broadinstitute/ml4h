@@ -256,7 +256,7 @@ def main(
 
                     yield batch_inputs, batch_outputs
 
-        return tf.data.Dataset.from_generator(generator, output_signature=output_signature).prefetch(tf.data.AUTOTUNE)
+        return tf.data.Dataset.from_generator(generator, output_signature=output_signature).prefetch(1)
 
     # ---------------------------------------------------------------- #
     output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
