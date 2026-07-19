@@ -136,6 +136,7 @@ def main(
         add_separate_dense_cls,
         loss_weights,
         randomize_start_frame,
+        mixed_precision=True,
         survival_task=None,
         survival_event_column=None,
         survival_follow_up_days_column=None,
@@ -451,6 +452,12 @@ def main(
         shuffle=False,
     )
 
+    if mixed_precision:
+        # Must be set before any layers are built: it changes the default compute dtype new
+        # layers pick up, so it has no effect on layers created before this call.
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        logging.info('Mixed precision enabled (policy=mixed_float16).')
+
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
         _, backbone = create_movinet_classifier(
@@ -669,6 +676,10 @@ if __name__ == "__main__":
     parser.add_argument('--es_loss2monitor', default='val_loss', type=str,
                         help='Loss on which early stopping is based: "val_loss", "val_echolab_loss", "val_cls_COLUMN-NAME_loss", or "val_survival_NAME_loss".')
     parser.add_argument('--randomize_start_frame', action='store_true')
+    parser.add_argument('--mixed_precision', dest='mixed_precision', action='store_true', default=True,
+                        help='Train with the mixed_float16 policy (default: on).')
+    parser.add_argument('--no_mixed_precision', dest='mixed_precision', action='store_false',
+                        help='Disable mixed precision and train fully in float32.')
     # ---------- Adaptation for regression + classification ---------- #
     parser.add_argument('--output_labels_types', default='r', type=str,
                         help='A string indicating task types: r for regression, c for classification. Should be of length 1 or the same length of the specified output_labels variable, e.g. "r" or "rrcr".')
@@ -736,6 +747,7 @@ if __name__ == "__main__":
         loss_weights=args.loss_weights,
         # ---------------------------------------------------------------- #
         randomize_start_frame=args.randomize_start_frame,
+        mixed_precision=args.mixed_precision,
         survival_task=args.survival_task,
         survival_event_column=args.survival_event_column,
         survival_follow_up_days_column=args.survival_follow_up_days_column,
