@@ -264,7 +264,10 @@ def survival_likelihood_loss(n_intervals):
         failure_likelihood = 1. - (y_true[:, n_intervals:] * y_pred[:, 0:n_intervals])  # Loss only for individuals who failed
         survival_likelihood = y_true[:, 0:n_intervals] * y_pred[:, 0:n_intervals]  # Loss for intervals that were survived
         survival_likelihood += 1. - y_true[:, 0:n_intervals]  # No survival loss if interval was censored or failed
-        return K.sum(-K.log(K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)), axis=-1)  # return -log likelihood
+        # Small additive epsilon (on top of the existing clip) guards log(0) -> -inf, which otherwise
+        # turns into NaN once gradients are unscaled from float16 during mixed-precision training.
+        combined_likelihood = K.clip(K.concatenate((survival_likelihood, failure_likelihood)), K.epsilon(), None)
+        return K.sum(-K.log(combined_likelihood + 1e-7), axis=-1)  # return -log likelihood
 
     return loss
 
