@@ -548,9 +548,9 @@ def plot_average_rollout_importance_from_results_binned(
         label="Uniform baseline",
     )
 
-    plt.xlabel("Relative Token position within patient sequence")
+    plt.xlabel(f"Relative {target}(Token) position within patient sequence")
     plt.ylabel("Rollout relevance / uniform")
-    plt.title("Average rollout importance across all Token-count groups")
+    plt.title(f"Average rollout importance across all {target} Token-count groups")
     plt.legend()
     plt.tight_layout()
 

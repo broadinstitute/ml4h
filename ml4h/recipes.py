@@ -1210,7 +1210,7 @@ def infer_transformer_on_parquet(args):
     pre_model = keras.models.load_model(args.model_file)
 
     info = extract_build_args_from_transformer_model(pre_model)
-    print(f"Extracted build args from model: {info}")
+    
     builder_type = info["builder_type"]
     build_args = info["build_args"]
 
@@ -1282,7 +1282,8 @@ def infer_transformer_on_parquet(args):
     for t in all_targets:
         results[f'{t}_prediction'] = []
         results[t] = []
-        results[f'{t}_relevance'] = []
+        if args.inspect_model:
+            results[f'{t}_relevance'] = []
 
     Feat = len(input_numeric_columns)
     
@@ -1339,47 +1340,28 @@ def infer_transformer_on_parquet(args):
 
         # Run inference
         outputs = model(inputs, training=False)
-        from ml4h.models.transformer_interpretability import grad_weighted_attention_rollout
 
-        relevance_by_target = {}
-        for t in all_targets:
-            relevance, rollout, outputs_np, layer_debug_df, layer_mats = (
-                grad_weighted_attention_rollout(
-                    explainable_model=model_explain,   # the second return of build_embedding_transformer
-                    batch_inputs=inputs,               # full dict: num/mask (+ view if categorical)
-                    actual_len=T,                      # number of valid (non-padded) tokens
-                    n_layers=None,                     # None → auto-detect all mha_*_scores layers
-                    target_key=t,                      # binary/regression head name
-                    residual_weight=0.5,
-                    attention_weight=0.5,
-                    use_abs_grad=True,
-                    positive_only=False,
+        if args.inspect_model:
+            from ml4h.models.transformer_interpretability import grad_weighted_attention_rollout
+
+            relevance_by_target = {}
+            for t in all_targets:
+                relevance, rollout, outputs_np, layer_debug_df, layer_mats = (
+                    grad_weighted_attention_rollout(
+                        explainable_model=model_explain,   # the second return of build_embedding_transformer
+                        batch_inputs=inputs,               # full dict: num/mask (+ view if categorical)
+                        actual_len=T,                      # number of valid (non-padded) tokens
+                        n_layers=None,                     # None → auto-detect all mha_*_scores layers
+                        target_key=t,                      # binary/regression head name
+                        residual_weight=0.5,
+                        attention_weight=0.5,
+                        use_abs_grad=True,
+                        positive_only=False,
+                    )
                 )
-            )
-            '''
-            relevance, _ = chefer_rollout_keras(
-                model_explain=model_explain,
-                batch_inputs=inputs,
-                target_name=t,
-                class_index=None,
-                pool_mode="uniform"
-            )
-            '''
-            relevance_by_target[t] = relevance
 
-        #CHECK RELEVANCES HERE
-        if i < 20:
-            rel = relevance_by_target[t][:n_rows]
-            uniform = 1.0 / n_rows
+                relevance_by_target[t] = relevance
 
-            print("\nDEBUG RELEVANCE")
-            print("gid:", gid)
-            print("n_rows:", n_rows)
-            print("rel sum:", rel.sum())
-            print("rel min/max:", rel.min(), rel.max())
-            print("first ratio:", rel[0] / uniform)
-            print("last ratio:", rel[-1] / uniform)
-            print("argmax:", rel.argmax(), "last index:", n_rows - 1)
         # Store results
         results['mrn'].append(gid)
         results[sort_column].append(arr_sort_col[start])  # First/top entry's sort column value
@@ -1390,9 +1372,10 @@ def infer_transformer_on_parquet(args):
             pred = outputs[t].numpy().flatten()[0]
             results[f'{t}_prediction'].append(float(pred))
 
-            results[f'{t}_relevance'].append(
-                relevance_by_target[t].astype(float).tolist()
-            )
+            if args.inspect_model:
+                results[f'{t}_relevance'].append(
+                    relevance_by_target[t].astype(float).tolist()
+                )
 
             # Get true label (max per group)
             if arr_tgts[t] is not None:
@@ -1406,17 +1389,18 @@ def infer_transformer_on_parquet(args):
     # Create output dataframe
     output_df = pd.DataFrame(results)
 
-    for t in all_targets:
-        _, summary_df, summary_path, plot_path = plot_average_rollout_importance_from_results_binned(
-            results=results,
-            target=t,
-            output_folder=f"{args.output_folder}/{args.id}",
-            run_id=args.id,
-            n_position_bins=10,
-        )
+    if args.inspect_model:
+        for t in all_targets:
+            _, summary_df, summary_path, plot_path = plot_average_rollout_importance_from_results_binned(
+                results=results,
+                target=t,
+                output_folder=f"{args.output_folder}/{args.id}",
+                run_id=args.id,
+                n_position_bins=10,
+            )
 
-    logging.info(f"Saved rollout summary for {t} to {summary_path}")
-    logging.info(f"Saved rollout plot for {t} to {plot_path}")
+        logging.info(f"Saved rollout summary for {t} to {summary_path}")
+        logging.info(f"Saved rollout plot for {t} to {plot_path}")
 
     # Calculate and report performance metrics before saving
     logging.info(f"\n=== Performance Metrics ===")
