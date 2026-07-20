@@ -612,14 +612,6 @@ def main(
         'batch_size': batch_size,
         'n_train_patients': n_train_patients,
     }
-    run_summary = {
-        'run_name': run_name,
-        'output_labels': output_labels,
-        'selected_views': selected_views,
-        'epochs': epochs,
-        'batch_size': batch_size,
-        'n_train_patients': n_train_patients,
-    }
     trained_model = train_model(
         model,
         io_train_ds,
@@ -629,8 +621,6 @@ def main(
         n_valid_steps,
         output_folder,
         es_flags,
-<<<<<<< HEAD
-<<<<<<< HEAD
         batch_size=batch_size,
         valid_ids=valid_ids,
         output_labels=output_labels,
@@ -638,10 +628,6 @@ def main(
         cls_category_map_dicts=cls_category_map_dicts,
         survival_tasks=survival_tasks,
         run_summary=run_summary,
-=======
->>>>>>> 8b196cb (add tensorboard profiling)
-=======
->>>>>>> 8b196cb (add tensorboard profiling)
     )
 
 
