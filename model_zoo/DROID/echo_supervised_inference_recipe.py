@@ -109,8 +109,13 @@ def main(
     patient_valid = splits['patient_valid']
 
     if n_train_patients != 'all':
-        patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
-        patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
+        n_train_patients_value = float(n_train_patients)
+        if 0 < n_train_patients_value <= 1:
+            patient_train = patient_train[:int(len(patient_train) * n_train_patients_value)]
+            patient_valid = patient_valid[:int(len(patient_valid) * n_train_patients_value)]
+        else:
+            patient_train = patient_train[:int(n_train_patients_value * 0.9)]
+            patient_valid = patient_valid[:int(n_train_patients_value * 0.1)]
 
     if 'trainvalid' in lmdb_folder:
         patient_inference = patient_train + patient_valid

@@ -317,8 +317,13 @@ def main(
     patient_valid = splits['patient_valid']
 
     if n_train_patients != 'all':
-        patient_train = patient_train[:int(int(n_train_patients) * 0.9)]
-        patient_valid = patient_valid[:int(int(n_train_patients) * 0.1)]
+        n_train_patients_value = float(n_train_patients)
+        if 0 < n_train_patients_value <= 1:
+            patient_train = patient_train[:int(len(patient_train) * n_train_patients_value)]
+            patient_valid = patient_valid[:int(len(patient_valid) * n_train_patients_value)]
+        else:
+            patient_train = patient_train[:int(n_train_patients_value * 0.9)]
+            patient_valid = patient_valid[:int(n_train_patients_value * 0.1)]
 
     train_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_train]
     valid_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_valid]
@@ -621,7 +626,6 @@ def main(
         n_valid_steps,
         output_folder,
         es_flags,
-<<<<<<< HEAD
         batch_size=batch_size,
         valid_ids=valid_ids,
         output_labels=output_labels,
@@ -629,8 +633,6 @@ def main(
         cls_category_map_dicts=cls_category_map_dicts,
         survival_tasks=survival_tasks,
         run_summary=run_summary,
-=======
->>>>>>> 8b196cb (add tensorboard profiling)
     )
 
 
