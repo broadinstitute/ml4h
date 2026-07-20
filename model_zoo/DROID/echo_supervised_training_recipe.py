@@ -612,6 +612,14 @@ def main(
         'batch_size': batch_size,
         'n_train_patients': n_train_patients,
     }
+    run_summary = {
+        'run_name': run_name,
+        'output_labels': output_labels,
+        'selected_views': selected_views,
+        'epochs': epochs,
+        'batch_size': batch_size,
+        'n_train_patients': n_train_patients,
+    }
     trained_model = train_model(
         model,
         io_train_ds,
