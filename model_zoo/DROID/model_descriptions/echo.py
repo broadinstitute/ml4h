@@ -4,6 +4,8 @@ import tensorflow as tf
 # from official.common import flags as tfm_flags
 from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
 
+from droid_callbacks import MetricsHistoryCallback, SlackNotifierCallback, run_validation_inference
+
 learning_rate = 0.0001
 hidden_units = 256
 dropout_rate = 0.5
@@ -143,7 +145,14 @@ def train_model(
         n_valid_steps,
         output_folder,
         es_flags,
-        class_weight=None
+        class_weight=None,
+        batch_size=None,
+        valid_ids=None,
+        output_labels=None,
+        output_reg_len=0,
+        cls_category_map_dicts=None,
+        survival_tasks=None,
+        run_summary=None,
 ):
     tb_callback = tf.keras.callbacks.TensorBoard(f'{output_folder}/logs', profile_batch=[160, 170])
     es_callback = tf.keras.callbacks.EarlyStopping(monitor=es_flags['es_loss2monitor'],
@@ -155,21 +164,45 @@ def train_model(
         save_weights_only=True,
         mode='min'
     )
-    model.fit(
-        train_loader,
-        validation_data=valid_loader,
-        callbacks=[tb_callback, es_callback, cp_callback],
-        epochs=epochs,
-        steps_per_epoch=n_train_steps,
-        validation_steps=n_valid_steps,
-        workers=1,
-        max_queue_size=1,
-        use_multiprocessing=False,
-        class_weight=class_weight
-    )
+    metrics_history_callback = MetricsHistoryCallback(output_folder)
+    slack_callback = SlackNotifierCallback(output_folder, run_summary=run_summary)
+
+    try:
+        model.fit(
+            train_loader,
+            validation_data=valid_loader,
+            callbacks=[tb_callback, es_callback, cp_callback, metrics_history_callback, slack_callback],
+            epochs=epochs,
+            steps_per_epoch=n_train_steps,
+            validation_steps=n_valid_steps,
+            workers=1,
+            max_queue_size=1,
+            use_multiprocessing=False,
+            class_weight=class_weight
+        )
+    except Exception as exc:
+        slack_callback.notify_failure(exc)
+        raise
 
     model.load_weights(
         f'{output_folder}/model/chkp'
     )
+
+    validation_summary = None
+    if batch_size and valid_ids and n_valid_steps > 0:
+        validation_summary = run_validation_inference(
+            model=model,
+            valid_dataset=valid_loader,
+            n_valid_steps=n_valid_steps,
+            batch_size=batch_size,
+            valid_ids=valid_ids,
+            output_folder=output_folder,
+            output_labels=output_labels or [],
+            output_reg_len=output_reg_len,
+            cls_category_map_dicts=cls_category_map_dicts,
+            survival_tasks=survival_tasks,
+        )
+
+    slack_callback.notify_success(validation_summary)
 
     return model

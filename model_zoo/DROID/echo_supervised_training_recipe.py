@@ -604,6 +604,14 @@ def main(
 
     logging.info(f'Writing run artifacts (checkpoints, logs, params) to {output_folder}')
     logging.info(model.summary())
+    run_summary = {
+        'run_name': run_name,
+        'output_labels': output_labels,
+        'selected_views': selected_views,
+        'epochs': epochs,
+        'batch_size': batch_size,
+        'n_train_patients': n_train_patients,
+    }
     trained_model = train_model(
         model,
         io_train_ds,
@@ -612,7 +620,14 @@ def main(
         n_train_steps,
         n_valid_steps,
         output_folder,
-        es_flags
+        es_flags,
+        batch_size=batch_size,
+        valid_ids=valid_ids,
+        output_labels=output_labels,
+        output_reg_len=output_reg_len,
+        cls_category_map_dicts=cls_category_map_dicts,
+        survival_tasks=survival_tasks,
+        run_summary=run_summary,
     )
 
 
