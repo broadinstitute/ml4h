@@ -271,8 +271,12 @@ def run_validation_inference(
 
     predictions_df = pd.DataFrame({'sample_id': valid_ids[:n_valid_steps * batch_size]})
     for name in y_true:
+        # y_true and y_pred can differ in width (e.g. survival labels are 2*intervals wide —
+        # survived/failure flags — while the model's survival head only outputs `intervals`
+        # columns), so each is indexed against its own shape rather than a shared range.
         for i in range(y_true[name].shape[1]):
             predictions_df[f'{name}_true_{i}'] = y_true[name][:, i]
+        for i in range(y_pred[name].shape[1]):
             predictions_df[f'{name}_pred_{i}'] = y_pred[name][:, i]
 
     parquet_buffer = io.BytesIO()

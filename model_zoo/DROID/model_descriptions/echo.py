@@ -153,6 +153,7 @@ def train_model(
         cls_category_map_dicts=None,
         survival_tasks=None,
         run_summary=None,
+        run_validation_inference_flag=False,
 ):
     tb_callback = tf.keras.callbacks.TensorBoard(
         log_dir=f'{output_folder}/logs',
@@ -201,7 +202,7 @@ def train_model(
     )
 
     validation_summary = None
-    if batch_size and valid_ids and n_valid_steps > 0:
+    if run_validation_inference_flag and batch_size and valid_ids and n_valid_steps > 0:
         validation_summary = run_validation_inference(
             model=model,
             valid_dataset=valid_loader,

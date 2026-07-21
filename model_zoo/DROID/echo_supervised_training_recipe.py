@@ -143,6 +143,7 @@ def main(
         survival_days_window=None,
         survival_blanking_days=0,
         survival_prevalent_policy='first_interval',
+        run_validation_inference=False,
 ):
 
     output_labels = output_labels or []
@@ -633,6 +634,7 @@ def main(
         cls_category_map_dicts=cls_category_map_dicts,
         survival_tasks=survival_tasks,
         run_summary=run_summary,
+        run_validation_inference_flag=run_validation_inference,
     )
 
 
@@ -698,6 +700,9 @@ if __name__ == "__main__":
     parser.add_argument('--survival_prevalent_policy', choices=['first_interval', 'exclude'], default='first_interval',
                         help='How to handle events at or before the blanking period.')
     # ---------------------------------------------------------------- #
+    parser.add_argument('--run_validation_inference', action='store_true',
+                        help='Run a post-training validation inference pass over the best checkpoint '
+                             'and save predictions/metrics under output_folder/validation_inference.')
     args = parser.parse_args()
 
     root = logging.getLogger()
@@ -745,4 +750,5 @@ if __name__ == "__main__":
         survival_days_window=args.survival_days_window,
         survival_blanking_days=args.survival_blanking_days,
         survival_prevalent_policy=args.survival_prevalent_policy,
+        run_validation_inference=args.run_validation_inference,
     )
