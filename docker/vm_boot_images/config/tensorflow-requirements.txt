@@ -47,3 +47,4 @@ pystrum
 av
 lmdb
 requests
+psutil

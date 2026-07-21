@@ -12,6 +12,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import psutil
 import requests
 import tensorflow as tf
 
@@ -37,6 +38,33 @@ def _savefig_bytes(fig):
     fig.savefig(buf, format='png', bbox_inches='tight')
     plt.close(fig)
     return buf.getvalue()
+
+
+def _bytes_to_gb(num_bytes):
+    return num_bytes / (1024 ** 3)
+
+
+def _gpu_vram_usage_gb():
+    """Sums TensorFlow's own current/peak allocator usage across all visible GPUs.
+
+    Uses tf.config.experimental.get_memory_info rather than nvidia-smi so the
+    numbers reflect what TensorFlow's allocator actually reserved, not total
+    device memory (which nvidia-smi would report as claimed by the whole process).
+    """
+    current_bytes, peak_bytes = 0, 0
+    for device in tf.config.list_logical_devices('GPU'):
+        try:
+            info = tf.config.experimental.get_memory_info(device.name)
+        except ValueError:
+            continue
+        current_bytes += info['current']
+        peak_bytes += info['peak']
+    return _bytes_to_gb(current_bytes), _bytes_to_gb(peak_bytes)
+
+
+def _system_memory_usage_gb():
+    vm = psutil.virtual_memory()
+    return _bytes_to_gb(vm.used), _bytes_to_gb(vm.total)
 
 
 class MetricsHistoryCallback(tf.keras.callbacks.Callback):
@@ -65,6 +93,10 @@ class MetricsHistoryCallback(tf.keras.callbacks.Callback):
                 row[key] = float(value)
             except (TypeError, ValueError):
                 pass
+
+        row['gpu_vram_used_gb'], row['gpu_vram_peak_gb'] = _gpu_vram_usage_gb()
+        row['system_memory_used_gb'], row['system_memory_total_gb'] = _system_memory_usage_gb()
+
         self.history.append(row)
 
         df = pd.DataFrame(self.history).set_index('epoch')
