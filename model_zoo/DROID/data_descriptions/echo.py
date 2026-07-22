@@ -2,8 +2,6 @@ import os
 import io
 import av
 import itertools
-import threading
-from collections import OrderedDict
 
 import lmdb
 
@@ -40,7 +38,6 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
             skip_modulo: int = 1,
             start_frame=0,
             randomize_start_frame = False,
-            env_cache_size: int = 128,
     ):
 
         self.local_lmdb_dir = local_lmdb_dir
@@ -51,33 +48,6 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
         self.transforms = transforms or []
         self.skip_modulo = skip_modulo
         self.randomize_start_frame = randomize_start_frame
-
-        # Bounded, thread-local cache of open LMDB environments so we don't pay the
-        # env-open cost (mmap setup + metadata read) on every get_raw_data call.
-        # Caches are thread-local so that if decoding is later parallelized across
-        # threads (e.g. tf.data num_parallel_calls), one thread evicting/closing an
-        # env can never pull it out from under another thread. FD/address-space usage
-        # is bounded by env_cache_size per thread.
-        self._env_cache_size = env_cache_size
-        self._thread_local = threading.local()
-
-    def _get_env(self, lmdb_folder):
-        cache = getattr(self._thread_local, 'env_cache', None)
-        if cache is None:
-            cache = OrderedDict()
-            self._thread_local.env_cache = cache
-
-        env = cache.get(lmdb_folder)
-        if env is not None:
-            cache.move_to_end(lmdb_folder)
-            return env
-
-        env = lmdb.open(lmdb_folder, readonly=True, lock=False)
-        cache[lmdb_folder] = env
-        while len(cache) > self._env_cache_size:
-            _, evicted = cache.popitem(last=False)
-            evicted.close()
-        return env
 
     def get_loading_options(self, sample_id):
         _, study, view = sample_id.split('_')
@@ -101,7 +71,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
 
         lmdb_folder = os.path.join(self.local_lmdb_dir, f"{study}.lmdb")
 
-        env = self._get_env(lmdb_folder)
+        env = lmdb.open(lmdb_folder, readonly=True, lock=False)
 
         frames = []
         with env.begin(buffers=True) as txn:
@@ -144,6 +114,7 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
                 frames.append(frame)
             del video_frames
             video_container.close()
+        env.close()
         return np.squeeze(np.array(frames, dtype='float32') / 255.)
 
     @property
