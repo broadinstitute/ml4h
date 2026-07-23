@@ -227,36 +227,36 @@ def main(
     def make_dataset(input_dd, output_dd, sample_ids, batch_size, output_signature, shuffle):
         sample_ids = list(sample_ids)
 
+        # One pass over sample_ids per iteration. The dataset must stay finite so
+        # the fresh validation iterator Keras builds every epoch runs to exhaustion
+        # and releases its batches and prefetch buffer (an infinite generator here
+        # leaks multiple GB of RAM per epoch). The training call site adds
+        # .repeat(), which restarts the generator each pass, so shuffle still
+        # reshuffles every epoch.
         def generator():
-            while True:
-                epoch_ids = sample_ids.copy()
-                if shuffle:
-                    np.random.shuffle(epoch_ids)
-                for start_idx in range(0, len(epoch_ids) - batch_size + 1, batch_size):
-                    batch_ids = epoch_ids[start_idx:start_idx + batch_size]
-                    batch_inputs = []
-                    batch_outputs = []
-                    for sample_id in batch_ids:
-                        batch_inputs.append(input_dd.get_raw_data(sample_id))
-                        batch_outputs.append(output_dd.get_raw_data(sample_id))
+            epoch_ids = sample_ids.copy()
+            if shuffle:
+                np.random.shuffle(epoch_ids)
+            for start_idx in range(0, len(epoch_ids) - batch_size + 1, batch_size):
+                batch_ids = epoch_ids[start_idx:start_idx + batch_size]
+                batch_inputs = []
+                batch_outputs = []
+                for sample_id in batch_ids:
+                    batch_inputs.append(input_dd.get_raw_data(sample_id))
+                    batch_outputs.append(output_dd.get_raw_data(sample_id))
 
-                    batch_inputs = np.stack(batch_inputs).astype(np.float32, copy=False)
-                    if batch_outputs and isinstance(batch_outputs[0], list):
-                        batch_outputs = tuple(
-                            np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
-                            for output_idx in range(len(batch_outputs[0]))
-                        )
-                    elif batch_outputs and isinstance(batch_outputs[0], tuple):
-                        batch_outputs = tuple(
-                            np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
-                            for output_idx in range(len(batch_outputs[0]))
-                        )
-                    else:
-                        batch_outputs = np.stack(batch_outputs).astype(np.float32, copy=False)
+                batch_inputs = np.stack(batch_inputs).astype(np.float32, copy=False)
+                if batch_outputs and isinstance(batch_outputs[0], (list, tuple)):
+                    batch_outputs = tuple(
+                        np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
+                        for output_idx in range(len(batch_outputs[0]))
+                    )
+                else:
+                    batch_outputs = np.stack(batch_outputs).astype(np.float32, copy=False)
 
-                    yield batch_inputs, batch_outputs
+                yield batch_inputs, batch_outputs
 
-        return tf.data.Dataset.from_generator(generator, output_signature=output_signature).prefetch(tf.data.AUTOTUNE)
+        return tf.data.Dataset.from_generator(generator, output_signature=output_signature)
 
     # ---------------------------------------------------------------- #
     output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
@@ -446,7 +446,7 @@ def main(
         batch_size,
         output_signatures,
         shuffle=True,
-    )
+    ).repeat().prefetch(tf.data.AUTOTUNE)
 
     io_valid_ds = make_dataset(
         INPUT_DD_VALID,
@@ -455,7 +455,7 @@ def main(
         batch_size,
         output_signatures,
         shuffle=False,
-    )
+    ).prefetch(tf.data.AUTOTUNE)
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
