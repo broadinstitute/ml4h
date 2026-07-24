@@ -624,7 +624,9 @@ def main(
         elif optimizer_name == 'adamw':
             adamw_cls = getattr(tf.keras.optimizers, 'AdamW', None)
             if adamw_cls is None:
-                adamw_cls = getattr(tf.keras.optimizers.experimental, 'AdamW', None)
+                experimental_optimizers = getattr(tf.keras.optimizers, 'experimental', None)
+                if experimental_optimizers is not None:
+                    adamw_cls = getattr(experimental_optimizers, 'AdamW', None)
             if adamw_cls is None:
                 raise ValueError('AdamW is not available in this TensorFlow/Keras build; use --optimizer adam or rmsprop.')
             optimizer = adamw_cls(learning_rate=lr, weight_decay=weight_decay)
