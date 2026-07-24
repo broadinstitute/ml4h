@@ -128,6 +128,13 @@ def main(
         movinet_chkp_dir,
         output_dir,
         adam,
+        optimizer_name,
+        learning_rate,
+        lr_schedule,
+        warmup_epochs,
+        warmup_start_frac,
+        alpha,
+        weight_decay,
         scale_outputs,
         es_patience,
         es_loss2monitor,
@@ -534,22 +541,42 @@ def main(
                 model = create_regressor_classifier(encoder, **func_args)
                 # ---------------------------------------------------------------- #
 
-        if adam:
-            optimizer = tf.keras.optimizers.Adam(learning_rate=adam)
-        else:
-            initial_learning_rate = 0.00005 * batch_size
-            learning_rate = tf.keras.optimizers.schedules.CosineDecay(
-                initial_learning_rate,
-                decay_steps=n_train_steps * epochs,
-            )
+        # Peak LR: prefer explicit --learning_rate; fall back to the legacy --adam
+        # value, then to the historical RMSprop default scaled by batch size.
+        peak_lr = learning_rate if learning_rate is not None else adam
+        if peak_lr is None:
+            peak_lr = 0.00005 * batch_size
 
+        total_steps = n_train_steps * epochs
+        warmup_steps = int(warmup_epochs * n_train_steps)
+
+        if lr_schedule == 'cosine':
+            # Native Keras CosineDecay: linear warmup from initial_learning_rate to
+            # warmup_target over warmup_steps, then cosine decay to alpha*peak_lr.
+            lr = tf.keras.optimizers.schedules.CosineDecay(
+                initial_learning_rate=(peak_lr * warmup_start_frac) if warmup_steps > 0 else peak_lr,
+                decay_steps=max(1, total_steps - warmup_steps),
+                alpha=alpha,
+                warmup_target=peak_lr if warmup_steps > 0 else None,
+                warmup_steps=warmup_steps,
+            )
+        else:  # 'constant'
+            lr = peak_lr
+
+        if optimizer_name == 'adam':
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        elif optimizer_name == 'adamw':
+            optimizer = tf.keras.optimizers.AdamW(learning_rate=lr, weight_decay=weight_decay)
+        elif optimizer_name == 'rmsprop':
             optimizer = tf.keras.optimizers.RMSprop(
-                learning_rate,
+                lr,
                 rho=0.9,
                 momentum=0.9,
                 epsilon=1.0,
                 clipnorm=1.0
             )
+        else:
+            raise ValueError(f'Unknown optimizer {optimizer_name!r}.')
 
         classification_metrics = [
             tf.keras.metrics.CategoricalAccuracy(), 
@@ -666,7 +693,22 @@ if __name__ == "__main__":
                              'May be a local path or a gs:// bucket path. A unique per-run subfolder named '
                              'from the model parameters and date/time is created under it.')
     parser.add_argument('--splits_file')
-    parser.add_argument('--adam', default=None, type=float)
+    parser.add_argument('--adam', default=None, type=float,
+                        help='Legacy: constant Adam learning rate. Prefer --learning_rate with --optimizer/--lr_schedule.')
+    parser.add_argument('--optimizer', dest='optimizer_name', choices=['adam', 'adamw', 'rmsprop'], default='adam',
+                        help='Optimizer to use.')
+    parser.add_argument('--learning_rate', default=None, type=float,
+                        help='Peak learning rate (warmup target). Falls back to --adam if unset.')
+    parser.add_argument('--lr_schedule', choices=['constant', 'cosine'], default='constant',
+                        help='constant keeps a fixed learning rate; cosine enables warmup + cosine decay.')
+    parser.add_argument('--warmup_epochs', default=0.0, type=float,
+                        help='Length of linear warmup in epochs (0 disables warmup).')
+    parser.add_argument('--warmup_start_frac', default=0.0, type=float,
+                        help='Warmup start learning rate as a fraction of peak LR.')
+    parser.add_argument('--alpha', default=0.0, type=float,
+                        help='Final learning rate as a fraction of peak LR at the end of cosine decay.')
+    parser.add_argument('--weight_decay', default=0.1, type=float,
+                        help='Weight decay for the adamw optimizer.')
     parser.add_argument('--scale_outputs', action='store_true')
     parser.add_argument('--es_patience', default=3, type=int,
                         help='Number of epochs with no change before early stopping.')
@@ -733,6 +775,13 @@ if __name__ == "__main__":
         movinet_chkp_dir=args.movinet_chkp_dir,
         output_dir=args.output_dir,
         adam=args.adam,
+        optimizer_name=args.optimizer_name,
+        learning_rate=args.learning_rate,
+        lr_schedule=args.lr_schedule,
+        warmup_epochs=args.warmup_epochs,
+        warmup_start_frac=args.warmup_start_frac,
+        alpha=args.alpha,
+        weight_decay=args.weight_decay,
         scale_outputs=args.scale_outputs,
         es_patience=args.es_patience,
         es_loss2monitor=args.es_loss2monitor,
