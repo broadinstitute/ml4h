@@ -22,6 +22,54 @@ tf.get_logger().setLevel(logging.ERROR)
 USER = os.getenv('USER')
 
 
+class WarmupCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+    """Linear warmup followed by cosine decay.
+
+    LR ramps linearly from ``warmup_start_lr`` to ``peak_lr`` over ``warmup_steps``,
+    then cosine-decays from ``peak_lr`` down to ``alpha * peak_lr`` over the remaining
+    ``total_steps - warmup_steps`` steps. Implemented with basic ops so it does not
+    depend on the ``warmup_target``/``warmup_steps`` kwargs of Keras' built-in
+    CosineDecay, which are absent on the legacy tf.keras stack DROID runs on
+    (TF_USE_LEGACY_KERAS=1).
+    """
+
+    def __init__(self, peak_lr, total_steps, warmup_steps=0, warmup_start_lr=0.0, alpha=0.0, name=None):
+        super().__init__()
+        self.peak_lr = peak_lr
+        self.total_steps = total_steps
+        self.warmup_steps = warmup_steps
+        self.warmup_start_lr = warmup_start_lr
+        self.alpha = alpha
+        self.name = name
+
+    def __call__(self, step):
+        step = tf.cast(step, tf.float32)
+        peak_lr = tf.cast(self.peak_lr, tf.float32)
+        warmup_steps = tf.cast(self.warmup_steps, tf.float32)
+        warmup_start_lr = tf.cast(self.warmup_start_lr, tf.float32)
+        alpha = tf.cast(self.alpha, tf.float32)
+        total_steps = tf.cast(self.total_steps, tf.float32)
+
+        warmup_lr = warmup_start_lr + (peak_lr - warmup_start_lr) * (step / tf.maximum(1.0, warmup_steps))
+
+        decay_steps = tf.maximum(1.0, total_steps - warmup_steps)
+        progress = tf.clip_by_value((step - warmup_steps) / decay_steps, 0.0, 1.0)
+        cosine = 0.5 * (1.0 + tf.cos(tf.constant(np.pi, dtype=tf.float32) * progress))
+        cosine_lr = peak_lr * ((1.0 - alpha) * cosine + alpha)
+
+        return tf.where(step < warmup_steps, warmup_lr, cosine_lr)
+
+    def get_config(self):
+        return {
+            'peak_lr': self.peak_lr,
+            'total_steps': self.total_steps,
+            'warmup_steps': self.warmup_steps,
+            'warmup_start_lr': self.warmup_start_lr,
+            'alpha': self.alpha,
+            'name': self.name,
+        }
+
+
 def validate_survival_tasks(survival_tasks):
     """Validate recipe survival-task specifications and supply optional defaults."""
     tasks = survival_tasks or []
@@ -561,14 +609,12 @@ def main(
         warmup_steps = int(warmup_epochs * n_train_steps)
 
         if lr_schedule == 'cosine':
-            # Native Keras CosineDecay: linear warmup from initial_learning_rate to
-            # warmup_target over warmup_steps, then cosine decay to alpha*peak_lr.
-            lr = tf.keras.optimizers.schedules.CosineDecay(
-                initial_learning_rate=(peak_lr * warmup_start_frac) if warmup_steps > 0 else peak_lr,
-                decay_steps=max(1, total_steps - warmup_steps),
-                alpha=alpha,
-                warmup_target=peak_lr if warmup_steps > 0 else None,
+            lr = WarmupCosineDecay(
+                peak_lr=peak_lr,
+                total_steps=total_steps,
                 warmup_steps=warmup_steps,
+                warmup_start_lr=peak_lr * warmup_start_frac,
+                alpha=alpha,
             )
         else:  # 'constant'
             lr = peak_lr
@@ -576,7 +622,12 @@ def main(
         if optimizer_name == 'adam':
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
         elif optimizer_name == 'adamw':
-            optimizer = tf.keras.optimizers.AdamW(learning_rate=lr, weight_decay=weight_decay)
+            adamw_cls = getattr(tf.keras.optimizers, 'AdamW', None)
+            if adamw_cls is None:
+                adamw_cls = getattr(tf.keras.optimizers.experimental, 'AdamW', None)
+            if adamw_cls is None:
+                raise ValueError('AdamW is not available in this TensorFlow/Keras build; use --optimizer adam or rmsprop.')
+            optimizer = adamw_cls(learning_rate=lr, weight_decay=weight_decay)
         elif optimizer_name == 'rmsprop':
             optimizer = tf.keras.optimizers.RMSprop(
                 lr,
