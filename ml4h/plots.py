@@ -3548,6 +3548,52 @@ def radar_performance(df, prefix, show=False, legend=True):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path)
 
+def _format_score_with_ci(value, ci_lower, ci_upper):
+    if pd.isna(ci_lower) or pd.isna(ci_upper):
+        return f"{value:.2f}"
+    return f"{value:.2f}\n({ci_lower:.2f}-{ci_upper:.2f})"
+
+
+def _ci_overlaps(ci_a, ci_b):
+    if any(pd.isna(x) for x in ci_a + ci_b):
+        return False
+    return ci_a[0] <= ci_b[1] and ci_b[0] <= ci_a[1]
+
+
+def _heatmap_text_color(image, value):
+    red, green, blue, _ = image.cmap(image.norm(value))
+    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    return "black" if luminance > 0.58 else "white"
+
+
+def _bold_models_for_row(score_row, ci_lower_row, ci_upper_row):
+    row_max = score_row.max(skipna=True)
+    if pd.isna(row_max):
+        return set()
+
+    best_models = {
+        model
+        for model, value in score_row.items()
+        if not pd.isna(value) and value == row_max
+    }
+    best_cis = [
+        (ci_lower_row[model], ci_upper_row[model])
+        for model in best_models
+        if not pd.isna(ci_lower_row[model]) and not pd.isna(ci_upper_row[model])
+    ]
+    if not best_cis:
+        return best_models
+
+    bold_models = set(best_models)
+    for model, value in score_row.items():
+        if pd.isna(value):
+            continue
+        ci = (ci_lower_row[model], ci_upper_row[model])
+        if any(_ci_overlaps(ci, best_ci) for best_ci in best_cis):
+            bold_models.add(model)
+    return bold_models
+
+
 def heatmap_performance(df, prefix="./figures/", show=False):
     df['Task'] = (
         df['Task']
@@ -3557,24 +3603,78 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         .str.replace('_x', '', regex=False)
     )
     for metric_type, metric_df in df.groupby("Metric"):
-        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
+        metric_df = metric_df.copy()
+        for col in ["Score", "CI_95_lower", "CI_95_upper"]:
+            if col in metric_df.columns:
+                metric_df[col] = pd.to_numeric(metric_df[col], errors="coerce")
+        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(
+            subset=["Model", "Task"],
+        )
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
+        has_ci = {"CI_95_lower", "CI_95_upper"}.issubset(metric_df.columns)
+        if has_ci:
+            ci_lower_df = metric_df.pivot(
+                index="Task",
+                columns="Model",
+                values="CI_95_lower",
+            ).reindex_like(pivot_df)
+            ci_upper_df = metric_df.pivot(
+                index="Task",
+                columns="Model",
+                values="CI_95_upper",
+            ).reindex_like(pivot_df)
+        else:
+            ci_lower_df = pd.DataFrame(np.nan, index=pivot_df.index, columns=pivot_df.columns)
+            ci_upper_df = pd.DataFrame(np.nan, index=pivot_df.index, columns=pivot_df.columns)
 
-        plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
-        magma_truncated = plt.cm.colors.ListedColormap(plt.cm.magma(np.linspace(0.25, 1, 256)))
-        im = plt.imshow(pivot_df.values, cmap=magma_truncated, aspect="auto")
+        fig_width = max(10, len(pivot_df.columns) * 1.8)
+        fig_height = max(4, len(pivot_df) * 0.75)
+        plt.figure(figsize=(fig_width, fig_height))
+        score_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+            "score_saturated_high",
+            ["#f7fbff", "#c6dbef", "#6baed6", "#1f9e89", "#084081"],
+        )
+        im = plt.imshow(
+            pivot_df.values,
+            cmap=score_cmap,
+            aspect="auto",
+            interpolation="nearest",
+        )
 
         for i in range(pivot_df.shape[0]):
-            row_max = pivot_df.iloc[i].max(skipna=True)
+            bold_models = _bold_models_for_row(
+                pivot_df.iloc[i],
+                ci_lower_df.iloc[i],
+                ci_upper_df.iloc[i],
+            )
             for j in range(pivot_df.shape[1]):
                 value = pivot_df.iloc[i, j]
                 if not pd.isna(value):
-                    fontweight = "bold" if not pd.isna(row_max) and value == row_max else "normal"
-                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14, fontweight=fontweight)
+                    model = pivot_df.columns[j]
+                    ci_lower = ci_lower_df.iloc[i, j]
+                    ci_upper = ci_upper_df.iloc[i, j]
+                    fontweight = "bold" if model in bold_models else "normal"
+                    plt.text(
+                        j,
+                        i,
+                        _format_score_with_ci(value, ci_lower, ci_upper),
+                        ha="center",
+                        va="center",
+                        color=_heatmap_text_color(im, value),
+                        fontsize=11 if has_ci else 14,
+                        fontweight=fontweight,
+                        linespacing=1.15,
+                    )
 
         x_labels = [col.upper() if len(col) <= 4 else col for col in pivot_df.columns]
         y_labels = [idx.upper() if len(idx) <= 4 else idx for idx in pivot_df.index]
-        plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=x_labels, rotation=45, ha="right", fontsize=14)
+        plt.xticks(
+            ticks=np.arange(len(pivot_df.columns)),
+            labels=x_labels,
+            rotation=45,
+            ha="right",
+            fontsize=14,
+        )
         plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=y_labels, fontsize=14)
         plt.colorbar(im, label="Score")
         plt.title(f"Model Performance by Task ({metric_type.upper()})")
