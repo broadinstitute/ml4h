@@ -1,5 +1,6 @@
 import logging
-from typing import Dict, List
+import warnings
+from typing import Callable, Dict, List, Optional, Tuple
 
 import keras
 import numpy as np
@@ -17,6 +18,9 @@ from ml4h.TensorMap import TensorMap
 
 tf.random.set_seed(1234)
 Tensor = tf.Tensor
+METRIC_CI_LOWER_PERCENTILE = 2.5
+METRIC_CI_UPPER_PERCENTILE = 97.5
+METRIC_BOOTSTRAP_SEED = 1234
 
 
 @keras.saving.register_keras_serializable(package="ml4h")
@@ -789,33 +793,100 @@ def build_embedding_transformer(
     return model
 
 
+def _safe_metric_score(
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    truth: np.ndarray,
+    prediction: np.ndarray,
+) -> float:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            score = metric(truth, prediction)
+    except ValueError:
+        return float("nan")
+    score = float(score)
+    return score if np.isfinite(score) else float("nan")
+
+
+def _bootstrap_metric_confidence_interval(
+    truth: np.ndarray,
+    prediction: np.ndarray,
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    rng: np.random.RandomState,
+    n_bootstraps: int,
+) -> Tuple[float, float]:
+    if truth.size == 0 or prediction.size == 0 or n_bootstraps <= 0:
+        return float("nan"), float("nan")
+
+    n = truth.shape[0]
+    scores = []
+    for _ in range(int(n_bootstraps)):
+        idx = rng.randint(0, n, size=n)
+        score = _safe_metric_score(metric, truth[idx], prediction[idx])
+        if np.isfinite(score):
+            scores.append(score)
+
+    if not scores:
+        return float("nan"), float("nan")
+
+    ci_lower, ci_upper = np.percentile(
+        scores,
+        [METRIC_CI_LOWER_PERCENTILE, METRIC_CI_UPPER_PERCENTILE],
+    )
+    return float(ci_lower), float(ci_upper)
+
+
+def _performance_data_row(
+    model_name: str,
+    task: str,
+    metric: str,
+    score: float,
+    ci: Tuple[float, float],
+    n: int,
+    n_positive: Optional[int] = None,
+) -> Dict[str, object]:
+    row = {
+        "Model": model_name,
+        "Task": task,
+        "Metric": metric,
+        "Score": score,
+        "CI_95_lower": ci[0],
+        "CI_95_upper": ci[1],
+        "n": int(n),
+    }
+    if n_positive is not None:
+        row["n_positive"] = int(n_positive)
+    return row
+
+
 def evaluate_multitask_on_dataset(
     name,
     model,
     dataset,
-    REGRESSION_TARGETS,
-    BINARY_TARGETS,
+    regression_targets,
+    binary_targets,
     steps=None,  # if dataset is repeated(), pass the number of batches to consume
     verbose=True,
+    n_bootstraps=1000,
+    bootstrap_seed=METRIC_BOOTSTRAP_SEED,
 ):
+    """Evaluate a multitask model and return score rows with 95% bootstrap CIs.
+
+    Each row in the returned performance data includes CI_95_lower,
+    CI_95_upper, and n. Binary target rows also include n_positive.
+    """
     # Accumulators
-    y_true = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
-    y_pred = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
-    w = {t: [] for t in REGRESSION_TARGETS + BINARY_TARGETS}
+    y_true = {t: [] for t in regression_targets + binary_targets}
+    y_pred = {t: [] for t in regression_targets + binary_targets}
+    w = {t: [] for t in regression_targets + binary_targets}
     performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
 
     def _consume():
         if steps is None:
             for x, y, sw in dataset:
                 outs = model(x, training=False)
                 for t in y_true.keys():
-                    """
-                    y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
-                    w[t].append(tf.convert_to_tensor(sw[t]).numpy())
-                    # model outputs dict of tensors; ensure 1D
-                    yp = tf.convert_to_tensor(outs[t]).numpy() #.reshape(-1)
-                    y_pred[t].append(yp)
-                    """
                     yt = y[t].numpy().flatten()
                     y_true[t].append(yt)
 
@@ -835,12 +906,6 @@ def evaluate_multitask_on_dataset(
                     break
                 outs = model(x, training=False)
                 for t in y_true.keys():
-                    """
-                    y_true[t].append(tf.convert_to_tensor(y[t]).numpy())
-                    w[t].append(tf.convert_to_tensor(sw[t]).numpy())
-                    yp = tf.convert_to_tensor(outs[t]).numpy() #.reshape(-1)
-                    y_pred[t].append(yp)
-                    """
                     yt = y[t].numpy().flatten()
                     y_true[t].append(yt)
 
@@ -868,7 +933,7 @@ def evaluate_multitask_on_dataset(
     results = {}
 
     # Regression tasks
-    for t in REGRESSION_TARGETS:
+    for t in regression_targets:
         if y_true[t].size == 0:
             # results[t] = {"MAE": np.nan, "MSE": np.nan, "R2": np.nan}
             continue
@@ -878,57 +943,110 @@ def evaluate_multitask_on_dataset(
             continue
         yt = y_true[t][msk].astype("float32")
         yp = y_pred[t][msk].astype("float32")
+        n = len(yt)
         mae = float(np.mean(np.abs(yp - yt)))
         mse = float(np.mean((yp - yt) ** 2))
-        try:
-            r2 = float(r2_score(yt, yp))
-        except ValueError:
-            r2 = float("nan")
-        results[t] = {"MAE": mae, "MSE": mse, "R2": r2}
+        r2 = _safe_metric_score(r2_score, yt, yp)
+        r2_ci = _bootstrap_metric_confidence_interval(
+            yt,
+            yp,
+            r2_score,
+            rng,
+            n_bootstraps,
+        )
+        results[t] = {"MAE": mae, "MSE": mse, "R2": r2, "R2_CI_95": r2_ci, "n": n}
         performance_data.append(
-            {"Model": name, "Task": t, "Metric": "R^2", "Score": r2}
+            _performance_data_row(name, t, "R^2", r2, r2_ci, n)
         )
     # Binary tasks
-    for t in BINARY_TARGETS:
+    for t in binary_targets:
         if y_true[t].size == 0:
-            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n": 0, "n_positive": 0, "prevalence": 0.0}
+            results[t] = {
+                "AUROC": np.nan,
+                "AUROC_CI_95": (np.nan, np.nan),
+                "AUPRC": np.nan,
+                "AUPRC_CI_95": (np.nan, np.nan),
+                "ACC": np.nan,
+                "n": 0,
+                "n_positive": 0,
+                "prevalence": 0.0,
+            }
             continue
         msk = w[t] > 0
         if msk.sum() == 0:
-            results[t] = {"AUROC": np.nan, "AUPRC": np.nan, "ACC": np.nan, "n": 0, "n_positive": 0, "prevalence": 0.0}
+            results[t] = {
+                "AUROC": np.nan,
+                "AUROC_CI_95": (np.nan, np.nan),
+                "AUPRC": np.nan,
+                "AUPRC_CI_95": (np.nan, np.nan),
+                "ACC": np.nan,
+                "n": 0,
+                "n_positive": 0,
+                "prevalence": 0.0,
+            }
             continue
         yt = (y_true[t][msk] > 0.5).astype("int32")
         prob = y_pred[t][msk].astype("float32")
-        try:
-            auroc = float(roc_auc_score(yt, prob))
-        except ValueError:
-            auroc = float("nan")
-        try:
-            auprc = float(average_precision_score(yt, prob))
-        except ValueError:
-            auprc = float("nan")
+        auroc = _safe_metric_score(roc_auc_score, yt, prob)
+        auprc = _safe_metric_score(average_precision_score, yt, prob)
         acc = float(accuracy_score(yt, (prob >= 0.5).astype("int32")))
         n = len(yt)
         n_positive = int(yt.sum())
         prevalence = 100.0 * n_positive / n if n > 0 else 0.0
-        results[t] = {"AUROC": auroc, "AUPRC": auprc, "ACC": acc, "n": n, "n_positive": n_positive, "prevalence": prevalence}
+        auroc_ci = _bootstrap_metric_confidence_interval(
+            yt,
+            prob,
+            roc_auc_score,
+            rng,
+            n_bootstraps,
+        )
+        auprc_ci = _bootstrap_metric_confidence_interval(
+            yt,
+            prob,
+            average_precision_score,
+            rng,
+            n_bootstraps,
+        )
+        results[t] = {
+            "AUROC": auroc,
+            "AUROC_CI_95": auroc_ci,
+            "AUPRC": auprc,
+            "AUPRC_CI_95": auprc_ci,
+            "ACC": acc,
+            "n": n,
+            "n_positive": n_positive,
+            "prevalence": prevalence,
+        }
         performance_data.append(
-            {"Model": name, "Task": t, "Metric": "auROC", "Score": auroc}
+            _performance_data_row(name, t, "auROC", auroc, auroc_ci, n, n_positive)
         )
         performance_data.append(
-            {"Model": name, "Task": t, "Metric": "auPRC", "Score": auprc}
+            _performance_data_row(name, t, "auPRC", auprc, auprc_ci, n, n_positive)
         )
     if verbose:
         logging.info("\n=== Evaluation on dataset ===")
-        for t in REGRESSION_TARGETS:
-            r = results[t]
+        for t in regression_targets:
+            r = results.get(t)
+            if r is None:
+                logging.info(f"{t:30s}  no valid labels")
+                continue
+            r2_ci_lower, r2_ci_upper = r["R2_CI_95"]
             logging.info(
-                f"{t:30s}  MAE: {r['MAE']:.4f}  MSE: {r['MSE']:.4f}  R^2: {r['R2']:.4f}"
+                f"{t:30s}  MAE: {r['MAE']:.4f}  MSE: {r['MSE']:.4f}  "
+                f"R^2: {r['R2']:.4f}  R^2 95% CI: ({r2_ci_lower:.4f}, {r2_ci_upper:.4f})  "
+                f"n: {r['n']}"
             )
-        for t in BINARY_TARGETS:
+        for t in binary_targets:
             r = results[t]
+            auroc_ci_lower, auroc_ci_upper = r["AUROC_CI_95"]
+            auprc_ci_lower, auprc_ci_upper = r["AUPRC_CI_95"]
             logging.info(
-                f"{t:30s}  AUROC: {r['AUROC']:.4f}  AUPRC: {r['AUPRC']:.4f}  ACC: {r['ACC']:.4f}  n: {r['n']}  n_positive: {r['n_positive']}  prevalence: {r['prevalence']:.2f}%"
+                f"{t:30s}  AUROC: {r['AUROC']:.4f}  "
+                f"AUROC 95% CI: ({auroc_ci_lower:.4f}, {auroc_ci_upper:.4f})  "
+                f"AUPRC: {r['AUPRC']:.4f}  "
+                f"AUPRC 95% CI: ({auprc_ci_lower:.4f}, {auprc_ci_upper:.4f})  "
+                f"ACC: {r['ACC']:.4f}  n: {r['n']}  "
+                f"n_positive: {r['n_positive']}  prevalence: {r['prevalence']:.2f}%"
             )
 
     return performance_data
