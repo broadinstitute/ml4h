@@ -13,8 +13,18 @@ from sklearn.metrics import roc_curve, auc, average_precision_score
 from tensorflow.keras.applications.inception_v3 import InceptionV3, preprocess_input
 
 from tensorflow.keras.losses import binary_crossentropy, categorical_crossentropy, sparse_categorical_crossentropy
-from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE, Dice
-from keras.saving import register_keras_serializable
+from tensorflow.keras.losses import LogCosh, CosineSimilarity, MSE, MAE, MAPE
+try:
+    # Dice was added to Keras losses only in newer TF/Keras releases; it is unused by the
+    # DROID path, so tolerate its absence on older TensorFlow installs.
+    from tensorflow.keras.losses import Dice
+except ImportError:
+    Dice = None
+try:
+    from keras.saving import register_keras_serializable
+except ImportError:
+    # keras.saving landed in TF 2.13; fall back to the long-standing utils location.
+    from tensorflow.keras.utils import register_keras_serializable
 
 
 STRING_METRICS = [
