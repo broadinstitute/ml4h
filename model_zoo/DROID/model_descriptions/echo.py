@@ -4,7 +4,7 @@ import tensorflow as tf
 # from official.common import flags as tfm_flags
 from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
 
-from droid_callbacks import MetricsHistoryCallback, SlackNotifierCallback, run_validation_inference
+from droid_callbacks import MetricsHistoryCallback, SlackNotifierCallback, SurvivalMetricsCallback, run_validation_inference
 
 learning_rate = 0.0001
 hidden_units = 256
@@ -180,11 +180,18 @@ def train_model(
     metrics_history_callback = MetricsHistoryCallback(output_folder)
     slack_callback = SlackNotifierCallback(output_folder, run_summary=run_summary)
 
+    # Per-epoch survival metrics (time-dependent AUROC + concordance index). Placed first so
+    # the values it injects into `logs` are picked up by TensorBoard, the history CSV/plots, and Slack.
+    callbacks = []
+    if survival_tasks:
+        callbacks.append(SurvivalMetricsCallback(valid_loader, n_valid_steps, survival_tasks))
+    callbacks += [tb_callback, es_callback, cp_callback, metrics_history_callback, slack_callback]
+
     try:
         model.fit(
             train_loader,
             validation_data=valid_loader,
-            callbacks=[tb_callback, es_callback, cp_callback, metrics_history_callback, slack_callback],
+            callbacks=callbacks,
             epochs=epochs,
             steps_per_epoch=n_train_steps,
             validation_steps=n_valid_steps,

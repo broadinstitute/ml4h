@@ -4,6 +4,7 @@ nibabel==4.0.2
 pydicom==1.2.2
 seaborn
 scikit-image
+scikit-survival
 peakutils
 biosppy
 imageio

@@ -733,6 +733,79 @@ def concordance_index_censored(event_indicator, event_time, estimate, tied_tol=1
     return _estimate_concordance_index(event_indicator, event_time, estimate, w, tied_tol)
 
 
+def survival_time_dependent_auc(prediction, truth, times, train_truth=None):
+    """Time-dependent (cumulative/dynamic) AUROC for discrete-time survival predictions.
+
+    Thin wrapper around ``sksurv.metrics.cumulative_dynamic_auc`` that speaks the
+    discrete-time survival representation used across ml4h (see ``survival_likelihood_loss``
+    and the ``_survival_tensor_from_row`` encoder): ``truth`` has width ``2 * intervals``
+    (survived flags then an event-bin one-hot) and ``prediction`` gives one
+    conditional-survival probability per interval. The risk score handed to sksurv at
+    each time point is the cumulative incidence ``1 - prod(survival probabilities)`` up to
+    the interval covering that time, so a higher score means a higher event risk.
+
+    Arguments
+        prediction: array, shape (n_samples, >= intervals). The first ``intervals`` columns
+            are the per-interval predicted survival probabilities.
+        truth: array, shape (n_samples, 2 * intervals). Discrete-time survival labels.
+        times: mapping of ``{label: time}`` where each ``time`` is expressed in
+            interval-index units (0 .. intervals - 1), matching the event times decoded
+            from ``truth``. Callers convert real-world horizons (e.g. years) to these
+            units before calling.
+        train_truth: optional labels (same encoding as ``truth``) used to estimate the
+            inverse-probability-of-censoring-weights (IPCW) censoring distribution.
+            Defaults to ``truth`` (i.e. the evaluation set itself).
+
+    Returns
+        dict mapping each usable label to its AUROC, plus ``'auroc_mean'`` (mean over the
+        usable labels). Labels whose time falls outside the observed follow-up range, or
+        that sksurv cannot score, are skipped with a warning and omitted. Returns an empty
+        dict if none are usable.
+    """
+    from sksurv.metrics import cumulative_dynamic_auc
+
+    intervals = truth.shape[-1] // 2
+    event_indicator, event_time = _unpack_truth_into_events(truth, intervals)
+    if train_truth is None:
+        train_indicator, train_time = event_indicator, event_time
+    else:
+        train_indicator, train_time = _unpack_truth_into_events(train_truth, intervals)
+
+    def _structured(indicator, time):
+        arr = np.empty(len(time), dtype=[('event', bool), ('time', float)])
+        arr['event'] = indicator
+        arr['time'] = time
+        return arr
+
+    survival_train = _structured(train_indicator, train_time)
+    survival_test = _structured(event_indicator, event_time)
+
+    # Cumulative event risk (1 - cumulative survival probability) at the end of each interval.
+    cumulative_risk = 1.0 - np.cumprod(prediction[:, :intervals], axis=-1)
+
+    min_time, max_time = float(event_time.min()), float(event_time.max())
+    aucs = {}
+    for label, t in times.items():
+        # sksurv requires each evaluation time to fall strictly inside the observed follow-up range.
+        if not (min_time < t < max_time):
+            logging.warning(
+                'Skipping time-dependent AUROC %s (t=%.3f intervals): outside observed range (%.3f, %.3f).',
+                label, t, min_time, max_time,
+            )
+            continue
+        interval_index = int(np.clip(round(t), 0, intervals - 1))
+        try:
+            auc_values, _ = cumulative_dynamic_auc(
+                survival_train, survival_test, cumulative_risk[:, interval_index], t,
+            )
+            aucs[label] = float(auc_values[0])
+        except Exception:
+            logging.exception('Failed to compute time-dependent AUROC %s (t=%.3f intervals).', label, t)
+    if aucs:
+        aucs['auroc_mean'] = float(np.mean(list(aucs.values())))
+    return aucs
+
+
 class KernelInceptionDistance(keras.metrics.Metric):
     def __init__(self, name, input_shape, kernel_image_size, **kwargs):
         super().__init__(name=name, **kwargs)

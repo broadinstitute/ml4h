@@ -16,11 +16,68 @@ import psutil
 import requests
 import tensorflow as tf
 
-from ml4h.metrics import coefficient_of_determination, get_precision_recall_aucs, get_roc_aucs, survival_likelihood_loss
+from ml4h.metrics import (
+    coefficient_of_determination,
+    concordance_index,
+    get_precision_recall_aucs,
+    get_roc_aucs,
+    survival_likelihood_loss,
+    survival_time_dependent_auc,
+)
 
 METRICS_SUBDIR = 'metrics'
 VALIDATION_INFERENCE_SUBDIR = 'validation_inference'
 SLACK_WEBHOOK_ENV_VAR = 'SLACK_WEBHOOK_URL'
+
+# Follow-up horizons (years) at which time-dependent AUROC is reported for survival tasks.
+SURVIVAL_AUC_YEARS = (1, 3, 5)
+_DAYS_PER_YEAR = 365.25
+
+
+def _survival_metrics_report(truth, prediction, task, years=SURVIVAL_AUC_YEARS):
+    """Survival metrics for one discrete-time survival task: time-dependent AUROC at the
+    given follow-up years plus Harrell's concordance index.
+
+    Each year is converted to the model's interval-index units using the task's
+    ``days_window`` and ``intervals`` before calling ``survival_time_dependent_auc``, so
+    the returned keys look like ``auroc_1yr``/``auroc_3yr``/``auroc_5yr`` plus ``auroc_mean``
+    and ``concordance_index``.
+    """
+    intervals = task['intervals']
+    days_per_interval = task['days_window'] / intervals
+    times = {
+        f'auroc_{year}yr': year * _DAYS_PER_YEAR / days_per_interval
+        for year in years
+    }
+    report = survival_time_dependent_auc(prediction, truth, times)
+    try:
+        report['concordance_index'] = float(concordance_index(prediction, truth)[0])
+    except Exception:
+        logging.exception('Failed to compute concordance index for survival task %s.', task['name'])
+    return report
+
+
+def _collect_predictions(model, valid_dataset, n_valid_steps):
+    """Runs the model over the first ``n_valid_steps`` batches of ``valid_dataset`` and
+    returns ``(y_true, y_pred)`` dicts keyed by model output name (concatenated over batches).
+    """
+    output_names = list(model.output_names)
+    y_true_batches = {name: [] for name in output_names}
+    y_pred_batches = {name: [] for name in output_names}
+
+    for batch_inputs, batch_outputs in valid_dataset.take(n_valid_steps).as_numpy_iterator():
+        batch_preds = model.predict_on_batch(batch_inputs)
+        if not isinstance(batch_preds, (list, tuple)):
+            batch_preds = [batch_preds]
+        if not isinstance(batch_outputs, (list, tuple)):
+            batch_outputs = [batch_outputs]
+        for name, true_vals, pred_vals in zip(output_names, batch_outputs, batch_preds):
+            y_true_batches[name].append(true_vals)
+            y_pred_batches[name].append(pred_vals)
+
+    y_true = {name: np.concatenate(vals, axis=0) for name, vals in y_true_batches.items() if vals}
+    y_pred = {name: np.concatenate(vals, axis=0) for name, vals in y_pred_batches.items() if vals}
+    return y_true, y_pred
 
 
 def _write_bytes(path, data):
@@ -195,6 +252,57 @@ class SlackNotifierCallback(tf.keras.callbacks.Callback):
         self._send('\n'.join(lines))
 
 
+class SurvivalMetricsCallback(tf.keras.callbacks.Callback):
+    """Logs validation survival metrics for every survival task: time-dependent
+    (1/3/5-year) AUROC and Harrell's concordance index.
+
+    Runs every ``period`` epochs (starting with the first, epoch 0) rather than every epoch,
+    since it is a second forward pass over the validation set (see note below). On those
+    epochs it runs a fresh inference pass over the first ``n_valid_steps`` validation batches
+    and computes the metrics for every survival head. The results are
+    written into the epoch ``logs`` dict under keys like ``val_survival_<task>_auroc_3yr``,
+    ``val_survival_<task>_auroc_mean``, and ``val_survival_<task>_concordance_index``, so
+    they flow into the training-history CSV/plots (MetricsHistoryCallback), TensorBoard,
+    and the Slack epoch summary without any further wiring.
+
+    Note: this is a second forward pass over the validation set on top of Keras' own
+    validation, since these metrics need the whole set (and the sksurv IPCW estimator) and
+    cannot be computed as a per-batch Keras metric.
+    """
+
+    def __init__(self, valid_dataset, n_valid_steps, survival_tasks, years=SURVIVAL_AUC_YEARS, period=5):
+        super().__init__()
+        self.valid_dataset = valid_dataset
+        self.n_valid_steps = n_valid_steps
+        self.survival_tasks = survival_tasks or []
+        self.years = years
+        # Run the extra inference pass every `period` epochs, starting with the first (epoch 0),
+        # to avoid doubling validation compute on every epoch.
+        self.period = period
+
+    def on_epoch_end(self, epoch, logs=None):
+        if not self.survival_tasks or not self.n_valid_steps:
+            return
+        if self.period > 1 and epoch % self.period != 0:
+            return
+        logs = logs if logs is not None else {}
+        try:
+            y_true, y_pred = _collect_predictions(self.model, self.valid_dataset, self.n_valid_steps)
+        except Exception:
+            logging.exception('Failed to run validation inference for time-dependent AUROC at epoch %d.', epoch)
+            return
+
+        for task in self.survival_tasks:
+            output_name = f"survival_{task['name']}"
+            if output_name not in y_true:
+                continue
+            report = _survival_metrics_report(y_true[output_name], y_pred[output_name], task, self.years)
+            for metric_name, value in report.items():
+                log_key = f'val_{output_name}_{metric_name}'
+                logs[log_key] = value
+                logging.info('Epoch %d %s: %.4f', epoch, log_key, value)
+
+
 def _flatten_metrics_report(metrics_report):
     rows = []
     for category, targets in metrics_report.items():
@@ -234,23 +342,8 @@ def run_validation_inference(
     tf.io.gfile.makedirs(inference_folder)
 
     cls_output_names = (cls_category_map_dicts or {}).get('cls_output_order', [])
-    output_names = list(model.output_names)
 
-    y_true_batches = {name: [] for name in output_names}
-    y_pred_batches = {name: [] for name in output_names}
-
-    for batch_inputs, batch_outputs in valid_dataset.take(n_valid_steps).as_numpy_iterator():
-        batch_preds = model.predict_on_batch(batch_inputs)
-        if not isinstance(batch_preds, (list, tuple)):
-            batch_preds = [batch_preds]
-        if not isinstance(batch_outputs, (list, tuple)):
-            batch_outputs = [batch_outputs]
-        for name, true_vals, pred_vals in zip(output_names, batch_outputs, batch_preds):
-            y_true_batches[name].append(true_vals)
-            y_pred_batches[name].append(pred_vals)
-
-    y_true = {name: np.concatenate(vals, axis=0) for name, vals in y_true_batches.items() if vals}
-    y_pred = {name: np.concatenate(vals, axis=0) for name, vals in y_pred_batches.items() if vals}
+    y_true, y_pred = _collect_predictions(model, valid_dataset, n_valid_steps)
 
     metrics_report = {}
 
@@ -297,7 +390,9 @@ def run_validation_inference(
         per_sample_loss = loss_fn(
             tf.constant(y_true[output_name]), tf.constant(y_pred[output_name]),
         ).numpy()
-        survival_metrics[task['name']] = {'mean_negative_log_likelihood': float(np.mean(per_sample_loss))}
+        task_metrics = {'mean_negative_log_likelihood': float(np.mean(per_sample_loss))}
+        task_metrics.update(_survival_metrics_report(y_true[output_name], y_pred[output_name], task))
+        survival_metrics[task['name']] = task_metrics
     if survival_metrics:
         metrics_report['survival'] = survival_metrics
 
