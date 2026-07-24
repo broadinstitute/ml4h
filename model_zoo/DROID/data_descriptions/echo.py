@@ -109,13 +109,19 @@ class LmdbEchoStudyVideoDataDescription(DataDescription):
                         continue
                 # Decode straight to an RGB ndarray, skipping the PyAV -> PIL -> ndarray round-trip.
                 frame = frame.to_ndarray(format='rgb24')
-                for transform in self.transforms:
-                    frame = transform(frame, loading_option)
                 frames.append(frame)
             del video_frames
             video_container.close()
         env.close()
-        return np.squeeze(np.array(frames, dtype='float32') / 255.)
+
+        # Transforms operate on the whole normalized clip of shape (T, H, W, C) in
+        # [0, 1] so that augmentations requiring cross-frame consistency (jitter,
+        # rotation, flips, mask sector) can share sampled parameters across frames.
+        # See data_descriptions/transforms.py for the transform contract.
+        video = np.array(frames, dtype='float32') / 255.
+        for transform in self.transforms:
+            video = transform(video, loading_option)
+        return np.squeeze(np.asarray(video, dtype='float32'))
 
     @property
     def name(self):

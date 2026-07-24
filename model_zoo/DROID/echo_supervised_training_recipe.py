@@ -11,6 +11,7 @@ import tensorflow as tf
 
 from ml4h.metrics import survival_likelihood_loss
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from data_descriptions.transforms import AUGMENTATIONS
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
 from model_descriptions.echo import create_movinet_classifier, create_regressor_classifier, train_model
@@ -143,6 +144,8 @@ def main(
         add_separate_dense_cls,
         loss_weights,
         randomize_start_frame,
+        transforms=None,
+        transform_prob=0.05,
         survival_task=None,
         survival_event_column=None,
         survival_follow_up_days_column=None,
@@ -383,10 +386,17 @@ def main(
                     define_new_heads = True
     # ---------------------------------------------------------------- #
 
+    # Each requested transform is applied independently with probability
+    # transform_prob; its own defaults control how it is applied.
+    unknown_transforms = [t for t in (transforms or []) if t not in AUGMENTATIONS]
+    if unknown_transforms:
+        raise ValueError(
+            f"Unknown transforms {unknown_transforms}; choose from {sorted(AUGMENTATIONS)}.")
+    train_transforms = [AUGMENTATIONS[t](p=transform_prob) for t in (transforms or [])]
     INPUT_DD_TRAIN = LmdbEchoStudyVideoDataDescription(
         lmdb_folder,
         'image',
-        [],
+        train_transforms,
         n_input_frames,
         skip_modulo,
         randomize_start_frame=randomize_start_frame
@@ -715,6 +725,11 @@ if __name__ == "__main__":
     parser.add_argument('--es_loss2monitor', default='val_loss', type=str,
                         help='Loss on which early stopping is based: "val_loss", "val_echolab_loss", "val_cls_COLUMN-NAME_loss", or "val_survival_NAME_loss".')
     parser.add_argument('--randomize_start_frame', action='store_true')
+    parser.add_argument('--transforms', action='append', choices=sorted(AUGMENTATIONS.keys()),
+                        help='Training-clip augmentations to enable (repeatable). '
+                             'Each enabled transform is applied independently with --transform_prob.')
+    parser.add_argument('--transform_prob', default=0.05, type=float,
+                        help='Probability that any individual enabled transform is applied to a training clip.')
     # ---------- Adaptation for regression + classification ---------- #
     parser.add_argument('--output_labels_types', default='r', type=str,
                         help='A string indicating task types: r for regression, c for classification. Should be of length 1 or the same length of the specified output_labels variable, e.g. "r" or "rrcr".')
@@ -792,6 +807,8 @@ if __name__ == "__main__":
         loss_weights=args.loss_weights,
         # ---------------------------------------------------------------- #
         randomize_start_frame=args.randomize_start_frame,
+        transforms=args.transforms,
+        transform_prob=args.transform_prob,
         survival_task=args.survival_task,
         survival_event_column=args.survival_event_column,
         survival_follow_up_days_column=args.survival_follow_up_days_column,
