@@ -119,11 +119,18 @@ class DataFetcherTester:
         # Extract DALI output tensor (Shape: [F, H, W, C])
         dali_tensor = pipe_output[0][0]
 
-        # Convert DALI GPU tensor directly to TensorFlow GPU Tensor via DLPack
+        # Convert DALI GPU tensor directly to TensorFlow GPU Tensor via DLPack.
+        # Older DALI exposed .as_dlpack(); newer versions (e.g. 1.50) implement
+        # the standard __dlpack__ protocol instead — try both.
         try:
-            raw_frames = tf.experimental.dlpack.from_dlpack(dali_tensor.as_dlpack())
+            if hasattr(dali_tensor, "as_dlpack"):
+                capsule = dali_tensor.as_dlpack()
+            else:
+                capsule = dali_tensor.__dlpack__()
+            raw_frames = tf.experimental.dlpack.from_dlpack(capsule)
         except Exception:
-            raw_frames = tf.constant(dali_tensor.as_cpu().as_array())
+            cpu_tensor = dali_tensor.as_cpu() if hasattr(dali_tensor, "as_cpu") else dali_tensor
+            raw_frames = tf.constant(np.array(cpu_tensor))
 
         log_step("3. Decode Video Stream via DALI GPU Reader", t, step_metrics=step_metrics)
 

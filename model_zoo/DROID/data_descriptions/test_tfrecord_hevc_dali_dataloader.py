@@ -75,6 +75,9 @@ FEATURE_SPEC = {
 # window; otherwise the whole clip is decoded and sliced on GPU afterwards.
 FRAME_SELECTION = {"supported": None}
 
+# One-time warning flag for the DLPack -> host-memory fallback path.
+FALLBACK_WARNED = {"done": False}
+
 
 def log_step(step_name, start_time=None, step_metrics=None):
     """Helper to log timestamps before/after operations and accumulate timings."""
@@ -193,11 +196,27 @@ class DataFetcherTester:
         if not window_decoded:
             dali_tensor = run_dali_decode(video_array, self.gpu_index)
 
-        # Convert DALI GPU tensor directly to TensorFlow GPU Tensor via DLPack
+        # Convert DALI GPU tensor directly to TensorFlow GPU Tensor via DLPack.
+        # Older DALI exposed .as_dlpack(); newer versions (e.g. 1.50) implement
+        # the standard __dlpack__ protocol instead — try both.
         try:
-            raw_frames = tf.experimental.dlpack.from_dlpack(dali_tensor.as_dlpack())
-        except Exception:
-            raw_frames = tf.constant(dali_tensor.as_cpu().as_array())
+            if hasattr(dali_tensor, "as_dlpack"):
+                capsule = dali_tensor.as_dlpack()
+            else:
+                capsule = dali_tensor.__dlpack__()
+            raw_frames = tf.experimental.dlpack.from_dlpack(capsule)
+        except Exception as e:
+            if not FALLBACK_WARNED["done"]:
+                print(
+                    f"[WARN] DLPack GPU handoff failed ({type(dali_tensor).__name__}: {e}); "
+                    "copying through host memory. If the tensor type is TensorCPU, the "
+                    "decode itself ran on CPU, not NVDEC."
+                )
+                FALLBACK_WARNED["done"] = True
+            cpu_tensor = dali_tensor.as_cpu() if hasattr(dali_tensor, "as_cpu") else dali_tensor
+            # np.array() uses the tensor's array interface; Tensor*.as_array()
+            # was removed in newer DALI (only TensorLists have it).
+            raw_frames = tf.constant(np.array(cpu_tensor))
         log_step("4. Decode Video via DALI GPU (NVDEC)", t, step_metrics=step_metrics)
 
         # --- CRITICAL OPERATION 5: Extract Frame Batch (GPU) ---
