@@ -10,7 +10,7 @@ import pandas as pd
 import tensorflow as tf
 
 from ml4h.metrics import survival_likelihood_loss
-from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from data_descriptions.echo import build_echo_tfrecord_dataset
 from data_descriptions.transforms import AUGMENTATIONS
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
@@ -282,40 +282,6 @@ def main(
         clsc_map_dicts['cls_output_order'] = cls_o_names
         return clsc_map_dicts, clsc_len_dict
 
-    def make_dataset(input_dd, output_dd, sample_ids, batch_size, output_signature, shuffle):
-        sample_ids = list(sample_ids)
-
-        # One pass over sample_ids per iteration. The dataset must stay finite so
-        # the fresh validation iterator Keras builds every epoch runs to exhaustion
-        # and releases its batches and prefetch buffer (an infinite generator here
-        # leaks multiple GB of RAM per epoch). The training call site adds
-        # .repeat(), which restarts the generator each pass, so shuffle still
-        # reshuffles every epoch.
-        def generator():
-            epoch_ids = sample_ids.copy()
-            if shuffle:
-                np.random.shuffle(epoch_ids)
-            for start_idx in range(0, len(epoch_ids) - batch_size + 1, batch_size):
-                batch_ids = epoch_ids[start_idx:start_idx + batch_size]
-                batch_inputs = []
-                batch_outputs = []
-                for sample_id in batch_ids:
-                    batch_inputs.append(input_dd.get_raw_data(sample_id))
-                    batch_outputs.append(output_dd.get_raw_data(sample_id))
-
-                batch_inputs = np.stack(batch_inputs).astype(np.float32, copy=False)
-                if batch_outputs and isinstance(batch_outputs[0], (list, tuple)):
-                    batch_outputs = tuple(
-                        np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
-                        for output_idx in range(len(batch_outputs[0]))
-                    )
-                else:
-                    batch_outputs = np.stack(batch_outputs).astype(np.float32, copy=False)
-
-                yield batch_inputs, batch_outputs
-
-        return tf.data.Dataset.from_generator(generator, output_signature=output_signature)
-
     # ---------------------------------------------------------------- #
     output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
                                                                            var_type='output_labels')
@@ -386,8 +352,16 @@ def main(
 
     train_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_train]
     valid_ids = [t for t in working_ids if int(t.split('_')[0]) in patient_valid]
-    print(f"train_ids: {len(train_ids)}") 
-    print(f"valid_ids: {len(valid_ids)}") 
+
+    # lmdb_folder now points at the TFRecord dataset directory, which holds only a
+    # subset of the wide file. Keep only sample_ids that were actually written
+    # (manifest.pq is produced by create_tfrecord_a4c_dataset.py).
+    with tf.io.gfile.GFile(os.path.join(lmdb_folder, 'manifest.pq'), 'rb') as manifest_file:
+        manifest_ids = set(pd.read_parquet(io.BytesIO(manifest_file.read()))['sample_id'])
+    train_ids = [t for t in train_ids if t in manifest_ids]
+    valid_ids = [t for t in valid_ids if t in manifest_ids]
+    print(f"train_ids: {len(train_ids)}")
+    print(f"valid_ids: {len(valid_ids)}")
 
     # If scale_outputs, normalize by summary stats of training set
     if scale_outputs:
@@ -441,23 +415,6 @@ def main(
         raise ValueError(
             f"Unknown transforms {unknown_transforms}; choose from {sorted(AUGMENTATIONS)}.")
     train_transforms = [AUGMENTATIONS[t](p=transform_prob) for t in (transforms or [])]
-    INPUT_DD_TRAIN = LmdbEchoStudyVideoDataDescription(
-        lmdb_folder,
-        'image',
-        train_transforms,
-        n_input_frames,
-        skip_modulo,
-        randomize_start_frame=randomize_start_frame
-    )
-    
-    INPUT_DD_VALID = LmdbEchoStudyVideoDataDescription(
-        lmdb_folder,
-        'image',
-        [],
-        n_input_frames,
-        skip_modulo,
-        randomize_start_frame = False
-    )
 
     survival_source_columns: list[Unknown] = [
         column for task in survival_tasks
@@ -481,44 +438,48 @@ def main(
     print(f"n_valid_steps: {n_valid_steps}")
 
     # ---------- Adaptation for regression + classification ---------- #
-    # Adapting tensor output sizes for classification heads
-    output_shapes = []
+    # Per-sample output sizes, in model-output order: regression (if any),
+    # classification heads, then survival heads.
+    output_dims = []
     if output_reg_len > 0:
-        output_shapes.append((batch_size, output_reg_len))
-    output_shapes.extend(
-        [(batch_size, cls_category_len_dict[c]) for c in cls_category_map_dicts['cls_output_order']]
+        output_dims.append(output_reg_len)
+    output_dims.extend(
+        [cls_category_len_dict[c] for c in cls_category_map_dicts['cls_output_order']]
     )
-    output_shapes.extend(
-        [(batch_size, task['intervals'] * 2) for task in survival_tasks]
+    output_dims.extend(
+        [task['intervals'] * 2 for task in survival_tasks]
     )
-    if not output_shapes:
+    if not output_dims:
         raise ValueError('Specify at least one regression, classification, or survival output.')
-    if len(output_shapes) > 1:
-        output_signatures = (
-            tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32),
-            tuple([tf.TensorSpec(shape=shape, dtype=tf.float32) for shape in output_shapes])
-        )
-    else:
-        output_signatures = (
-            tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32),
-            tf.TensorSpec(shape=output_shapes[0], dtype=tf.float32)
-        )
     # ---------------------------------------------------------------- #
-    io_train_ds = make_dataset(
-        INPUT_DD_TRAIN,
-        OUTPUT_DD,
+
+    # The training dataset stays finite per pass (.repeat() restarts it each
+    # epoch, reshuffling the shuffle buffer) and the validation dataset runs to
+    # exhaustion, so Keras' fresh per-epoch validation iterator releases its
+    # batches and prefetch buffer.
+    io_train_ds = build_echo_tfrecord_dataset(
+        lmdb_folder,
         train_ids,
-        batch_size,
-        output_signatures,
+        OUTPUT_DD,
+        batch_size=batch_size,
+        n_input_frames=n_input_frames,
+        skip_modulo=skip_modulo,
+        output_dims=output_dims,
+        transforms=train_transforms,
+        randomize_start_frame=randomize_start_frame,
         shuffle=True,
     ).repeat().prefetch(8)
 
-    io_valid_ds = make_dataset(
-        INPUT_DD_VALID,
-        OUTPUT_DD,
+    io_valid_ds = build_echo_tfrecord_dataset(
+        lmdb_folder,
         valid_ids,
-        batch_size,
-        output_signatures,
+        OUTPUT_DD,
+        batch_size=batch_size,
+        n_input_frames=n_input_frames,
+        skip_modulo=skip_modulo,
+        output_dims=output_dims,
+        transforms=[],
+        randomize_start_frame=False,
         shuffle=False,
     ).prefetch(8)
 
