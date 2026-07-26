@@ -11,7 +11,7 @@ import tensorflow as tf
 # =====================================================================
 # Directory containing the hevc-*.tfrecord shards written by
 # code/create_tfrecord_test_datasets.py
-TFRECORD_DIR = "/mnt/disks/droid-af/data/tfrecord_test/hevc"
+TFRECORD_DIR = "/mnt/disks/droid-af/data/tf-record/hevc"
 
 # Number of times to repeat the benchmark
 NUM_RUNS = 50

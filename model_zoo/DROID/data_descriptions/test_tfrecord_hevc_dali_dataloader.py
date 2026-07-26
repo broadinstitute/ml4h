@@ -24,7 +24,7 @@ else:
 # =====================================================================
 # Directory containing the hevc-*.tfrecord shards written by
 # code/create_tfrecord_test_datasets.py
-TFRECORD_DIR = "/mnt/disks/droid-af/data/tfrecord_test/hevc"
+TFRECORD_DIR = "/mnt/disks/droid-af/data/tf-record/hevc"
 
 # GPU Device Index
 GPU_INDEX = 0
