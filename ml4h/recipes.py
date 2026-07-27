@@ -129,6 +129,11 @@ from ml4h.tensorize.tensor_writer_ukbb import (
     write_tensors_from_ecg_pngs,
 )
 
+from ml4h.models.transformer_interpretability import (
+    extract_build_args_from_transformer_model,
+    plot_average_rollout_importance_from_results_binned
+)
+
 from ml4ht.data.util.date_selector import DATE_OPTION_KEY
 from ml4ht.data.sample_getter import DataDescriptionSampleGetter
 from ml4ht.data.data_loader import SampleGetterIterableDataset, shuffle_get_epoch
@@ -950,7 +955,7 @@ def train_transformer_on_parquet_stream(args):
         keras.config.enable_unsafe_deserialization()
         model = keras.models.load_model(args.model_file)
     else:
-        model = build_general_embedding_transformer(
+        model, _ = build_general_embedding_transformer(
             latent_dim=args.latent_dimensions,
             numeric_columns=args.input_numeric_columns,
             categorical_columns=args.input_categorical_columns,
@@ -1080,7 +1085,7 @@ def train_transformer_on_parquet(args):
         keras.config.enable_unsafe_deserialization()
         model = keras.models.load_model(args.model_file)
     else:
-        model = build_embedding_transformer(
+        model, _ = build_embedding_transformer(
             input_numeric_cols=input_numeric_columns,
             regression_targets=args.target_regression_columns,
             binary_targets=args.target_binary_columns,
@@ -1187,7 +1192,7 @@ def infer_transformer_on_parquet(args):
     # Build input columns (same as training)
     input_numeric_columns = args.input_numeric_columns
     input_numeric_columns += [f'latent_{i}' for i in range(args.latent_dimensions_start, args.latent_dimensions + args.latent_dimensions_start)]
-
+    
     # Handle categorical column
     if len(args.input_categorical_columns) == 1:
         input_categorical_column = args.input_categorical_columns[0]
@@ -1201,7 +1206,19 @@ def infer_transformer_on_parquet(args):
     # Load the trained model
     logging.info(f"Loading model from {args.model_file}")
     keras.config.enable_unsafe_deserialization()
-    model = keras.models.load_model(args.model_file)
+    pre_model = keras.models.load_model(args.model_file)
+
+    info = extract_build_args_from_transformer_model(pre_model)
+    
+    builder_type = info["builder_type"]
+    build_args = info["build_args"]
+
+    if builder_type == "embedding_transformer":
+        model, model_explain = build_embedding_transformer(**build_args)
+    else:
+        model, model_explain = build_general_embedding_transformer(**build_args)
+    
+    model.set_weights(pre_model.get_weights())
 
     # Get target columns from model output names
     all_targets = args.target_regression_columns + args.target_binary_columns
@@ -1217,6 +1234,7 @@ def infer_transformer_on_parquet(args):
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
+    '''
     _, _, test_group_ids = split_group_ids_from_dataframe(
         df_sorted,
         AGGREGATE_COLUMN,
@@ -1224,6 +1242,7 @@ def infer_transformer_on_parquet(args):
         valid_csv=args.valid_csv,
         test_csv=args.test_csv,
     )
+    '''
 
     # Build group index
     group_index = {}
@@ -1233,7 +1252,7 @@ def infer_transformer_on_parquet(args):
         group_index[gid] = (first, last)
 
     # Match the exact evaluation cohort used by training.
-    group_ids = test_group_ids
+    group_ids = list(group_index.keys())#test_group_ids
     logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
 
     # Limit samples if max_samples is set
@@ -1262,9 +1281,11 @@ def infer_transformer_on_parquet(args):
     for t in all_targets:
         results[f'{t}_prediction'] = []
         results[t] = []
+        if args.inspect_model:
+            results[f'{t}_relevance'] = []
 
     Feat = len(input_numeric_columns)
-
+    
     # Process each group
     logging.info(f"Starting inference over {len(group_ids)} groups...")
     for i, gid in enumerate(group_ids):
@@ -1319,6 +1340,27 @@ def infer_transformer_on_parquet(args):
         # Run inference
         outputs = model(inputs, training=False)
 
+        if args.inspect_model:
+            from ml4h.models.transformer_interpretability import grad_weighted_attention_rollout
+
+            relevance_by_target = {}
+            for t in all_targets:
+                relevance, rollout, outputs_np, layer_debug_df, layer_mats = (
+                    grad_weighted_attention_rollout(
+                        explainable_model=model_explain,   # the second return of build_embedding_transformer
+                        batch_inputs=inputs,               # full dict: num/mask (+ view if categorical)
+                        actual_len=T,                      # number of valid (non-padded) tokens
+                        n_layers=None,                     # None → auto-detect all mha_*_scores layers
+                        target_key=t,                      # binary/regression head name
+                        residual_weight=0.5,
+                        attention_weight=0.5,
+                        use_abs_grad=True,
+                        positive_only=False,
+                    )
+                )
+
+                relevance_by_target[t] = relevance
+
         # Store results
         results['mrn'].append(gid)
         results[sort_column].append(arr_sort_col[start])  # First/top entry's sort column value
@@ -1328,6 +1370,11 @@ def infer_transformer_on_parquet(args):
             # Get prediction (flatten from (1, 1) to scalar)
             pred = outputs[t].numpy().flatten()[0]
             results[f'{t}_prediction'].append(float(pred))
+
+            if args.inspect_model:
+                results[f'{t}_relevance'].append(
+                    relevance_by_target[t].astype(float).tolist()
+                )
 
             # Get true label (max per group)
             if arr_tgts[t] is not None:
@@ -1340,6 +1387,19 @@ def infer_transformer_on_parquet(args):
 
     # Create output dataframe
     output_df = pd.DataFrame(results)
+
+    if args.inspect_model:
+        for t in all_targets:
+            _, summary_df, summary_path, plot_path = plot_average_rollout_importance_from_results_binned(
+                results=results,
+                target=t,
+                output_folder=f"{args.output_folder}/{args.id}",
+                run_id=args.id,
+                n_position_bins=10,
+            )
+
+        logging.info(f"Saved rollout summary for {t} to {summary_path}")
+        logging.info(f"Saved rollout plot for {t} to {plot_path}")
 
     # Calculate and report performance metrics before saving
     logging.info(f"\n=== Performance Metrics ===")
