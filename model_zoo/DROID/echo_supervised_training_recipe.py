@@ -10,7 +10,7 @@ import pandas as pd
 import tensorflow as tf
 
 from ml4h.metrics import survival_likelihood_loss
-from data_descriptions.echo import build_echo_tfrecord_dataset
+from data_descriptions.echo import DALI_AVAILABLE, build_echo_dali_dataset, build_echo_tfrecord_dataset
 from data_descriptions.transforms import AUGMENTATIONS
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
@@ -453,11 +453,24 @@ def main(
         raise ValueError('Specify at least one regression, classification, or survival output.')
     # ---------------------------------------------------------------- #
 
+    # Decode H.264 on the GPU with NVIDIA DALI (NVDEC) when it is installed;
+    # otherwise fall back to CPU PyAV decoding inside tf.data. Both builders
+    # share the same signature and batch/label semantics.
+    if DALI_AVAILABLE:
+        logging.info('Using NVIDIA DALI (NVDEC) GPU video decoding for the data pipeline')
+        build_dataset = build_echo_dali_dataset
+    else:
+        logging.warning(
+            'nvidia.dali is not installed; falling back to CPU PyAV video decoding. '
+            'pip install nvidia-dali-cuda120 to enable GPU decoding.'
+        )
+        build_dataset = build_echo_tfrecord_dataset
+
     # The training dataset stays finite per pass (.repeat() restarts it each
     # epoch, reshuffling the shuffle buffer) and the validation dataset runs to
     # exhaustion, so Keras' fresh per-epoch validation iterator releases its
     # batches and prefetch buffer.
-    io_train_ds = build_echo_tfrecord_dataset(
+    io_train_ds = build_dataset(
         lmdb_folder,
         train_ids,
         OUTPUT_DD,
@@ -470,7 +483,7 @@ def main(
         shuffle=True,
     ).repeat().prefetch(8)
 
-    io_valid_ds = build_echo_tfrecord_dataset(
+    io_valid_ds = build_dataset(
         lmdb_folder,
         valid_ids,
         OUTPUT_DD,

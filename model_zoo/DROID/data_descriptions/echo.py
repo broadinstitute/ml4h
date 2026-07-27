@@ -11,6 +11,15 @@ import tensorflow as tf
 
 from ml4ht.data.data_description import DataDescription
 
+try:
+    from nvidia.dali import fn as dali_fn
+    from nvidia.dali import math as dali_math
+    from nvidia.dali import pipeline_def as dali_pipeline_def
+    from nvidia.dali import types as dali_types
+    DALI_AVAILABLE = True
+except ImportError:
+    DALI_AVAILABLE = False
+
 VIEW_OPTION_KEY = 'view'
 
 metadata_elements = [
@@ -221,6 +230,10 @@ def build_echo_tfrecord_dataset(
     def keep(parsed):
         return id_table.lookup(parsed['sample_id']) > 0
 
+    # do_not_convert: tf.py_function runs its callable through AutoGraph by
+    # default, which breaks the eager-only tensor control flow in the video
+    # transforms (see transforms.py docstring); run as plain eager Python.
+    @tf.autograph.experimental.do_not_convert
     def load(sample_id, video_bytes):
         sample_id = sample_id.numpy().decode('utf-8')
         video = decode_video_clip(
@@ -258,3 +271,201 @@ def build_echo_tfrecord_dataset(
         dataset = dataset.shuffle(shuffle_buffer, reshuffle_each_iteration=True)
     dataset = dataset.map(to_model_io, num_parallel_calls=tf.data.AUTOTUNE)
     return dataset.batch(batch_size, drop_remainder=True)
+
+
+def _dali_augment(video, transform):
+    """Return `video` with the DALI-native equivalent of `transform` applied.
+
+    These are not ports of the TF transforms in transforms.py — each one is
+    simply the closest built-in DALI operator, configured from the transform's
+    parameters and applied to the whole clip (FHWC sequence) on the GPU.
+    """
+    name = type(transform).__name__
+    if name == 'RandomJitterRotate':
+        angle_deg = transform.max_angle * 180.0 / np.pi
+        angle = dali_fn.random.uniform(range=[-angle_deg, angle_deg])
+        # Frames are 224x224 (enforced by the dataset signature).
+        offset = dali_fn.random.uniform(range=[-transform.max_shift, transform.max_shift], shape=[2]) * 224.0
+        matrix = dali_fn.transforms.rotation(angle=angle, center=[112.0, 112.0])
+        matrix = dali_fn.transforms.translation(matrix, offset=offset)
+        return dali_fn.warp_affine(
+            video, matrix=matrix, fill_value=0.0, interp_type=dali_types.INTERP_LINEAR,
+        )
+    if name == 'RandomSectorMask':
+        size = dali_fn.random.uniform(range=[0.0, transform.max_frac], shape=[2])
+        anchor = dali_fn.random.uniform(range=[0.0, 1.0], shape=[2]) * (1.0 - size)
+        return dali_fn.erase(
+            video, anchor=anchor, shape=size,
+            normalized_anchor=True, normalized_shape=True,
+            axis_names='HW', fill_value=0.0,
+        )
+    if name == 'RandomFlip':
+        return dali_fn.flip(
+            video,
+            horizontal=dali_fn.random.coin_flip(probability=transform.horizontal_prob),
+            vertical=dali_fn.random.coin_flip(probability=transform.vertical_prob),
+        )
+    if name == 'RandomGaussianNoise':
+        stddev = dali_fn.random.uniform(range=[0.0, transform.max_fraction])
+        return dali_math.clamp(dali_fn.noise.gaussian(video, stddev=stddev), 0.0, 1.0)
+    if name == 'RandomBrightnessContrast':
+        shift = dali_fn.random.normal(mean=0.0, stddev=transform.std) \
+            * dali_fn.random.coin_flip(probability=transform.brightness_prob, dtype=dali_types.FLOAT)
+        contrast = 1.0 + dali_fn.random.normal(mean=0.0, stddev=transform.std) \
+            * dali_fn.random.coin_flip(probability=transform.contrast_prob, dtype=dali_types.FLOAT)
+        return dali_math.clamp(
+            dali_fn.brightness_contrast(video, brightness_shift=shift, contrast=contrast, contrast_center=0.5),
+            0.0, 1.0,
+        )
+    raise ValueError(f'No DALI equivalent for transform {name}')
+
+
+def _dali_gate(video, augmented, p):
+    """Per-sample blend that applies `augmented` with probability `p`."""
+    if p >= 1.0:
+        return augmented
+    flag = dali_fn.random.coin_flip(probability=p, dtype=dali_types.FLOAT).gpu()
+    return flag * augmented + (1.0 - flag) * video
+
+
+def build_echo_dali_dataset(
+        tfrecord_dir,
+        sample_ids,
+        output_dd,
+        batch_size,
+        n_input_frames,
+        skip_modulo=1,
+        output_dims=None,
+        transforms=None,
+        randomize_start_frame=False,
+        shuffle=False,
+        shuffle_buffer=256,
+        device_id=0,
+        num_threads=4,
+):
+    """Same contract as build_echo_tfrecord_dataset, but the H.264 decode runs
+    on the GPU with NVIDIA DALI (NVDEC).
+
+    A Python generator streams serialized examples out of the TFRecord shards,
+    filters by sample_id and shuffles, then feeds each batch of encoded video
+    bytes to a DALI pipeline whose experimental video decoder (device='mixed')
+    decodes on NVDEC and does the frame selection (start_frame /
+    sequence_length / stride) and [0, 1] normalization on the GPU. Labels come
+    from `output_dd` exactly as before. Each entry in `transforms` is applied
+    inside the pipeline as its DALI-native equivalent (see _dali_augment), so
+    augmentation also runs on the GPU rather than through the TF transforms.
+
+    One behavioral difference: clips shorter than the requested window are
+    padded by repeating the last frame (DALI pad_mode='edge') instead of
+    cycling from the beginning.
+    """
+    if not DALI_AVAILABLE:
+        raise ImportError(
+            'nvidia.dali is not installed; pip install nvidia-dali-cuda120 '
+            'or use build_echo_tfrecord_dataset instead.'
+        )
+    sample_ids = [s.decode('utf-8') if isinstance(s, bytes) else str(s) for s in sample_ids]
+    if not sample_ids:
+        raise ValueError('build_echo_dali_dataset called with no sample_ids')
+    id_set = set(sample_ids)
+    transforms = transforms or []
+    output_dims = list(output_dims or [])
+    if not output_dims:
+        raise ValueError('build_echo_dali_dataset needs at least one entry in output_dims')
+
+    files = sorted(tf.io.gfile.glob(os.path.join(tfrecord_dir, '*.tfrecord')))
+    if not files:
+        raise FileNotFoundError(f'No .tfrecord shards found in {tfrecord_dir}')
+
+    # Synchronous executor (no pipelining/async) so each batch can be pushed
+    # with feed_input and pulled with run from the generator thread.
+    @dali_pipeline_def(batch_size=batch_size, num_threads=num_threads, device_id=device_id,
+                       exec_pipelined=False, exec_async=False, prefetch_queue_depth=1)
+    def video_pipe():
+        encoded = dali_fn.external_source(name='encoded', dtype=dali_types.UINT8)
+        start_frame = dali_fn.external_source(name='start_frame', dtype=dali_types.INT32)
+        frames = dali_fn.experimental.decoders.video(
+            encoded,
+            device='mixed',
+            start_frame=start_frame,
+            sequence_length=n_input_frames,
+            stride=skip_modulo,
+            pad_mode='edge',
+        )
+        video = dali_fn.cast(frames, dtype=dali_types.FLOAT) / 255.0
+        for transform in transforms:
+            video = _dali_gate(video, _dali_augment(video, transform), transform.p)
+        return video
+
+    pipe = video_pipe()
+    pipe.build()
+
+    def record_stream():
+        for raw in tf.data.TFRecordDataset(files):
+            example = tf.train.Example.FromString(raw.numpy())
+            feats = example.features.feature
+            sample_id = feats['sample_id'].bytes_list.value[0].decode('utf-8')
+            if sample_id not in id_set:
+                continue
+            yield (
+                sample_id,
+                feats['video'].bytes_list.value[0],
+                int(feats['nframes'].int64_list.value[0]),
+            )
+
+    def shuffled_stream():
+        if not shuffle:
+            yield from record_stream()
+            return
+        # Streaming shuffle buffer with the same semantics as tf.data's shuffle.
+        buffer = []
+        for item in record_stream():
+            buffer.append(item)
+            if len(buffer) >= shuffle_buffer:
+                idx = np.random.randint(len(buffer))
+                buffer[idx], buffer[-1] = buffer[-1], buffer[idx]
+                yield buffer.pop()
+        np.random.shuffle(buffer)
+        yield from buffer
+
+    def run_batch(batch_ids, batch_encoded, batch_starts):
+        pipe.feed_input('encoded', batch_encoded)
+        pipe.feed_input('start_frame', np.array(batch_starts, dtype=np.int32))
+        (videos,) = pipe.run()
+        # (B, T, H, W, 3) float32 in [0, 1], decoded and augmented on the GPU.
+        batch_inputs = videos.as_cpu().as_array()
+
+        batch_outputs = [output_dd.get_raw_data(sample_id) for sample_id in batch_ids]
+        if isinstance(batch_outputs[0], (list, tuple)):
+            batch_outputs = tuple(
+                np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
+                for output_idx in range(len(batch_outputs[0]))
+            )
+        else:
+            batch_outputs = np.stack(batch_outputs).astype(np.float32, copy=False)
+        return batch_inputs, batch_outputs
+
+    def generator():
+        batch_ids, batch_encoded, batch_starts = [], [], []
+        for sample_id, video_bytes, nframes in shuffled_stream():
+            start = 0
+            if randomize_start_frame:
+                frame_range = nframes - n_input_frames * skip_modulo
+                if frame_range > 0:
+                    start = int(np.random.randint(frame_range))
+            batch_ids.append(sample_id)
+            batch_encoded.append(np.frombuffer(video_bytes, dtype=np.uint8))
+            batch_starts.append(start)
+            if len(batch_ids) < batch_size:
+                continue
+            yield run_batch(batch_ids, batch_encoded, batch_starts)
+            batch_ids, batch_encoded, batch_starts = [], [], []
+        # Any final partial batch is dropped, matching drop_remainder=True.
+
+    video_spec = tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32)
+    label_specs = [tf.TensorSpec(shape=(batch_size, dim), dtype=tf.float32) for dim in output_dims]
+    output_signature = (
+        video_spec,
+        tuple(label_specs) if len(label_specs) > 1 else label_specs[0],
+    )
+    return tf.data.Dataset.from_generator(generator, output_signature=output_signature)

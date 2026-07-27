@@ -132,10 +132,13 @@ class RandomSectorMask(VideoTransform):
         self.same_across_frames_prob = same_across_frames_prob
 
     def _sample(self, count, hf, wf):
-        rect_h = tf.random.uniform((count,), 0.0, self.max_frac) * hf
-        rect_w = tf.random.uniform((count,), 0.0, self.max_frac) * wf
-        top = tf.random.uniform((count,)) * (hf - rect_h)
-        left = tf.random.uniform((count,)) * (wf - rect_w)
+        # tf.stack guarantees a rank-1 shape whether `count` is a Python int or a
+        # scalar tensor, so the sampled parameters are always vectors.
+        shape = tf.stack([tf.cast(count, tf.int32)])
+        rect_h = tf.random.uniform(shape, 0.0, self.max_frac) * hf
+        rect_w = tf.random.uniform(shape, 0.0, self.max_frac) * wf
+        top = tf.random.uniform(shape) * (hf - rect_h)
+        left = tf.random.uniform(shape) * (wf - rect_w)
         return top, left, rect_h, rect_w
 
     def _apply(self, video, loading_option=None):
@@ -144,12 +147,11 @@ class RandomSectorMask(VideoTransform):
         hf = tf.cast(h, tf.float32)
         wf = tf.cast(w, tf.float32)
 
+        # Sample one rectangle shared by every frame, or one per frame. The mask
+        # below broadcasts a leading dim of 1 across all T frames, so the shared
+        # case needs no tiling.
         if tf.random.uniform(()) < self.same_across_frames_prob:
             top, left, rect_h, rect_w = self._sample(1, hf, wf)
-            top = tf.tile(top, [t])
-            left = tf.tile(left, [t])
-            rect_h = tf.tile(rect_h, [t])
-            rect_w = tf.tile(rect_w, [t])
         else:
             top, left, rect_h, rect_w = self._sample(t, hf, wf)
 
