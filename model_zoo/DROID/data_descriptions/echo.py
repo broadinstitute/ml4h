@@ -310,10 +310,10 @@ def build_echo_dali_dataset(
 
     The stages are pipelined so no single thread serializes the epoch:
     TFRecord reading/proto parsing/id filtering run inside a parallel tf.data
-    graph; a DALI pipeline with a pipelined async executor pulls encoded
-    batches through an external_source callback and decodes on NVDEC
-    (start_frame / sequence_length / stride, queue depth 2, so batch N+1
-    decodes while batch N is post-processed on the host); decoded frames cross
+    graph; a DALI pipeline with a pipelined async executor is fed encoded
+    batches up to queue_depth ahead of consumption and decodes on NVDEC
+    (start_frame / sequence_length / stride), so batch N+1 decodes while
+    batch N is post-processed on the host; decoded frames cross
     back as uint8 (4x fewer bytes than float32) into tf.data, where [0, 1]
     normalization, the `transforms` (the same eager TF transforms as the CPU
     path, each self-gated on its own p) and the label gather run in a parallel
@@ -410,30 +410,24 @@ def build_echo_dali_dataset(
                 batch_rows, batch_encoded, batch_starts = [], [], []
         # Any final partial batch is dropped, matching drop_remainder=True.
 
-    # The current epoch's batch stream lives in a mutable cell so the
-    # external_source callback (bound once at pipeline build) can be
-    # re-pointed at a fresh pass each epoch; its StopIteration ends the DALI
-    # epoch and pipe.reset() re-arms the pipeline for the next one.
-    stream_cell = [None]
+    # Pipelined async executor with an explicitly driven queue: up to
+    # queue_depth batches are fed and scheduled ahead of consumption, so NVDEC
+    # decodes batch N+1 while the host normalizes/augments batch N. The queue
+    # is driven manually (feed_input + schedule_run / share_outputs) rather
+    # than through an external_source callback because a callback raising
+    # StopIteration while prefetched iterations are still scheduled
+    # invalidates the pipeline ("Critical error in pipeline: Stop signaled");
+    # here an epoch ends by simply not scheduling more work. row_idx rides
+    # through the pipeline so each decoded batch stays aligned with its rows
+    # in the label arrays.
+    queue_depth = 2
 
-    def dali_source():
-        if stream_cell[0] is None:
-            raise StopIteration
-        return next(stream_cell[0])
-
-    # Pipelined async executor with queue depth 2: DALI pulls encoded batches
-    # through the callback and NVDEC decodes batch N+1 while the host
-    # normalizes/augments batch N. row_idx rides through the pipeline so each
-    # decoded batch stays aligned with its rows in the label arrays.
     @dali_pipeline_def(batch_size=batch_size, num_threads=num_threads, device_id=device_id,
-                       prefetch_queue_depth=2)
+                       prefetch_queue_depth=queue_depth)
     def video_pipe():
-        encoded, start_frame, row_idx = dali_fn.external_source(
-            source=dali_source,
-            num_outputs=3,
-            batch=True,
-            dtype=[dali_types.UINT8, dali_types.INT32, dali_types.INT32],
-        )
+        encoded = dali_fn.external_source(name='encoded', dtype=dali_types.UINT8)
+        start_frame = dali_fn.external_source(name='start_frame', dtype=dali_types.INT32)
+        row_idx = dali_fn.external_source(name='row_idx', dtype=dali_types.INT32)
         video = dali_fn.experimental.decoders.video(
             encoded,
             device='mixed',
@@ -448,20 +442,49 @@ def build_echo_dali_dataset(
     pipe.build()
 
     def decoded_batches():
-        stream_cell[0] = batch_stream()
-        pipe.reset()
+        stream = batch_stream()
+        in_flight = 0
+
+        def feed_one():
+            nonlocal in_flight
+            batch = next(stream, None)
+            if batch is None:
+                return False
+            encoded, starts, rows = batch
+            pipe.feed_input('encoded', encoded)
+            pipe.feed_input('start_frame', starts)
+            pipe.feed_input('row_idx', rows)
+            pipe.schedule_run()
+            in_flight += 1
+            return True
+
         try:
-            while True:
-                try:
-                    videos, row_idx = pipe.run()
-                except StopIteration:
+            for _ in range(queue_depth):
+                if not feed_one():
                     break
-                # (B, T, H, W, 3) uint8 decoded on the GPU; stays uint8 so only
-                # a quarter of the float32 bytes cross PCIe and the generator
-                # boundary. Normalization happens in the tf.data map below.
-                yield videos.as_cpu().as_array(), row_idx.as_array()
+            while in_flight:
+                videos, row_idx = pipe.share_outputs()
+                # (B, T, H, W, 3) uint8 decoded on the GPU; stays uint8 so
+                # only a quarter of the float32 bytes cross PCIe and the
+                # generator boundary; copied out before release_outputs hands
+                # the buffers back to DALI. Normalization happens in the
+                # tf.data map below.
+                batch = (videos.as_cpu().as_array(), row_idx.as_array())
+                pipe.release_outputs()
+                in_flight -= 1
+                feed_one()
+                yield batch
         finally:
-            stream_cell[0] = None
+            # If the consumer abandons the iterator mid-epoch, drain the
+            # already-scheduled runs so the next epoch starts from an idle
+            # pipeline instead of reading stale, misaligned outputs.
+            while in_flight:
+                try:
+                    pipe.share_outputs()
+                    pipe.release_outputs()
+                except Exception:
+                    pass
+                in_flight -= 1
 
     # do_not_convert for the same reason as the CPU path: the transforms need
     # eager tensor control flow. Each transform still gates itself on its own
