@@ -19,6 +19,14 @@ from model_descriptions.echo import create_movinet_classifier, create_regressor_
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
 
+# TensorFlow reserves nearly all GPU memory up front by default, which starves
+# anything that allocates outside TF's pool — in particular the DALI/NVDEC
+# video decoder used by build_echo_dali_dataset. Memory growth makes TF claim
+# memory only as needed so the decoder and the model can share the GPU. This
+# must run before TF initializes the GPUs (i.e. before any op touches them).
+for _gpu in tf.config.list_physical_devices('GPU'):
+    tf.config.experimental.set_memory_growth(_gpu, True)
+
 USER = os.getenv('USER')
 
 

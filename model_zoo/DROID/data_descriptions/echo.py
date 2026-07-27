@@ -13,7 +13,6 @@ from ml4ht.data.data_description import DataDescription
 
 try:
     from nvidia.dali import fn as dali_fn
-    from nvidia.dali import math as dali_math
     from nvidia.dali import pipeline_def as dali_pipeline_def
     from nvidia.dali import types as dali_types
     DALI_AVAILABLE = True
@@ -273,66 +272,6 @@ def build_echo_tfrecord_dataset(
     return dataset.batch(batch_size, drop_remainder=True)
 
 
-def _dali_float_coin_flip(p):
-    """coin_flip only emits bool/uint8/int32 in this DALI build, so cast to float."""
-    return dali_fn.cast(dali_fn.random.coin_flip(probability=p), dtype=dali_types.FLOAT)
-
-
-def _dali_augment(video, transform):
-    """Return `video` with the DALI-native equivalent of `transform` applied.
-
-    These are not ports of the TF transforms in transforms.py — each one is
-    simply the closest built-in DALI operator, configured from the transform's
-    parameters and applied to the whole clip (FHWC sequence) on the GPU.
-    """
-    name = type(transform).__name__
-    if name == 'RandomJitterRotate':
-        angle_deg = transform.max_angle * 180.0 / np.pi
-        angle = dali_fn.random.uniform(range=[-angle_deg, angle_deg])
-        # Frames are 224x224 (enforced by the dataset signature).
-        offset = dali_fn.random.uniform(range=[-transform.max_shift, transform.max_shift], shape=[2]) * 224.0
-        matrix = dali_fn.transforms.rotation(angle=angle, center=[112.0, 112.0])
-        matrix = dali_fn.transforms.translation(matrix, offset=offset)
-        return dali_fn.warp_affine(
-            video, matrix=matrix, fill_value=0.0, interp_type=dali_types.INTERP_LINEAR,
-        )
-    if name == 'RandomSectorMask':
-        size = dali_fn.random.uniform(range=[0.0, transform.max_frac], shape=[2])
-        anchor = dali_fn.random.uniform(range=[0.0, 1.0], shape=[2]) * (1.0 - size)
-        return dali_fn.erase(
-            video, anchor=anchor, shape=size,
-            normalized_anchor=True, normalized_shape=True,
-            axis_names='HW', fill_value=0.0,
-        )
-    if name == 'RandomFlip':
-        return dali_fn.flip(
-            video,
-            horizontal=dali_fn.random.coin_flip(probability=transform.horizontal_prob),
-            vertical=dali_fn.random.coin_flip(probability=transform.vertical_prob),
-        )
-    if name == 'RandomGaussianNoise':
-        stddev = dali_fn.random.uniform(range=[0.0, transform.max_fraction])
-        return dali_math.clamp(dali_fn.noise.gaussian(video, stddev=stddev), 0.0, 1.0)
-    if name == 'RandomBrightnessContrast':
-        shift = dali_fn.random.normal(mean=0.0, stddev=transform.std) \
-            * _dali_float_coin_flip(transform.brightness_prob)
-        contrast = 1.0 + dali_fn.random.normal(mean=0.0, stddev=transform.std) \
-            * _dali_float_coin_flip(transform.contrast_prob)
-        return dali_math.clamp(
-            dali_fn.brightness_contrast(video, brightness_shift=shift, contrast=contrast, contrast_center=0.5),
-            0.0, 1.0,
-        )
-    raise ValueError(f'No DALI equivalent for transform {name}')
-
-
-def _dali_gate(video, augmented, p):
-    """Per-sample blend that applies `augmented` with probability `p`."""
-    if p >= 1.0:
-        return augmented
-    flag = _dali_float_coin_flip(p).gpu()
-    return flag * augmented + (1.0 - flag) * video
-
-
 def build_echo_dali_dataset(
         tfrecord_dir,
         sample_ids,
@@ -353,12 +292,14 @@ def build_echo_dali_dataset(
 
     A Python generator streams serialized examples out of the TFRecord shards,
     filters by sample_id and shuffles, then feeds each batch of encoded video
-    bytes to a DALI pipeline whose experimental video decoder (device='mixed')
-    decodes on NVDEC and does the frame selection (start_frame /
-    sequence_length / stride) and [0, 1] normalization on the GPU. Labels come
-    from `output_dd` exactly as before. Each entry in `transforms` is applied
-    inside the pipeline as its DALI-native equivalent (see _dali_augment), so
-    augmentation also runs on the GPU rather than through the TF transforms.
+    bytes to a DALI pipeline that does exactly one thing: decode on NVDEC with
+    frame selection (start_frame / sequence_length / stride) and return the
+    uint8 frames. Everything else — [0, 1] normalization and the `transforms`
+    (the same TF transforms as the CPU path, each self-gated on its own p) —
+    happens on the host after the decoded batch is copied back. Keeping the
+    DALI graph decode-only keeps its GPU footprint to the decoded uint8 batch
+    instead of a chain of float32 intermediates. Labels come from `output_dd`
+    exactly as before.
 
     One behavioral difference: clips shorter than the requested window are
     padded by repeating the last frame (DALI pad_mode='edge') instead of
@@ -389,7 +330,7 @@ def build_echo_dali_dataset(
     def video_pipe():
         encoded = dali_fn.external_source(name='encoded', dtype=dali_types.UINT8)
         start_frame = dali_fn.external_source(name='start_frame', dtype=dali_types.INT32)
-        frames = dali_fn.experimental.decoders.video(
+        return dali_fn.experimental.decoders.video(
             encoded,
             device='mixed',
             start_frame=start_frame,
@@ -397,10 +338,6 @@ def build_echo_dali_dataset(
             stride=skip_modulo,
             pad_mode='edge',
         )
-        video = dali_fn.cast(frames, dtype=dali_types.FLOAT) / 255.0
-        for transform in transforms:
-            video = _dali_gate(video, _dali_augment(video, transform), transform.p)
-        return video
 
     pipe = video_pipe()
     pipe.build()
@@ -437,8 +374,22 @@ def build_echo_dali_dataset(
         pipe.feed_input('encoded', batch_encoded)
         pipe.feed_input('start_frame', np.array(batch_starts, dtype=np.int32))
         (videos,) = pipe.run()
-        # (B, T, H, W, 3) float32 in [0, 1], decoded and augmented on the GPU.
-        batch_inputs = videos.as_cpu().as_array()
+        # (B, T, H, W, 3) uint8 decoded on the GPU, normalized to [0, 1] here
+        # so only a quarter of the bytes cross PCIe.
+        batch_inputs = videos.as_cpu().as_array().astype(np.float32)
+        batch_inputs /= 255.0
+
+        if transforms:
+            # Identical augmentation code to the CPU pipeline; each transform
+            # gates itself on transform.p. Pinned to the CPU so the GPU stays
+            # dedicated to NVDEC decode and training.
+            with tf.device('/CPU:0'):
+                augmented = []
+                for clip in batch_inputs:
+                    for transform in transforms:
+                        clip = transform(clip, None)
+                    augmented.append(np.asarray(clip, dtype=np.float32))
+            batch_inputs = np.stack(augmented)
 
         batch_outputs = [output_dd.get_raw_data(sample_id) for sample_id in batch_ids]
         if isinstance(batch_outputs[0], (list, tuple)):
