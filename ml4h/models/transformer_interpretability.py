@@ -180,97 +180,6 @@ def extract_build_args_from_transformer_model(model):
             },
         }
 
-def chefer_rollout_keras(
-    model_explain,
-    batch_inputs,
-    target_name,
-    class_index=None,
-    residual_weight=0.5,
-    attention_weight=0.5,
-    use_abs_grad=True,
-    positive_only=False,
-    pool_mode="attention",  # "attention" or "uniform"
-):
-    """
-    Returns token/timestamp relevance: shape (B, T)
-
-    pool_mode:
-        "attention" = collapse rollout using model attention-pooling weights
-        "uniform"   = collapse rollout by averaging over valid query tokens
-    """
-
-    with tf.GradientTape() as tape:
-        outputs = model_explain(batch_inputs, training=False)
-
-        attn_keys = sorted(
-            [
-                k for k in outputs.keys()
-                if k.startswith("mha_") and k.endswith("_scores")
-            ],
-            key=lambda x: int(x.split("_")[1]),
-        )
-        print(f"Found {len(attn_keys)} attention score outputs: {attn_keys}")
-        attn_scores = [outputs[k] for k in attn_keys]
-        tape.watch(attn_scores)
-
-        y = outputs[target_name]
-
-        if class_index is not None:
-            target_score = y[:, class_index]
-        else:
-            target_score = tf.reshape(y, [tf.shape(y)[0], -1])[:, 0]
-
-    grads = tape.gradient(target_score, attn_scores)
-
-    B = tf.shape(attn_scores[0])[0]
-    T = tf.shape(attn_scores[0])[-1]
-
-    mask = tf.cast(batch_inputs["mask"], tf.float32)
-    pair_mask = mask[:, :, None] * mask[:, None, :]
-
-    I = tf.eye(T, batch_shape=[B]) * mask[:, :, None]
-    R = I
-
-    for A, G in zip(attn_scores, grads):
-        if use_abs_grad:
-            cam = A * tf.abs(G)
-        else:
-            cam = A * G
-
-        if positive_only:
-            cam = tf.nn.relu(cam)
-
-        cam = tf.reduce_mean(cam, axis=1)
-        cam = cam * pair_mask
-
-        cam = cam / (tf.reduce_sum(cam, axis=-1, keepdims=True) + 1e-8)
-
-        cam = residual_weight * I + attention_weight * cam
-        cam = cam * pair_mask
-        cam = cam / (tf.reduce_sum(cam, axis=-1, keepdims=True) + 1e-8)
-
-        R = tf.matmul(cam, R)
-
-    if pool_mode == "attention":
-        query_wts = outputs["attn_wts"]
-
-    elif pool_mode == "uniform":
-        valid_count = tf.reduce_sum(mask, axis=-1, keepdims=True)
-        query_wts = mask / (valid_count + 1e-8)
-
-    else:
-        raise ValueError(f"Unknown pool_mode: {pool_mode}")
-
-    relevance = tf.reduce_sum(R * query_wts[:, :, None], axis=1)
-
-    relevance = relevance * mask
-    relevance = relevance / (
-        tf.reduce_sum(relevance, axis=-1, keepdims=True) + 1e-8
-    )
-
-    return relevance.numpy(), outputs
-
-
 def normalize_rows(A, eps=1e-8):
     row_sum = A.sum(axis=-1, keepdims=True)
     return A / (row_sum + eps)
@@ -315,6 +224,7 @@ def grad_weighted_attention_rollout(
     positive_only=False,
 ):
     """
+    Modified Chefer et al. (2021) gradient-weighted attention rollout for encoder-only transformers.
     Single-sample gradient-weighted attention rollout (Chefer et al., CVPR 2021).
 
     This is a direct port of the reference notebook implementation
