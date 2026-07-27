@@ -172,6 +172,37 @@ def decode_video_clip(video_bytes, nframes, skip_modulo=1, start_frame=0, random
     return np.array(frames, dtype='float32') / 255.
 
 
+def _precompute_labels(sample_ids, output_dd, output_dims):
+    """Look every sample's labels up once at dataset-build time.
+
+    output_dd.get_raw_data is a pandas lookup; calling it per sample per epoch
+    from inside the input pipeline serializes on the GIL and steals time from
+    video decoding. Returns one (n_samples, dim) float32 array per output
+    head, row-aligned with `sample_ids`, so the pipeline can fetch labels with
+    a graph-side gather.
+    """
+    heads = [np.empty((len(sample_ids), dim), dtype=np.float32) for dim in output_dims]
+    for row, sample_id in enumerate(sample_ids):
+        labels = output_dd.get_raw_data(sample_id)
+        if not isinstance(labels, (list, tuple)):
+            labels = [labels]
+        for head, label in zip(heads, labels):
+            head[row] = np.asarray(label, dtype=np.float32).reshape(-1)
+    return heads
+
+
+def _label_row_table(sample_ids):
+    """StaticHashTable mapping sample_id -> row in the precomputed label
+    arrays; -1 (the default) marks records that should be filtered out."""
+    return tf.lookup.StaticHashTable(
+        tf.lookup.KeyValueTensorInitializer(
+            tf.constant(sample_ids),
+            tf.range(len(sample_ids), dtype=tf.int32),
+        ),
+        default_value=-1,
+    )
+
+
 def build_echo_tfrecord_dataset(
         tfrecord_dir,
         sample_ids,
@@ -189,10 +220,12 @@ def build_echo_tfrecord_dataset(
 
     Replaces the LMDB generator pipeline: reads serialized examples written by
     create_tfrecord_a4c_dataset.py, keeps only records whose sample_id is in
-    `sample_ids`, decodes the video bytes with PyAV, and looks the labels up
-    through `output_dd` (EcholabDataDescription). `output_dims` lists the
-    per-sample length of each model output (regression, classification heads,
-    then survival heads), in the order output_dd returns them.
+    `sample_ids`, and decodes the video bytes with PyAV. Labels are looked up
+    through `output_dd` (EcholabDataDescription) once at build time and served
+    from constant tensors, so the per-record py_function does nothing but the
+    video decode. `output_dims` lists the per-sample length of each model
+    output (regression, classification heads, then survival heads), in the
+    order output_dd returns them.
 
     Returns a finite dataset of (video, labels) batches with
     drop_remainder=True; the training call site adds .repeat().
@@ -210,13 +243,8 @@ def build_echo_tfrecord_dataset(
     if not files:
         raise FileNotFoundError(f'No .tfrecord shards found in {tfrecord_dir}')
 
-    id_table = tf.lookup.StaticHashTable(
-        tf.lookup.KeyValueTensorInitializer(
-            tf.constant(sample_ids),
-            tf.ones(len(sample_ids), dtype=tf.int32),
-        ),
-        default_value=0,
-    )
+    label_consts = [tf.constant(head) for head in _precompute_labels(sample_ids, output_dd, output_dims)]
+    row_table = _label_row_table(sample_ids)
 
     feature_spec = {
         'sample_id': tf.io.FixedLenFeature([], tf.string),
@@ -227,14 +255,13 @@ def build_echo_tfrecord_dataset(
         return tf.io.parse_single_example(serialized, feature_spec)
 
     def keep(parsed):
-        return id_table.lookup(parsed['sample_id']) > 0
+        return row_table.lookup(parsed['sample_id']) >= 0
 
     # do_not_convert: tf.py_function runs its callable through AutoGraph by
     # default, which breaks the eager-only tensor control flow in the video
     # transforms (see transforms.py docstring); run as plain eager Python.
     @tf.autograph.experimental.do_not_convert
-    def load(sample_id, video_bytes):
-        sample_id = sample_id.numpy().decode('utf-8')
+    def load(video_bytes):
         video = decode_video_clip(
             video_bytes.numpy(),
             n_input_frames,
@@ -243,22 +270,13 @@ def build_echo_tfrecord_dataset(
         )
         for transform in transforms:
             video = transform(video, None)
-        labels = output_dd.get_raw_data(sample_id)
-        if not isinstance(labels, (list, tuple)):
-            labels = [labels]
-        return [np.asarray(video, dtype=np.float32)] + [np.asarray(label, dtype=np.float32) for label in labels]
+        return np.asarray(video, dtype=np.float32)
 
     def to_model_io(parsed):
-        outputs = tf.py_function(
-            load,
-            [parsed['sample_id'], parsed['video']],
-            Tout=[tf.float32] * (1 + n_outputs),
-        )
-        video = outputs[0]
+        video = tf.py_function(load, [parsed['video']], Tout=tf.float32)
         video.set_shape((n_input_frames, 224, 224, 3))
-        labels = outputs[1:]
-        for label, dim in zip(labels, output_dims):
-            label.set_shape((dim,))
+        row = row_table.lookup(parsed['sample_id'])
+        labels = [tf.gather(label_const, row) for label_const in label_consts]
         if n_outputs == 1:
             return video, labels[0]
         return video, tuple(labels)
@@ -290,16 +308,19 @@ def build_echo_dali_dataset(
     """Same contract as build_echo_tfrecord_dataset, but the H.264 decode runs
     on the GPU with NVIDIA DALI (NVDEC).
 
-    A Python generator streams serialized examples out of the TFRecord shards,
-    filters by sample_id and shuffles, then feeds each batch of encoded video
-    bytes to a DALI pipeline that does exactly one thing: decode on NVDEC with
-    frame selection (start_frame / sequence_length / stride) and return the
-    uint8 frames. Everything else — [0, 1] normalization and the `transforms`
-    (the same TF transforms as the CPU path, each self-gated on its own p) —
-    happens on the host after the decoded batch is copied back. Keeping the
-    DALI graph decode-only keeps its GPU footprint to the decoded uint8 batch
-    instead of a chain of float32 intermediates. Labels come from `output_dd`
-    exactly as before.
+    The stages are pipelined so no single thread serializes the epoch:
+    TFRecord reading/proto parsing/id filtering run inside a parallel tf.data
+    graph; a DALI pipeline with a pipelined async executor pulls encoded
+    batches through an external_source callback and decodes on NVDEC
+    (start_frame / sequence_length / stride, queue depth 2, so batch N+1
+    decodes while batch N is post-processed on the host); decoded frames cross
+    back as uint8 (4x fewer bytes than float32) into tf.data, where [0, 1]
+    normalization, the `transforms` (the same eager TF transforms as the CPU
+    path, each self-gated on its own p) and the label gather run in a parallel
+    map that overlaps decode and training. Keeping the DALI graph decode-only
+    keeps its GPU footprint to the decoded uint8 batch instead of a chain of
+    float32 intermediates. Labels are precomputed from `output_dd` once at
+    build time and gathered graph-side.
 
     One behavioral difference: clips shorter than the requested window are
     padded by repeating the last frame (DALI pad_mode='edge') instead of
@@ -313,46 +334,45 @@ def build_echo_dali_dataset(
     sample_ids = [s.decode('utf-8') if isinstance(s, bytes) else str(s) for s in sample_ids]
     if not sample_ids:
         raise ValueError('build_echo_dali_dataset called with no sample_ids')
-    id_set = set(sample_ids)
     transforms = transforms or []
     output_dims = list(output_dims or [])
     if not output_dims:
         raise ValueError('build_echo_dali_dataset needs at least one entry in output_dims')
+    n_outputs = len(output_dims)
 
     files = sorted(tf.io.gfile.glob(os.path.join(tfrecord_dir, '*.tfrecord')))
     if not files:
         raise FileNotFoundError(f'No .tfrecord shards found in {tfrecord_dir}')
 
-    # Synchronous executor (no pipelining/async) so each batch can be pushed
-    # with feed_input and pulled with run from the generator thread.
-    @dali_pipeline_def(batch_size=batch_size, num_threads=num_threads, device_id=device_id,
-                       exec_pipelined=False, exec_async=False, prefetch_queue_depth=1)
-    def video_pipe():
-        encoded = dali_fn.external_source(name='encoded', dtype=dali_types.UINT8)
-        start_frame = dali_fn.external_source(name='start_frame', dtype=dali_types.INT32)
-        return dali_fn.experimental.decoders.video(
-            encoded,
-            device='mixed',
-            start_frame=start_frame,
-            sequence_length=n_input_frames,
-            stride=skip_modulo,
-            pad_mode='edge',
-        )
+    label_consts = [tf.constant(head) for head in _precompute_labels(sample_ids, output_dd, output_dims)]
+    row_table = _label_row_table(sample_ids)
+    row_index = {sample_id: row for row, sample_id in enumerate(sample_ids)}
 
-    pipe = video_pipe()
-    pipe.build()
+    feature_spec = {
+        'sample_id': tf.io.FixedLenFeature([], tf.string),
+        'video': tf.io.FixedLenFeature([], tf.string),
+        'nframes': tf.io.FixedLenFeature([], tf.int64),
+    }
+
+    def parse(serialized):
+        return tf.io.parse_single_example(serialized, feature_spec)
+
+    def keep(parsed):
+        return row_table.lookup(parsed['sample_id']) >= 0
 
     def record_stream():
-        for raw in tf.data.TFRecordDataset(files):
-            example = tf.train.Example.FromString(raw.numpy())
-            feats = example.features.feature
-            sample_id = feats['sample_id'].bytes_list.value[0].decode('utf-8')
-            if sample_id not in id_set:
-                continue
+        # Reading, proto parsing and id filtering run in parallel inside
+        # tf.data (C++), replacing the serial Example.FromString loop; records
+        # not in sample_ids are dropped graph-side, before their video bytes
+        # are ever copied out to Python.
+        records = tf.data.TFRecordDataset(files, num_parallel_reads=tf.data.AUTOTUNE)
+        records = records.map(parse, num_parallel_calls=tf.data.AUTOTUNE)
+        records = records.filter(keep).prefetch(tf.data.AUTOTUNE)
+        for parsed in records.as_numpy_iterator():
             yield (
-                sample_id,
-                feats['video'].bytes_list.value[0],
-                int(feats['nframes'].int64_list.value[0]),
+                parsed['sample_id'].decode('utf-8'),
+                parsed['video'],
+                int(parsed['nframes']),
             )
 
     def shuffled_stream():
@@ -370,58 +390,108 @@ def build_echo_dali_dataset(
         np.random.shuffle(buffer)
         yield from buffer
 
-    def run_batch(batch_ids, batch_encoded, batch_starts):
-        pipe.feed_input('encoded', batch_encoded)
-        pipe.feed_input('start_frame', np.array(batch_starts, dtype=np.int32))
-        (videos,) = pipe.run()
-        # (B, T, H, W, 3) uint8 decoded on the GPU, normalized to [0, 1] here
-        # so only a quarter of the bytes cross PCIe.
-        batch_inputs = videos.as_cpu().as_array().astype(np.float32)
-        batch_inputs /= 255.0
-
-        if transforms:
-            # Identical augmentation code to the CPU pipeline; each transform
-            # gates itself on transform.p. Pinned to the CPU so the GPU stays
-            # dedicated to NVDEC decode and training.
-            with tf.device('/CPU:0'):
-                augmented = []
-                for clip in batch_inputs:
-                    for transform in transforms:
-                        clip = transform(clip, None)
-                    augmented.append(np.asarray(clip, dtype=np.float32))
-            batch_inputs = np.stack(augmented)
-
-        batch_outputs = [output_dd.get_raw_data(sample_id) for sample_id in batch_ids]
-        if isinstance(batch_outputs[0], (list, tuple)):
-            batch_outputs = tuple(
-                np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
-                for output_idx in range(len(batch_outputs[0]))
-            )
-        else:
-            batch_outputs = np.stack(batch_outputs).astype(np.float32, copy=False)
-        return batch_inputs, batch_outputs
-
-    def generator():
-        batch_ids, batch_encoded, batch_starts = [], [], []
+    def batch_stream():
+        batch_rows, batch_encoded, batch_starts = [], [], []
         for sample_id, video_bytes, nframes in shuffled_stream():
             start = 0
             if randomize_start_frame:
                 frame_range = nframes - n_input_frames * skip_modulo
                 if frame_range > 0:
                     start = int(np.random.randint(frame_range))
-            batch_ids.append(sample_id)
+            batch_rows.append(row_index[sample_id])
             batch_encoded.append(np.frombuffer(video_bytes, dtype=np.uint8))
             batch_starts.append(start)
-            if len(batch_ids) < batch_size:
-                continue
-            yield run_batch(batch_ids, batch_encoded, batch_starts)
-            batch_ids, batch_encoded, batch_starts = [], [], []
+            if len(batch_rows) == batch_size:
+                yield (
+                    batch_encoded,
+                    np.array(batch_starts, dtype=np.int32),
+                    np.array(batch_rows, dtype=np.int32),
+                )
+                batch_rows, batch_encoded, batch_starts = [], [], []
         # Any final partial batch is dropped, matching drop_remainder=True.
 
-    video_spec = tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.float32)
-    label_specs = [tf.TensorSpec(shape=(batch_size, dim), dtype=tf.float32) for dim in output_dims]
-    output_signature = (
-        video_spec,
-        tuple(label_specs) if len(label_specs) > 1 else label_specs[0],
+    # The current epoch's batch stream lives in a mutable cell so the
+    # external_source callback (bound once at pipeline build) can be
+    # re-pointed at a fresh pass each epoch; its StopIteration ends the DALI
+    # epoch and pipe.reset() re-arms the pipeline for the next one.
+    stream_cell = [None]
+
+    def dali_source():
+        if stream_cell[0] is None:
+            raise StopIteration
+        return next(stream_cell[0])
+
+    # Pipelined async executor with queue depth 2: DALI pulls encoded batches
+    # through the callback and NVDEC decodes batch N+1 while the host
+    # normalizes/augments batch N. row_idx rides through the pipeline so each
+    # decoded batch stays aligned with its rows in the label arrays.
+    @dali_pipeline_def(batch_size=batch_size, num_threads=num_threads, device_id=device_id,
+                       prefetch_queue_depth=2)
+    def video_pipe():
+        encoded, start_frame, row_idx = dali_fn.external_source(
+            source=dali_source,
+            num_outputs=3,
+            batch=True,
+            dtype=[dali_types.UINT8, dali_types.INT32, dali_types.INT32],
+        )
+        video = dali_fn.experimental.decoders.video(
+            encoded,
+            device='mixed',
+            start_frame=start_frame,
+            sequence_length=n_input_frames,
+            stride=skip_modulo,
+            pad_mode='edge',
+        )
+        return video, row_idx
+
+    pipe = video_pipe()
+    pipe.build()
+
+    def decoded_batches():
+        stream_cell[0] = batch_stream()
+        pipe.reset()
+        try:
+            while True:
+                try:
+                    videos, row_idx = pipe.run()
+                except StopIteration:
+                    break
+                # (B, T, H, W, 3) uint8 decoded on the GPU; stays uint8 so only
+                # a quarter of the float32 bytes cross PCIe and the generator
+                # boundary. Normalization happens in the tf.data map below.
+                yield videos.as_cpu().as_array(), row_idx.as_array()
+        finally:
+            stream_cell[0] = None
+
+    # do_not_convert for the same reason as the CPU path: the transforms need
+    # eager tensor control flow. Each transform still gates itself on its own
+    # p, with parameters shared across a clip's frames but not across clips.
+    @tf.autograph.experimental.do_not_convert
+    def augment_batch(videos):
+        videos = videos.numpy().astype(np.float32) / 255.0
+        clips = []
+        for clip in videos:
+            for transform in transforms:
+                clip = transform(clip, None)
+            clips.append(np.asarray(clip, dtype=np.float32))
+        return np.stack(clips)
+
+    def to_model_io(videos, row_idx):
+        if transforms:
+            videos = tf.py_function(augment_batch, [videos], Tout=tf.float32)
+        else:
+            videos = tf.cast(videos, tf.float32) / 255.0
+        videos.set_shape((batch_size, n_input_frames, 224, 224, 3))
+        labels = [tf.gather(label_const, row_idx) for label_const in label_consts]
+        if n_outputs == 1:
+            return videos, labels[0]
+        return videos, tuple(labels)
+
+    dataset = tf.data.Dataset.from_generator(
+        decoded_batches,
+        output_signature=(
+            tf.TensorSpec(shape=(batch_size, n_input_frames, 224, 224, 3), dtype=tf.uint8),
+            tf.TensorSpec(shape=(batch_size,), dtype=tf.int32),
+        ),
     )
-    return tf.data.Dataset.from_generator(generator, output_signature=output_signature)
+    return dataset.map(to_model_io, num_parallel_calls=tf.data.AUTOTUNE)
