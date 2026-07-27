@@ -273,6 +273,11 @@ def build_echo_tfrecord_dataset(
     return dataset.batch(batch_size, drop_remainder=True)
 
 
+def _dali_float_coin_flip(p):
+    """coin_flip only emits bool/uint8/int32 in this DALI build, so cast to float."""
+    return dali_fn.cast(dali_fn.random.coin_flip(probability=p), dtype=dali_types.FLOAT)
+
+
 def _dali_augment(video, transform):
     """Return `video` with the DALI-native equivalent of `transform` applied.
 
@@ -310,9 +315,9 @@ def _dali_augment(video, transform):
         return dali_math.clamp(dali_fn.noise.gaussian(video, stddev=stddev), 0.0, 1.0)
     if name == 'RandomBrightnessContrast':
         shift = dali_fn.random.normal(mean=0.0, stddev=transform.std) \
-            * dali_fn.random.coin_flip(probability=transform.brightness_prob, dtype=dali_types.FLOAT)
+            * _dali_float_coin_flip(transform.brightness_prob)
         contrast = 1.0 + dali_fn.random.normal(mean=0.0, stddev=transform.std) \
-            * dali_fn.random.coin_flip(probability=transform.contrast_prob, dtype=dali_types.FLOAT)
+            * _dali_float_coin_flip(transform.contrast_prob)
         return dali_math.clamp(
             dali_fn.brightness_contrast(video, brightness_shift=shift, contrast=contrast, contrast_center=0.5),
             0.0, 1.0,
@@ -324,7 +329,7 @@ def _dali_gate(video, augmented, p):
     """Per-sample blend that applies `augmented` with probability `p`."""
     if p >= 1.0:
         return augmented
-    flag = dali_fn.random.coin_flip(probability=p, dtype=dali_types.FLOAT).gpu()
+    flag = _dali_float_coin_flip(p).gpu()
     return flag * augmented + (1.0 - flag) * video
 
 
