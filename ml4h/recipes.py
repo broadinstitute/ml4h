@@ -1208,17 +1208,23 @@ def infer_transformer_on_parquet(args):
     keras.config.enable_unsafe_deserialization()
     pre_model = keras.models.load_model(args.model_file)
 
-    info = extract_build_args_from_transformer_model(pre_model)
-    
-    builder_type = info["builder_type"]
-    build_args = info["build_args"]
+    if args.inspect_model:
+        # Rebuild the architecture from the loaded model so we also get model_explain,
+        # which the rollout/relevance code below needs.
+        info = extract_build_args_from_transformer_model(pre_model)
 
-    if builder_type == "embedding_transformer":
-        model, model_explain = build_embedding_transformer(**build_args)
+        builder_type = info["builder_type"]
+        build_args = info["build_args"]
+
+        if builder_type == "embedding_transformer":
+            model, model_explain = build_embedding_transformer(**build_args)
+        else:
+            model, model_explain = build_general_embedding_transformer(**build_args)
+
+        model.set_weights(pre_model.get_weights())
     else:
-        model, model_explain = build_general_embedding_transformer(**build_args)
-    
-    model.set_weights(pre_model.get_weights())
+        model = pre_model
+        model_explain = None
 
     # Get target columns from model output names
     all_targets = args.target_regression_columns + args.target_binary_columns
@@ -1234,7 +1240,6 @@ def infer_transformer_on_parquet(args):
     df_sorted = df.sort_values([AGGREGATE_COLUMN, sort_column],
                                ascending=[True, sort_column_ascend]).reset_index(drop=True)
 
-    '''
     _, _, test_group_ids = split_group_ids_from_dataframe(
         df_sorted,
         AGGREGATE_COLUMN,
@@ -1242,7 +1247,6 @@ def infer_transformer_on_parquet(args):
         valid_csv=args.valid_csv,
         test_csv=args.test_csv,
     )
-    '''
 
     # Build group index
     group_index = {}
@@ -1252,7 +1256,7 @@ def infer_transformer_on_parquet(args):
         group_index[gid] = (first, last)
 
     # Match the exact evaluation cohort used by training.
-    group_ids = list(group_index.keys())#test_group_ids
+    group_ids = test_group_ids
     logging.info(f"Selected {len(group_ids)} test groups based on shared split logic")
 
     # Limit samples if max_samples is set
