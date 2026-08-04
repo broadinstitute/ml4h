@@ -65,14 +65,29 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
 
     return model
 
+# Training-set (std, mean) used to scale each regression output, in model output
+# order. Applied in reverse to map predictions back to physical units.
+DROID_RV_REGRESSION_SCALING = [
+    ('Age', 15.51761856, 64.43979878),
+    ('RVEDD', 6.88963822, 42.52320993),
+]
+
+DROID_RVEF_REGRESSION_SCALING = [
+    ('RVEF', 8.658711, 53.40699),
+    ('RV End-Diastolic Volume', 46.5734, 130.8913),
+    ('RV End-Systolic Volume', 31.6643, 62.87321),
+    ('Age', 22.99643, 47.18989),
+]
+
+def _rescale_regression_head(model_output, scaling):
+    # Slices the whole column so that every row in a batch is rescaled. For a
+    # single-sample batch this is equivalent to indexing [0, i] directly.
+    for i, (_, std, mean) in enumerate(scaling):
+        model_output[0][:, i] = model_output[0][:, i] * std + mean
+    return model_output
+
 def rescale_droid_rv_outputs(droid_rv_output):
-    droid_rv_output[0][0,0] =  droid_rv_output[0][0,0] * 15.51761856 + 64.43979878
-    droid_rv_output[0][0,1] =  droid_rv_output[0][0,1] * 6.88963822 + 42.52320993
-    return droid_rv_output
+    return _rescale_regression_head(droid_rv_output, DROID_RV_REGRESSION_SCALING)
 
 def rescale_droid_rvef_outputs(droid_rvef_output):
-    droid_rvef_output[0][0,0] =  droid_rvef_output[0][0,0] * 8.658711 + 53.40699
-    droid_rvef_output[0][0,1] =  droid_rvef_output[0][0,1] * 46.5734 + 130.8913
-    droid_rvef_output[0][0,2] =  droid_rvef_output[0][0,2] * 31.6643 + 62.87321
-    droid_rvef_output[0][0,3] =  droid_rvef_output[0][0,3] * 22.99643 + 47.18989
-    return droid_rvef_output
+    return _rescale_regression_head(droid_rvef_output, DROID_RVEF_REGRESSION_SCALING)

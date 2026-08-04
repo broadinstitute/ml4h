@@ -55,3 +55,6 @@ model_zoo/ECG2Stroke/ecg2stroke_salience.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG2Stroke/ecg2stroke_study_design.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG2Stroke/ecg2stroke_architecture.png filter=lfs diff=lfs merge=lfs -text
 model_zoo/ECG2Stroke/ecg2stroke_performance.png filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/synthetic_data/data/wide_file.parquet filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/synthetic_data/data/lmdb/**/*.mdb filter=lfs diff=lfs merge=lfs -text
+model_zoo/DROID-RV/synthetic_data/data/lmdb/**/*.pq filter=lfs diff=lfs merge=lfs -text

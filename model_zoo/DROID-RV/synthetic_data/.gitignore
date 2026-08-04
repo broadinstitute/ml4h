@@ -1,0 +1,6 @@
+# Smoke test artifacts. The dataset in data/ IS committed (via git-lfs).
+smoke_test_output_*/
+inference_smoke_test_output/
+
+# LMDB runtime lock files: recreated on open, must not be committed.
+data/lmdb/*.lmdb/lock.mdb
