@@ -10,6 +10,7 @@ import glob
 import logging
 import hashlib
 import operator
+import warnings
 from textwrap import wrap
 from functools import reduce
 from datetime import datetime
@@ -79,6 +80,9 @@ PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
 DICE_LABEL = "Dice Score"
 
 SUBPLOT_SIZE = 7
+METRIC_CI_LOWER_PERCENTILE = 2.5
+METRIC_CI_UPPER_PERCENTILE = 97.5
+METRIC_BOOTSTRAP_SEED = 1234
 
 COLOR_ARRAY = [
     "tan",
@@ -724,6 +728,72 @@ def bootstrap_confidence_interval(
     sample_idxs = np.random.randint(n, size=(n_boot, n_boot))
     r2s = [metric_fxn(truth[idx], prediction[idx]) for idx in sample_idxs]
     return np.mean(r2s), np.percentile(r2s, [bottom, top])
+
+
+def _safe_metric_score(
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    truth: np.ndarray,
+    prediction: np.ndarray,
+) -> float:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            score = metric(truth, prediction)
+    except ValueError:
+        return float("nan")
+    score = float(score)
+    return score if np.isfinite(score) else float("nan")
+
+
+def _bootstrap_metric_confidence_interval(
+    truth: np.ndarray,
+    prediction: np.ndarray,
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    rng: np.random.RandomState,
+    n_bootstraps: int,
+) -> Tuple[float, float]:
+    if truth.size == 0 or prediction.size == 0 or n_bootstraps <= 0:
+        return float("nan"), float("nan")
+
+    n = truth.shape[0]
+    scores = []
+    for _ in range(int(n_bootstraps)):
+        idx = rng.randint(0, n, size=n)
+        score = _safe_metric_score(metric, truth[idx], prediction[idx])
+        if np.isfinite(score):
+            scores.append(score)
+
+    if not scores:
+        return float("nan"), float("nan")
+
+    ci_lower, ci_upper = np.percentile(
+        scores,
+        [METRIC_CI_LOWER_PERCENTILE, METRIC_CI_UPPER_PERCENTILE],
+    )
+    return float(ci_lower), float(ci_upper)
+
+
+def _performance_data_row(
+    model_name: str,
+    task: str,
+    metric: str,
+    score: float,
+    ci: Tuple[float, float],
+    n: int,
+    n_positive: Optional[int] = None,
+) -> Dict[str, object]:
+    row = {
+        "Model": model_name,
+        "Task": task,
+        "Metric": metric,
+        "Score": score,
+        "CI_95_lower": ci[0],
+        "CI_95_upper": ci[1],
+        "n": int(n),
+    }
+    if n_positive is not None:
+        row["n_positive"] = int(n_positive)
+    return row
 
 
 def plot_scatter(
@@ -2495,7 +2565,21 @@ def subplot_roc_per_class(
     true_sums = np.sum(truth, axis=0)
     total_plots = len(protected) + 1
     if total_plots == 1:
-        return plot_roc(prediction, truth, labels, title, prefix)
+        performance_data = plot_roc(
+            prediction,
+            truth,
+            labels,
+            title,
+            prefix,
+            dpi=dpi,
+            width=width,
+            height=height,
+        )
+        return {
+            row["Task"]: row["Score"]
+            for row in performance_data
+            if row["Metric"] == "auROC"
+        }
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -2533,23 +2617,71 @@ def subplot_roc_per_class(
     return labels_to_areas
 
 
-def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6):
+def plot_roc(
+    prediction,
+    truth,
+    labels,
+    title,
+    prefix="./figures/",
+    dpi=300,
+    width: int = 6,
+    height: int = 6,
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
+    """Plot ROC curves and return dataframe-ready AUROC performance rows.
+
+    The returned rows match the schema from evaluate_multitask_on_dataset:
+    Model, Task, Metric, Score, CI_95_lower, CI_95_upper, n, and n_positive.
+    """
     lw = 2
-    labels_to_areas = {}
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    model_name = title if model_name is None else model_name
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
     fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    last_auc = float("nan")
     for key in labels:
         if "no_" in str(key) and len(labels) == 2:
             continue
         color = _hash_string_to_color(str(key))
-        labels_to_areas[key] = roc_auc[labels[key]]
-        label_text = f"{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+        label_index = labels[key]
+        task_truth = truth[:, label_index]
+        task_prediction = prediction[:, label_index]
+        auroc = _safe_metric_score(roc_auc_score, task_truth, task_prediction)
+        auroc_ci = _bootstrap_metric_confidence_interval(
+            task_truth,
+            task_prediction,
+            roc_auc_score,
+            rng,
+            n_bootstraps,
+        )
+        n = task_truth.shape[0]
+        n_positive = int(np.sum(task_truth))
+        performance_data.append(
+            _performance_data_row(
+                model_name,
+                str(key),
+                "auROC",
+                auroc,
+                auroc_ci,
+                n,
+                n_positive,
+            )
+        )
+        label_text = (
+            f"{key} area:{auroc:.3f} "
+            f"95% CI:({auroc_ci[0]:.3f}, {auroc_ci[1]:.3f}) "
+            f"n={true_sums[label_index]:.0f}"
+        )
         plt.plot(
-            fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+            fpr[label_index], tpr[label_index], color=color, lw=lw, label=label_text,
         )
         logging.info(f"ROC Label {label_text}")
+        last_auc = auroc
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
@@ -2559,11 +2691,11 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
     plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
-    figure_path = os.path.join(prefix, f"per_class_roc_auc_{roc_auc[labels[key]]:0.3f}_{title}{IMAGE_EXT}")
+    figure_path = os.path.join(prefix, f"per_class_roc_auc_{last_auc:0.3f}_{title}{IMAGE_EXT}")
     os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")
-    return labels_to_areas
+    return performance_data
 
 
 def _figure_and_subplot_axes_from_total(total_plots: int, dpi: int = 300, width: int = 6, height: int = 6):
