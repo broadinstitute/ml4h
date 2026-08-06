@@ -111,7 +111,7 @@ python model_zoo/DROID/echo_supervised_training_recipe.py \
     --output_dir {OUTPUT_FOLDER_PATH}
 ```
 
-A ready-to-run version of this command using synthetic test data is provided in `run_training_example.sh`. Running one epoch against the test data takes approximately *** minutes on a CPU.
+A ready-to-run version of this command using synthetic test data is provided in `run_training_example.sh`.
 
 ```
 cd /ml4h/model_zoo/DROID-RV/
