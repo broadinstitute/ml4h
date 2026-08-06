@@ -2,7 +2,7 @@
 
 ## Software Requirements
 
-DROID-RV was trained and tested using Python 3.6.9 with packages detailed in (requirements.txt)[requirements.txt]. A Docker image containing all necessary software to run model training and inference can be found on (Docker Hub)[https://hub.docker.com/r/alalusim/droid]. The model was trained and tested on x86 CPUs using Nvidia v100 GPUs.
+DROID-RV was trained and tested using Python 3.6.9 with packages detailed in [requirements.txt](requirements.txt). A Docker image containing all necessary software to run model training and inference can be found on [Docker Hub](https://hub.docker.com/r/alalusim/droid). The model was trained and tested on x86 CPUs using Nvidia v100 GPUs.
 
 ## Installation
 
