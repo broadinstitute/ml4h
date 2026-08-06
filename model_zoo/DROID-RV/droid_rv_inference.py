@@ -6,18 +6,36 @@ import sys
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from droid_rv_model_description import create_movinet_classifier, create_regressor_classifier, rescale_droid_rv_outputs, rescale_droid_rvef_outputs
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
 sys.path.append('../DROID')
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from model_descriptions.echo import create_movinet_classifier, create_regressor_classifier
 
 droid_rv_checkpoint = "droid_rv_checkpoint/chkp"
 droid_rvef_checkpoint = "droid_rvef_checkpoint/chkp"
 movinet_chkp_dir = 'movinet_a2_base/'
 test_data_dir = 'test_data'
 n_input_frames = 16
+
+# Training-set (std, mean) used to scale each regression output, in model output
+# order. Applied in reverse below to map predictions back to physical units.
+DROID_RV_REGRESSION_SCALING = [
+    ('Age', 15.51761856, 64.43979878),
+    ('RVEDD', 6.88963822, 42.52320993),
+]
+DROID_RVEF_REGRESSION_SCALING = [
+    ('RVEF', 8.658711, 53.40699),
+    ('RV End-Diastolic Volume', 46.5734, 130.8913),
+    ('RV End-Systolic Volume', 31.6643, 62.87321),
+    ('Age', 22.99643, 47.18989),
+]
+
+def rescale_regression_head(model_output, scaling):
+    for i, (_, std, mean) in enumerate(scaling):
+        model_output[0][:, i] = model_output[0][:, i] * std + mean
+    return model_output
 
 movinet_model, backbone = create_movinet_classifier(
     n_input_frames=n_input_frames,
@@ -67,9 +85,9 @@ print(f"""
 Sample: {sample_id}
 
 DROID-RV Predictions:
-{rescale_droid_rv_outputs(droid_rv_pred)}
+{rescale_regression_head(droid_rv_pred, DROID_RV_REGRESSION_SCALING)}
 
 DROID-RVEF Predictions:
-{rescale_droid_rvef_outputs(droid_rvef_pred)}
+{rescale_regression_head(droid_rvef_pred, DROID_RVEF_REGRESSION_SCALING)}
 
 """)
