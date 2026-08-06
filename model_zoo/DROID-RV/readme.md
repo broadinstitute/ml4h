@@ -24,7 +24,7 @@ git lfs pull --include model_zoo/DROID-RV/test_data/*
 
 ## Inference Example
 
-This is a simple example script demonstrating how to load and run the DROID-RV and DROID-RVEF models. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code. It loads a sample video from the checked-in `test_data/` dataset (20 patients, echocardiogram videos of random noise, for demonstration purposes only) using the same loader the DROID recipes use, and prints predictions from both checkpoints.
+This is a simple example script demonstrating how to load and run the DROID-RV and DROID-RVEF models. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code. It loads a sample video from `test_data/` (containing random noise) and prints predictions from both DROID-RV and DROID-RVEF checkpoints. Inference takes <1 minute per sample to run on a CPU.
 
 Run docker image while mounting ml4h directory and run example inference script.
 
@@ -53,6 +53,18 @@ Model outputs for DROID-RVEF take the form:
     [["RVEF", "RV End-Diastolic Volume, "RV End-Systolic Volume", "Age"]],
     [["Female", "Male"]]
 ]
+```
+
+Expected output from the inference test script is:
+
+```
+Sample: 170682_170682_0fe9f189
+
+DROID-RV Predictions:
+[array([[62.34924 , 43.112488]], dtype=float32), array([[0.5758543 , 0.42414567]], dtype=float32), array([[0.5898055 , 0.41019455]], dtype=float32), array([[0.51277626, 0.4872237 ]], dtype=float32)]
+
+DROID-RVEF Predictions:
+[array([[ 52.2796  , 137.59207 ,  66.795494,  44.353607]], dtype=float32), array([[0.49082455, 0.5091754 ]], dtype=float32)]
 ```
 
 ## Training Example
@@ -99,9 +111,11 @@ python model_zoo/DROID/echo_supervised_training_recipe.py \
     --output_dir {OUTPUT_FOLDER_PATH}
 ```
 
-A ready-to-run version of this command, filled in against the sample dataset in `test_data/` (pulled via git-lfs above), is provided in `run_training_example.sh`. It runs one epoch so it finishes quickly, as a demonstration rather than a trained model.
+A ready-to-run version of this command using synthetic test data is provided in `run_training_example.sh`. Running one epoch against the test data takes approximately *** minutes on a CPU.
 
 ```
 cd /ml4h/model_zoo/DROID-RV/
 ./run_training_example.sh
 ```
+
+The test script will output a model checkpoint to `../DROID-RV/training_example_output/` and takes approximately 1 hour to run on a CPU.
