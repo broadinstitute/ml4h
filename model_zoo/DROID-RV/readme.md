@@ -1,23 +1,32 @@
 # DROID-RV Overview
 
-## Inference Example
+## Software Requirements
 
-This is a simple example script demonstrating how to load and run the DROID-RV and DROID-RVEF models. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code.
+DROID-RV was trained and tested using Python 3.6.9 with packages detailed in (requirements.txt)[requirements.txt]. A Docker image containing all necessary software to run model training and inference can be found on (Docker Hub)[https://hub.docker.com/r/alalusim/droid]. The model was trained and tested on x86 CPUs using Nvidia v100 GPUs.
 
-1. Download DROID docker image. Note: docker image is not compatible with Apple Silicon.
+## Installation
+
+
+1. Download DROID docker image from Docker Hub. Download time will vary depending on connection speed but should be <20 minutes. Note: docker image is not compatible with Apple Silicon.
 
 `docker pull alalusim/droid:latest`
 
-2.  Pull github repo, including DROID-RV model checkpoints stored using git lfs.
+2.  Pull github repo, including DROID-RV model checkpoints and synthetic test data stored using git lfs. Download time should be <5 minutes and will vary with connection speed.
 
 ```
-github clone https://github.com/broadinstitute/ml4h.git
-git lfs pull --include ml4h/model_zoo/DROID-RV/droid_rv_checkpoint/*
-git lfs pull --include ml4h/model_zoo/DROID-RV/droid_rvef_checkpoint/*
-git lfs pull --include ml4h/model_zoo/DROID-RV/movinet_a2_base/*
+git clone https://github.com/broadinstitute/ml4h.git
+cd ml4h
+git lfs pull --include model_zoo/DROID-RV/droid_rv_checkpoint/*
+git lfs pull --include model_zoo/DROID-RV/droid_rvef_checkpoint/*
+git lfs pull --include model_zoo/DROID-RV/movinet_a2_base/*
+git lfs pull --include model_zoo/DROID-RV/test_data/*
 ```
 
-3. Run docker image while mounting ml4h directory and run example inference script.
+## Inference Example
+
+This is a simple example script demonstrating how to load and run the DROID-RV and DROID-RVEF models. Model training and inference was performed using the code provided in the ML4H [model zoo](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/DROID). The example below was adapted from the DROID inference code. It loads a sample video from `test_data/` (containing random noise) and prints predictions from both DROID-RV and DROID-RVEF checkpoints. Inference takes <1 minute per sample to run on a CPU.
+
+Run docker image while mounting ml4h directory and run example inference script.
 
 `docker run -it -v {PATH TO CLONED ML4H DIRECTORY}:/ml4h/ alalusim/droid:latest`
 
@@ -44,6 +53,18 @@ Model outputs for DROID-RVEF take the form:
     [["RVEF", "RV End-Diastolic Volume, "RV End-Systolic Volume", "Age"]],
     [["Female", "Male"]]
 ]
+```
+
+Expected output from the inference test script is:
+
+```
+Sample: 170682_170682_0fe9f189
+
+DROID-RV Predictions:
+[array([[62.34924 , 43.112488]], dtype=float32), array([[0.5758543 , 0.42414567]], dtype=float32), array([[0.5898055 , 0.41019455]], dtype=float32), array([[0.51277626, 0.4872237 ]], dtype=float32)]
+
+DROID-RVEF Predictions:
+[array([[ 52.2796  , 137.59207 ,  66.795494,  44.353607]], dtype=float32), array([[0.49082455, 0.5091754 ]], dtype=float32)]
 ```
 
 ## Training Example
@@ -89,3 +110,12 @@ python model_zoo/DROID/echo_supervised_training_recipe.py \
     --pretrained_chkp_dir {PRETRAINED_CHECKPOINT_PATH} \ # used when fine-tuning, for example can provide ml4h/model_zoo/DROID-RV/droid_rv_checkpoint/chkp
     --output_dir {OUTPUT_FOLDER_PATH}
 ```
+
+A ready-to-run version of this command using synthetic test data is provided in `run_training_example.sh`. Running one epoch against the test data takes approximately *** minutes on a CPU.
+
+```
+cd /ml4h/model_zoo/DROID-RV/
+./run_training_example.sh
+```
+
+The test script will output a model checkpoint to `../DROID-RV/training_example_output/` and takes approximately 1 hour to run on a CPU.
