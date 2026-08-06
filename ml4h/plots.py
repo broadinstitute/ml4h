@@ -200,8 +200,10 @@ def evaluate_predictions(
             y_predictions, y_truth, tm.channel_map, title, folder, 10,  dpi, width, height,
         )
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -216,13 +218,17 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                plot_precision_recall_per_class(
+                    y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
         plot_prediction_calibration(
@@ -240,13 +246,17 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                plot_precision_recall_per_class(
+                    y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
         plot_prediction_calibration(
@@ -267,13 +277,17 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                plot_precision_recall_per_class(
+                    y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
         plot_prediction_calibration(
@@ -324,9 +338,11 @@ def evaluate_predictions(
         )
         new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
-                new_title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                subplot_roc_per_class(
+                    y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
+                    new_title, folder, dpi, width, height,
+                ),
             ),
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
@@ -356,13 +372,17 @@ def evaluate_predictions(
         truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
         logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
-            subplot_roc_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                subplot_roc_per_class(
+                    prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi, width, height,
+            _performance_data_to_metrics(
+                plot_precision_recall_per_class(
+                    prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
     elif tm.axes() > 1 or tm.is_mesh():
@@ -794,6 +814,45 @@ def _performance_data_row(
     if n_positive is not None:
         row["n_positive"] = int(n_positive)
     return row
+
+
+def _classification_metric_performance_row(
+    prediction: np.ndarray,
+    truth: np.ndarray,
+    label_name: object,
+    label_index: int,
+    model_name: str,
+    metric_name: str,
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    rng: np.random.RandomState,
+    n_bootstraps: int,
+) -> Dict[str, object]:
+    task_truth = (truth[:, label_index] > 0.5).astype("int32")
+    task_prediction = prediction[:, label_index]
+    score = _safe_metric_score(metric, task_truth, task_prediction)
+    ci = _bootstrap_metric_confidence_interval(
+        task_truth,
+        task_prediction,
+        metric,
+        rng,
+        n_bootstraps,
+    )
+    return _performance_data_row(
+        model_name,
+        str(label_name),
+        metric_name,
+        score,
+        ci,
+        task_truth.shape[0],
+        int(np.sum(task_truth)),
+    )
+
+
+def _performance_data_to_metrics(performance_data: List[Dict[str, object]]) -> Dict[str, float]:
+    return {
+        str(row["Task"]): float(row["Score"])
+        for row in performance_data
+    }
 
 
 def plot_scatter(
@@ -2559,13 +2618,18 @@ def subplot_roc_per_class(
     dpi: int = 300,
     width: int = 6,
     height: int = 6,
-) -> Dict[str, float]:
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
     lw = 2
-    labels_to_areas = {}
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    model_name = title if model_name is None else model_name
     true_sums = np.sum(truth, axis=0)
     total_plots = len(protected) + 1
     if total_plots == 1:
-        performance_data = plot_roc(
+        return plot_roc(
             prediction,
             truth,
             labels,
@@ -2574,12 +2638,10 @@ def subplot_roc_per_class(
             dpi=dpi,
             width=width,
             height=height,
+            n_bootstraps=n_bootstraps,
+            bootstrap_seed=bootstrap_seed,
+            model_name=model_name,
         )
-        return {
-            row["Task"]: row["Score"]
-            for row in performance_data
-            if row["Metric"] == "auROC"
-        }
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -2588,18 +2650,32 @@ def subplot_roc_per_class(
     _protected_subplots(
         prediction, truth, protected, axes, metric=roc_auc_score, metric_name="ROC AUC",
     )
-    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    fpr, tpr, _ = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for key in labels:
-        if "no_" in key and len(labels) == 2:
+        if "no_" in str(key) and len(labels) == 2:
             continue
-        labels_to_areas[key] = roc_auc[labels[key]]
-        color = _hash_string_to_color(key)
+        label_index = labels[key]
+        row = _classification_metric_performance_row(
+            prediction,
+            truth,
+            key,
+            label_index,
+            model_name,
+            "auROC",
+            roc_auc_score,
+            rng,
+            n_bootstraps,
+        )
+        performance_data.append(row)
+        color = _hash_string_to_color(str(key))
         label_text = (
-            f"{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+            f"{key} area: {row['Score']:.3f} "
+            f"95% CI:({row['CI_95_lower']:.3f}, {row['CI_95_upper']:.3f}) "
+            f"n={true_sums[label_index]:.0f}"
         )
         axes[-1, -1].plot(
-            fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+            fpr[label_index], tpr[label_index], color=color, lw=lw, label=label_text,
         )
         logging.info(
             f"ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}",
@@ -2614,7 +2690,7 @@ def subplot_roc_per_class(
     logging.info(
         f"Saved ROC curve at: {figure_path} with {len(protected)} protected TensorMaps.",
     )
-    return labels_to_areas
+    return performance_data
 
 
 def plot_roc(
@@ -2642,46 +2718,35 @@ def plot_roc(
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
-    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    fpr, tpr, _ = get_fpr_tpr_roc_pred(prediction, truth, labels)
     last_auc = float("nan")
     for key in labels:
         if "no_" in str(key) and len(labels) == 2:
             continue
         color = _hash_string_to_color(str(key))
         label_index = labels[key]
-        task_truth = truth[:, label_index]
-        task_prediction = prediction[:, label_index]
-        auroc = _safe_metric_score(roc_auc_score, task_truth, task_prediction)
-        auroc_ci = _bootstrap_metric_confidence_interval(
-            task_truth,
-            task_prediction,
+        row = _classification_metric_performance_row(
+            prediction,
+            truth,
+            key,
+            label_index,
+            model_name,
+            "auROC",
             roc_auc_score,
             rng,
             n_bootstraps,
         )
-        n = task_truth.shape[0]
-        n_positive = int(np.sum(task_truth))
-        performance_data.append(
-            _performance_data_row(
-                model_name,
-                str(key),
-                "auROC",
-                auroc,
-                auroc_ci,
-                n,
-                n_positive,
-            )
-        )
+        performance_data.append(row)
         label_text = (
-            f"{key} area:{auroc:.3f} "
-            f"95% CI:({auroc_ci[0]:.3f}, {auroc_ci[1]:.3f}) "
+            f"{key} area:{row['Score']:.3f} "
+            f"95% CI:({row['CI_95_lower']:.3f}, {row['CI_95_upper']:.3f}) "
             f"n={true_sums[label_index]:.0f}"
         )
         plt.plot(
             fpr[label_index], tpr[label_index], color=color, lw=lw, label=label_text,
         )
         logging.info(f"ROC Label {label_text}")
-        last_auc = auroc
+        last_auc = row["Score"]
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
@@ -2784,28 +2849,53 @@ def subplot_comparison_rocs(
 
 
 def plot_precision_recall_per_class(
-    prediction, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6,
-):
+    prediction,
+    truth,
+    labels,
+    title,
+    prefix="./figures/",
+    dpi=300,
+    width: int = 6,
+    height: int = 6,
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
     # Compute Precision-Recall and plot curve
     lw = 2.0
-    labels_to_areas = {}
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    model_name = title if model_name is None else model_name
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
     for k in labels:
+        label_index = labels[k]
         c = _hash_string_to_color(str(k))
+        task_truth = (truth[:, label_index] > 0.5).astype("int32")
+        task_prediction = prediction[:, label_index]
         precision, recall, _ = precision_recall_curve(
-            truth[:, labels[k]], prediction[:, labels[k]],
+            task_truth, task_prediction,
         )
-        average_precision = average_precision_score(
-            truth[:, labels[k]], prediction[:, labels[k]],
+        row = _classification_metric_performance_row(
+            prediction,
+            truth,
+            k,
+            label_index,
+            model_name,
+            "auPRC",
+            average_precision_score,
+            rng,
+            n_bootstraps,
         )
+        performance_data.append(row)
         label_text = (
-            f"{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}"
+            f"{k} mean precision:{row['Score']:.3f} "
+            f"95% CI:({row['CI_95_lower']:.3f}, {row['CI_95_upper']:.3f}) "
+            f"n={true_sums[label_index]:.0f}"
         )
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
         logging.info(f"prAUC Label {label_text}")
-        labels_to_areas[k] = average_precision
 
     plt.xlim([0.0, 1.00])
     plt.ylim([-0.02, 1.03])
@@ -2819,7 +2909,7 @@ def plot_precision_recall_per_class(
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved Precision Recall curve at: {figure_path}")
-    return labels_to_areas
+    return performance_data
 
 
 def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/", dpi=300, width=7, height=7):
