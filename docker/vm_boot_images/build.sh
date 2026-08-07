@@ -16,6 +16,7 @@ GITHUB_REPO="ghcr.io/broadinstitute/ml4h"
 TAG=$( git rev-parse --short HEAD )
 CONTEXT="docker/vm_boot_images/"
 CPU_ONLY="false"
+ARM64="false"
 PUSH_TO_GCR="false"
 PUSH_TO_LATEST="false"
 
@@ -43,13 +44,16 @@ usage()
     It assumes 'gcloud' has been installed, Docker has been configured to use 'gcloud' as a credential helper
     by running 'gcloud auth configure-docker', and the script is being run at the root of the GitHub repo clone.
 
-    Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-chp]
+    Usage: ${SCRIPT_NAME} [-d <path>] [-t <tag>] [-achpP]
 
     Example: ./${SCRIPT_NAME} -d /Users/kyuksel/github/ml4h/jamesp/docker/deeplearning -cp
 
         -d      <path>      Path to directory where Dockerfile is located. Default: '${CONTEXT}'
 
         -t      <tag>       String used to tag the Docker image. Default: short version of the latest commit hash
+
+        -a                  Build a linux/arm64 image using Dockerfile.arm64 (Apple Silicon / ARM servers).
+                            Requires 'docker buildx' with an arm64-capable builder.
 
         -c                  Build off of the cpu-only base image and tag image also as '${LATEST_TAG_CPU}'.
                             Default: Build image to run on GPU-enabled machines and tag image also as '${LATEST_TAG_GPU}'.
@@ -64,7 +68,7 @@ USAGE_MESSAGE
 
 ################### OPTION PARSING #######################################
 
-while getopts ":d:t:chpP" opt ; do
+while getopts ":d:t:achpP" opt ; do
     case ${opt} in
         h)
             usage
@@ -75,6 +79,9 @@ while getopts ":d:t:chpP" opt ; do
             ;;
         t)
             TAG=$OPTARG
+            ;;
+        a)
+            ARM64="true"
             ;;
         c)
             CPU_ONLY="true"
@@ -101,6 +108,22 @@ shift $((OPTIND - 1))
 
 ################### SCRIPT BODY ##########################################
 
+if [[ ${ARM64} == "true" ]]; then
+    LATEST_TAG="arm64-latest-cpu"
+    TAG="${TAG}-arm64-cpu"
+    echo -e "${BLUE}Building ARM64 image '${REPO}:${TAG}'...${NC}"
+    docker buildx build ${CONTEXT} \
+        --platform linux/arm64 \
+        --file "${CONTEXT}/Dockerfile.arm64" \
+        --tag "${REPO}:${TAG}" \
+        --tag "${REPO}:${LATEST_TAG}" \
+        --tag "${GITHUB_REPO}:${TAG}" \
+        --tag "${GITHUB_REPO}:${LATEST_TAG}" \
+        --network host \
+        --load
+    exit 0
+fi
+
 echo CPU_ONLY $CPU_ONLY
 if [[ ${CPU_ONLY} == "true" ]]; then
     BASE_IMAGE=${BASE_IMAGE_CPU}
@@ -114,7 +137,6 @@ fi
 
 echo BASE_IMAGE $BASE_IMAGE LATEST_TAG $LATEST_TAG
 echo -e "${BLUE}Building Docker image '${REPO}:${TAG}' from base image '${BASE_IMAGE}', and also tagging it as '${LATEST_TAG}'...${NC}"
-# --network host allows for the container's network stack to use the Docker host's network
 docker build ${CONTEXT} \
     --build-arg BASE_IMAGE=${BASE_IMAGE} \
     --tag "${REPO}:${TAG}" \
