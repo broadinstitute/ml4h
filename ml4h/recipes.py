@@ -20,13 +20,17 @@ from collections import Counter, defaultdict
 
 import tensorflow as tf
 import pyarrow.dataset as ds
-from sklearn.metrics import r2_score, roc_auc_score
+from sklearn.metrics import accuracy_score, average_precision_score, r2_score, roc_auc_score
 
 from ml4h.arguments import parse_args
 from ml4h.models.inspect import saliency_map
 from ml4h.models.transformer_blocks_embedding import (
     evaluate_multitask_on_dataset,
     build_general_embedding_transformer, build_embedding_transformer,
+    _bootstrap_metric_confidence_interval,
+    _performance_data_row,
+    _safe_metric_score,
+    METRIC_BOOTSTRAP_SEED,
 )
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
@@ -1145,6 +1149,101 @@ def train_transformer_on_parquet(args):
         json.dump(metrics, f)
 
 
+def _evaluate_transformer_prediction_dataframe(
+    name,
+    output_df,
+    regression_targets,
+    binary_targets,
+    n_bootstraps=1000,
+    bootstrap_seed=METRIC_BOOTSTRAP_SEED,
+):
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+
+    logging.info("\n=== Performance Metrics ===")
+    logging.info(f"Total samples: {len(output_df)}")
+
+    for t in regression_targets:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        if pred_col not in output_df or true_col not in output_df:
+            logging.info(f"{t}: Missing prediction or label column for R^2 calculation")
+            continue
+
+        valid_mask = output_df[true_col].notna() & output_df[pred_col].notna()
+        if valid_mask.sum() == 0:
+            logging.info(f"{t}: No valid labels for R^2 calculation")
+            continue
+
+        yt = output_df.loc[valid_mask, true_col].values.astype("float32")
+        yp = output_df.loc[valid_mask, pred_col].values.astype("float32")
+        r2 = _safe_metric_score(r2_score, yt, yp)
+        r2_ci = _bootstrap_metric_confidence_interval(
+            yt,
+            yp,
+            r2_score,
+            rng,
+            n_bootstraps,
+        )
+        n = len(yt)
+        performance_data.append(_performance_data_row(name, t, "R^2", r2, r2_ci, n))
+        logging.info(
+            f"{t}: R^2 = {r2:.4f}  "
+            f"R^2 95% CI: ({r2_ci[0]:.4f}, {r2_ci[1]:.4f})  n={n}"
+        )
+
+    for t in binary_targets:
+        pred_col = f'{t}_prediction'
+        true_col = t
+        if pred_col not in output_df or true_col not in output_df:
+            logging.info(f"{t}: Missing prediction or label column for auROC/auPRC calculation")
+            continue
+
+        valid_mask = output_df[true_col].notna() & output_df[pred_col].notna()
+        if valid_mask.sum() == 0:
+            logging.info(f"{t}: No valid labels for auROC/auPRC calculation")
+            continue
+
+        yt = (output_df.loc[valid_mask, true_col].values > 0.5).astype("int32")
+        yp = output_df.loc[valid_mask, pred_col].values.astype("float32")
+        auroc = _safe_metric_score(roc_auc_score, yt, yp)
+        auprc = _safe_metric_score(average_precision_score, yt, yp)
+        acc = float(accuracy_score(yt, (yp >= 0.5).astype("int32")))
+        auroc_ci = _bootstrap_metric_confidence_interval(
+            yt,
+            yp,
+            roc_auc_score,
+            rng,
+            n_bootstraps,
+        )
+        auprc_ci = _bootstrap_metric_confidence_interval(
+            yt,
+            yp,
+            average_precision_score,
+            rng,
+            n_bootstraps,
+        )
+        n = len(yt)
+        n_positive = int(yt.sum())
+        prevalence = 100.0 * n_positive / n if n > 0 else 0.0
+        performance_data.append(
+            _performance_data_row(name, t, "auROC", auroc, auroc_ci, n, n_positive)
+        )
+        performance_data.append(
+            _performance_data_row(name, t, "auPRC", auprc, auprc_ci, n, n_positive)
+        )
+        logging.info(
+            f"{t}: auROC = {auroc:.4f}  "
+            f"auROC 95% CI: ({auroc_ci[0]:.4f}, {auroc_ci[1]:.4f})  "
+            f"auPRC = {auprc:.4f}  "
+            f"auPRC 95% CI: ({auprc_ci[0]:.4f}, {auprc_ci[1]:.4f})  "
+            f"ACC = {acc:.4f}  n={n}  n_positive={n_positive}  "
+            f"prevalence={prevalence:.2f}%"
+        )
+
+    return performance_data
+
+
 def infer_transformer_on_parquet(args):
     """
     Generate inference parquet files containing all predictions from a transformer model
@@ -1345,44 +1444,22 @@ def infer_transformer_on_parquet(args):
     # Create output dataframe
     output_df = pd.DataFrame(results)
 
-    # Calculate and report performance metrics before saving
-    logging.info(f"\n=== Performance Metrics ===")
-    logging.info(f"Total samples: {len(output_df)}")
-
-    # Regression targets - report R^2
-    for t in args.target_regression_columns:
-        pred_col = f'{t}_prediction'
-        true_col = t
-        valid_mask = output_df[true_col].notna()
-        if valid_mask.sum() > 0:
-            y_true = output_df.loc[valid_mask, true_col].values
-            y_pred = output_df.loc[valid_mask, pred_col].values
-            try:
-                r2 = r2_score(y_true, y_pred)
-                logging.info(f"{t}: R^2 = {r2:.4f} (n={valid_mask.sum()})")
-            except ValueError as e:
-                logging.info(f"{t}: R^2 calculation failed - {e}")
-        else:
-            logging.info(f"{t}: No valid labels for R^2 calculation")
-
-    # Binary targets - report auROC
-    for t in args.target_binary_columns:
-        pred_col = f'{t}_prediction'
-        true_col = t
-        valid_mask = output_df[true_col].notna()
-        if valid_mask.sum() > 0:
-            y_true = output_df.loc[valid_mask, true_col].values
-            y_pred = output_df.loc[valid_mask, pred_col].values
-            try:
-                auroc = roc_auc_score(y_true, y_pred)
-                logging.info(f"{t}: auROC = {auroc:.4f} (n={valid_mask.sum()})")
-            except ValueError as e:
-                logging.info(f"{t}: auROC calculation failed - {e}")
-        else:
-            logging.info(f"{t}: No valid labels for auROC calculation")
-
     # Ensure output directory exists
     os.makedirs(f'{args.output_folder}/{args.id}', exist_ok=True)
+
+    if len(args.target_categorical_columns) == 0:
+        metrics = _evaluate_transformer_prediction_dataframe(
+            args.id,
+            output_df,
+            args.target_regression_columns,
+            args.target_binary_columns,
+        )
+    else:
+        metrics = {}
+    metrics_path = f'{args.output_folder}/{args.id}/metrics_{args.id}.json'
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f)
+    logging.info(f"Saved metrics to {metrics_path}")
 
     # Save to parquet
     output_path = f'{args.output_folder}/{args.id}/predictions_{args.id}.pq'
