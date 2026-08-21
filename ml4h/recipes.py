@@ -1044,7 +1044,8 @@ def train_transformer_on_parquet_fast(args):
                                                               args.group_column, args.sort_column, args.sort_column_ascend,
                                                               args.target_regression_columns + args.target_binary_columns + args.target_categorical_columns,
                                                               args.transformer_max_size, args.batch_size,
-                                                              args.train_csv, args.valid_csv, args.test_csv)
+                                                              args.train_csv, args.valid_csv, args.test_csv,
+                                                              random_crop_min_days=args.random_crop_min_days)
 
     # Compute binary class prevalences for weighted loss
     binary_class_prevalences = None

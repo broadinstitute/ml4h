@@ -325,6 +325,12 @@ def parse_args():
          '--transformer_max_size', default=128, type=int, help='Maximum number of input positions for longitudinal/embedding transformers',
     )
     parser.add_argument(
+         '--random_crop_min_days', default=None, type=int, help=
+         'If set, each participant\'s training sequence is randomly truncated every epoch to a length '
+         'drawn uniformly from [random_crop_min_days, min(sequence_length, transformer_max_size)]. '
+         'Validation and test sequences are unaffected.',
+    )
+    parser.add_argument(
          '--transformer_scalar_embed', default=4, type=int, help='Size of embedding of input categorical / continuous scalar column data',
     )
     parser.add_argument(

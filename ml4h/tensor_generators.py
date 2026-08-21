@@ -1245,7 +1245,8 @@ def build_datasets(
 
 
 def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, sort_column,
-                                  sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH, train_csv, valid_csv, test_csv):
+                                  sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH, train_csv, valid_csv, test_csv,
+                                  random_crop_min_days=None):
     if input_categorical_column:
         view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
         view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
@@ -1330,7 +1331,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     weight_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
 
     # ---------- Generator WITHOUT VIEW_COL ----------
-    def group_generator(selected_ids):
+    def group_generator(selected_ids, random_crop=False):
         # Preload numeric block for fast slicing
         arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
         if input_categorical_column:
@@ -1383,6 +1384,15 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
                     view = view[:MAX_LEN]
                 T = MAX_LEN
 
+            # Random per-epoch length crop (train split only): keep the first X days,
+            # X ~ Uniform[random_crop_min_days, T], redrawn every time this group is visited.
+            if random_crop and random_crop_min_days is not None and T > random_crop_min_days:
+                X = np.random.randint(random_crop_min_days, T + 1)
+                num = num[:X, :]
+                if input_categorical_column:
+                    view = view[:X]
+                T = X
+
             mask = np.ones((T,), dtype=bool)  # (T,)
 
             # Labels + sample weights (one scalar per task)
@@ -1402,9 +1412,9 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             else:
                 yield {'num': num, 'mask': mask}, y, sw
 
-    def make_tf_dataset_from_generator(id_set, shuffle=False):
+    def make_tf_dataset_from_generator(id_set, shuffle=False, random_crop=False):
         ds = tf.data.Dataset.from_generator(
-            lambda: group_generator(id_set),
+            lambda: group_generator(id_set, random_crop=random_crop),
             output_signature=(feature_sig, label_sig, weight_sig)
         )
         if shuffle and len(id_set) > 0:
@@ -1442,7 +1452,7 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             )
         return ds.prefetch(tf.data.AUTOTUNE).repeat()
 
-    train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True)
+    train_ds = make_tf_dataset_from_generator(train_ids, shuffle=True, random_crop=random_crop_min_days is not None)
     val_ds = make_tf_dataset_from_generator(val_ids, shuffle=False)
     test_ds = make_tf_dataset_from_generator(test_ids, shuffle=False)
     return train_ds, val_ds, test_ds
