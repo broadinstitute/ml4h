@@ -99,11 +99,11 @@ def test_build_embedding_transformer_positional_embedding_toggle():
     )
 
     with _cpu_device():
-        model_with_pos = build_embedding_transformer(
+        model_with_pos, _ = build_embedding_transformer(
             **params,
             use_positional_embedding=True,
         )
-        model_without_pos = build_embedding_transformer(
+        model_without_pos, _ = build_embedding_transformer(
             **params,
         )
 
@@ -157,7 +157,7 @@ def test_build_general_embedding_transformer_learns_easy_tasks(use_categorical, 
     }
 
     with _cpu_device():
-        model = build_general_embedding_transformer(
+        model, _ = build_general_embedding_transformer(
             latent_dim=latent_dim,
             numeric_columns=numeric_columns,
             categorical_columns=categorical_columns,
@@ -208,7 +208,6 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
     num_samples = 32
     max_len = 4
     num_features = 64
-    view2id = {"apical": 1, "parasternal": 2}
 
     num = np.zeros((num_samples, max_len, num_features), dtype=np.float32)
     signal = np.linspace(-1.0, 1.0, num_samples, dtype=np.float32)
@@ -217,8 +216,6 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
     num[:, :, 2] = 1.0
 
     mask = np.ones((num_samples, max_len), dtype=bool)
-    view = np.where(signal > 0, 2, 1).astype(np.int32)
-    view = np.tile(view[:, None], (1, max_len))
 
     regression_target = (1.5 * signal + 0.25).astype(np.float32)
     binary_target = (signal > 0).astype(np.float32)
@@ -226,7 +223,6 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
     inputs = {
         "num": num,
         "mask": mask,
-        "view": view,
     }
     outputs = {
         "regression_task": regression_target[:, None],
@@ -234,7 +230,7 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
     }
 
     with _cpu_device():
-        model = build_embedding_transformer(
+        model, _ = build_embedding_transformer(
             input_numeric_cols=[f"feature_{i}" for i in range(num_features)],
             regression_targets=["regression_task"],
             binary_targets=["binary_task"],
@@ -245,7 +241,7 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
             num_heads=2,
             num_layers=1,
             dropout=0.0,
-            view2id=view2id,
+            view2id=None,
             learning_rate=1e-3,
         )
         model = _recompile_for_fair_test(model)
