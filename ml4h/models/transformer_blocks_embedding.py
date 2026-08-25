@@ -658,6 +658,7 @@ def build_embedding_transformer(
         CATEGORICAL_TARGETS=None,
         NUM_CLASSES=None,
         LABEL_WEIGHTS=None,
+        RETURN_EXPLAIN_MODEL=False,
 ):
     """
     Build an embedding transformer model.
@@ -669,6 +670,13 @@ def build_embedding_transformer(
             uses weighted binary cross entropy with weights inversely proportional
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
+        RETURN_EXPLAIN_MODEL: If True, also build and return a second model
+            ("model_explain") sharing the same weights/layers as the trained model,
+            with per-layer attention scores (mha_i_scores) and the pooling weights
+            (attn_wts) exposed as additional outputs, for interpretability use
+            (e.g. ml4h.models.transformer_interpretability). Does not affect
+            training behavior; existing callers that don't pass this flag are
+            unaffected.
     """
     CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
     if CATEGORICAL_TARGETS and NUM_CLASSES is None:
@@ -708,9 +716,12 @@ def build_embedding_transformer(
     mask_2d = LogicalAndLayer(name='mask_qk')([m_q, m_k])
 
     # Transformer blocks
+    all_attn_scores = []
     for i in range(NUM_LAYERS):
-        attn = layers.MultiHeadAttention(num_heads=NUM_HEADS, key_dim=TRANSFORMER_DIM // NUM_HEADS,
-                                         dropout=DROPOUT, name=f'mha_{i}')(x, x, attention_mask=mask_2d)
+        attn_layer = layers.MultiHeadAttention(num_heads=NUM_HEADS, key_dim=TRANSFORMER_DIM // NUM_HEADS,
+                                               dropout=DROPOUT, name=f'mha_{i}')
+        attn, scores = attn_layer(x, x, attention_mask=mask_2d, return_attention_scores=True)
+        all_attn_scores.append(scores)
         attn = layers.Dropout(DROPOUT)(attn)
         x = layers.LayerNormalization(epsilon=1e-6, name=f'ln1_{i}')(layers.Add()([x, attn]))
 
@@ -747,9 +758,18 @@ def build_embedding_transformer(
         outputs[t] = layers.Dense(NUM_CLASSES, activation='softmax', name=t)(h)
 
     if view2id is not None:
-        model = keras.Model(inputs={'view': inp_view, 'num': inp_num, 'mask': inp_mask}, outputs=outputs)
+        model_inputs = {'view': inp_view, 'num': inp_num, 'mask': inp_mask}
     else:
-        model = keras.Model(inputs={'num': inp_num, 'mask': inp_mask}, outputs=outputs)
+        model_inputs = {'num': inp_num, 'mask': inp_mask}
+    model = keras.Model(inputs=model_inputs, outputs=outputs)
+
+    if RETURN_EXPLAIN_MODEL:
+        # Shares layers/weights with `model`; adds attention maps + pooling weights as outputs.
+        explain_outputs = {**outputs, 'attn_wts': wts}
+        for i, s in enumerate(all_attn_scores):
+            explain_outputs[f'mha_{i}_scores'] = s
+        model_explain = keras.Model(model_inputs, explain_outputs, name='explain_model')
+
     # Losses / metrics
     losses = {t: 'mse' for t in REGRESSION_TARGETS}
     for t in BINARY_TARGETS:
@@ -783,6 +803,8 @@ def build_embedding_transformer(
         metrics=metrics
     )
 
+    if RETURN_EXPLAIN_MODEL:
+        return model, model_explain
     return model
 
 
