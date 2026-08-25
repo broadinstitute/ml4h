@@ -658,6 +658,7 @@ def build_embedding_transformer(
         CATEGORICAL_TARGETS=None,
         NUM_CLASSES=None,
         LABEL_WEIGHTS=None,
+        TASK_LOSS_WEIGHTS=None,
         RETURN_EXPLAIN_MODEL=False,
 ):
     """
@@ -670,6 +671,9 @@ def build_embedding_transformer(
             uses weighted binary cross entropy with weights inversely proportional
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
+        TASK_LOSS_WEIGHTS: Optional dict mapping target names (regression, binary, or
+            categorical) to a scalar weight for that task's contribution to the total
+            loss, e.g. {'afib': 2.0}. Targets not present in the dict default to 1.0.
         RETURN_EXPLAIN_MODEL: If True, also build and return a second model
             ("model_explain") sharing the same weights/layers as the trained model,
             with per-layer attention scores (mha_i_scores) and the pooling weights
@@ -803,9 +807,14 @@ def build_embedding_transformer(
     for t in CATEGORICAL_TARGETS:
         metrics[t] = [keras.metrics.SparseCategoricalAccuracy(name='acc')]
 
+    loss_weights = {t: (TASK_LOSS_WEIGHTS or {}).get(t, 1.0) for t in losses}
+    if TASK_LOSS_WEIGHTS:
+        logging.info(f"Using per-task loss weights: {loss_weights}")
+
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate),
         loss=losses,
+        loss_weights=loss_weights,
         metrics=metrics
     )
 

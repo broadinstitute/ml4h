@@ -1065,6 +1065,13 @@ def train_transformer_on_parquet_fast(args):
     else:
         num_classes = args.num_classes
 
+    task_loss_weights = None
+    if args.task_loss_weights:
+        task_loss_weights = {}
+        for pair in args.task_loss_weights:
+            name, weight = pair.split('=')
+            task_loss_weights[name] = float(weight)
+
     if args.model_file:
         logging.info(f"Loading model from {args.model_file}")
         keras.config.enable_unsafe_deserialization()
@@ -1087,6 +1094,7 @@ def train_transformer_on_parquet_fast(args):
             CATEGORICAL_TARGETS=args.target_categorical_columns,
             NUM_CLASSES=num_classes,
             LABEL_WEIGHTS=args.label_weights,
+            TASK_LOSS_WEIGHTS=task_loss_weights,
         )
     if args.inspect_model:
         model.summary(print_fn=logging.info, expand_nested=True)

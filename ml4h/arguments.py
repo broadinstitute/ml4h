@@ -370,6 +370,11 @@ def parse_args():
         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
     )
     parser.add_argument(
+        '--task_loss_weights', nargs='*', default=None,
+        help='Per-task weights for the transformer multi-task loss, as "target_name=weight" pairs '
+             '(e.g. --task_loss_weights afib=2.0 age=0.5). Targets not listed default to weight 1.0.',
+    )
+    parser.add_argument(
         '--patience', default=8, type=int,
         help='Early Stopping parameter: Maximum number of epochs to run without validation loss improvements.',
     )
