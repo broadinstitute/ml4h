@@ -720,8 +720,14 @@ def build_embedding_transformer(
     for i in range(NUM_LAYERS):
         attn_layer = layers.MultiHeadAttention(num_heads=NUM_HEADS, key_dim=TRANSFORMER_DIM // NUM_HEADS,
                                                dropout=DROPOUT, name=f'mha_{i}')
-        attn, scores = attn_layer(x, x, attention_mask=mask_2d, return_attention_scores=True)
-        all_attn_scores.append(scores)
+        if RETURN_EXPLAIN_MODEL:
+            # only materialize the (B, heads, T, T) attention-score tensors when explicitly requested -
+            # they're a non-trivial memory cost (e.g. ~384MB/layer at batch=24, heads=4, T=1000) that
+            # training should never pay.
+            attn, scores = attn_layer(x, x, attention_mask=mask_2d, return_attention_scores=True)
+            all_attn_scores.append(scores)
+        else:
+            attn = attn_layer(x, x, attention_mask=mask_2d)
         attn = layers.Dropout(DROPOUT)(attn)
         x = layers.LayerNormalization(epsilon=1e-6, name=f'ln1_{i}')(layers.Add()([x, attn]))
 
