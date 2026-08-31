@@ -182,6 +182,65 @@ def test_build_embedding_transformer_positional_embedding_toggle():
     assert "add_pos" not in without_pos_layer_names
 
 
+def test_build_embedding_transformer_handles_padded_categorical_tokens():
+    max_len = 4
+    num_features = 3
+
+    num = np.array(
+        [
+            [[1.0, 0.0, 0.5], [0.5, 0.0, 0.2], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [[0.0, 1.0, 0.5], [0.2, 0.5, 0.1], [0.1, 0.2, 0.0], [0.0, 0.0, 0.0]],
+            [[1.0, 1.0, 0.0], [0.4, 0.1, 0.3], [0.2, 0.1, 0.1], [0.1, 0.0, 0.1]],
+            [[0.5, 0.5, 0.5], [0.3, 0.2, 0.2], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+        ],
+        dtype=np.float32,
+    )
+    mask = np.array(
+        [
+            [True, True, False, False],
+            [True, True, True, False],
+            [True, True, True, True],
+            [True, True, False, False],
+        ],
+        dtype=bool,
+    )
+    view = np.array(
+        [
+            [1, 2, 0, 0],
+            [2, 1, 1, 0],
+            [1, 2, 1, 2],
+            [2, 2, 0, 0],
+        ],
+        dtype=np.int32,
+    )
+    outputs = {"regression_task": np.array([[0.1], [0.2], [0.3], [0.4]], dtype=np.float32)}
+
+    with _cpu_device():
+        model = build_embedding_transformer(
+            input_numeric_cols=[f"feature_{i}" for i in range(num_features)],
+            regression_targets=["regression_task"],
+            binary_targets=[],
+            max_len=max_len,
+            emb_dim=4,
+            token_hidden=8,
+            transformer_dim=8,
+            num_heads=2,
+            num_layers=1,
+            dropout=0.0,
+            view2id={"apical": 1, "parasternal": 2},
+            learning_rate=1e-3,
+        )
+        history = model.fit(
+            {"num": num, "mask": mask, "view": view},
+            outputs,
+            epochs=1,
+            batch_size=2,
+            verbose=0,
+        )
+
+    assert np.isfinite(history.history["loss"][-1])
+
+
 @pytest.mark.parametrize("use_categorical", [False, True])
 def test_build_general_embedding_transformer_learns_easy_tasks(use_categorical, capsys):
     tf.keras.utils.set_random_seed(1234)

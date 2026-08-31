@@ -690,10 +690,10 @@ def build_embedding_transformer(
 
     if view2id is not None:
         inp_view = keras.Input(shape=(max_len,), dtype='int32', name='view')
+        # Padding is handled by inp_mask; an implicit Keras mask here breaks concatenation with numeric features.
         view_emb = layers.Embedding(
             input_dim=int(max(view2id.values())) + 1,  # include PAD
             output_dim=emb_dim,
-            mask_zero=True,
             name='view_embedding'
         )(inp_view)  # (B,T,emb_dim)
         # Token features: [embed(view) || numeric features]
