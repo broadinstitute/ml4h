@@ -511,7 +511,7 @@ def main(
         batch_size,
         output_signatures,
         shuffle=True,
-    ).repeat().prefetch(8)
+    ).repeat().prefetch(2)
 
     io_valid_ds = make_dataset(
         INPUT_DD_VALID,
@@ -520,7 +520,7 @@ def main(
         batch_size,
         output_signatures,
         shuffle=False,
-    ).prefetch(8)
+    ).prefetch(2)
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
