@@ -42,6 +42,7 @@ def extract_build_args_from_transformer_model(model):
     binary_targets = []
     categorical_targets = []
     num_classes = None
+    num_classes_by_target = {}
 
     for name in output_names:
         layer = model.get_layer(name)
@@ -55,6 +56,7 @@ def extract_build_args_from_transformer_model(model):
         elif units > 1 and activation == "softmax":
             categorical_targets.append(name)
             num_classes = units
+            num_classes_by_target[name] = units
         else:
             raise ValueError(
                 f"Cannot classify output {name}: units={units}, activation={activation}"
@@ -119,7 +121,7 @@ def extract_build_args_from_transformer_model(model):
                 "learning_rate": 0.00005,
                 "binary_class_prevalences": None,
                 "categorical_targets": categorical_targets,
-                "num_classes": num_classes,
+                "num_classes": num_classes_by_target,
                 "label_weights": None,
                 "use_positional_embedding": use_positional_embedding,
             },

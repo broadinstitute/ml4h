@@ -379,6 +379,21 @@ def parse_args():
         help='List of per-label weights for weighted categorical cross entropy. If provided, must map 1:1 to number of labels.',
     )
     parser.add_argument(
+        '--categorical_channel_maps', nargs='*', default=[], help=
+        'Per-target_categorical_columns string-label-to-class-index mappings, as '
+        '"column=label:idx,label:idx,..." pairs (e.g. --categorical_channel_maps '
+        'phq9_survey=Minimal:0,Moderate:1,Moderate/Severe:2,Missing:3). Columns not listed here '
+        'are assumed to already contain integer class labels. Also determines that column\'s '
+        'num_classes (overrides auto-detection from value_counts).',
+    )
+    parser.add_argument(
+        '--categorical_label_weights', nargs='*', default=[], help=
+        'Per-target_categorical_columns per-class loss weights, as "column=w0,w1,w2,..." pairs '
+        '(e.g. --categorical_label_weights phq9_survey=1.0,7.7,9.7,0.0). Unlike --label_weights '
+        '(one shared weight vector applied to every categorical target), this lets each '
+        'categorical target have its own independent class weights.',
+    )
+    parser.add_argument(
         '--task_loss_weights', nargs='*', default=None,
         help='Per-task weights for the transformer multi-task loss, as "target_name=weight" pairs '
              '(e.g. --task_loss_weights afib=2.0 age=0.5). Targets not listed default to weight 1.0.',

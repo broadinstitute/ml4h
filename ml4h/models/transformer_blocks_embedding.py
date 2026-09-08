@@ -671,6 +671,13 @@ def build_embedding_transformer(
             uses weighted binary cross entropy with weights inversely proportional
             to prevalence to mitigate class imbalance. E.g., {'target': 0.1} means
             10% of samples are positive for that target.
+        NUM_CLASSES: Dict mapping each name in CATEGORICAL_TARGETS to its number of
+            classes, e.g. {'phq9_survey': 4, 'phecode_label': 3}. Required (one entry
+            per categorical target) whenever CATEGORICAL_TARGETS is non-empty.
+        LABEL_WEIGHTS: Optional dict mapping a categorical target name to a list of
+            per-class loss weights, e.g. {'phq9_survey': [1.0, 7.7, 9.7, 0.0]}.
+            Categorical targets not present in the dict use unweighted
+            SparseCategoricalCrossentropy.
         TASK_LOSS_WEIGHTS: Optional dict mapping target names (regression, binary, or
             categorical) to a scalar weight for that task's contribution to the total
             loss, e.g. {'afib': 2.0}. Targets not present in the dict default to 1.0.
@@ -683,10 +690,12 @@ def build_embedding_transformer(
             unaffected.
     """
     CATEGORICAL_TARGETS = CATEGORICAL_TARGETS or []
-    if CATEGORICAL_TARGETS and NUM_CLASSES is None:
+    NUM_CLASSES = NUM_CLASSES or {}
+    missing_num_classes = [t for t in CATEGORICAL_TARGETS if t not in NUM_CLASSES]
+    if missing_num_classes:
         raise ValueError(
-            "NUM_CLASSES must be specified when using CATEGORICAL_TARGETS. "
-            "It is auto-detected from the label column in recipes.py."
+            f"NUM_CLASSES must be specified for every categorical target; missing: {missing_num_classes}. "
+            "It is auto-detected per-column in recipes.py."
         )
     Feat = len(INPUT_NUMERIC_COLS)
 
@@ -765,7 +774,7 @@ def build_embedding_transformer(
     for t in BINARY_TARGETS:
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
     for t in CATEGORICAL_TARGETS:
-        outputs[t] = layers.Dense(NUM_CLASSES, activation='softmax', name=t)(h)
+        outputs[t] = layers.Dense(NUM_CLASSES[t], activation='softmax', name=t)(h)
 
     if view2id is not None:
         model_inputs = {'view': inp_view, 'num': inp_num, 'mask': inp_mask}
@@ -791,12 +800,12 @@ def build_embedding_transformer(
             logging.info(f"Using weighted BCE for {t}: prevalence={prevalence:.4f}, pos_weight={pos_weight:.2f}")
         else:
             losses[t] = 'binary_crossentropy'
-    if LABEL_WEIGHTS:
-        class_weights = [float(w) for w in LABEL_WEIGHTS]
-        for t in CATEGORICAL_TARGETS:
+    LABEL_WEIGHTS = LABEL_WEIGHTS or {}
+    for t in CATEGORICAL_TARGETS:
+        if t in LABEL_WEIGHTS:
+            class_weights = [float(w) for w in LABEL_WEIGHTS[t]]
             losses[t] = sparse_weighted_categorical_crossentropy(class_weights)
-    else:
-        for t in CATEGORICAL_TARGETS:
+        else:
             losses[t] = keras.losses.SparseCategoricalCrossentropy()
 
     metrics = {t: [keras.metrics.MeanAbsoluteError(name='mae'),

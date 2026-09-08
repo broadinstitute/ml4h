@@ -1046,6 +1046,19 @@ def train_transformer_on_parquet_fast(args):
         target_col, source_col = pair.split('=')
         window_avg_targets[target_col] = source_col
 
+    # Map string-labeled categorical targets (e.g. phq9_survey: 'Minimal'/'Moderate'/...) to
+    # explicit integer class indices before the generator sees them, so weights/order are controlled.
+    categorical_channel_maps = {}
+    for pair in args.categorical_channel_maps:
+        col, mapping_str = pair.split('=', 1)
+        channel_map = {}
+        for item in mapping_str.split(','):
+            label, idx = item.rsplit(':', 1)
+            channel_map[label] = int(idx)
+        categorical_channel_maps[col] = channel_map
+    for col, channel_map in categorical_channel_maps.items():
+        df[col] = df[col].map(channel_map).astype(float)
+
     train_ds, val_ds, test_ds = df_to_datasets_from_generator(df, input_numeric_columns, input_categorical_column,
                                                               args.group_column, args.sort_column, args.sort_column_ascend,
                                                               args.target_regression_columns + args.target_binary_columns + args.target_categorical_columns,
@@ -1064,12 +1077,19 @@ def train_transformer_on_parquet_fast(args):
     #         train_csv=args.train_csv,
     #     )
 
-    if args.target_categorical_columns and args.num_classes is None:
-        vc = df[args.target_categorical_columns[0]].value_counts()
-        num_classes = len(vc)
-        logging.info(f"Auto-detected num_classes={num_classes} for {args.target_categorical_columns[0]}: {vc.to_dict()}")
-    else:
-        num_classes = args.num_classes
+    num_classes_by_target = {}
+    for col in args.target_categorical_columns:
+        if col in categorical_channel_maps:
+            num_classes_by_target[col] = len(categorical_channel_maps[col])
+        else:
+            vc = df[col].value_counts()
+            num_classes_by_target[col] = len(vc)
+            logging.info(f"Auto-detected num_classes={len(vc)} for {col}: {vc.to_dict()}")
+
+    categorical_label_weights = {}
+    for pair in args.categorical_label_weights:
+        col, weights_str = pair.split('=', 1)
+        categorical_label_weights[col] = [float(w) for w in weights_str.split(',')]
 
     task_loss_weights = None
     if args.task_loss_weights:
@@ -1098,8 +1118,8 @@ def train_transformer_on_parquet_fast(args):
             args.learning_rate,
             binary_class_prevalences=binary_class_prevalences,
             CATEGORICAL_TARGETS=args.target_categorical_columns,
-            NUM_CLASSES=num_classes,
-            LABEL_WEIGHTS=args.label_weights,
+            NUM_CLASSES=num_classes_by_target,
+            LABEL_WEIGHTS=categorical_label_weights or None,
             TASK_LOSS_WEIGHTS=task_loss_weights,
         )
     if args.inspect_model:
