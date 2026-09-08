@@ -331,6 +331,15 @@ def parse_args():
          'Validation and test sequences are unaffected.',
     )
     parser.add_argument(
+         '--window_avg_targets', nargs='*', default=[], help=
+         'List of target_column=source_column pairs (e.g. hr_mean_all_norm=hr_mean) for targets that '
+         'should be recomputed per-sample as the mean of the raw per-day source_column restricted to '
+         'the exact input window used for that sample (respecting --random_crop_min_days), instead of '
+         'reading a precomputed whole-trajectory constant from target_column. The normalized scale of '
+         'target_column is preserved by fitting an affine transform against the existing whole-trajectory '
+         'values.',
+    )
+    parser.add_argument(
          '--transformer_scalar_embed', default=4, type=int, help='Size of embedding of input categorical / continuous scalar column data',
     )
     parser.add_argument(

@@ -1246,7 +1246,7 @@ def build_datasets(
 
 def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, sort_column,
                                   sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH, train_csv, valid_csv, test_csv,
-                                  random_crop_min_days=None):
+                                  random_crop_min_days=None, window_avg_targets=None):
     if input_categorical_column:
         view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
         view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
@@ -1330,10 +1330,36 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
     label_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
     weight_sig = {t: tf.TensorSpec(shape=(), dtype=tf.float32) for t in TARGETS_ALL}
 
+    # Targets that must reflect only the (possibly randomly cropped) input window rather than
+    # a precomputed whole-trajectory constant, e.g. {'hr_mean_all_norm': 'hr_mean'}. Recomputed
+    # per-sample below from the raw per-day source column, restricted to the same days as `num`.
+    window_avg_targets = window_avg_targets or {}
+    window_avg_scale = {}
+    for t, s in window_avg_targets.items():
+        if t not in df_sorted.columns or s not in df_sorted.columns:
+            logging.warning(f"window_avg_targets entry '{t}={s}' references missing column(s); skipping.")
+            continue
+        # The precomputed target column is already normalized (e.g. z-scored) by an upstream
+        # pipeline whose scale isn't available here. Re-derive an equivalent affine transform
+        # (a, b) by fitting the existing whole-trajectory normalized target against the
+        # whole-trajectory raw average of the source column, so the windowed value we compute
+        # per-sample lands on the same scale.
+        per_person_norm = df_sorted.groupby(AGGREGATE_COLUMN)[t].mean()
+        per_person_raw_avg = df_sorted.groupby(AGGREGATE_COLUMN)[s].mean()
+        paired = pd.concat([per_person_raw_avg, per_person_norm], axis=1, keys=['raw', 'norm']).dropna()
+        if len(paired) >= 2 and paired['raw'].std() > 0:
+            a, b = np.polyfit(paired['raw'], paired['norm'], 1)
+            window_avg_scale[t] = (float(a), float(b))
+            logging.info(f"Derived window-average scale for target '{t}' from source '{s}': a={a:.6f}, b={b:.6f}")
+        else:
+            logging.warning(f"Could not derive scale for window-averaged target '{t}' (insufficient data); using identity (a=1, b=0).")
+            window_avg_scale[t] = (1.0, 0.0)
+
     # ---------- Generator WITHOUT VIEW_COL ----------
     def group_generator(selected_ids, random_crop=False):
         # Preload numeric block for fast slicing
         arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
+        arr_src = {s: df_sorted[s].to_numpy(np.float32) for s in window_avg_targets.values() if s in df_sorted.columns}
         if input_categorical_column:
             arr_view = df_sorted['_view_id'].to_numpy(np.int32)
 
@@ -1403,6 +1429,23 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
                     has = not pd.isna(v)
                     y[t] = np.float32(v if has else 0.0)
                     sw[t] = np.float32(1.0 if has else 0.0)
+                else:
+                    y[t] = np.float32(0.0)
+                    sw[t] = np.float32(0.0)
+
+            # Overwrite window-averaged targets with the mean of the raw source column over
+            # the exact same (possibly cropped) window used for `num`, rescaled onto the same
+            # range as the precomputed whole-trajectory target.
+            for t, s in window_avg_targets.items():
+                if s not in arr_src:
+                    continue
+                window_vals = arr_src[s][start:start + T]
+                valid = ~np.isnan(window_vals)
+                if valid.any():
+                    raw_avg = window_vals[valid].mean()
+                    a, b = window_avg_scale[t]
+                    y[t] = np.float32(a * raw_avg + b)
+                    sw[t] = np.float32(1.0)
                 else:
                     y[t] = np.float32(0.0)
                     sw[t] = np.float32(0.0)
