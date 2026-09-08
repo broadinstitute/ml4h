@@ -1046,6 +1046,11 @@ def train_transformer_on_parquet_fast(args):
         target_col, source_col = pair.split('=')
         window_avg_targets[target_col] = source_col
 
+    window_last_targets = {}
+    for pair in args.window_last_targets:
+        target_col, source_col = pair.split('=')
+        window_last_targets[target_col] = source_col
+
     # Map string-labeled categorical targets (e.g. phq9_survey: 'Minimal'/'Moderate'/...) to
     # explicit integer class indices before the generator sees them, so weights/order are controlled.
     categorical_channel_maps = {}
@@ -1065,7 +1070,8 @@ def train_transformer_on_parquet_fast(args):
                                                               args.transformer_max_size, args.batch_size,
                                                               args.train_csv, args.valid_csv, args.test_csv,
                                                               random_crop_min_days=args.random_crop_min_days,
-                                                              window_avg_targets=window_avg_targets or None)
+                                                              window_avg_targets=window_avg_targets or None,
+                                                              window_last_targets=window_last_targets or None)
 
     # Compute binary class prevalences for weighted loss
     binary_class_prevalences = None

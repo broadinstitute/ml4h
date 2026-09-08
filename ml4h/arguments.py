@@ -340,6 +340,17 @@ def parse_args():
          'values.',
     )
     parser.add_argument(
+         '--window_last_targets', nargs='*', default=[], help=
+         'List of target_column=source_column pairs (e.g. last_age_norm=age_norm) for targets that '
+         'should be recomputed per-sample as the raw per-day source_column value at whichever end of '
+         'the (possibly cropped) input window is most recent, given --sort_column_ascend, instead of '
+         'reading a precomputed constant tied to the true final day of the whole trajectory. With '
+         '--sort_column_ascend unset (descending, most-recent-first), that row is always the first of '
+         'the window and is unaffected by cropping; with --sort_column_ascend set (ascending, '
+         'oldest-first), it is the last row of the window and does need recomputation. The normalized '
+         'scale of target_column is preserved the same way as --window_avg_targets.',
+    )
+    parser.add_argument(
          '--transformer_scalar_embed', default=4, type=int, help='Size of embedding of input categorical / continuous scalar column data',
     )
     parser.add_argument(

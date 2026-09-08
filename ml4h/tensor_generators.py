@@ -1246,7 +1246,7 @@ def build_datasets(
 
 def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_column, AGGREGATE_COLUMN, sort_column,
                                   sort_column_ascend, TARGETS_ALL, MAX_LEN, BATCH, train_csv, valid_csv, test_csv,
-                                  random_crop_min_days=None, window_avg_targets=None):
+                                  random_crop_min_days=None, window_avg_targets=None, window_last_targets=None):
     if input_categorical_column:
         view_vocab = pd.Series(df[input_categorical_column].astype(str).unique())
         view2id = {v: i + 1 for i, v in enumerate(view_vocab)}  # 0 reserved for PAD
@@ -1355,11 +1355,42 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
             logging.warning(f"Could not derive scale for window-averaged target '{t}' (insufficient data); using identity (a=1, b=0).")
             window_avg_scale[t] = (1.0, 0.0)
 
+    # Targets that must reflect the value as of the most recent day actually visible in the
+    # (possibly cropped) input window, e.g. {'last_age_norm': 'age_norm'}, rather than a
+    # precomputed constant tied to the true final day of the person's whole trajectory.
+    # Which row is "most recent" depends on sort direction: with sort_column_ascend=False
+    # (descending, most-recent-first) that's always row `start` of the group, which the crop
+    # (`num[:X]`, first X rows) always keeps regardless of X -- no recomputation is actually
+    # needed there, but we still recompute it (from the same row) for consistency. With
+    # sort_column_ascend=True (ascending, oldest-first) the most recent day is row `end-1`,
+    # which the crop can exclude, so it must be recomputed from the last row of the kept window.
+    window_last_targets = window_last_targets or {}
+    window_last_scale = {}
+    most_recent_is_first = not sort_column_ascend
+    for t, s in window_last_targets.items():
+        if t not in df_sorted.columns or s not in df_sorted.columns:
+            logging.warning(f"window_last_targets entry '{t}={s}' references missing column(s); skipping.")
+            continue
+        per_person_norm = df_sorted.groupby(AGGREGATE_COLUMN)[t].mean()
+        if most_recent_is_first:
+            per_person_raw_last = df_sorted.groupby(AGGREGATE_COLUMN)[s].first()
+        else:
+            per_person_raw_last = df_sorted.groupby(AGGREGATE_COLUMN)[s].last()
+        paired = pd.concat([per_person_raw_last, per_person_norm], axis=1, keys=['raw', 'norm']).dropna()
+        if len(paired) >= 2 and paired['raw'].std() > 0:
+            a, b = np.polyfit(paired['raw'], paired['norm'], 1)
+            window_last_scale[t] = (float(a), float(b))
+            logging.info(f"Derived window-last scale for target '{t}' from source '{s}': a={a:.6f}, b={b:.6f}")
+        else:
+            logging.warning(f"Could not derive scale for window-last target '{t}' (insufficient data); using identity (a=1, b=0).")
+            window_last_scale[t] = (1.0, 0.0)
+
     # ---------- Generator WITHOUT VIEW_COL ----------
     def group_generator(selected_ids, random_crop=False):
         # Preload numeric block for fast slicing
         arr_num = df_sorted[INPUT_NUMERIC_COLS].to_numpy(np.float32)
-        arr_src = {s: df_sorted[s].to_numpy(np.float32) for s in window_avg_targets.values() if s in df_sorted.columns}
+        window_src_cols = set(window_avg_targets.values()) | set(window_last_targets.values())
+        arr_src = {s: df_sorted[s].to_numpy(np.float32) for s in window_src_cols if s in df_sorted.columns}
         if input_categorical_column:
             arr_view = df_sorted['_view_id'].to_numpy(np.int32)
 
@@ -1445,6 +1476,21 @@ def df_to_datasets_from_generator(df, INPUT_NUMERIC_COLS, input_categorical_colu
                     raw_avg = window_vals[valid].mean()
                     a, b = window_avg_scale[t]
                     y[t] = np.float32(a * raw_avg + b)
+                    sw[t] = np.float32(1.0)
+                else:
+                    y[t] = np.float32(0.0)
+                    sw[t] = np.float32(0.0)
+
+            # Overwrite window-last targets with the raw source value at whichever row of the
+            # (possibly cropped) window is "most recent" for the configured sort direction.
+            for t, s in window_last_targets.items():
+                if s not in arr_src:
+                    continue
+                idx = start if most_recent_is_first else (start + T - 1)
+                raw_val = arr_src[s][idx]
+                if not np.isnan(raw_val):
+                    a, b = window_last_scale[t]
+                    y[t] = np.float32(a * raw_val + b)
                     sw[t] = np.float32(1.0)
                 else:
                     y[t] = np.float32(0.0)
