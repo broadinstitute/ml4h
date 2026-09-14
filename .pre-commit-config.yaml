@@ -23,3 +23,12 @@ repos:
   hooks:
     - id: add-trailing-comma
       exclude: "ml4h/tensormap/ukb/by_script.py"
+- repo: local
+  hooks:
+      - id: ukb-git-audit
+        name: UKB Git Audit Tool
+        entry: bash scripts/ukb-audit.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

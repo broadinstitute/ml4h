@@ -12,3 +12,5 @@ ml4h.egg-info/*
 docker/terra_image/*/**
 build/
 dist/
+ukb_audit_reports/
+tools/
