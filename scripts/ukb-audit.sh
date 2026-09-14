@@ -9,6 +9,8 @@ cleanup() {
         echo "Removing temporary UKB Git Audit Tool..."
         rm -rf "$TOOL_DIR"
     fi
+
+    rmdir tools 2>/dev/null || true
 }
 
 trap cleanup EXIT
