@@ -48,6 +48,7 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
+    r2_score,
 )
 from sklearn.calibration import calibration_curve
 
@@ -166,6 +167,8 @@ def evaluate_predictions(
     dpi: int = 300,
     width: int = 7,
     height: int = 7,
+    performance_data: Optional[List[Dict[str, object]]] = None,
+    model_name: Optional[str] = None,
 ) -> Dict[str, float]:
     """Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
@@ -183,8 +186,18 @@ def evaluate_predictions(
     :param dpi: Dots per inch
     :param width: Figure width in inches
     :param height: Figure height in inches
+    :param performance_data: Optional output list collecting metrics, confidence intervals, and counts
+    :param model_name: Model identifier for the collected performance rows
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
+    def record_performance(rows):
+        if model_name is not None:
+            for row in rows:
+                row["Model"] = model_name
+        if performance_data is not None:
+            performance_data.extend(rows)
+        return _performance_data_to_metrics(rows)
+
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
@@ -193,14 +206,16 @@ def evaluate_predictions(
         logging.info(
             f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}",
         )
-        plot_precision_recall_per_class(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+        record_performance(
+            plot_precision_recall_per_class(
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            ),
         )
         plot_prediction_calibration(
             y_predictions, y_truth, tm.channel_map, title, folder, 10,  dpi, width, height,
         )
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 subplot_roc_per_class(
                     y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
                 ),
@@ -218,14 +233,14 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 subplot_roc_per_class(
                     y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
                 ),
             ),
         )
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 plot_precision_recall_per_class(
                     y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
                 ),
@@ -246,14 +261,14 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 subplot_roc_per_class(
                     y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
                 ),
             ),
         )
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 plot_precision_recall_per_class(
                     y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
                 ),
@@ -277,14 +292,14 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 subplot_roc_per_class(
                     y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
                 ),
             ),
         )
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 plot_precision_recall_per_class(
                     y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
                 ),
@@ -338,7 +353,7 @@ def evaluate_predictions(
         )
         new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 subplot_roc_per_class(
                     y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
                     new_title, folder, dpi, width, height,
@@ -372,14 +387,14 @@ def evaluate_predictions(
         truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
         logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 subplot_roc_per_class(
                     prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi, width, height,
                 ),
             ),
         )
         performance_metrics.update(
-            _performance_data_to_metrics(
+            record_performance(
                 plot_precision_recall_per_class(
                     prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi, width, height,
                 ),
@@ -400,16 +415,18 @@ def evaluate_predictions(
         plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(
-                subplot_pearson_per_class(
-                    prediction_flat,
-                    truth_flat,
-                    tm.channel_map,
-                    protected_repeated,
-                    title,
-                    prefix=folder,
-                    dpi=dpi,
-                    width=width,
-                    height=height,
+                record_performance(
+                    subplot_pearson_per_class(
+                        prediction_flat,
+                        truth_flat,
+                        tm.channel_map,
+                        protected_repeated,
+                        title,
+                        prefix=folder,
+                        dpi=dpi,
+                        width=width,
+                        height=height,
+                    ),
                 ),
             )
     elif tm.is_continuous():
@@ -417,16 +434,18 @@ def evaluate_predictions(
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(
-            subplot_pearson_per_class(
-                tm.rescale(y_predictions),
-                tm.rescale(y_truth),
-                tm.channel_map,
-                protected,
-                title,
-                folder,
-                dpi,
-                width,
-                height,
+            record_performance(
+                subplot_pearson_per_class(
+                    tm.rescale(y_predictions),
+                    tm.rescale(y_truth),
+                    tm.channel_map,
+                    protected,
+                    title,
+                    folder,
+                    dpi,
+                    width,
+                    height,
+                ),
             ),
         )
         scatters.append(
@@ -813,6 +832,7 @@ def _performance_data_row(
     }
     if n_positive is not None:
         row["n_positive"] = int(n_positive)
+        row["prevalence"] = 100.0 * n_positive / n if n > 0 else 0.0
     return row
 
 
@@ -850,15 +870,37 @@ def _classification_metric_performance_row(
 
 def _performance_data_to_metrics(performance_data: List[Dict[str, object]]) -> Dict[str, float]:
     return {
-        str(row["Task"]): float(row["Score"])
+        str(row["Task"]) + ("_pearson" if row["Metric"] == "Pearson" else ""): float(row["Score"])
         for row in performance_data
     }
+
+
+def _regression_performance_data(prediction, truth, title, model_name, n_bootstraps, bootstrap_seed):
+    prediction = np.asarray(prediction).flatten()
+    truth = np.asarray(truth).flatten()
+    rng = np.random.RandomState(bootstrap_seed)
+    return [
+        _performance_data_row(
+            title if model_name is None else model_name,
+            title,
+            metric_name,
+            _safe_metric_score(metric, truth, prediction),
+            _bootstrap_metric_confidence_interval(truth, prediction, metric, rng, n_bootstraps),
+            len(truth),
+        )
+        for metric_name, metric in [("R^2", r2_score), ("Pearson", _pearson_wrapper)]
+    ]
 
 
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
     bootstrap=True, dpi=300, width=2, height=4,
-):
+    n_bootstraps=1000, bootstrap_seed=METRIC_BOOTSTRAP_SEED, model_name=None,
+) -> List[Dict[str, object]]:
+    """Plot regression predictions and return R^2 and Pearson rows with 95% CIs."""
+    performance_data = _regression_performance_data(
+        prediction, truth, title, model_name, n_bootstraps if bootstrap else 0, bootstrap_seed,
+    )
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
     ax1.plot(
@@ -869,14 +911,15 @@ def plot_scatter(
         [np.min(prediction), np.max(prediction)],
         linewidth=4,
     )
-    pearson = np.corrcoef(prediction.flatten(), truth.flatten())[
-        1, 0,
-    ]  # corrcoef returns full covariance matrix
-    big_r_squared = coefficient_of_determination(truth, prediction)
+    r2_row, pearson_row = performance_data
+    pearson = pearson_row["Score"]
+    big_r_squared = r2_row["Score"]
 
     if bootstrap:
-        pearson, ci = bootstrap_confidence_interval(prediction, truth)
-        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}\n 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
+        label = (
+            f'Pearson:{pearson:0.4f} 95% CI:({pearson_row["CI_95_lower"]:0.4f}, {pearson_row["CI_95_upper"]:0.4f})\n'
+            f'$R^2$:{big_r_squared:0.4f} 95% CI:({r2_row["CI_95_lower"]:0.4f}, {r2_row["CI_95_upper"]:0.4f})'
+        )
     else:
         label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     logging.info(f"{label}")
@@ -920,7 +963,7 @@ def plot_scatter(
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save scatter plot at: {figure_path}")
     plt.savefig(figure_path)
-    return {title + "_pearson": pearson}
+    return performance_data
 
 
 def plot_scatters(
@@ -987,13 +1030,21 @@ def subplot_pearson_per_class(
     dpi: int = 300,
     width: int = 6,
     height: int = 6,
-) -> Dict[str, float]:
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
     lw = 2
     alpha = 0.5
-    labels_to_areas = {}
     total_plots = len(protected) + 1
     if total_plots == 1:
-        return plot_scatter(prediction, truth, title, prefix, dpi=dpi, width=width, height=height)
+        return plot_scatter(
+            prediction, truth, title, prefix, dpi=dpi, width=width, height=height,
+            n_bootstraps=n_bootstraps, bootstrap_seed=bootstrap_seed, model_name=model_name,
+        )
+    performance_data = _regression_performance_data(
+        prediction, truth, title, model_name, n_bootstraps, bootstrap_seed,
+    )
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -1033,7 +1084,7 @@ def subplot_pearson_per_class(
     logging.info(
         f"{label_text} saved at: {figure_path}{f' with {len(protected)} protected TensorMaps.' if len(protected) else '.'}",
     )
-    return labels_to_areas
+    return performance_data
 
 
 def subplot_scatters(
@@ -2709,7 +2760,8 @@ def plot_roc(
     """Plot ROC curves and return dataframe-ready AUROC performance rows.
 
     The returned rows match the schema from evaluate_multitask_on_dataset:
-    Model, Task, Metric, Score, CI_95_lower, CI_95_upper, n, and n_positive.
+    Model, Task, Metric, Score, CI_95_lower, CI_95_upper, n, and n_positive,
+    plus prevalence as a percentage.
     """
     lw = 2
     performance_data = []
@@ -2861,7 +2913,7 @@ def plot_precision_recall_per_class(
     bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
     model_name: Optional[str] = None,
 ) -> List[Dict[str, object]]:
-    # Compute Precision-Recall and plot curve
+    """Return auPRC rows with 95% bootstrap CIs, counts, and prevalence (percent)."""
     lw = 2.0
     performance_data = []
     rng = np.random.RandomState(bootstrap_seed)

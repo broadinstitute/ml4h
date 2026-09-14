@@ -423,14 +423,14 @@ def train_multimodal_multitask(args):
     if merger:
         merger.save(os.path.join(save_dir, f"merger{MODEL_EXT}"))
 
-    performance_metrics = {}
+    performance_data = []
     if args.test_steps > 0:
         iter_generate_test = iter(generate_test)
         test_data, test_labels, _ = big_batch_from_minibatch_generator(
             iter_generate_test, args.test_steps
         )
         test_paths = None
-        performance_metrics = _predict_and_evaluate(
+        _predict_and_evaluate(
             model,
             test_data,
             test_labels,
@@ -446,6 +446,8 @@ def train_multimodal_multitask(args):
             args.dpi,
             args.plot_width,
             args.plot_height,
+            performance_data=performance_data,
+            model_name=args.id,
         )
 
         predictions = model.predict(test_data)
@@ -509,7 +511,11 @@ def train_multimodal_multitask(args):
                         width=args.plot_width,
                         height=args.plot_height,
                     )
-    return performance_metrics
+    metrics_path = os.path.join(save_dir, f"metrics_{args.id}.json")
+    with open(metrics_path, "w") as metrics_file:
+        json.dump(performance_data, metrics_file)
+    logging.info(f"Saved performance metrics at: {metrics_path}")
+    return performance_data
 
 
 def test_multimodal_multitask(args):
@@ -2721,6 +2727,8 @@ def _predict_and_evaluate(
     dpi,
     width,
     height,
+    performance_data=None,
+    model_name=None,
 ):
     layer_names = [layer.name for layer in model.layers]
     performance_metrics = {}
@@ -2755,6 +2763,8 @@ def _predict_and_evaluate(
                 dpi=dpi,
                 width=width,
                 height=height,
+                performance_data=performance_data,
+                model_name=model_name,
             ),
         )
         if tm.is_language():
