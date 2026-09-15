@@ -10,7 +10,14 @@ import tensorflow as tf
 
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from echo_defines import category_dictionaries
-from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor, create_regressor_classifier
+from model_descriptions.backbones import (
+    MOVINET_A2,
+    backbone_choices,
+    backbone_uses_tensorflow,
+    canonical_backbone_name,
+    create_video_encoder,
+)
+from model_descriptions.echo import DDGenerator, create_regressor_classifier
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
@@ -37,11 +44,50 @@ def main(
         output_dir,
         extract_embeddings,
         start_beat,
+        backbone_name=None,
+        backbone_checkpoint=None,
+        embedding_dim=None,
+        backbone_repo=None,
+        backbone_device=None,
+        backbone_microbatch_size=None,
 ):
     # Loading information on saved model:
     model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0], 'model_params.json')
     with open(model_param_path, 'r') as json_file:
         model_params = json.load(json_file)
+
+    saved_backbone_name = canonical_backbone_name(model_params.get('backbone', MOVINET_A2))
+    requested_backbone_name = canonical_backbone_name(backbone_name or saved_backbone_name)
+    if 'backbone' in model_params and requested_backbone_name != saved_backbone_name:
+        raise ValueError(
+            f'The DROID checkpoint was trained with {saved_backbone_name}, not {requested_backbone_name}.',
+        )
+    backbone_name = requested_backbone_name
+
+    saved_embedding_dim = model_params.get('embedding_dim')
+    if embedding_dim is not None and 'embedding_dim' in model_params and embedding_dim != saved_embedding_dim:
+        raise ValueError(
+            f'The DROID checkpoint was trained with embedding_dim={saved_embedding_dim}, not {embedding_dim}.',
+        )
+    embedding_dim = saved_embedding_dim if embedding_dim is None else embedding_dim
+    backbone_checkpoint = (
+        backbone_checkpoint
+        or movinet_chkp_dir
+        or model_params.get('backbone_checkpoint')
+        or model_params.get('movinet_chkp_dir')
+    )
+    backbone_repo = backbone_repo or model_params.get('backbone_repo')
+    backbone_device = backbone_device or model_params.get('backbone_device') or 'auto'
+    backbone_microbatch_size = (
+        backbone_microbatch_size
+        or model_params.get('backbone_microbatch_size')
+        or 1
+    )
+    if not backbone_checkpoint:
+        raise ValueError(
+            f'{backbone_name} requires --backbone_checkpoint '
+            '(--movinet_chkp_dir remains an alias for legacy MoViNet runs).',
+        )
 
     output_labels = model_params['output_labels'] if not output_labels else output_labels
     selected_views = model_params['selected_views'] if not selected_views else selected_views
@@ -80,7 +126,11 @@ def main(
 
     # Hide devices based on split
     physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.set_visible_devices([physical_devices[split_idx % 4]], 'GPU')
+    if physical_devices:
+        gpu_index = split_idx % len(physical_devices)
+        tf.config.set_visible_devices([physical_devices[gpu_index]], 'GPU')
+        if not backbone_uses_tensorflow(backbone_name) and backbone_device == 'auto':
+            backbone_device = f'cuda:{gpu_index}'
 
     wide_df = pd.read_parquet(wide_file)
 
@@ -165,16 +215,16 @@ def main(
         num_parallel_calls = 2
     ).prefetch(8)
 
-    model, backbone = create_movinet_classifier(
-        n_input_frames,
-        batch_size,
-        num_classes=600,
-        checkpoint_dir=movinet_chkp_dir,
+    encoder = create_video_encoder(
+        backbone_name=backbone_name,
+        n_input_frames=n_input_frames,
+        batch_size=batch_size,
+        checkpoint_path=backbone_checkpoint,
+        embedding_dim=embedding_dim,
+        backbone_repo=backbone_repo,
+        backbone_device=backbone_device,
+        backbone_microbatch_size=backbone_microbatch_size,
     )
-
-    backbone_output = backbone.layers[-1].output[0]
-    flatten = tf.keras.layers.Flatten()(backbone_output)
-    encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
 
     # ---------- Adaptation for regression + classification ---------- #
     # Organize regressor/classifier inputs:
@@ -189,7 +239,7 @@ def main(
     model_plus_head.load_weights(pretrained_chkp_dir)
 
     vois = '_'.join(selected_views)
-    ufm = 'conv7'
+    ufm = backbone_name if embedding_dim is None else f'{backbone_name}_{embedding_dim}emb'
     if extract_embeddings:
         output_folder = os.path.join(output_dir,
                                     f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
@@ -284,7 +334,20 @@ if __name__ == "__main__":
     parser.add_argument('--skip_modulo', type=int, default=1)
     parser.add_argument('--lmdb_folder', type=str)
     parser.add_argument('--pretrained_chkp_dir', type=str)
-    parser.add_argument('--movinet_chkp_dir', type=str)
+    parser.add_argument('--movinet_chkp_dir', type=str,
+                        help='Legacy alias for --backbone_checkpoint when using MoViNet.')
+    parser.add_argument('--backbone', choices=backbone_choices(),
+                        help='Override the backbone recorded in model_params.json.')
+    parser.add_argument('--backbone_checkpoint', type=str,
+                        help='Override the saved backbone checkpoint path.')
+    parser.add_argument('--embedding_dim', type=int,
+                        help='Override the embedding projection width recorded during training.')
+    parser.add_argument('--backbone_repo', type=str,
+                        help='V-JEPA 2 repository path or torch.hub repository.')
+    parser.add_argument('--backbone_device', type=str,
+                        help='PyTorch device for V-JEPA 2.1 (auto, cpu, cuda, or cuda:N).')
+    parser.add_argument('--backbone_microbatch_size', type=int,
+                        help='Override the saved V-JEPA inference microbatch size.')
     parser.add_argument('--output_dir', type=str)
     parser.add_argument('--extract_embeddings', action='store_true')
     parser.add_argument('--start_beat', type=int, default=0)
@@ -316,4 +379,10 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
         start_beat=args.start_beat,
+        backbone_name=args.backbone,
+        backbone_checkpoint=args.backbone_checkpoint,
+        embedding_dim=args.embedding_dim,
+        backbone_repo=args.backbone_repo,
+        backbone_device=args.backbone_device,
+        backbone_microbatch_size=args.backbone_microbatch_size,
     )

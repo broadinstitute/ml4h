@@ -15,7 +15,14 @@ from data_descriptions.echo_dataset import make_dataset
 from data_descriptions.transforms import AUGMENTATIONS
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
-from model_descriptions.echo import create_movinet_classifier, create_regressor_classifier, train_model
+from model_descriptions.backbones import (
+    MOVINET_A2,
+    backbone_choices,
+    backbone_uses_tensorflow,
+    canonical_backbone_name,
+    create_video_encoder,
+)
+from model_descriptions.echo import create_regressor_classifier, train_model
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
@@ -207,6 +214,12 @@ def main(
         video_decode_mode='auto',
         video_decode_threads=1,
         prefetch_batches=1,
+        backbone_name=MOVINET_A2,
+        backbone_checkpoint=None,
+        embedding_dim=None,
+        backbone_repo=None,
+        backbone_device='auto',
+        backbone_microbatch_size=1,
 ):
 
     if loader_workers < 1 or video_decode_threads < 0 or prefetch_batches < 0:
@@ -510,18 +523,23 @@ def main(
     logging.info('Video loader: workers=%d, decode=%s, decode_threads=%d, prefetch_batches=%d',
                  loader_workers, video_decode_mode, video_decode_threads, prefetch_batches)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy()
-    with mirrored_strategy.scope():
-        _, backbone = create_movinet_classifier(
-            n_input_frames,
-            batch_size,
-            num_classes=600,
-            checkpoint_dir=movinet_chkp_dir,
-            freeze_backbone=fine_tune
+    strategy = (
+        tf.distribute.MirroredStrategy()
+        if backbone_uses_tensorflow(backbone_name)
+        else tf.distribute.get_strategy()
+    )
+    with strategy.scope():
+        encoder = create_video_encoder(
+            backbone_name=backbone_name,
+            n_input_frames=n_input_frames,
+            batch_size=batch_size,
+            checkpoint_path=backbone_checkpoint,
+            embedding_dim=embedding_dim,
+            freeze_backbone=fine_tune,
+            backbone_repo=backbone_repo,
+            backbone_device=backbone_device,
+            backbone_microbatch_size=backbone_microbatch_size,
         )
-        backbone_output = backbone.layers[-1].output[0]
-        flatten = tf.keras.layers.Flatten()(backbone_output)
-        encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
 
         # ---------- Adaptation for regression + classification ---------- #
         # Organize regressor/classifier inputs:
@@ -543,6 +561,14 @@ def main(
                                                       'model_params.json')
             f = open(signature_model_param_path)
             signature_model_params = json.load(f)
+            signature_backbone = canonical_backbone_name(signature_model_params.get('backbone', MOVINET_A2))
+            signature_embedding_dim = signature_model_params.get('embedding_dim')
+            if signature_backbone != backbone_name or signature_embedding_dim != embedding_dim:
+                raise ValueError(
+                    'The pretrained DROID checkpoint uses backbone/embedding '
+                    f'{signature_backbone}/{signature_embedding_dim}, but the requested model uses '
+                    f'{backbone_name}/{embedding_dim}.',
+                )
             sig_add_separate_dense_reg = signature_model_params[
                 'add_separate_dense_reg'] if 'add_separate_dense_reg' in signature_model_params.keys() else False
             sig_add_separate_dense_cls = signature_model_params[
@@ -660,7 +686,9 @@ def main(
     # local path or a gs:// bucket path; all writes below go through tf.io.gfile, which handles
     # both transparently, so checkpoints, TensorBoard logs, and params all land in one place.
     fine_tune_string = f'_fine_tune' if fine_tune else ''
-    run_name = f'{datetime.datetime.now().strftime("%Y%m%d%H%M")}_{lmdb_vois}_{olabels}_{n_input_frames}frames{fine_tune_string}_{n_train_patients}'
+    backbone_string = '' if backbone_name == MOVINET_A2 else f'_{backbone_name}'
+    embedding_string = '' if embedding_dim is None else f'_{embedding_dim}emb'
+    run_name = f'{datetime.datetime.now().strftime("%Y%m%d%H%M")}_{lmdb_vois}_{olabels}_{n_input_frames}frames{backbone_string}{embedding_string}{fine_tune_string}_{n_train_patients}'
     output_folder = f'{output_dir.rstrip("/")}/{run_name}'
 
     tf.io.gfile.makedirs(output_folder)
@@ -695,6 +723,8 @@ def main(
         'epochs': epochs,
         'batch_size': batch_size,
         'n_train_patients': n_train_patients,
+        'backbone': backbone_name,
+        'embedding_dim': embedding_dim,
     }
     trained_model = train_model(
         model,
@@ -745,7 +775,21 @@ if __name__ == "__main__":
                         help='Bounded batch prefetch; 0 disables prefetch.')
     parser.add_argument('--fine_tune', action='store_true')
     parser.add_argument('--pretrained_chkp_dir', type=str)
-    parser.add_argument('--movinet_chkp_dir', type=str)
+    parser.add_argument('--movinet_chkp_dir', type=str,
+                        help='Legacy alias for --backbone_checkpoint when using MoViNet.')
+    parser.add_argument('--backbone', choices=backbone_choices(), default=MOVINET_A2,
+                        help='Registered video backbone. Defaults to the historical MoViNet-A2 path.')
+    parser.add_argument('--backbone_checkpoint', type=str,
+                        help='Backbone checkpoint directory (MoViNet) or .pt file (V-JEPA 2.1).')
+    parser.add_argument('--embedding_dim', type=int,
+                        help='Optional trainable projection width for the pooled backbone embedding.')
+    parser.add_argument('--backbone_repo', type=str,
+                        help='V-JEPA 2 repository path or torch.hub repository. '
+                             'Defaults to VJEPA2_REPO or facebookresearch/vjepa2.')
+    parser.add_argument('--backbone_device', type=str, default='auto',
+                        help='PyTorch device for V-JEPA 2.1 (auto, cpu, cuda, or cuda:N).')
+    parser.add_argument('--backbone_microbatch_size', type=int, default=1,
+                        help='V-JEPA clips evaluated together inside PyTorch; increase only if memory permits.')
     parser.add_argument('--output_dir', type=str,
                         default='gs://mgb-home/alalusim/droid-af/artifacts/training_runs/',
                         help='Base directory for all run artifacts (checkpoints, TensorBoard logs, params). '
@@ -870,4 +914,10 @@ if __name__ == "__main__":
         video_decode_mode=args.video_decode_mode,
         video_decode_threads=args.video_decode_threads,
         prefetch_batches=args.prefetch_batches,
+        backbone_name=args.backbone,
+        backbone_checkpoint=args.backbone_checkpoint,
+        embedding_dim=args.embedding_dim,
+        backbone_repo=args.backbone_repo,
+        backbone_device=args.backbone_device,
+        backbone_microbatch_size=args.backbone_microbatch_size,
     )

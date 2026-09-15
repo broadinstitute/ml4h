@@ -4,8 +4,8 @@ DROID is a 3-D convolutional neural network modeling approach for echocardiograp
 classification and quantification of LA dimension, LV wall thickness, chamber diameter and
 ejection fraction.
 
-The DROID echo movie encoder is based on the 
-[MoViNet-A2-Base](https://tfhub.dev/tensorflow/movinet/a2/base/kinetics-600/classification/3) 
+The original DROID echo movie encoder is based on the
+[MoViNet-A2-Base](https://tfhub.dev/tensorflow/movinet/a2/base/kinetics-600/classification/3)
 video classification model. MoViNet was fine-tuned in a supervised fashion to produce two
 specialized encoders:
 - DROID-LA
@@ -17,6 +17,44 @@ specialized encoders:
 
 Multi-instance attention heads were then trained to integrate up to 40 view encodings to predict
 a single measurement of each type per echo study.
+
+## Modular video backbones
+
+The supervised training and inference recipes select their encoder through the backbone registry in
+`model_descriptions/backbones.py`. Existing commands remain unchanged and default to `movinet_a2`;
+`--movinet_chkp_dir` remains supported as a legacy alias for `--backbone_checkpoint`.
+
+Available backbones:
+
+- `movinet_a2` (alias: `movinet`): the historical native TensorFlow backbone.
+- `vjepa2_1_vit_base_384` (alias: `vjepa2_1`): Meta's official V-JEPA 2.1 ViT-B/16 384 model.
+
+All registered backbones produce one pooled vector per video. Add `--embedding_dim N` to apply a
+trainable projection to exactly `N` features; omit it to preserve the backbone's native width and
+legacy MoViNet checkpoint compatibility.
+
+V-JEPA 2.1 is PyTorch-only, whereas the existing DROID trainer uses legacy TensorFlow Keras. Its
+adapter therefore keeps the pretrained V-JEPA encoder frozen and trains the Keras embedding
+projection and prediction heads. The adapter uses a single TensorFlow replica and supports
+`--backbone_device auto`, `cpu`, `cuda`, or `cuda:N`. End-to-end V-JEPA weight fine-tuning is not
+supported by this TensorFlow recipe. V-JEPA defaults to one clip per internal PyTorch microbatch;
+increase `--backbone_microbatch_size` only after checking accelerator memory.
+
+Download Meta's
+[V-JEPA 2.1 ViT-B/16 checkpoint](https://dl.fbaipublicfiles.com/vjepa2/vjepa2_1_vitb_dist_vitG_384.pt)
+locally, then select the new backbone with only these additions to a standard training command:
+
+```commandline
+python echo_supervised_training_recipe.py \
+    --backbone vjepa2_1 \
+    --backbone_checkpoint /path/to/vjepa2_1_vitb_dist_vitG_384.pt \
+    --embedding_dim 256 \
+    ...standard training arguments...
+```
+
+The DROID Docker image pins the official V-JEPA 2 source under `/opt/vjepa2` and sets
+`VJEPA2_REPO` accordingly. Outside that image, set `VJEPA2_REPO` to a local clone or pass
+`--backbone_repo`; otherwise `torch.hub` obtains `facebookresearch/vjepa2` on first use.
 
 ## Requirements
 In addition to the `ml4h` repository, DROID also requires `ml4ht_data_source` plus other dependencies. First, clone the
@@ -88,3 +126,7 @@ python echo_supervised_inference_recipe.py \
     --movinet_chkp_dir {MoViNet-A2-Base_PATH} \
     --output_dir {WHERE_TO_STORE_PREDICTIONS}
 ```
+
+Inference reads `backbone`, `embedding_dim`, and the checkpoint location from the training run's
+`model_params.json`. Use the corresponding `--backbone_*` arguments when those saved paths differ
+on the inference host.

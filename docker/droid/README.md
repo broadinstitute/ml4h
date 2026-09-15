@@ -2,6 +2,9 @@
 
 This image layers the DROID model zoo code on top of the official `ml4h`
 TensorFlow 2.19 image instead of using the legacy `alalusim/droid` container.
+It also pins Meta's official V-JEPA 2.1 source and its lightweight Python
+dependencies. Pretrained V-JEPA checkpoint weights are not baked into the image;
+mount them at runtime and pass their path with `--backbone_checkpoint`.
 
 ## Build
 
@@ -29,6 +32,8 @@ docker build \
 The image contains the `ml4h` checkout at `/ml4h` and sets
 `TF_USE_LEGACY_KERAS=1` so DROID continues to run against the legacy
 `tf.keras` stack required by the MoViNet dependencies in TensorFlow 2.19.
+The V-JEPA 2.1 adapter uses the included PyTorch runtime as a frozen feature
+extractor while DROID's projection and prediction heads remain in Keras.
 
 ```commandline
 docker run -it --rm -v {PATH_TO_CLONED_ML4H}:/ml4h ml4h-droid:tf2.19 /bin/bash

@@ -1,13 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-# from official.common import flags as tfm_flags
-try:
-    from official.projects.movinet.modeling import movinet, movinet_model
-except ImportError:
-    from official.vision.beta.projects.movinet.modeling import movinet, movinet_model
-
 from droid_callbacks import MetricsHistoryCallback, SlackNotifierCallback, SurvivalMetricsCallback, run_validation_inference
+from model_descriptions.backbones import create_movinet_classifier
 
 learning_rate = 0.0001
 hidden_units = 256
@@ -47,35 +42,6 @@ class DDGenerator:
         yield yielded
 
 
-def create_movinet_classifier(
-        n_input_frames,
-        batch_size,
-        checkpoint_dir,
-        num_classes,
-        freeze_backbone=False,
-):
-    backbone = movinet.Movinet(model_id='a2')
-    model = movinet_model.MovinetClassifier(backbone=backbone, num_classes=600)
-    model.build([1, 1, 1, 1, 3])
-    checkpoint_path = tf.train.latest_checkpoint(checkpoint_dir)
-    checkpoint = tf.train.Checkpoint(model=model)
-    status = checkpoint.restore(checkpoint_path)
-    status.assert_existing_objects_matched()
-
-    model = movinet_model.MovinetClassifier(
-        backbone=backbone,
-        num_classes=num_classes,
-    )
-    model.build([batch_size, n_input_frames, 224, 224, 3])
-
-    if freeze_backbone:
-        for layer in model.layers[:-1]:
-            layer.trainable = False
-        model.layers[-1].trainable = True
-
-    return model, backbone
-
-
 def create_regressor(encoder, trainable=True, input_shape=(224, 224, 3), n_output_features=1):
     for layer in encoder.layers:
         layer.trainable = trainable
@@ -97,7 +63,8 @@ def create_regressor_classifier(encoder, trainable=True, input_shape=(224, 224, 
                                 category_order=None, survival_heads=None,
                                 add_dense={'regressor': False, 'classifier': False}):
     for layer in encoder.layers:
-        layer.trainable = trainable
+        if layer.name != 'embedding_projection':
+            layer.trainable = trainable
 
     inputs = tf.keras.Input(shape=input_shape, name='image')
     features = encoder(inputs)
