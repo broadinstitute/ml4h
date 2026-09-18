@@ -1,0 +1,340 @@
+{
+  "configuration": {
+    "lmdb_dir": "/private/tmp/droid-synthetic-20260918/lmdb",
+    "wide_file": "/private/tmp/droid-synthetic-20260918/wide.pq",
+    "output": "model_zoo/DROID/benchmark_results/20260918_32frames_stride4.json",
+    "batch_size": 4,
+    "nframes": 32,
+    "skip_modulo": 4,
+    "samples": 96,
+    "workers": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "repeats": 3,
+    "prefetch_batches": 1,
+    "randomize_start_frame": true,
+    "profile_dir": null,
+    "seed": 0,
+    "case": null
+  },
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "cpu_count": 14,
+  "cpu_model": "arm",
+  "system_memory_gib": 36.0,
+  "versions": {
+    "numpy": "2.1.3",
+    "av": "18.1.0",
+    "lmdb": "2.3.0",
+    "tensorflow": "2.19.0",
+    "pandas": "3.0.6",
+    "ml4ht": "0.0.10"
+  },
+  "tf_use_legacy_keras": "1",
+  "source_sha256": {
+    "benchmark_dataloader.py": "b3c314cdc42e97a6313c179b99fb3bbe579ff9eb08e9c5d1e79e164ce33f5de0",
+    "benchmark_reference.py": "a02bfafb6e585e4f656874cd11db93a2213f6d8fe793d2bd4faa93aed776caca",
+    "data_descriptions/echo.py": "f66748a4cc1355b865a415b14bd8d738409349cb59a6cfa06391f67b2571b70e",
+    "data_descriptions/echo_dataset.py": "7258f786ed7553130d910cb7161ebeb5ec79528963b66493c27d4751aa08030d",
+    "data_descriptions/video_io.py": "a0bb446d50a39e5b3229193d3d29ce11993e69b8fe47b661dc19a13c657634c7"
+  },
+  "cache_condition": "One full warmup epoch per case; warm OS cache; local synthetic data unless specified.",
+  "results": [
+    {
+      "case": "legacy",
+      "samples_per_second": 41.10819559352725,
+      "seconds_per_batch": 0.09730419791594613,
+      "rates": [
+        41.10819559352725,
+        41.398393148171586,
+        40.98693478611527
+      ],
+      "epochs": [
+        {
+          "seconds": 2.335300749982707,
+          "samples": 96
+        },
+        {
+          "seconds": 2.3189305840060115,
+          "samples": 96
+        },
+        {
+          "seconds": 2.3422097919974476,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 96.90954146208242,
+      "next_batch_p95_ms": 99.91077758022584,
+      "setup_seconds": 0.013091458939015865,
+      "first_pass_seconds": 2.4046176669653505,
+      "peak_rss_mib": 703.5,
+      "rss_after_warmup_mib": 692.28125,
+      "rss_after_epochs_mib": [
+        692.171875,
+        691.71875,
+        695.765625
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5234.891501824236,
+      "warm_read_ms_per_clip": 0.07648437531315722,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "serial_auto",
+      "samples_per_second": 59.8853320542396,
+      "seconds_per_batch": 0.06679431945667602,
+      "rates": [
+        59.85389260998474,
+        60.20331947770003,
+        59.8853320542396
+      ],
+      "epochs": [
+        {
+          "seconds": 1.6039057079469785,
+          "samples": 96
+        },
+        {
+          "seconds": 1.5945964580168948,
+          "samples": 96
+        },
+        {
+          "seconds": 1.6030636669602245,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 66.23183347983286,
+      "next_batch_p95_ms": 69.4452041760087,
+      "setup_seconds": 0.012763332924805582,
+      "first_pass_seconds": 1.6706939169671386,
+      "peak_rss_mib": 624.375,
+      "rss_after_warmup_mib": 623.40625,
+      "rss_after_epochs_mib": [
+        623.65625,
+        623.6875,
+        623.84375
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5092.958056656781,
+      "warm_read_ms_per_clip": 0.07861588528612629,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_sequential_w4",
+      "samples_per_second": 50.11656015811637,
+      "seconds_per_batch": 0.07981393749651033,
+      "rates": [
+        49.29396449617016,
+        50.31144838338147,
+        50.11656015811637
+      ],
+      "epochs": [
+        {
+          "seconds": 1.9475000840611756,
+          "samples": 96
+        },
+        {
+          "seconds": 1.9081144169904292,
+          "samples": 96
+        },
+        {
+          "seconds": 1.915534499916248,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 80.65427048131824,
+      "next_batch_p95_ms": 86.23273749253713,
+      "setup_seconds": 0.03434720798395574,
+      "first_pass_seconds": 1.9562660000519827,
+      "peak_rss_mib": 971.609375,
+      "rss_after_warmup_mib": 943.390625,
+      "rss_after_epochs_mib": [
+        943.53125,
+        943.578125,
+        943.59375
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5021.0780385059115,
+      "warm_read_ms_per_clip": 0.07974132313393056,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w1",
+      "samples_per_second": 58.935895501516285,
+      "seconds_per_batch": 0.06787035245603572,
+      "rates": [
+        60.22618379873943,
+        58.675861540181536,
+        58.935895501516285
+      ],
+      "epochs": [
+        {
+          "seconds": 1.5939910840243101,
+          "samples": 96
+        },
+        {
+          "seconds": 1.636107207974419,
+          "samples": 96
+        },
+        {
+          "seconds": 1.6288884589448571,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 67.55439651897177,
+      "next_batch_p95_ms": 69.37993985484354,
+      "setup_seconds": 0.03316908294800669,
+      "first_pass_seconds": 1.5901428340002894,
+      "peak_rss_mib": 605.703125,
+      "rss_after_warmup_mib": 604.984375,
+      "rss_after_epochs_mib": [
+        605.328125,
+        605.328125,
+        605.34375
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5413.244426086217,
+      "warm_read_ms_per_clip": 0.0739644056011457,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w2",
+      "samples_per_second": 90.19325319301572,
+      "seconds_per_batch": 0.0443492152505011,
+      "rates": [
+        91.08036969625961,
+        90.19325319301572,
+        90.16952575426004
+      ],
+      "epochs": [
+        {
+          "seconds": 1.0540141670498997,
+          "samples": 96
+        },
+        {
+          "seconds": 1.0643811660120264,
+          "samples": 96
+        },
+        {
+          "seconds": 1.0646612499840558,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 44.22997951041907,
+      "next_batch_p95_ms": 45.38328965427354,
+      "setup_seconds": 0.03328608302399516,
+      "first_pass_seconds": 1.053550000069663,
+      "peak_rss_mib": 676.03125,
+      "rss_after_warmup_mib": 675.234375,
+      "rss_after_epochs_mib": [
+        675.4375,
+        675.421875,
+        675.421875
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 4997.657805713203,
+      "warm_read_ms_per_clip": 0.08011501025369701,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w4",
+      "samples_per_second": 144.1266693136651,
+      "seconds_per_batch": 0.027753364585805684,
+      "rates": [
+        139.47263959546456,
+        144.1266693136651,
+        145.20125003655744
+      ],
+      "epochs": [
+        {
+          "seconds": 0.6883070420008153,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6660807500593364,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6611513328971341,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 27.494125009980053,
+      "next_batch_p95_ms": 31.54112715856172,
+      "setup_seconds": 0.03415795892942697,
+      "first_pass_seconds": 0.7055656249867752,
+      "peak_rss_mib": 814.515625,
+      "rss_after_warmup_mib": 808.453125,
+      "rss_after_epochs_mib": [
+        812.6875,
+        813.421875,
+        813.421875
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5096.221544073232,
+      "warm_read_ms_per_clip": 0.07856554172273415,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w8",
+      "samples_per_second": 131.82563095738064,
+      "seconds_per_batch": 0.0303431128753194,
+      "rates": [
+        131.82563095738064,
+        131.28717547822123,
+        146.4155454407652
+      ],
+      "epochs": [
+        {
+          "seconds": 0.7282347090076655,
+          "samples": 96
+        },
+        {
+          "seconds": 0.7312214589910582,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6556680829962716,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 27.826208504848182,
+      "next_batch_p95_ms": 72.94239581096917,
+      "setup_seconds": 0.033232917077839375,
+      "first_pass_seconds": 0.6666893330402672,
+      "peak_rss_mib": 955.890625,
+      "rss_after_warmup_mib": 949.515625,
+      "rss_after_epochs_mib": [
+        949.6875,
+        949.734375,
+        953.796875
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5084.143956623495,
+      "warm_read_ms_per_clip": 0.07875217731149557,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    }
+  ]
+}

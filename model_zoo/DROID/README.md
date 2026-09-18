@@ -38,6 +38,11 @@ pip install --user ml4ht_data_source
 ```
 
 ## Usage
+
+For parallel video loading, synthetic benchmarks, and V100 tuning, see
+[VIDEO_LOADING.md](VIDEO_LOADING.md). The training recipe defaults to four clip
+workers, selective MJPEG decoding, and one prefetched batch; the LMDB format is unchanged.
+
 ### Preprocessing
 The following scripts are designed to handle echo movies that have been processed and stored in Lightning 
 Memory-Mapped Database (lmdb) files. We create one lmdb per echo study in which the keys are the filenames of the dicoms and

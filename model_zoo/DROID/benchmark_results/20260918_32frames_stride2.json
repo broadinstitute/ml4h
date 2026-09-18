@@ -1,0 +1,340 @@
+{
+  "configuration": {
+    "lmdb_dir": "/private/tmp/droid-synthetic-20260918/lmdb",
+    "wide_file": "/private/tmp/droid-synthetic-20260918/wide.pq",
+    "output": "model_zoo/DROID/benchmark_results/20260918_32frames_stride2.json",
+    "batch_size": 4,
+    "nframes": 32,
+    "skip_modulo": 2,
+    "samples": 96,
+    "workers": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "repeats": 3,
+    "prefetch_batches": 1,
+    "randomize_start_frame": true,
+    "profile_dir": null,
+    "seed": 0,
+    "case": null
+  },
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "cpu_count": 14,
+  "cpu_model": "arm",
+  "system_memory_gib": 36.0,
+  "versions": {
+    "numpy": "2.1.3",
+    "av": "18.1.0",
+    "lmdb": "2.3.0",
+    "tensorflow": "2.19.0",
+    "pandas": "3.0.6",
+    "ml4ht": "0.0.10"
+  },
+  "tf_use_legacy_keras": "1",
+  "source_sha256": {
+    "benchmark_dataloader.py": "b3c314cdc42e97a6313c179b99fb3bbe579ff9eb08e9c5d1e79e164ce33f5de0",
+    "benchmark_reference.py": "a02bfafb6e585e4f656874cd11db93a2213f6d8fe793d2bd4faa93aed776caca",
+    "data_descriptions/echo.py": "f66748a4cc1355b865a415b14bd8d738409349cb59a6cfa06391f67b2571b70e",
+    "data_descriptions/echo_dataset.py": "7258f786ed7553130d910cb7161ebeb5ec79528963b66493c27d4751aa08030d",
+    "data_descriptions/video_io.py": "a0bb446d50a39e5b3229193d3d29ce11993e69b8fe47b661dc19a13c657634c7"
+  },
+  "cache_condition": "One full warmup epoch per case; warm OS cache; local synthetic data unless specified.",
+  "results": [
+    {
+      "case": "legacy",
+      "samples_per_second": 44.50955854908544,
+      "seconds_per_batch": 0.08986833683350899,
+      "rates": [
+        44.00595615845229,
+        44.50955854908544,
+        45.5622227084894
+      ],
+      "epochs": [
+        {
+          "seconds": 2.1815228750929236,
+          "samples": 96
+        },
+        {
+          "seconds": 2.156840084004216,
+          "samples": 96
+        },
+        {
+          "seconds": 2.107008707942441,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 89.41845799563453,
+      "next_batch_p95_ms": 95.05695454427041,
+      "setup_seconds": 0.013853915967047215,
+      "first_pass_seconds": 2.216249292017892,
+      "peak_rss_mib": 700.90625,
+      "rss_after_warmup_mib": 692.8125,
+      "rss_after_epochs_mib": [
+        692.90625,
+        693.046875,
+        693.046875
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5046.927918173029,
+      "warm_read_ms_per_clip": 0.07933289574187559,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "serial_auto",
+      "samples_per_second": 58.10325553699985,
+      "seconds_per_batch": 0.06884295833394087,
+      "rates": [
+        59.269693978954486,
+        57.56394197106461,
+        58.10325553699985
+      ],
+      "epochs": [
+        {
+          "seconds": 1.6197147910716012,
+          "samples": 96
+        },
+        {
+          "seconds": 1.6677106659626588,
+          "samples": 96
+        },
+        {
+          "seconds": 1.6522310000145808,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 68.47554200794548,
+      "next_batch_p95_ms": 70.82073316560127,
+      "setup_seconds": 0.013295875047333539,
+      "first_pass_seconds": 1.6396439169766381,
+      "peak_rss_mib": 625.859375,
+      "rss_after_warmup_mib": 625.15625,
+      "rss_after_epochs_mib": [
+        625.265625,
+        625.296875,
+        625.296875
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5387.069153916946,
+      "warm_read_ms_per_clip": 0.07432379182622147,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_sequential_w4",
+      "samples_per_second": 91.32247784306061,
+      "seconds_per_batch": 0.043800826417282224,
+      "rates": [
+        80.28520482691953,
+        96.92721788160594,
+        91.32247784306061
+      ],
+      "epochs": [
+        {
+          "seconds": 1.195737125002779,
+          "samples": 96
+        },
+        {
+          "seconds": 0.9904338750056922,
+          "samples": 96
+        },
+        {
+          "seconds": 1.0512198340147734,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 41.69358353829011,
+      "next_batch_p95_ms": 64.86096054431982,
+      "setup_seconds": 0.033777875010855496,
+      "first_pass_seconds": 1.186472125002183,
+      "peak_rss_mib": 1005.046875,
+      "rss_after_warmup_mib": 972.84375,
+      "rss_after_epochs_mib": [
+        978.125,
+        978.109375,
+        978.125
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5264.888335631688,
+      "warm_read_ms_per_clip": 0.07604860365972854,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w1",
+      "samples_per_second": 59.760044745274186,
+      "seconds_per_batch": 0.0669343541667331,
+      "rates": [
+        59.760044745274186,
+        60.31425297493689,
+        58.021387566935026
+      ],
+      "epochs": [
+        {
+          "seconds": 1.6064245000015944,
+          "samples": 96
+        },
+        {
+          "seconds": 1.5916635830653831,
+          "samples": 96
+        },
+        {
+          "seconds": 1.654562292038463,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 66.6110625024885,
+      "next_batch_p95_ms": 70.51615031668916,
+      "setup_seconds": 0.03383762505836785,
+      "first_pass_seconds": 1.641249333973974,
+      "peak_rss_mib": 606.4375,
+      "rss_after_warmup_mib": 605.609375,
+      "rss_after_epochs_mib": [
+        605.984375,
+        605.984375,
+        606.140625
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5382.511970948618,
+      "warm_read_ms_per_clip": 0.07438671915830734,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w2",
+      "samples_per_second": 89.60983318267736,
+      "seconds_per_batch": 0.04463795833483648,
+      "rates": [
+        89.8775734056003,
+        88.89849214333725,
+        89.60983318267736
+      ],
+      "epochs": [
+        {
+          "seconds": 1.0681196249788627,
+          "samples": 96
+        },
+        {
+          "seconds": 1.079883333062753,
+          "samples": 96
+        },
+        {
+          "seconds": 1.0713110000360757,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 44.81550003401935,
+      "next_batch_p95_ms": 45.688956225058064,
+      "setup_seconds": 0.03306833398528397,
+      "first_pass_seconds": 1.0787422920111567,
+      "peak_rss_mib": 675.703125,
+      "rss_after_warmup_mib": 675.078125,
+      "rss_after_epochs_mib": [
+        675.125,
+        675.125,
+        675.125
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 4793.987038709563,
+      "warm_read_ms_per_clip": 0.08351866684582394,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w4",
+      "samples_per_second": 145.8621029449094,
+      "seconds_per_batch": 0.027423161460319537,
+      "rates": [
+        139.6439551941663,
+        146.5178914932818,
+        145.8621029449094
+      ],
+      "epochs": [
+        {
+          "seconds": 0.6874626249773428,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6552100840490311,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6581558750476688,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 27.38445799332112,
+      "next_batch_p95_ms": 31.99294821242802,
+      "setup_seconds": 0.03314554109238088,
+      "first_pass_seconds": 0.7055081250146031,
+      "peak_rss_mib": 814.34375,
+      "rss_after_warmup_mib": 809.359375,
+      "rss_after_epochs_mib": [
+        809.484375,
+        809.65625,
+        813.234375
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5415.437022395437,
+      "warm_read_ms_per_clip": 0.07393445897226532,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    },
+    {
+      "case": "parallel_auto_w8",
+      "samples_per_second": 135.04559101451596,
+      "seconds_per_batch": 0.02961962674938453,
+      "rates": [
+        135.04559101451596,
+        133.1805842650654,
+        136.4301799896252
+      ],
+      "epochs": [
+        {
+          "seconds": 0.7108710419852287,
+          "samples": 96
+        },
+        {
+          "seconds": 0.7208257910097018,
+          "samples": 96
+        },
+        {
+          "seconds": 0.7036566250026226,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 25.233229505829513,
+      "next_batch_p95_ms": 74.38682529609653,
+      "setup_seconds": 0.033142375061288476,
+      "first_pass_seconds": 0.6977895419113338,
+      "peak_rss_mib": 1009.84375,
+      "rss_after_warmup_mib": 1003.015625,
+      "rss_after_epochs_mib": [
+        1005.015625,
+        1007.703125,
+        1007.71875
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5293.740935261304,
+      "warm_read_ms_per_clip": 0.07563411418232135,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    }
+  ]
+}
