@@ -1153,6 +1153,7 @@ def train_transformer_on_parquet(args):
         metrics = {}
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
+    logging.info(f"Saved performance metrics at: {args.output_folder}/{args.id}/metrics_{args.id}.json")
 
 
 def _evaluate_transformer_prediction_dataframe(
