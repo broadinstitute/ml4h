@@ -207,6 +207,7 @@ def main(
         video_decode_mode='auto',
         video_decode_threads=1,
         prefetch_batches=1,
+        disable_survival_metrics_callback=False,
 ):
 
     if loader_workers < 1 or video_decode_threads < 0 or prefetch_batches < 0:
@@ -712,6 +713,7 @@ def main(
         cls_category_map_dicts=cls_category_map_dicts,
         survival_tasks=survival_tasks,
         run_summary=run_summary,
+        disable_survival_metrics_callback=disable_survival_metrics_callback,
         run_validation_inference_flag=run_validation_inference,
     )
 
@@ -805,6 +807,9 @@ if __name__ == "__main__":
                         help='Optional blanking period in days before the survival horizon.')
     parser.add_argument('--survival_prevalent_policy', choices=['first_interval', 'exclude'], default='first_interval',
                         help='How to handle events at or before the blanking period.')
+    parser.add_argument('--disable_survival_metrics_callback', action='store_true',
+                        help='Disable periodic full-validation survival AUROC/concordance metrics during model.fit. '
+                             'The survival head and validation loss remain enabled.')
     # ---------------------------------------------------------------- #
     parser.add_argument('--run_validation_inference', action='store_true',
                         help='Run a post-training validation inference pass over the best checkpoint '
@@ -865,6 +870,7 @@ if __name__ == "__main__":
         survival_days_window=args.survival_days_window,
         survival_blanking_days=args.survival_blanking_days,
         survival_prevalent_policy=args.survival_prevalent_policy,
+        disable_survival_metrics_callback=args.disable_survival_metrics_callback,
         run_validation_inference=args.run_validation_inference,
         loader_workers=args.loader_workers,
         video_decode_mode=args.video_decode_mode,

@@ -157,6 +157,7 @@ def train_model(
         survival_tasks=None,
         run_summary=None,
         run_validation_inference_flag=False,
+        disable_survival_metrics_callback=False,
 ):
     tb_callback = tf.keras.callbacks.TensorBoard(
         log_dir=f'{output_folder}/logs',
@@ -186,7 +187,7 @@ def train_model(
     # Per-epoch survival metrics (time-dependent AUROC + concordance index). Placed first so
     # the values it injects into `logs` are picked up by TensorBoard, the history CSV/plots, and Slack.
     callbacks = []
-    if survival_tasks:
+    if survival_tasks and not disable_survival_metrics_callback:
         callbacks.append(SurvivalMetricsCallback(valid_loader, n_valid_steps, survival_tasks))
     callbacks += [tb_callback, es_callback, cp_callback, metrics_history_callback, slack_callback]
 
