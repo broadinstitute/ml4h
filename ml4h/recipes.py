@@ -487,9 +487,9 @@ def train_multimodal_multitask(args):
                 )
                 my_out_path = os.path.join(
                     out_path, f"decoding_{dtm.name}_from_{etm.name}/"
-                )
-                os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
+                ) 
                 if dtm.axes() > 1:
+                    os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
                     plot_reconstruction(
                         dtm,
                         test_labels[dtm.output_name()],
@@ -497,19 +497,6 @@ def train_multimodal_multitask(args):
                         my_out_path,
                         test_paths,
                         samples,
-                    )
-                else:
-                    evaluate_predictions(
-                        dtm,
-                        reconstruction,
-                        test_labels[dtm.output_name()],
-                        {},
-                        dtm.name,
-                        my_out_path,
-                        test_paths,
-                        dpi=args.dpi,
-                        width=args.plot_width,
-                        height=args.plot_height,
                     )
     metrics_path = os.path.join(save_dir, f"metrics_{args.id}.json")
     with open(metrics_path, "w") as metrics_file:

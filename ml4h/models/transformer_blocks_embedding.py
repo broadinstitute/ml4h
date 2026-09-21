@@ -859,6 +859,83 @@ def _performance_data_row(
     return row
 
 
+def scores_on_predictions(
+    df,
+    model_name,
+    aggregate_fxn='median',
+    *,
+    tasks2metrics=None,
+    n_bootstraps=1000,
+    bootstrap_seed=METRIC_BOOTSTRAP_SEED,
+):
+    """Score paired target/predicted_<target> columns with 95% bootstrap CIs.
+
+    Return one row per task using the evaluate_multitask_on_dataset schema,
+    plus MAE/MSE for regression or ACC/percentage prevalence for classification.
+    Nonfinite target/prediction pairs are excluded from scores and counts.
+
+    tasks2metrics optionally selects 'R^2', 'auROC', or 'auPRC' per task.
+    Otherwise, targets with two distinct finite values (or only 0/1 values)
+    are treated as binary; all others use R^2. For two-class targets, the
+    larger label is positive. Explicit metrics are recommended for small or
+    single-class samples. Undefined metrics and unavailable CIs are NaN.
+
+    aggregate_fxn is retained for compatibility with the original function;
+    no aggregation is performed. Scores use all valid pairs, and bootstrap
+    samples resample paired rows with replacement.
+    """
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    metrics = {'R^2': r2_score, 'auROC': roc_auc_score, 'auPRC': average_precision_score}
+    for task in df:
+        prediction_column = f'predicted_{task}'
+        if prediction_column not in df:
+            continue
+        truth = df[task].to_numpy(dtype=float, na_value=np.nan)
+        prediction = df[prediction_column].to_numpy(dtype=float, na_value=np.nan)
+        labels = np.unique(truth[np.isfinite(truth)])
+        metric_name = (tasks2metrics or {}).get(task)
+        if metric_name is None:
+            is_binary = len(labels) == 2 or (
+                len(labels) > 0 and np.isin(labels, [0, 1]).all()
+            )
+            metric_name = 'auROC' if is_binary else 'R^2'
+        if metric_name not in metrics:
+            raise ValueError(f'Unsupported metric for {task}: {metric_name!r}')
+        is_binary = metric_name != 'R^2'
+        valid = np.isfinite(truth) & np.isfinite(prediction)
+        truth, prediction = truth[valid], prediction[valid]
+        n = len(truth)
+        if is_binary:
+            if len(labels) > 2:
+                raise ValueError(f'Binary task {task!r} has more than two labels')
+            if len(labels) and not np.isin(labels, [0, 1]).all():
+                if len(labels) != 2:
+                    raise ValueError(f'Cannot infer the positive label for task {task!r}')
+                truth = (truth == labels[-1]).astype(int)
+        metric = metrics[metric_name]
+        score = _safe_metric_score(metric, truth, prediction)
+        ci = _bootstrap_metric_confidence_interval(
+            truth, prediction, metric, rng, n_bootstraps,
+        )
+        row = _performance_data_row(
+            model_name, task, metric_name, score, ci, n,
+            int(truth.sum()) if is_binary else None,
+        )
+        if is_binary:
+            row.update(
+                ACC=float(accuracy_score(truth, prediction >= 0.5)) if n else float('nan'),
+                prevalence=100.0 * row['n_positive'] / n if n else 0.0,
+            )
+        else:
+            row.update(
+                MAE=float(np.mean(np.abs(prediction - truth))) if n else float('nan'),
+                MSE=float(np.mean((prediction - truth) ** 2)) if n else float('nan'),
+            )
+        performance_data.append(row)
+    return performance_data
+
+
 def evaluate_multitask_on_dataset(
     name,
     model,
