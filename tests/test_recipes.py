@@ -73,6 +73,7 @@ class TestRecipes:
             test_steps=10,
             output_folder=str(tmp_path),
             id='fast_infer_test',
+            inspect_model=False,
         )
 
         infer_transformer_on_parquet(args)

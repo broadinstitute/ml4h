@@ -234,7 +234,7 @@ def main(
         batch_size, drop_remainder=True)
     print(f"body_valid_ids: {len(body_valid_ids)}")
 
-    n_train_steps = len(working_ids) // batch_size
+    n_train_steps = len(train_ids) // batch_size
     n_valid_steps = len(valid_ids) // batch_size
     print(f"n_train_steps: {n_train_steps}")
     print(f"n_valid_steps: {n_valid_steps}")
