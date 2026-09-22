@@ -630,14 +630,17 @@ def main(
         else:
             raise ValueError(f'Unknown optimizer {optimizer_name!r}.')
 
-        classification_metrics = [
-            tf.keras.metrics.CategoricalAccuracy(), 
-            tf.keras.metrics.AUC(name='AUROC'),
-            tf.keras.metrics.AUC(curve="PR", name='AUPRC')
-        ]
-        
+        def make_classification_metrics():
+            # Fresh metric instances per output: Keras rejects the same metric
+            # object being attached to more than one output.
+            return [
+                tf.keras.metrics.CategoricalAccuracy(),
+                tf.keras.metrics.AUC(name='AUROC'),
+                tf.keras.metrics.AUC(curve="PR", name='AUPRC')
+            ]
+
         loss = {'cls_' + k: tf.keras.losses.CategoricalCrossentropy() for k in cls_category_len_dict.keys()}
-        metrics = {'cls_' + k: classification_metrics for k in cls_category_len_dict.keys()}
+        metrics = {'cls_' + k: make_classification_metrics() for k in cls_category_len_dict.keys()}
         if output_reg_len > 0:
             loss['echolab'] = tf.keras.losses.MeanSquaredError()
             metrics['echolab'] = tf.keras.metrics.MeanAbsoluteError()
