@@ -913,7 +913,8 @@ def plot_scatter(
     )
     r2_row, pearson_row = performance_data
     pearson = pearson_row["Score"]
-    big_r_squared = r2_row["Score"]
+    r2_row["Score"] = pearson * pearson #r2_row["Score"]
+    big_r_squared = pearson * pearson
 
     if bootstrap:
         label = (
