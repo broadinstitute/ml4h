@@ -216,7 +216,7 @@ def test_build_embedding_transformer_handles_padded_categorical_tokens():
     outputs = {"regression_task": np.array([[0.1], [0.2], [0.3], [0.4]], dtype=np.float32)}
 
     with _cpu_device():
-        model = build_embedding_transformer(
+        model, _ = build_embedding_transformer(
             input_numeric_cols=[f"feature_{i}" for i in range(num_features)],
             regression_targets=["regression_task"],
             binary_targets=[],

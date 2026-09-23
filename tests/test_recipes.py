@@ -60,6 +60,7 @@ class TestRecipes:
             latent_dimensions=0,
             input_categorical_columns=[],
             target_regression_columns=['target'],
+            target_categorical_columns=[],
             target_binary_columns=[],
             group_column='mrn',
             sort_column='visit_time',
