@@ -10,6 +10,7 @@ import glob
 import logging
 import hashlib
 import operator
+import warnings
 from textwrap import wrap
 from functools import reduce
 from datetime import datetime
@@ -47,6 +48,7 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
+    r2_score,
 )
 from sklearn.calibration import calibration_curve
 
@@ -79,6 +81,9 @@ PRECISION_LABEL = "Precision | Positive Predictive Value | TP/(TP+FP)"
 DICE_LABEL = "Dice Score"
 
 SUBPLOT_SIZE = 7
+METRIC_CI_LOWER_PERCENTILE = 2.5
+METRIC_CI_UPPER_PERCENTILE = 97.5
+METRIC_BOOTSTRAP_SEED = 1234
 
 COLOR_ARRAY = [
     "tan",
@@ -162,6 +167,8 @@ def evaluate_predictions(
     dpi: int = 300,
     width: int = 7,
     height: int = 7,
+    performance_data: Optional[List[Dict[str, object]]] = None,
+    model_name: Optional[str] = None,
 ) -> Dict[str, float]:
     """Evaluate predictions for a given TensorMap with truth data and plot the appropriate metrics.
     Accumulates data in the rocs and scatters lists to facilitate subplotting.
@@ -179,8 +186,18 @@ def evaluate_predictions(
     :param dpi: Dots per inch
     :param width: Figure width in inches
     :param height: Figure height in inches
+    :param performance_data: Optional output list collecting metrics, confidence intervals, and counts
+    :param model_name: Model identifier for the collected performance rows
     :return: Dictionary of performance metrics with string keys for labels and float values
     """
+    def record_performance(rows):
+        if model_name is not None:
+            for row in rows:
+                row["Model"] = model_name
+        if performance_data is not None:
+            performance_data.extend(rows)
+        return _performance_data_to_metrics(rows)
+
     performance_metrics = {}
     if tm.is_categorical() and tm.axes() == 1:
         logging.info(
@@ -189,15 +206,19 @@ def evaluate_predictions(
         logging.info(
             f"\nSum Truth:{np.sum(y_truth, axis=0)} \nSum pred :{np.sum(y_predictions, axis=0)}",
         )
-        plot_precision_recall_per_class(
-            y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+        record_performance(
+            plot_precision_recall_per_class(
+                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            ),
         )
         plot_prediction_calibration(
             y_predictions, y_truth, tm.channel_map, title, folder, 10,  dpi, width, height,
         )
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            record_performance(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         rocs.append((y_predictions, y_truth, tm.channel_map))
@@ -212,13 +233,17 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            record_performance(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            record_performance(
+                plot_precision_recall_per_class(
+                    y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
         plot_prediction_calibration(
@@ -236,13 +261,17 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            record_performance(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            record_performance(
+                plot_precision_recall_per_class(
+                    y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
         plot_prediction_calibration(
@@ -263,13 +292,17 @@ def evaluate_predictions(
         y_predictions = y_predictions.reshape(melt_shape)[idx]
         y_truth = y_truth.reshape(melt_shape)[idx]
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+            record_performance(
+                subplot_roc_per_class(
+                    y_predictions, y_truth, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+            record_performance(
+                plot_precision_recall_per_class(
+                    y_predictions, y_truth, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
         plot_prediction_calibration(
@@ -320,9 +353,11 @@ def evaluate_predictions(
         )
         new_title = f"{title}_C_Index_{c_index[0]:0.3f}"
         performance_metrics.update(
-            subplot_roc_per_class(
-                y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
-                new_title, folder, dpi, width, height,
+            record_performance(
+                subplot_roc_per_class(
+                    y_predictions, y_truth[:, 0, np.newaxis], {f"{new_title}_vs_ROC": 0}, protected,
+                    new_title, folder, dpi, width, height,
+                ),
             ),
         )
         calibration_title = f"{title}_at_{tm.days_window}_days"
@@ -352,13 +387,17 @@ def evaluate_predictions(
         truth_1hot = make_one_hot(y_truth.flatten()[:max_melt], len(tm.channel_map))
         logging.info(f"shapes are: {prediction_1hot.shape} {truth_1hot.shape} {y_predictions.shape}, {y_truth.shape}")
         performance_metrics.update(
-            subplot_roc_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi, width, height,
+            record_performance(
+                subplot_roc_per_class(
+                    prediction_1hot, truth_1hot, tm.channel_map, protected, title, folder, dpi, width, height,
+                ),
             ),
         )
         performance_metrics.update(
-            plot_precision_recall_per_class(
-                prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi, width, height,
+            record_performance(
+                plot_precision_recall_per_class(
+                    prediction_1hot, truth_1hot, tm.channel_map, title, folder, dpi, width, height,
+                ),
             ),
         )
     elif tm.axes() > 1 or tm.is_mesh():
@@ -376,16 +415,18 @@ def evaluate_predictions(
         plot_reconstruction(tm, y_truth, y_predictions, folder, test_paths)
         if prediction_flat.shape[0] == truth_flat.shape[0]:
             performance_metrics.update(
-                subplot_pearson_per_class(
-                    prediction_flat,
-                    truth_flat,
-                    tm.channel_map,
-                    protected_repeated,
-                    title,
-                    prefix=folder,
-                    dpi=dpi,
-                    width=width,
-                    height=height,
+                record_performance(
+                    subplot_pearson_per_class(
+                        prediction_flat,
+                        truth_flat,
+                        tm.channel_map,
+                        protected_repeated,
+                        title,
+                        prefix=folder,
+                        dpi=dpi,
+                        width=width,
+                        height=height,
+                    ),
                 ),
             )
     elif tm.is_continuous():
@@ -393,16 +434,18 @@ def evaluate_predictions(
             y_predictions = y_predictions[y_truth != tm.sentinel, np.newaxis]
             y_truth = y_truth[y_truth != tm.sentinel, np.newaxis]
         performance_metrics.update(
-            subplot_pearson_per_class(
-                tm.rescale(y_predictions),
-                tm.rescale(y_truth),
-                tm.channel_map,
-                protected,
-                title,
-                folder,
-                dpi,
-                width,
-                height,
+            record_performance(
+                subplot_pearson_per_class(
+                    tm.rescale(y_predictions),
+                    tm.rescale(y_truth),
+                    tm.channel_map,
+                    protected,
+                    title,
+                    folder,
+                    dpi,
+                    width,
+                    height,
+                ),
             ),
         )
         scatters.append(
@@ -726,10 +769,138 @@ def bootstrap_confidence_interval(
     return np.mean(r2s), np.percentile(r2s, [bottom, top])
 
 
+def _safe_metric_score(
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    truth: np.ndarray,
+    prediction: np.ndarray,
+) -> float:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            score = metric(truth, prediction)
+    except ValueError:
+        return float("nan")
+    score = float(score)
+    return score if np.isfinite(score) else float("nan")
+
+
+def _bootstrap_metric_confidence_interval(
+    truth: np.ndarray,
+    prediction: np.ndarray,
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    rng: np.random.RandomState,
+    n_bootstraps: int,
+) -> Tuple[float, float]:
+    if truth.size == 0 or prediction.size == 0 or n_bootstraps <= 0:
+        return float("nan"), float("nan")
+
+    n = truth.shape[0]
+    scores = []
+    for _ in range(int(n_bootstraps)):
+        idx = rng.randint(0, n, size=n)
+        score = _safe_metric_score(metric, truth[idx], prediction[idx])
+        if np.isfinite(score):
+            scores.append(score)
+
+    if not scores:
+        return float("nan"), float("nan")
+
+    ci_lower, ci_upper = np.percentile(
+        scores,
+        [METRIC_CI_LOWER_PERCENTILE, METRIC_CI_UPPER_PERCENTILE],
+    )
+    return float(ci_lower), float(ci_upper)
+
+
+def _performance_data_row(
+    model_name: str,
+    task: str,
+    metric: str,
+    score: float,
+    ci: Tuple[float, float],
+    n: int,
+    n_positive: Optional[int] = None,
+) -> Dict[str, object]:
+    row = {
+        "Model": model_name,
+        "Task": task,
+        "Metric": metric,
+        "Score": score,
+        "CI_95_lower": ci[0],
+        "CI_95_upper": ci[1],
+        "n": int(n),
+    }
+    if n_positive is not None:
+        row["n_positive"] = int(n_positive)
+        row["prevalence"] = 100.0 * n_positive / n if n > 0 else 0.0
+    return row
+
+
+def _classification_metric_performance_row(
+    prediction: np.ndarray,
+    truth: np.ndarray,
+    label_name: object,
+    label_index: int,
+    model_name: str,
+    metric_name: str,
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    rng: np.random.RandomState,
+    n_bootstraps: int,
+) -> Dict[str, object]:
+    task_truth = (truth[:, label_index] > 0.5).astype("int32")
+    task_prediction = prediction[:, label_index]
+    score = _safe_metric_score(metric, task_truth, task_prediction)
+    ci = _bootstrap_metric_confidence_interval(
+        task_truth,
+        task_prediction,
+        metric,
+        rng,
+        n_bootstraps,
+    )
+    return _performance_data_row(
+        model_name,
+        str(label_name),
+        metric_name,
+        score,
+        ci,
+        task_truth.shape[0],
+        int(np.sum(task_truth)),
+    )
+
+
+def _performance_data_to_metrics(performance_data: List[Dict[str, object]]) -> Dict[str, float]:
+    return {
+        str(row["Task"]) + ("_pearson" if row["Metric"] == "Pearson" else ""): float(row["Score"])
+        for row in performance_data
+    }
+
+
+def _regression_performance_data(prediction, truth, title, model_name, n_bootstraps, bootstrap_seed):
+    prediction = np.asarray(prediction).flatten()
+    truth = np.asarray(truth).flatten()
+    rng = np.random.RandomState(bootstrap_seed)
+    return [
+        _performance_data_row(
+            title if model_name is None else model_name,
+            title,
+            metric_name,
+            _safe_metric_score(metric, truth, prediction),
+            _bootstrap_metric_confidence_interval(truth, prediction, metric, rng, n_bootstraps),
+            len(truth),
+        )
+        for metric_name, metric in [("R^2", r2_score), ("Pearson", _pearson_wrapper)]
+    ]
+
+
 def plot_scatter(
     prediction, truth, title, prefix="./figures/", paths=None, top_k=3, alpha=0.5,
     bootstrap=True, dpi=300, width=2, height=4,
-):
+    n_bootstraps=1000, bootstrap_seed=METRIC_BOOTSTRAP_SEED, model_name=None,
+) -> List[Dict[str, object]]:
+    """Plot regression predictions and return R^2 and Pearson rows with 95% CIs."""
+    performance_data = _regression_performance_data(
+        prediction, truth, title, model_name, n_bootstraps if bootstrap else 0, bootstrap_seed,
+    )
     margin = float((np.max(truth) - np.min(truth)) / 100)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, 2 * height), dpi=dpi)
     ax1.plot(
@@ -740,14 +911,15 @@ def plot_scatter(
         [np.min(prediction), np.max(prediction)],
         linewidth=4,
     )
-    pearson = np.corrcoef(prediction.flatten(), truth.flatten())[
-        1, 0,
-    ]  # corrcoef returns full covariance matrix
-    big_r_squared = coefficient_of_determination(truth, prediction)
+    r2_row, pearson_row = performance_data
+    pearson = pearson_row["Score"]
+    big_r_squared = r2_row["Score"]
 
     if bootstrap:
-        pearson, ci = bootstrap_confidence_interval(prediction, truth)
-        label = f'Pearson:{pearson:0.4f} $R^2$:{big_r_squared:0.4f}\n 95% Confidence:({ci[0]:0.4f}, {ci[1]:0.4f})'
+        label = (
+            f'Pearson:{pearson:0.4f} 95% CI:({pearson_row["CI_95_lower"]:0.4f}, {pearson_row["CI_95_upper"]:0.4f})\n'
+            f'$R^2$:{big_r_squared:0.4f} 95% CI:({r2_row["CI_95_lower"]:0.4f}, {r2_row["CI_95_upper"]:0.4f})'
+        )
     else:
         label = f"Pearson:{pearson:0.3f} $r^2$:{pearson * pearson:0.3f} $R^2$:{big_r_squared:0.3f}"
     logging.info(f"{label}")
@@ -791,7 +963,7 @@ def plot_scatter(
         os.makedirs(os.path.dirname(figure_path))
     logging.info(f"Try to save scatter plot at: {figure_path}")
     plt.savefig(figure_path)
-    return {title + "_pearson": pearson}
+    return performance_data
 
 
 def plot_scatters(
@@ -858,13 +1030,21 @@ def subplot_pearson_per_class(
     dpi: int = 300,
     width: int = 6,
     height: int = 6,
-) -> Dict[str, float]:
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
     lw = 2
     alpha = 0.5
-    labels_to_areas = {}
     total_plots = len(protected) + 1
     if total_plots == 1:
-        return plot_scatter(prediction, truth, title, prefix, dpi=dpi, width=width, height=height)
+        return plot_scatter(
+            prediction, truth, title, prefix, dpi=dpi, width=width, height=height,
+            n_bootstraps=n_bootstraps, bootstrap_seed=bootstrap_seed, model_name=model_name,
+        )
+    performance_data = _regression_performance_data(
+        prediction, truth, title, model_name, n_bootstraps, bootstrap_seed,
+    )
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -904,7 +1084,7 @@ def subplot_pearson_per_class(
     logging.info(
         f"{label_text} saved at: {figure_path}{f' with {len(protected)} protected TensorMaps.' if len(protected) else '.'}",
     )
-    return labels_to_areas
+    return performance_data
 
 
 def subplot_scatters(
@@ -2489,13 +2669,30 @@ def subplot_roc_per_class(
     dpi: int = 300,
     width: int = 6,
     height: int = 6,
-) -> Dict[str, float]:
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
     lw = 2
-    labels_to_areas = {}
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    model_name = title if model_name is None else model_name
     true_sums = np.sum(truth, axis=0)
     total_plots = len(protected) + 1
     if total_plots == 1:
-        return plot_roc(prediction, truth, labels, title, prefix)
+        return plot_roc(
+            prediction,
+            truth,
+            labels,
+            title,
+            prefix,
+            dpi=dpi,
+            width=width,
+            height=height,
+            n_bootstraps=n_bootstraps,
+            bootstrap_seed=bootstrap_seed,
+            model_name=model_name,
+        )
     cols = max(2, int(math.ceil(math.sqrt(total_plots))))
     rows = max(2, int(math.ceil(total_plots / cols)))
     fig, axes = plt.subplots(
@@ -2504,18 +2701,32 @@ def subplot_roc_per_class(
     _protected_subplots(
         prediction, truth, protected, axes, metric=roc_auc_score, metric_name="ROC AUC",
     )
-    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    fpr, tpr, _ = get_fpr_tpr_roc_pred(prediction, truth, labels)
 
     for key in labels:
-        if "no_" in key and len(labels) == 2:
+        if "no_" in str(key) and len(labels) == 2:
             continue
-        labels_to_areas[key] = roc_auc[labels[key]]
-        color = _hash_string_to_color(key)
+        label_index = labels[key]
+        row = _classification_metric_performance_row(
+            prediction,
+            truth,
+            key,
+            label_index,
+            model_name,
+            "auROC",
+            roc_auc_score,
+            rng,
+            n_bootstraps,
+        )
+        performance_data.append(row)
+        color = _hash_string_to_color(str(key))
         label_text = (
-            f"{key} area: {roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+            f"{key} area: {row['Score']:.3f} "
+            f"95% CI:({row['CI_95_lower']:.3f}, {row['CI_95_upper']:.3f}) "
+            f"n={true_sums[label_index]:.0f}"
         )
         axes[-1, -1].plot(
-            fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+            fpr[label_index], tpr[label_index], color=color, lw=lw, label=label_text,
         )
         logging.info(
             f"ROC Label {label_text} Truth shape {truth.shape}, true sums {true_sums}",
@@ -2530,26 +2741,64 @@ def subplot_roc_per_class(
     logging.info(
         f"Saved ROC curve at: {figure_path} with {len(protected)} protected TensorMaps.",
     )
-    return labels_to_areas
+    return performance_data
 
 
-def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6):
+def plot_roc(
+    prediction,
+    truth,
+    labels,
+    title,
+    prefix="./figures/",
+    dpi=300,
+    width: int = 6,
+    height: int = 6,
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
+    """Plot ROC curves and return dataframe-ready AUROC performance rows.
+
+    The returned rows match the schema from evaluate_multitask_on_dataset:
+    Model, Task, Metric, Score, CI_95_lower, CI_95_upper, n, and n_positive,
+    plus prevalence as a percentage.
+    """
     lw = 2
-    labels_to_areas = {}
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    model_name = title if model_name is None else model_name
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
-    fpr, tpr, roc_auc = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    fpr, tpr, _ = get_fpr_tpr_roc_pred(prediction, truth, labels)
+    last_auc = float("nan")
     for key in labels:
         if "no_" in str(key) and len(labels) == 2:
             continue
         color = _hash_string_to_color(str(key))
-        labels_to_areas[key] = roc_auc[labels[key]]
-        label_text = f"{key} area:{roc_auc[labels[key]]:.3f} n={true_sums[labels[key]]:.0f}"
+        label_index = labels[key]
+        row = _classification_metric_performance_row(
+            prediction,
+            truth,
+            key,
+            label_index,
+            model_name,
+            "auROC",
+            roc_auc_score,
+            rng,
+            n_bootstraps,
+        )
+        performance_data.append(row)
+        label_text = (
+            f"{key} area:{row['Score']:.3f} "
+            f"95% CI:({row['CI_95_lower']:.3f}, {row['CI_95_upper']:.3f}) "
+            f"n={true_sums[label_index]:.0f}"
+        )
         plt.plot(
-            fpr[labels[key]], tpr[labels[key]], color=color, lw=lw, label=label_text,
+            fpr[label_index], tpr[label_index], color=color, lw=lw, label=label_text,
         )
         logging.info(f"ROC Label {label_text}")
+        last_auc = row["Score"]
 
     plt.xlim([0.0, 1.0])
     plt.ylim([-0.02, 1.03])
@@ -2559,11 +2808,11 @@ def plot_roc(prediction, truth, labels, title, prefix="./figures/", dpi=300, wid
     plt.plot([0, 1], [0, 1], "k:", lw=0.5)
     plt.title(f"ROC {title} n={np.sum(true_sums):.0f}")
 
-    figure_path = os.path.join(prefix, f"per_class_roc_auc_{roc_auc[labels[key]]:0.3f}_{title}{IMAGE_EXT}")
+    figure_path = os.path.join(prefix, f"per_class_roc_auc_{last_auc:0.3f}_{title}{IMAGE_EXT}")
     os.makedirs(os.path.dirname(figure_path), exist_ok=True)
     plt.savefig(figure_path)
     logging.info(f"Saved ROC curve at: {figure_path}")
-    return labels_to_areas
+    return performance_data
 
 
 def _figure_and_subplot_axes_from_total(total_plots: int, dpi: int = 300, width: int = 6, height: int = 6):
@@ -2652,28 +2901,53 @@ def subplot_comparison_rocs(
 
 
 def plot_precision_recall_per_class(
-    prediction, truth, labels, title, prefix="./figures/", dpi=300, width: int = 6, height: int = 6,
-):
-    # Compute Precision-Recall and plot curve
+    prediction,
+    truth,
+    labels,
+    title,
+    prefix="./figures/",
+    dpi=300,
+    width: int = 6,
+    height: int = 6,
+    n_bootstraps: int = 1000,
+    bootstrap_seed: int = METRIC_BOOTSTRAP_SEED,
+    model_name: Optional[str] = None,
+) -> List[Dict[str, object]]:
+    """Return auPRC rows with 95% bootstrap CIs, counts, and prevalence (percent)."""
     lw = 2.0
-    labels_to_areas = {}
+    performance_data = []
+    rng = np.random.RandomState(bootstrap_seed)
+    model_name = title if model_name is None else model_name
     true_sums = np.sum(truth, axis=0)
     plt.figure(figsize=(width, height), dpi=dpi)
 
     for k in labels:
+        label_index = labels[k]
         c = _hash_string_to_color(str(k))
+        task_truth = (truth[:, label_index] > 0.5).astype("int32")
+        task_prediction = prediction[:, label_index]
         precision, recall, _ = precision_recall_curve(
-            truth[:, labels[k]], prediction[:, labels[k]],
+            task_truth, task_prediction,
         )
-        average_precision = average_precision_score(
-            truth[:, labels[k]], prediction[:, labels[k]],
+        row = _classification_metric_performance_row(
+            prediction,
+            truth,
+            k,
+            label_index,
+            model_name,
+            "auPRC",
+            average_precision_score,
+            rng,
+            n_bootstraps,
         )
+        performance_data.append(row)
         label_text = (
-            f"{k} mean precision:{average_precision:.3f} n={true_sums[labels[k]]:.0f}"
+            f"{k} mean precision:{row['Score']:.3f} "
+            f"95% CI:({row['CI_95_lower']:.3f}, {row['CI_95_upper']:.3f}) "
+            f"n={true_sums[label_index]:.0f}"
         )
         plt.plot(recall, precision, lw=lw, color=c, label=label_text)
         logging.info(f"prAUC Label {label_text}")
-        labels_to_areas[k] = average_precision
 
     plt.xlim([0.0, 1.00])
     plt.ylim([-0.02, 1.03])
@@ -2687,7 +2961,7 @@ def plot_precision_recall_per_class(
         os.makedirs(os.path.dirname(figure_path))
     plt.savefig(figure_path)
     logging.info(f"Saved Precision Recall curve at: {figure_path}")
-    return labels_to_areas
+    return performance_data
 
 
 def plot_precision_recalls(predictions, truth, labels, title, prefix="./figures/", dpi=300, width=7, height=7):
@@ -3548,6 +3822,52 @@ def radar_performance(df, prefix, show=False, legend=True):
             os.makedirs(os.path.dirname(figure_path))
         plt.savefig(figure_path)
 
+def _format_score_with_ci(value, ci_lower, ci_upper):
+    if pd.isna(ci_lower) or pd.isna(ci_upper):
+        return f"{value:.2f}"
+    return f"{value:.2f}\n({ci_lower:.2f}-{ci_upper:.2f})"
+
+
+def _ci_overlaps(ci_a, ci_b):
+    if any(pd.isna(x) for x in ci_a + ci_b):
+        return False
+    return ci_a[0] <= ci_b[1] and ci_b[0] <= ci_a[1]
+
+
+def _heatmap_text_color(image, value):
+    red, green, blue, _ = image.cmap(image.norm(value))
+    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    return "black" if luminance > 0.58 else "white"
+
+
+def _bold_models_for_row(score_row, ci_lower_row, ci_upper_row):
+    row_max = score_row.max(skipna=True)
+    if pd.isna(row_max):
+        return set()
+
+    best_models = {
+        model
+        for model, value in score_row.items()
+        if not pd.isna(value) and value == row_max
+    }
+    best_cis = [
+        (ci_lower_row[model], ci_upper_row[model])
+        for model in best_models
+        if not pd.isna(ci_lower_row[model]) and not pd.isna(ci_upper_row[model])
+    ]
+    if not best_cis:
+        return best_models
+
+    bold_models = set(best_models)
+    for model, value in score_row.items():
+        if pd.isna(value):
+            continue
+        ci = (ci_lower_row[model], ci_upper_row[model])
+        if any(_ci_overlaps(ci, best_ci) for best_ci in best_cis):
+            bold_models.add(model)
+    return bold_models
+
+
 def heatmap_performance(df, prefix="./figures/", show=False):
     df['Task'] = (
         df['Task']
@@ -3557,24 +3877,78 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         .str.replace('_x', '', regex=False)
     )
     for metric_type, metric_df in df.groupby("Metric"):
-        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(subset=["Model", "Task"])
+        metric_df = metric_df.copy()
+        for col in ["Score", "CI_95_lower", "CI_95_upper"]:
+            if col in metric_df.columns:
+                metric_df[col] = pd.to_numeric(metric_df[col], errors="coerce")
+        metric_df = metric_df.sort_values("Score", ascending=False).drop_duplicates(
+            subset=["Model", "Task"],
+        )
         pivot_df = metric_df.pivot(index="Task", columns="Model", values="Score")
+        has_ci = {"CI_95_lower", "CI_95_upper"}.issubset(metric_df.columns)
+        if has_ci:
+            ci_lower_df = metric_df.pivot(
+                index="Task",
+                columns="Model",
+                values="CI_95_lower",
+            ).reindex_like(pivot_df)
+            ci_upper_df = metric_df.pivot(
+                index="Task",
+                columns="Model",
+                values="CI_95_upper",
+            ).reindex_like(pivot_df)
+        else:
+            ci_lower_df = pd.DataFrame(np.nan, index=pivot_df.index, columns=pivot_df.columns)
+            ci_upper_df = pd.DataFrame(np.nan, index=pivot_df.index, columns=pivot_df.columns)
 
-        plt.figure(figsize=(10, max(4, len(pivot_df) * 0.5)))
-        magma_truncated = plt.cm.colors.ListedColormap(plt.cm.magma(np.linspace(0.25, 1, 256)))
-        im = plt.imshow(pivot_df.values, cmap=magma_truncated, aspect="auto")
+        fig_width = max(10, len(pivot_df.columns) * 1.8)
+        fig_height = max(4, len(pivot_df) * 0.75)
+        plt.figure(figsize=(fig_width, fig_height))
+        score_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+            "score_saturated_high",
+            ["#f7fbff", "#c6dbef", "#6baed6", "#1f9e89", "#084081"],
+        )
+        im = plt.imshow(
+            pivot_df.values,
+            cmap=score_cmap,
+            aspect="auto",
+            interpolation="nearest",
+        )
 
         for i in range(pivot_df.shape[0]):
-            row_max = pivot_df.iloc[i].max(skipna=True)
+            bold_models = _bold_models_for_row(
+                pivot_df.iloc[i],
+                ci_lower_df.iloc[i],
+                ci_upper_df.iloc[i],
+            )
             for j in range(pivot_df.shape[1]):
                 value = pivot_df.iloc[i, j]
                 if not pd.isna(value):
-                    fontweight = "bold" if not pd.isna(row_max) and value == row_max else "normal"
-                    plt.text(j, i, f"{value:.2f}", ha="center", va="center", color="black", fontsize=14, fontweight=fontweight)
+                    model = pivot_df.columns[j]
+                    ci_lower = ci_lower_df.iloc[i, j]
+                    ci_upper = ci_upper_df.iloc[i, j]
+                    fontweight = "bold" if model in bold_models else "normal"
+                    plt.text(
+                        j,
+                        i,
+                        _format_score_with_ci(value, ci_lower, ci_upper),
+                        ha="center",
+                        va="center",
+                        color=_heatmap_text_color(im, value),
+                        fontsize=11 if has_ci else 14,
+                        fontweight=fontweight,
+                        linespacing=1.15,
+                    )
 
         x_labels = [col.upper() if len(col) <= 4 else col for col in pivot_df.columns]
         y_labels = [idx.upper() if len(idx) <= 4 else idx for idx in pivot_df.index]
-        plt.xticks(ticks=np.arange(len(pivot_df.columns)), labels=x_labels, rotation=45, ha="right", fontsize=14)
+        plt.xticks(
+            ticks=np.arange(len(pivot_df.columns)),
+            labels=x_labels,
+            rotation=45,
+            ha="right",
+            fontsize=14,
+        )
         plt.yticks(ticks=np.arange(len(pivot_df.index)), labels=y_labels, fontsize=14)
         plt.colorbar(im, label="Score")
         plt.title(f"Model Performance by Task ({metric_type.upper()})")

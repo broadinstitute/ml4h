@@ -748,7 +748,7 @@ def get_train_valid_test_paths(
                 choice = np.random.choice([k for k in choices], p=[choices[k][1] for k in choices])
                 choices[choice][0].append(path)
 
-    #logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
+    logging.info(f'Found {len(train_paths)} train, {len(valid_paths)} validation, and {len(test_paths)} testing tensors at: {tensors}')
     logging.debug(f'Discarded {len(discard_paths)} tensors due to given ratios')
     if len(train_paths) == 0 and len(valid_paths) == 0 and len(test_paths) == 0:
         raise ValueError(
