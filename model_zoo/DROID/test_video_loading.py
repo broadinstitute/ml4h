@@ -16,7 +16,7 @@ import tensorflow as tf
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from benchmark_reference import ReferenceVideoDescription
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
-from data_descriptions.echo_dataset import make_dataset
+from data_descriptions.echo_dataset import make_dataset, make_inference_dataset
 from data_descriptions.video_io import decode_clip, read_video_bytes
 from data_descriptions.wide_file import EcholabDataDescription
 from data_descriptions.transforms import RandomFlip
@@ -188,6 +188,16 @@ def test_finite_validation_and_label_alignment(data, multi):
                 np.testing.assert_array_equal(video, loader.get_raw_data(ids[index]))
                 seen.append(index)
         assert seen == list(range(8))  # drop_remainder agrees with recipe step counts
+
+
+def test_inference_dataset_keeps_order_and_partial_batch(data):
+    root, ids = data
+    loader = LmdbEchoStudyVideoDataDescription(str(root / 'lmdb'), 'test', nframes=8, skip_modulo=2)
+    dataset = make_inference_dataset(loader, ids, 4, (8, 32, 32, 3), workers=4)
+    batches = list(dataset.as_numpy_iterator())
+    assert [len(b) for b in batches] == [4, 4, 1]
+    for video, sample_id in zip(np.concatenate(batches), ids):
+        np.testing.assert_array_equal(video, loader.get_raw_data(sample_id))
 
 
 def test_shuffle_repeat_and_cpu_augmentation(data):

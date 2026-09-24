@@ -1,5 +1,5 @@
 import argparse
-import json
+import io
 import logging
 import os
 import sys
@@ -9,13 +9,22 @@ import pandas as pd
 import tensorflow as tf
 
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from data_descriptions.echo_dataset import make_inference_dataset
 from echo_defines import category_dictionaries
-from model_descriptions.echo import DDGenerator, create_movinet_classifier, create_regressor, create_regressor_classifier
+from model_descriptions.droid_model import build_encoder, build_model, read_json, read_trained_run
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
 
 SAVE_ONEHOT_DF_FOR_EACH_CLASS = True
+
+
+def _write_parquet(df, path):
+    buffer = io.BytesIO()
+    df.to_parquet(buffer)
+    with tf.io.gfile.GFile(path, 'wb') as pq_file:
+        pq_file.write(buffer.getvalue())
+
 
 def main(
         n_input_frames,
@@ -37,50 +46,40 @@ def main(
         output_dir,
         extract_embeddings,
         start_beat,
+        loader_workers=4,
+        video_decode_mode='auto',
+        video_decode_threads=1,
+        prefetch_batches=1,
 ):
+    if not 0 <= split_idx < n_splits:
+        raise ValueError(f'split_idx must be in [0, {n_splits})')
+    if loader_workers < 1 or video_decode_threads < 0 or prefetch_batches < 0:
+        raise ValueError('loader_workers must be positive; decode threads/prefetch must be non-negative')
+
     # Loading information on saved model:
-    model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0], 'model_params.json')
-    with open(model_param_path, 'r') as json_file:
-        model_params = json.load(json_file)
+    run = read_trained_run(pretrained_chkp_dir)
+    model_params = run.params
+    if output_labels and output_labels != run.output_labels:
+        logging.warning(f'Ignoring --output_labels {output_labels}; the checkpoint predicts {run.output_labels}')
+    output_labels = run.output_labels
+    selected_views = selected_views or model_params['selected_views']
+    selected_doppler = selected_doppler or model_params['selected_doppler']
+    selected_quality = selected_quality or model_params['selected_quality']
+    selected_canonical = selected_canonical or model_params['selected_canonical']
+    n_input_frames = n_input_frames or model_params.get('n_input_frames')
+    skip_modulo = skip_modulo or model_params.get('skip_modulo')
+    if not (n_input_frames and skip_modulo):
+        raise ValueError('The checkpoint does not record n_input_frames/skip_modulo; pass them explicitly.')
+    logging.info(f'Loaded model with output labels: {output_labels}, '
+                 f'classification heads: {run.head_spec["category_order"]}, '
+                 f'survival heads: {list(run.head_spec["survival_heads"])}, views: {selected_views}, '
+                 f'doppler: {selected_doppler}, quality: {selected_quality}, canonical: {selected_canonical}, '
+                 f'frames: {n_input_frames}, skip_modulo: {skip_modulo}')
 
-    output_labels = model_params['output_labels'] if not output_labels else output_labels
-    selected_views = model_params['selected_views'] if not selected_views else selected_views
-    selected_doppler = model_params['selected_doppler'] if not selected_doppler else selected_doppler
-    selected_quality = model_params['selected_quality'] if not selected_quality else selected_quality
-    selected_canonical = model_params['selected_canonical'] if not selected_canonical else selected_canonical
-    logging.info(f'Loaded model with output labels: {output_labels}, views: {selected_views}, doppler: {selected_doppler}, quality: {selected_quality}, canonical: {selected_canonical}')
-
-    # ---------- Adaptation for regression + classification ---------- #
-    if ('output_labels_types' in model_params.keys()) and ('c' in model_params['output_labels_types'].lower()):
-        cls_lbl_map_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
-                                        'classification_class_label_mapping_per_output.json')
-        with open(cls_lbl_map_path, 'r') as json_file:
-            cls_category_map_dicts = json.load(json_file)
-        cls_category_len_dict = {}
-        for c_lbl in cls_category_map_dicts['cls_output_order']:
-            cls_category_len_dict[c_lbl] = len(cls_category_map_dicts[c_lbl])
-        # Reordering output labels to fit the regression-classification output order during training (assuming correct
-        # output_labels that include all saved classification output names - if not, the classification output names
-        # are added next anyway):
-        output_labels = ([i for i in output_labels if i not in cls_category_map_dicts['cls_output_order']] +
-                        cls_category_map_dicts['cls_output_order'])
-        logging.info(f'Loaded model contains classification heads. Updated output_label_order: {output_labels}, with classification heads for: {cls_category_map_dicts["cls_output_order"]}')
-        output_reg_len = len(output_labels) - len(cls_category_map_dicts['cls_output_order'])
-        add_separate_dense_reg = cls_category_map_dicts['add_separate_dense_reg']
-        add_separate_dense_cls = cls_category_map_dicts['add_separate_dense_cls']
-    else:
-        logging.info(f'Loaded model contains only regression variables.')
-        output_reg_len = len(output_labels)
-        cls_category_len_dict = {}
-        add_separate_dense_reg = model_params[
-            'add_separate_dense_reg'] if 'add_separate_dense_reg' in model_params.keys() else False
-        add_separate_dense_cls = model_params[
-            'add_separate_dense_cls'] if 'add_separate_dense_cls' in model_params.keys() else False
-    # ---------------------------------------------------------------- #
-
-    # Hide devices based on split
+    # One GPU per split so that splits can run side by side on a multi-GPU host
     physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.set_visible_devices([physical_devices[split_idx % 4]], 'GPU')
+    if physical_devices:
+        tf.config.set_visible_devices([physical_devices[split_idx % len(physical_devices)]], 'GPU')
 
     wide_df = pd.read_parquet(wide_file)
 
@@ -94,16 +93,16 @@ def main(
         (wide_df['doppler_prediction'].isin(selected_doppler_idx)) &
         (wide_df['quality_prediction'].isin(selected_quality_idx)) &
         (wide_df['canonical_prediction'].isin(selected_canonical_idx))
-    ]
+    ].copy()
 
     # Fill entries without measurements and get all sample_ids
     for olabel in output_labels:
-        wide_df_selected.loc[wide_df_selected[olabel].isna(), olabel] = -1
+        if olabel in wide_df_selected:
+            wide_df_selected.loc[wide_df_selected[olabel].isna(), olabel] = -1
     working_ids = wide_df_selected['sample_id'].values.tolist()
 
     # Read splits and partition dataset
-    with open(splits_file, 'r') as json_file:
-        splits = json.load(json_file)
+    splits = read_json(splits_file)
 
     patient_train = splits['patient_train']
     patient_valid = splits['patient_valid']
@@ -123,19 +122,12 @@ def main(
             patient_inference = patient_inference + splits['patient_internal_test']
     else:
         patient_inference = splits['patient_test']
-
-    # Testing a random subset of IDs (for speed) to see if there are matching ids in working_ids and chosen split
-    random_ids_for_test = np.random.permutation(len(working_ids))[:min(len(working_ids), 500)]
-    working_ids_subset_test = [working_ids[i] for i in random_ids_for_test]
-    inference_ids_match_test = [t for t in working_ids_subset_test if int(t.split('_')[0]) in patient_inference]
-    if len(inference_ids_match_test) == 0:
-        logging.warning(
-            f'A random test of indices showed no match between {wide_file} indices and {splits_file} indices. It is possible that there are still matches, but please verify file names. This process might take a long time to break if there are no matches, consider forcing it to stop.')
+    patient_inference = set(patient_inference)
 
     inference_ids = sorted([t for t in working_ids if int(t.split('_')[0]) in patient_inference])
     if len(inference_ids) == 0:
         logging.error(f'No matches found between {wide_file} indices and the {splits_file} indices!')
-        sys.exit()
+        sys.exit(1)
 
     INPUT_DD = LmdbEchoStudyVideoDataDescription(
         lmdb_folder,
@@ -143,128 +135,86 @@ def main(
         [],
         n_input_frames,
         skip_modulo,
-        start_frame=start_beat
+        start_frame=start_beat,
+        decode_mode=video_decode_mode,
+        decode_threads=video_decode_threads,
     )
 
-    inference_ids_split = np.array_split(inference_ids, n_splits)[split_idx]
-    body_inference_ids = tf.data.Dataset.from_tensor_slices(inference_ids_split).batch(batch_size, drop_remainder=False)
-    n_inference_steps = len(inference_ids_split) // batch_size + int((len(inference_ids_split) % batch_size) > 0.5)
-
-    io_inference_ds = body_inference_ids.interleave(
-        lambda sample_ids: tf.data.Dataset.from_generator(
-            DDGenerator(
-                INPUT_DD,
-                None,
-            ),
-            output_signature=(
-                tf.TensorSpec(shape=(None, n_input_frames, 224, 224, 3), dtype=tf.float32),
-            ),
-            args=(sample_ids,)
-        ),
-        cycle_length = 2,
-        num_parallel_calls = 2
-    ).prefetch(8)
-
-    model, backbone = create_movinet_classifier(
-        n_input_frames,
+    inference_ids_split = [str(i) for i in np.array_split(inference_ids, n_splits)[split_idx]]
+    io_inference_ds = make_inference_dataset(
+        INPUT_DD,
+        inference_ids_split,
         batch_size,
-        num_classes=600,
-        checkpoint_dir=movinet_chkp_dir,
-    )
+        (n_input_frames, 224, 224, 3),
+        workers=loader_workers,
+    ).prefetch(prefetch_batches)
+    logging.info('Video loader: workers=%d, decode=%s, decode_threads=%d, prefetch_batches=%d',
+                 loader_workers, video_decode_mode, video_decode_threads, prefetch_batches)
 
-    backbone_output = backbone.layers[-1].output[0]
-    flatten = tf.keras.layers.Flatten()(backbone_output)
-    encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
-
-    # ---------- Adaptation for regression + classification ---------- #
-    # Organize regressor/classifier inputs:
-    func_args = {'input_shape': (n_input_frames, 224, 224, 3),
-                'n_output_features': output_reg_len,
-                'categories': cls_category_len_dict,
-                'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
-                'add_dense': {'regressor': add_separate_dense_reg, 'classifier': add_separate_dense_cls}}
-
-    model_plus_head = create_regressor_classifier(encoder, **func_args)
-    # ---------------------------------------------------------------- #
+    encoder = build_encoder(n_input_frames, batch_size, movinet_chkp_dir)
+    model_plus_head = build_model(encoder, run.head_spec, n_input_frames, trainable=False)
     model_plus_head.load_weights(pretrained_chkp_dir)
 
     vois = '_'.join(selected_views)
     ufm = 'conv7'
-    if extract_embeddings:
-        output_folder = os.path.join(output_dir,
-                                    f'inference_embeddings_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
-    else:
-        output_folder = os.path.join(output_dir,
-                                    f'inference_{vois}_{ufm}_{lmdb_folder.split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
-    os.makedirs(output_folder, exist_ok=True)
+    prefix = 'inference_embeddings' if extract_embeddings else 'inference'
+    output_folder = os.path.join(
+        output_dir,
+        f'{prefix}_{vois}_{ufm}_{lmdb_folder.rstrip("/").split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
+    tf.io.gfile.makedirs(output_folder)
 
-    wide_df_selected.to_csv(f'{output_folder}/wide_df_selected.csv')
-    
-    def save_model_pred_as_df(pred, fname_suffix='', pred_col_names=[]):
-        save_df = pd.DataFrame()
-        save_df['sample_id'] = inference_ids_split
-        if len(pred_col_names) == pred.shape[1]:
-            use_pred_col_names = True
-        else:
-            use_pred_col_names = False
+    with tf.io.gfile.GFile(f'{output_folder}/wide_df_selected.csv', 'w') as csv_file:
+        wide_df_selected.to_csv(csv_file)
+
+    def prediction_path(fname_suffix=''):
+        return os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq')
+
+    def columns_df(pred, column_prefix='prediction'):
+        df = pd.DataFrame({'sample_id': inference_ids_split})
         for i_p in range(pred.shape[1]):
-            if use_pred_col_names:
-                save_df[pred_col_names[i_p]] = pred[:, i_p]
-            else:
-                save_df[f'prediction_{i_p}'] = pred[:, i_p]
-
-        save_df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq'))
+            df[f'{column_prefix}_{i_p}'] = pred[:, i_p]
+        return df
 
     if extract_embeddings:
-        embeddings = encoder.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
-        df = pd.DataFrame()
-        df['sample_id'] = inference_ids_split
-        for j, _ in enumerate(range(embeddings.shape[1])):
-            df[f'embedding_{j}'] = embeddings[:, j]
+        embeddings = encoder.predict(io_inference_ds, verbose=1)
+        _write_parquet(columns_df(embeddings, 'embedding'), prediction_path())
+        return
 
-        df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
-    else:
-        predictions = model_plus_head.predict(io_inference_ds, steps=n_inference_steps, verbose=1)
-        # predictions is a list of length = number of outputs in list, where all regression variables are in a single
-        # list element and each classification task has a separate list element.
-        # Each list element is of size:
-        # len(inference_ids_split) X number of output variables (total number of regression vars or number of classes)
-        if len(cls_category_len_dict) > 0:
-            # Case: regression + classification or classification only
-            # Currently saving actual class predictions jointly with the regression variables if exist
-            # and for each class one-hot predictions are saved in a separate pq file (flag dependent)
-            if output_reg_len > 0:
-                reg_pred = predictions[0]
-                cls_pred = predictions[1:]
-            else:
-                reg_pred = np.zeros((0, 0))
-                cls_pred = predictions     
-                if len(cls_category_len_dict) == 1: 
-                    cls_pred = [predictions]
-            df = pd.DataFrame()
-            df['sample_id'] = inference_ids_split
-            for i_p in range(reg_pred.shape[1]):
-                df[f'prediction_{i_p}'] = reg_pred[:, i_p]
-            for i in range(len(cls_pred)):
-                curr_cls_name = cls_category_map_dicts['cls_output_order'][i]
-                if SAVE_ONEHOT_DF_FOR_EACH_CLASS:
-                    save_model_pred_as_df(cls_pred[i], fname_suffix='_one_hot_' + curr_cls_name)
-                cls_pred_vals_curr = cls_pred[i].argmax(axis=1)
-                cls_map_inv = {v: k for k, v in zip(cls_category_map_dicts[curr_cls_name].keys(),
-                                                    cls_category_map_dicts[curr_cls_name].values())}
-                df[cls_category_map_dicts['cls_output_order'][i]] = cls_pred_vals_curr
-                df.replace({curr_cls_name: cls_map_inv}, inplace=True)
+    predictions = model_plus_head.predict(io_inference_ds, verbose=1)
+    if not isinstance(predictions, (list, tuple)):
+        predictions = [predictions]
 
-            df.to_parquet(os.path.join(output_folder, f'prediction_{split_idx}.pq'))
+    # Outputs follow the model: regression ('echolab'), one 'cls_<label>' per classification
+    # task, then one 'survival_<task>' per survival task.
+    df = pd.DataFrame({'sample_id': inference_ids_split})
+    for output_name, pred in zip(model_plus_head.output_names, predictions):
+        if output_name == 'echolab':
+            for i_p in range(pred.shape[1]):
+                df[f'prediction_{i_p}'] = pred[:, i_p]
+        elif output_name.startswith('cls_'):
+            # Class labels go in the joint file; per-class probabilities in a separate file (flag dependent)
+            cls_name = output_name[len('cls_'):]
+            if SAVE_ONEHOT_DF_FOR_EACH_CLASS:
+                _write_parquet(columns_df(pred), prediction_path('_one_hot_' + cls_name))
+            cls_map_inv = {v: k for k, v in run.cls_category_map_dicts[cls_name].items()}
+            df[cls_name] = [cls_map_inv[i] for i in pred.argmax(axis=1)]
+        elif output_name.startswith('survival_'):
+            # Conditional survival probability per interval and cumulative survival over the whole window
+            for i_p in range(pred.shape[1]):
+                df[f'{output_name}_{i_p}'] = pred[:, i_p]
+            df[f'{output_name}_cumulative'] = np.prod(pred, axis=1)
         else:
-            # Case: regression only
-            save_model_pred_as_df(predictions)
+            raise ValueError(f'Unexpected model output {output_name}')
+    _write_parquet(df, prediction_path())
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_input_frames', type=int, default=50)
-    parser.add_argument('-o', '--output_labels', action='append', required=False)
+    parser.add_argument('--n_input_frames', type=int,
+                        help='Frames per clip; defaults to the value the checkpoint was trained with.')
+    parser.add_argument('-o', '--output_labels', action='append', required=False,
+                        help='Deprecated: outputs are read from the checkpoint.')
     parser.add_argument('--wide_file', type=str)
     parser.add_argument('--splits_file')
 
@@ -278,11 +228,20 @@ if __name__ == "__main__":
                         choices=category_dictionaries['canonical'].keys(), required=False)
 
     parser.add_argument('-n', '--n_train_patients', default='all')
-    parser.add_argument('--split_idx', type=int, choices=range(4))
+    parser.add_argument('--split_idx', type=int, default=0)
     parser.add_argument('--n_splits', type=int, default=4)
     parser.add_argument('--batch_size', default=16, type=int)
-    parser.add_argument('--skip_modulo', type=int, default=1)
+    parser.add_argument('--skip_modulo', type=int,
+                        help='Frame stride; defaults to the value the checkpoint was trained with.')
     parser.add_argument('--lmdb_folder', type=str)
+    parser.add_argument('--loader_workers', type=int, default=4,
+                        help='Parallel clip loaders (start with 4 on an 8-12 CPU host).')
+    parser.add_argument('--video_decode_mode', choices=['auto', 'sequential'], default='auto',
+                        help='auto skips unselected MJPEG frames; other codecs decode sequentially.')
+    parser.add_argument('--video_decode_threads', type=int, default=1,
+                        help='Threads per generic decoder; selective MJPEG always uses one. 0 = FFmpeg auto.')
+    parser.add_argument('--prefetch_batches', type=int, default=1,
+                        help='Bounded batch prefetch; 0 disables prefetch.')
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)
     parser.add_argument('--output_dir', type=str)
@@ -316,4 +275,8 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         extract_embeddings=args.extract_embeddings,
         start_beat=args.start_beat,
+        loader_workers=args.loader_workers,
+        video_decode_mode=args.video_decode_mode,
+        video_decode_threads=args.video_decode_threads,
+        prefetch_batches=args.prefetch_batches,
     )
