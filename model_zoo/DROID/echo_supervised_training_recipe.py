@@ -15,7 +15,11 @@ from data_descriptions.echo_dataset import make_dataset
 from data_descriptions.transforms import AUGMENTATIONS
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
-from model_descriptions.echo import create_movinet_classifier, create_regressor_classifier, train_model
+from model_descriptions.droid_model import (
+    CLASS_MAPPING_FILE, OUTPUT_SCALING_FILE, build_encoder, build_model, head_spec, load_trained_model, read_json,
+    run_dir_from_checkpoint, split_output_labels, validate_survival_tasks,
+)
+from model_descriptions.echo import train_model
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
@@ -69,47 +73,6 @@ class WarmupCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
             'alpha': self.alpha,
             'name': self.name,
         }
-
-
-def validate_survival_tasks(survival_tasks):
-    """Validate recipe survival-task specifications and supply optional defaults."""
-    tasks = survival_tasks or []
-    task_names = set()
-    required_fields = {'name', 'event_column', 'follow_up_days_column', 'intervals', 'days_window'}
-    validated_tasks = []
-    for task in tasks:
-        if not isinstance(task, dict):
-            raise TypeError('Each survival task must be a JSON object.')
-        missing_fields = required_fields.difference(task)
-        if missing_fields:
-            raise ValueError(f"Survival task is missing required fields: {sorted(missing_fields)}")
-        name = task['name']
-        if not isinstance(name, str) or not name:
-            raise ValueError('Each survival task needs a non-empty string name.')
-        if name in task_names:
-            raise ValueError(f"Survival task names must be unique; duplicate name: {name}")
-        if int(task['intervals']) <= 0 or float(task['days_window']) <= 0:
-            raise ValueError(f"Survival task {name} needs positive intervals and days_window values.")
-        prevalent_policy = task.get('prevalent_policy', 'first_interval')
-        if prevalent_policy not in {'first_interval', 'exclude'}:
-            raise ValueError(
-                f"Survival task {name} has invalid prevalent_policy {prevalent_policy!r}; "
-                "use 'first_interval' or 'exclude'.",
-            )
-        validated_task = dict(task)
-        validated_task['intervals'] = int(task['intervals'])
-        validated_task['days_window'] = float(task['days_window'])
-        validated_task['blanking_days'] = float(task.get('blanking_days', 0))
-        if (
-                not np.isfinite(validated_task['days_window'])
-                or validated_task['blanking_days'] < 0
-                or not np.isfinite(validated_task['blanking_days'])
-        ):
-            raise ValueError(f"Survival task {name} needs finite days_window and non-negative blanking_days values.")
-        validated_task['prevalent_policy'] = prevalent_policy
-        validated_tasks.append(validated_task)
-        task_names.add(name)
-    return validated_tasks
 
 
 def survival_task_from_arguments(
@@ -234,52 +197,6 @@ def main(
     olabels = '_'.join(output_labels) or 'survival'
 
     # ---------- Adaptation for regression + classification ---------- #
-    def process_labels_types(o_lbls, o_lbls_types, var_type='output_labels'):
-        # ---- Processing input values and handling incorrect inputs ----- #
-        # Specify parameters for regression and classification heads:
-        if not o_lbls:
-            return [], 0, []
-        if len(o_lbls_types) == len(o_lbls):
-            # Number of task types labels (regression/classification) is equal to the number of output variables
-            unq_lbl_types = set([ch for ch in o_lbls_types.lower()])
-        elif len(o_lbls_types) == 1:
-            # Only one task type label (regression/classification) is given for all output variables
-            unq_lbl_types = o_lbls_types.lower()
-        else:
-            # A wrong number of task type labels was given (empty or different from 1 or 'len(output_labels)')
-            raise TypeError(
-                f"The lengths of '{var_type}' and '{var_type}_types' do not match (should be equal or 'len({var_type}_types)=1').")
-        if not set(unq_lbl_types) <= {'r', 'c'}:
-            raise TypeError(f"'{var_type}_types' contains unrecognized letters (should include 'r' and/or 'c' only).")
-
-        if len(unq_lbl_types) > 1:
-            output_label_types_int = [0 if (ch == 'r') else 1 for ch in o_lbls_types.lower()]
-            o_reg_len = len(output_label_types_int) - sum(output_label_types_int)
-            cls_o_names = [o_lbls[i_c] for i_c, c in enumerate(output_label_types_int) if c == 1]
-            output_order = np.argsort(output_label_types_int)
-            o_lbls = [o_lbls[i] for i in output_order]
-            if var_type == 'output_labels':
-                logging.info('Training with regression and classification heads')
-            else:
-                logging.info('Loaded model has regression and classification heads')
-            logging.info(f'Updated {var_type} order: {o_lbls}')
-        elif 'r' in unq_lbl_types:
-            o_reg_len = len(o_lbls)
-            cls_o_names = []
-            if var_type == 'output_labels':
-                logging.info('Training only with a regression head')
-            else:
-                logging.info('Loaded model has only a regression head')
-        else:
-            o_reg_len = 0
-            cls_o_names = o_lbls
-            if var_type == 'output_labels':
-                logging.info('Training only with a classification head')
-            else:
-                logging.info('Loaded model has only a classification head')
-
-        return o_lbls, o_reg_len, cls_o_names
-
     def process_class_categories(df, cls_o_names, var_type='output_labels'):
         # Creating dictionaries specifying number of classes for each output_label name
         # and mapping between wide_file values to class labels:
@@ -297,8 +214,8 @@ def main(
         return clsc_map_dicts, clsc_len_dict
 
     # ---------------------------------------------------------------- #
-    output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
-                                                                           var_type='output_labels')
+    output_labels, output_reg_len, cls_output_names = split_output_labels(output_labels, output_labels_types,
+                                                                          var_type='output_labels')
     # ---------------------------------------------------------------- #
     wide_df = pd.read_parquet(wide_file)
 
@@ -370,6 +287,7 @@ def main(
     print(f"valid_ids: {len(valid_ids)}") 
 
     # If scale_outputs, normalize by summary stats of training set
+    output_scaling = {}
     if scale_outputs:
         wide_df_train = wide_df_selected[wide_df_selected['sample_id'].isin(train_ids)]
         output_labels_to_scale = np.array([l for l in output_labels if l not in cls_output_names])
@@ -387,6 +305,10 @@ def main(
             wide_df_selected.loc[:, output_labels_to_scale] = (wide_df_selected[output_labels_to_scale].values - mean_outputs) / std_outputs
             logging.info(mean_outputs)
             logging.info(std_outputs)
+            output_scaling = {
+                label: {'mean': float(mean), 'std': float(std)}
+                for label, mean, std in zip(output_labels_to_scale, mean_outputs, std_outputs)
+            }
 
     valid_ids = list(set(valid_ids).intersection(set(working_ids)))
     print(f"valid_ids: {len(valid_ids)}") 
@@ -396,12 +318,10 @@ def main(
                                                                              var_type='output_labels')
 
     if pretrained_chkp_dir:
-        cls_lbl_map_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
-                                        'classification_class_label_mapping_per_output.json')
+        cls_lbl_map_path = os.path.join(run_dir_from_checkpoint(pretrained_chkp_dir), CLASS_MAPPING_FILE)
         define_new_heads = False
-        if os.path.isfile(cls_lbl_map_path):
-            with open(cls_lbl_map_path, 'r') as json_file:
-                cls_category_signature_map_dicts = json.load(json_file)
+        if tf.io.gfile.exists(cls_lbl_map_path):
+            cls_category_signature_map_dicts = read_json(cls_lbl_map_path)
             similar_cls = [c for c in cls_output_names if c in cls_category_signature_map_dicts.keys()]
             for c in similar_cls:
                 if (len(cls_category_signature_map_dicts[c]) > len(cls_category_map_dicts[c])) and set(
@@ -513,80 +433,23 @@ def main(
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
-        _, backbone = create_movinet_classifier(
-            n_input_frames,
-            batch_size,
-            num_classes=600,
-            checkpoint_dir=movinet_chkp_dir,
-            freeze_backbone=fine_tune
-        )
-        backbone_output = backbone.layers[-1].output[0]
-        flatten = tf.keras.layers.Flatten()(backbone_output)
-        encoder = tf.keras.Model(inputs=[backbone.input], outputs=[flatten])
-
-        # ---------- Adaptation for regression + classification ---------- #
-        # Organize regressor/classifier inputs:
-        func_args = {'input_shape': (n_input_frames, 224, 224, 3), 'trainable': not fine_tune,
-                     'n_output_features': output_reg_len,
-                     'categories': cls_category_len_dict,
-                     'survival_heads': {task['name']: task['intervals'] for task in survival_tasks},
-                     'category_order': cls_category_map_dicts['cls_output_order'] if cls_category_len_dict else None,
-                     'add_dense': {
-                         'regressor': add_separate_dense_reg,
-                         'classifier': add_separate_dense_cls,
-                     }}
-
-        model = create_regressor_classifier(encoder, **func_args)
-        # ---------------------------------------------------------------- #
+        encoder = build_encoder(n_input_frames, batch_size, movinet_chkp_dir, freeze_backbone=fine_tune)
+        spec = head_spec(output_reg_len, cls_category_map_dicts, survival_tasks,
+                         add_separate_dense_reg, add_separate_dense_cls)
+        model = build_model(encoder, spec, n_input_frames, trainable=not fine_tune)
 
         if pretrained_chkp_dir:
-            signature_model_param_path = os.path.join(os.path.split(os.path.dirname(pretrained_chkp_dir))[0],
-                                                      'model_params.json')
-            f = open(signature_model_param_path)
-            signature_model_params = json.load(f)
-            sig_add_separate_dense_reg = signature_model_params[
-                'add_separate_dense_reg'] if 'add_separate_dense_reg' in signature_model_params.keys() else False
-            sig_add_separate_dense_cls = signature_model_params[
-                'add_separate_dense_cls'] if 'add_separate_dense_cls' in signature_model_params.keys() else False
-            output_signature_labels_types = signature_model_params[
-                'output_labels_types'] if 'output_labels_types' in signature_model_params.keys() else 'r'
-            output_signature_labels = signature_model_params['output_labels']
-            logging.info(f'output_labels of loaded model: {output_signature_labels}')
-
-            output_signature_labels, output_signature_reg_len, cls_output_signature_names = process_labels_types(
-                output_signature_labels, output_signature_labels_types, var_type='output_signature_labels')
-            signature_survival_tasks = validate_survival_tasks(signature_model_params.get('survival_task', []))
-
-            if 'c' in output_signature_labels_types.lower():
-                cls_category_signature_len_dict = {}
-                for c_lbl in cls_category_signature_map_dicts['cls_output_order']:
-                    cls_category_signature_len_dict[c_lbl] = len(cls_category_signature_map_dicts[c_lbl])
-            else:
-                cls_category_signature_len_dict = {}
-
-            model = create_regressor_classifier(
-                encoder,
-                input_shape=(n_input_frames, 224, 224, 3),
-                trainable=not fine_tune,
-                n_output_features=output_signature_reg_len,
-                categories=cls_category_signature_len_dict,
-                survival_heads={task['name']: task['intervals'] for task in signature_survival_tasks},
-                category_order=cls_category_signature_map_dicts[
-                    'cls_output_order'] if cls_category_signature_len_dict else None,
-                add_dense={
-                    'regressor': sig_add_separate_dense_reg,
-                    'classifier': sig_add_separate_dense_cls,
-                }
-            )
-            model.load_weights(pretrained_chkp_dir)
-
-            if (output_labels != output_signature_labels) or (output_signature_reg_len != output_reg_len) or (
-                    cls_output_signature_names != cls_output_names) or (
-                    survival_tasks != signature_survival_tasks) or define_new_heads:
+            # Loading also restores the shared `encoder`, so `model` keeps the pretrained encoder
+            # with new heads when the outputs differ.
+            pretrained_model, pretrained = load_trained_model(
+                pretrained_chkp_dir, encoder, n_input_frames, trainable=not fine_tune)
+            logging.info(f'output_labels of loaded model: {pretrained.output_labels}')
+            if (output_labels != pretrained.output_labels) or (pretrained.n_regression != output_reg_len) or (
+                    (pretrained.head_spec['category_order'] or []) != cls_output_names) or (
+                    survival_tasks != pretrained.survival_tasks) or define_new_heads:
                 logging.info('Redefining regression and/or classification heads due to differences in outputs used')
-                # ---------- Adaptation for regression + classification ---------- #
-                model = create_regressor_classifier(encoder, **func_args)
-                # ---------------------------------------------------------------- #
+            else:
+                model = pretrained_model
 
         # Peak LR: prefer explicit --learning_rate; fall back to the legacy --adam
         # value, then to the historical RMSprop default scaled by batch size.
@@ -670,6 +533,11 @@ def main(
     tf.io.gfile.makedirs(output_folder)
     with tf.io.gfile.GFile(f'{output_folder}/model_params.json', 'w') as json_file:
         json.dump(model_params, json_file)
+    # Training-set mean/std of each scaled regression label; predictions are in these scaled units
+    # (original = prediction * std + mean).
+    if output_scaling:
+        with tf.io.gfile.GFile(f'{output_folder}/{OUTPUT_SCALING_FILE}', 'w') as json_file:
+            json.dump(output_scaling, json_file)
 
     parquet_buffer = io.BytesIO()
     wide_df_selected.to_parquet(parquet_buffer)

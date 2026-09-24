@@ -88,3 +88,16 @@ python echo_supervised_inference_recipe.py \
     --movinet_chkp_dir {MoViNet-A2-Base_PATH} \
     --output_dir {WHERE_TO_STORE_PREDICTIONS}
 ```
+
+The heads (regression, classification and survival) are rebuilt from the run directory that contains
+`--pretrained_chkp_dir` (`model_params.json` and, for classification, the class mapping), using
+`model_descriptions/droid_model.py`, the same builder the training recipe uses. Views, quality filters,
+`--n_input_frames` and `--skip_modulo` default to the checkpoint's training values. Clips load through the
+parallel loader and accept the training recipe's `--loader_workers`, `--video_decode_mode`,
+`--video_decode_threads` and `--prefetch_batches` options.
+
+`prediction_{split_idx}.pq` holds `prediction_i` regression columns, one class-label column per
+classification head (per-class probabilities are in `prediction_{split_idx}_one_hot_<label>.pq`), and
+`survival_<task>_i` per-interval conditional survival probabilities with their product,
+`survival_<task>_cumulative`. With `--extract_embeddings`, the file instead holds the fine-tuned encoder's
+`embedding_i` columns, one row per clip.

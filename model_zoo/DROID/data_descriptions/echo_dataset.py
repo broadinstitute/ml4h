@@ -50,6 +50,32 @@ def make_dataset(input_dd, output_dd, sample_ids, batch_size, output_signature,
             dataset = dataset.shuffle(len(sample_ids), seed=seed, reshuffle_each_iteration=True)
         dataset = dataset.map(load, num_parallel_calls=workers, deterministic=True)
         dataset = dataset.batch(batch_size, drop_remainder=True)
+    return _with_bounded_threads(dataset, workers)
+
+
+def make_inference_dataset(input_dd, sample_ids, batch_size, clip_shape, workers=4):
+    """Load unlabeled clips in parallel, in ``sample_ids`` order, keeping the final partial batch."""
+    if workers < 1 or batch_size < 1:
+        raise ValueError('workers and batch_size must be positive')
+
+    @tf.autograph.experimental.do_not_convert
+    def load_clip(sample_id):
+        with tf.device('/CPU:0'):
+            return input_dd.get_raw_data(sample_id.numpy())
+
+    def load(sample_id):
+        video = tf.py_function(load_clip, [sample_id], Tout=tf.float32)
+        video.set_shape(clip_shape)
+        return video
+
+    with tf.device('/CPU:0'):
+        dataset = tf.data.Dataset.from_tensor_slices(list(sample_ids))
+        dataset = dataset.map(load, num_parallel_calls=workers, deterministic=True)
+        dataset = dataset.batch(batch_size, drop_remainder=False)
+    return _with_bounded_threads(dataset, workers)
+
+
+def _with_bounded_threads(dataset, workers):
     options = tf.data.Options()
     options.threading.private_threadpool_size = workers
     options.threading.max_intra_op_parallelism = 1
