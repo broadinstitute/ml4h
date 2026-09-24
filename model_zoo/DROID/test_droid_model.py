@@ -9,7 +9,9 @@ import pytest
 import tensorflow as tf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from model_descriptions.droid_model import build_model, head_spec, load_trained_model, read_trained_run
+from model_descriptions.droid_model import (
+    build_model, head_spec, load_trained_model, read_trained_run, with_embeddings,
+)
 
 FRAMES = 2
 SURVIVAL_TASK = dict(name='af', event_column='af_status', follow_up_days_column='af_time',
@@ -57,6 +59,11 @@ def test_round_trip(tmp_path, labels, types, cls_map, survival):
         np.testing.assert_allclose(expected, actual, rtol=1e-6)
     # The encoder passed in carries the trained weights, so embeddings match too.
     np.testing.assert_allclose(trained_encoder(clips), encoder(clips), rtol=1e-6)
+    # A single pass returns the embedding followed by the unchanged head outputs.
+    joint = with_embeddings(loaded, encoder)(clips)
+    np.testing.assert_allclose(joint[0], encoder(clips), rtol=1e-6)
+    for expected, actual in zip(tf.nest.flatten(loaded(clips)), joint[1:]):
+        np.testing.assert_allclose(expected, actual, rtol=1e-6)
 
 
 def test_run_without_outputs_is_rejected(tmp_path):

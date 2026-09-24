@@ -176,6 +176,12 @@ def build_model(encoder, spec, n_input_frames, trainable=True):
         encoder, trainable=trainable, input_shape=(n_input_frames, 224, 224, 3), **spec)
 
 
+def with_embeddings(model, encoder):
+    """``model`` with ``encoder``'s embedding prepended to its outputs, computed in the same forward pass."""
+    embedding = model.get_layer(encoder.name).get_output_at(-1)
+    return tf.keras.Model(model.inputs, [embedding, *model.outputs])
+
+
 def load_trained_model(checkpoint_path, encoder, n_input_frames, trainable=True):
     """Rebuild a trained run's heads on ``encoder`` and load its weights (encoder included)."""
     run = read_trained_run(checkpoint_path)

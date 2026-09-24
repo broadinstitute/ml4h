@@ -11,7 +11,7 @@ import tensorflow as tf
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
 from data_descriptions.echo_dataset import make_inference_dataset
 from echo_defines import category_dictionaries
-from model_descriptions.droid_model import build_encoder, build_model, read_json, read_trained_run
+from model_descriptions.droid_model import build_encoder, build_model, read_json, read_trained_run, with_embeddings
 
 logging.basicConfig(level=logging.INFO)
 tf.get_logger().setLevel(logging.ERROR)
@@ -157,17 +157,19 @@ def main(
 
     vois = '_'.join(selected_views)
     ufm = 'conv7'
-    prefix = 'inference_embeddings' if extract_embeddings else 'inference'
-    output_folder = os.path.join(
-        output_dir,
-        f'{prefix}_{vois}_{ufm}_{lmdb_folder.rstrip("/").split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}')
-    tf.io.gfile.makedirs(output_folder)
+    folder_suffix = f'{vois}_{ufm}_{lmdb_folder.rstrip("/").split("/")[-1]}_{splits_file.split("/")[-1]}_{start_beat}'
 
-    with tf.io.gfile.GFile(f'{output_folder}/wide_df_selected.csv', 'w') as csv_file:
-        wide_df_selected.to_csv(csv_file)
+    def make_output_folder(prefix):
+        folder = os.path.join(output_dir, f'{prefix}_{folder_suffix}')
+        tf.io.gfile.makedirs(folder)
+        with tf.io.gfile.GFile(f'{folder}/wide_df_selected.csv', 'w') as csv_file:
+            wide_df_selected.to_csv(csv_file)
+        return folder
 
-    def prediction_path(fname_suffix=''):
-        return os.path.join(output_folder, f'prediction_{split_idx}' + fname_suffix + '.pq')
+    output_folder = make_output_folder('inference')
+
+    def prediction_path(fname_suffix='', folder=output_folder):
+        return os.path.join(folder, f'prediction_{split_idx}' + fname_suffix + '.pq')
 
     def columns_df(pred, column_prefix='prediction'):
         df = pd.DataFrame({'sample_id': inference_ids_split})
@@ -175,14 +177,16 @@ def main(
             df[f'{column_prefix}_{i_p}'] = pred[:, i_p]
         return df
 
+    # One pass over the clips; with --extract_embeddings the encoder output is returned alongside the heads.
     if extract_embeddings:
-        embeddings = encoder.predict(io_inference_ds, verbose=1)
-        _write_parquet(columns_df(embeddings, 'embedding'), prediction_path())
-        return
-
-    predictions = model_plus_head.predict(io_inference_ds, verbose=1)
-    if not isinstance(predictions, (list, tuple)):
-        predictions = [predictions]
+        predictions = with_embeddings(model_plus_head, encoder).predict(io_inference_ds, verbose=1)
+        embeddings, predictions = predictions[0], predictions[1:]
+        _write_parquet(columns_df(embeddings, 'embedding'),
+                       prediction_path(folder=make_output_folder('inference_embeddings')))
+    else:
+        predictions = model_plus_head.predict(io_inference_ds, verbose=1)
+        if not isinstance(predictions, (list, tuple)):
+            predictions = [predictions]
 
     # Outputs follow the model: regression ('echolab'), one 'cls_<label>' per classification
     # task, then one 'survival_<task>' per survival task.
@@ -245,7 +249,8 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)
     parser.add_argument('--output_dir', type=str)
-    parser.add_argument('--extract_embeddings', action='store_true')
+    parser.add_argument('--extract_embeddings', action='store_true',
+                        help='Also save encoder embeddings, computed in the same pass as the predictions.')
     parser.add_argument('--start_beat', type=int, default=0)
 
     args = parser.parse_args()
