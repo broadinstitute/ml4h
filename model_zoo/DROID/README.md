@@ -99,5 +99,6 @@ parallel loader and accept the training recipe's `--loader_workers`, `--video_de
 `prediction_{split_idx}.pq` holds `prediction_i` regression columns, one class-label column per
 classification head (per-class probabilities are in `prediction_{split_idx}_one_hot_<label>.pq`), and
 `survival_<task>_i` per-interval conditional survival probabilities with their product,
-`survival_<task>_cumulative`. With `--extract_embeddings`, the file instead holds the fine-tuned encoder's
-`embedding_i` columns, one row per clip.
+`survival_<task>_cumulative`. `--extract_embeddings` also saves the fine-tuned encoder's `embedding_i`
+columns, one row per clip, to the matching `inference_embeddings_*` folder, computed in the same pass as the
+predictions.
