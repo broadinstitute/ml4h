@@ -11,6 +11,7 @@ import tensorflow as tf
 
 from ml4h.metrics import survival_likelihood_loss
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
+from data_descriptions.echo_dataset import make_dataset
 from data_descriptions.transforms import AUGMENTATIONS
 from data_descriptions.wide_file import EcholabDataDescription
 from echo_defines import category_dictionaries
@@ -202,8 +203,14 @@ def main(
         survival_blanking_days=0,
         survival_prevalent_policy='first_interval',
         run_validation_inference=False,
+        loader_workers=4,
+        video_decode_mode='auto',
+        video_decode_threads=1,
+        prefetch_batches=1,
 ):
 
+    if loader_workers < 1 or video_decode_threads < 0 or prefetch_batches < 0:
+        raise ValueError('loader_workers must be positive; decode threads/prefetch must be non-negative')
     output_labels = output_labels or []
     survival_tasks = survival_task_from_arguments(
         survival_task,
@@ -216,6 +223,12 @@ def main(
     )
     model_params = dict(model_params or {})
     model_params['survival_task'] = survival_tasks
+    model_params.update({
+        'loader_workers': loader_workers,
+        'video_decode_mode': video_decode_mode,
+        'video_decode_threads': video_decode_threads,
+        'prefetch_batches': prefetch_batches,
+    })
     lmdb_vois = '_'.join(selected_views)
     olabels = '_'.join(output_labels) or 'survival'
 
@@ -281,40 +294,6 @@ def main(
                     f'Error: Output variable {c_lbl} has a constant value in the train and validation sets - might cause errors in the classifier. Error raised when processing {var_type} related classification variables.')
         clsc_map_dicts['cls_output_order'] = cls_o_names
         return clsc_map_dicts, clsc_len_dict
-
-    def make_dataset(input_dd, output_dd, sample_ids, batch_size, output_signature, shuffle):
-        sample_ids = list(sample_ids)
-
-        # One pass over sample_ids per iteration. The dataset must stay finite so
-        # the fresh validation iterator Keras builds every epoch runs to exhaustion
-        # and releases its batches and prefetch buffer (an infinite generator here
-        # leaks multiple GB of RAM per epoch). The training call site adds
-        # .repeat(), which restarts the generator each pass, so shuffle still
-        # reshuffles every epoch.
-        def generator():
-            epoch_ids = sample_ids.copy()
-            if shuffle:
-                np.random.shuffle(epoch_ids)
-            for start_idx in range(0, len(epoch_ids) - batch_size + 1, batch_size):
-                batch_ids = epoch_ids[start_idx:start_idx + batch_size]
-                batch_inputs = []
-                batch_outputs = []
-                for sample_id in batch_ids:
-                    batch_inputs.append(input_dd.get_raw_data(sample_id))
-                    batch_outputs.append(output_dd.get_raw_data(sample_id))
-
-                batch_inputs = np.stack(batch_inputs).astype(np.float32, copy=False)
-                if batch_outputs and isinstance(batch_outputs[0], (list, tuple)):
-                    batch_outputs = tuple(
-                        np.stack([sample_output[output_idx] for sample_output in batch_outputs]).astype(np.float32, copy=False)
-                        for output_idx in range(len(batch_outputs[0]))
-                    )
-                else:
-                    batch_outputs = np.stack(batch_outputs).astype(np.float32, copy=False)
-
-                yield batch_inputs, batch_outputs
-
-        return tf.data.Dataset.from_generator(generator, output_signature=output_signature)
 
     # ---------------------------------------------------------------- #
     output_labels, output_reg_len, cls_output_names = process_labels_types(output_labels, output_labels_types,
@@ -447,7 +426,9 @@ def main(
         train_transforms,
         n_input_frames,
         skip_modulo,
-        randomize_start_frame=randomize_start_frame
+        randomize_start_frame=randomize_start_frame,
+        decode_mode=video_decode_mode,
+        decode_threads=video_decode_threads,
     )
     
     INPUT_DD_VALID = LmdbEchoStudyVideoDataDescription(
@@ -456,7 +437,9 @@ def main(
         [],
         n_input_frames,
         skip_modulo,
-        randomize_start_frame = False
+        randomize_start_frame=False,
+        decode_mode=video_decode_mode,
+        decode_threads=video_decode_threads,
     )
 
     survival_source_columns: list[Unknown] = [
@@ -511,7 +494,8 @@ def main(
         batch_size,
         output_signatures,
         shuffle=True,
-    ).repeat().prefetch(1)
+        workers=loader_workers,
+    ).repeat().prefetch(prefetch_batches)
 
     io_valid_ds = make_dataset(
         INPUT_DD_VALID,
@@ -520,7 +504,11 @@ def main(
         batch_size,
         output_signatures,
         shuffle=False,
-    ).prefetch(1)
+        workers=loader_workers,
+    ).prefetch(prefetch_batches)
+
+    logging.info('Video loader: workers=%d, decode=%s, decode_threads=%d, prefetch_batches=%d',
+                 loader_workers, video_decode_mode, video_decode_threads, prefetch_batches)
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
@@ -747,6 +735,14 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=50, type=int)
     parser.add_argument('--skip_modulo', type=int, default=2)
     parser.add_argument('--lmdb_folder', type=str)
+    parser.add_argument('--loader_workers', type=int, default=4,
+                        help='Parallel clip loaders (start with 4 on an 8-12 CPU host).')
+    parser.add_argument('--video_decode_mode', choices=['auto', 'sequential'], default='auto',
+                        help='auto skips unselected MJPEG frames; other codecs decode sequentially.')
+    parser.add_argument('--video_decode_threads', type=int, default=1,
+                        help='Threads per generic decoder; selective MJPEG always uses one. 0 = FFmpeg auto.')
+    parser.add_argument('--prefetch_batches', type=int, default=1,
+                        help='Bounded batch prefetch; 0 disables prefetch.')
     parser.add_argument('--fine_tune', action='store_true')
     parser.add_argument('--pretrained_chkp_dir', type=str)
     parser.add_argument('--movinet_chkp_dir', type=str)
@@ -870,4 +866,8 @@ if __name__ == "__main__":
         survival_blanking_days=args.survival_blanking_days,
         survival_prevalent_policy=args.survival_prevalent_policy,
         run_validation_inference=args.run_validation_inference,
+        loader_workers=args.loader_workers,
+        video_decode_mode=args.video_decode_mode,
+        video_decode_threads=args.video_decode_threads,
+        prefetch_batches=args.prefetch_batches,
     )

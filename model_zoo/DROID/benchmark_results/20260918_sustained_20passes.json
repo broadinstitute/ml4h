@@ -1,0 +1,189 @@
+{
+  "configuration": {
+    "lmdb_dir": "/private/tmp/droid-synthetic-20260918/lmdb",
+    "wide_file": "/private/tmp/droid-synthetic-20260918/wide.pq",
+    "output": "model_zoo/DROID/benchmark_results/20260918_sustained_20passes.json",
+    "batch_size": 4,
+    "nframes": 32,
+    "skip_modulo": 4,
+    "samples": 96,
+    "workers": [
+      4
+    ],
+    "repeats": 20,
+    "prefetch_batches": 1,
+    "randomize_start_frame": true,
+    "profile_dir": null,
+    "seed": 0,
+    "case": "parallel_auto_w4"
+  },
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "cpu_count": 14,
+  "cpu_model": "arm",
+  "system_memory_gib": 36,
+  "versions": {
+    "numpy": "2.1.3",
+    "av": "18.1.0",
+    "lmdb": "2.3.0",
+    "tensorflow": "2.19.0",
+    "pandas": "3.0.6",
+    "ml4ht": "0.0.10"
+  },
+  "tf_use_legacy_keras": "1",
+  "source_sha256": {
+    "benchmark_dataloader.py": "b3c314cdc42e97a6313c179b99fb3bbe579ff9eb08e9c5d1e79e164ce33f5de0",
+    "benchmark_reference.py": "a02bfafb6e585e4f656874cd11db93a2213f6d8fe793d2bd4faa93aed776caca",
+    "data_descriptions/echo.py": "f66748a4cc1355b865a415b14bd8d738409349cb59a6cfa06391f67b2571b70e",
+    "data_descriptions/echo_dataset.py": "7258f786ed7553130d910cb7161ebeb5ec79528963b66493c27d4751aa08030d",
+    "data_descriptions/video_io.py": "a0bb446d50a39e5b3229193d3d29ce11993e69b8fe47b661dc19a13c657634c7"
+  },
+  "cache_condition": "One full warmup epoch per case; warm OS cache; local synthetic data unless specified.",
+  "results": [
+    {
+      "case": "parallel_auto_w4",
+      "samples_per_second": 144.1575592295361,
+      "seconds_per_batch": 0.027747417626785467,
+      "rates": [
+        147.0225444469938,
+        142.90061188099557,
+        147.12873853496208,
+        142.75118580132772,
+        141.87103886992654,
+        149.02390321128544,
+        143.7917177680651,
+        143.93984206330873,
+        146.94210247251723,
+        144.6530180276398,
+        149.6667576011427,
+        142.5675701034257,
+        144.3752763957635,
+        149.64791819577115,
+        147.26980374283158,
+        143.33650426951272,
+        141.41428387403005,
+        143.36261874595567,
+        143.2064128364426,
+        149.1018556360837
+      ],
+      "epochs": [
+        {
+          "seconds": 0.6529610840370879,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6717955839121714,
+          "samples": 96
+        },
+        {
+          "seconds": 0.652489791973494,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6724987919442356,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6766708749346435,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6441919580101967,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6676323330029845,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6669452920323238,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6533185410080478,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6636570830596611,
+          "samples": 96
+        },
+        {
+          "seconds": 0.641425000037998,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6733649169327691,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6649337919661775,
+          "samples": 96
+        },
+        {
+          "seconds": 0.641505750012584,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6518647921038792,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6697526250500232,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6788564589805901,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6696306250523776,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6703610410913825,
+          "samples": 96
+        },
+        {
+          "seconds": 0.6438551659230143,
+          "samples": 96
+        }
+      ],
+      "next_batch_p50_ms": 27.1499584778212,
+      "next_batch_p95_ms": 32.05506667145527,
+      "setup_seconds": 0.03327862499281764,
+      "first_pass_seconds": 0.6699909169692546,
+      "peak_rss_mib": 832.890625,
+      "rss_after_warmup_mib": 808.359375,
+      "rss_after_epochs_mib": [
+        808.734375,
+        808.953125,
+        808.9375,
+        831.15625,
+        831.40625,
+        831.484375,
+        831.65625,
+        831.65625,
+        831.671875,
+        831.671875,
+        831.703125,
+        831.703125,
+        831.703125,
+        831.703125,
+        831.703125,
+        831.734375,
+        831.734375,
+        831.75,
+        831.75,
+        831.75
+      ],
+      "fd_delta": 0,
+      "warm_read_mib_per_second": 5361.178792648082,
+      "warm_read_ms_per_clip": 0.07468271845330794,
+      "mean_encoded_mib": 0.40038740634918213,
+      "tensorflow_devices": [
+        "/physical_device:CPU:0"
+      ]
+    }
+  ],
+  "note": "Separate sustained run of the same four-worker pipeline, after one warmup pass. This is a finite 96-sample dataset consumed 20 times."
+}
+
