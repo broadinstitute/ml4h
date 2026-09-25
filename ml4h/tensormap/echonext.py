@@ -9,12 +9,33 @@ def _read_dataset(hd5, path):
     return hd5[path]
 
 
-def echonext_ecg_2500_12_from_hd5(tm, hd5, dependents=None):
-    """Return ECG waveform as 2500 x 12 x 1."""
+def _read_ecg_2500_12(hd5):
     x = np.array(_read_dataset(hd5, "ecg/waveform"), dtype=np.float32)
     if x.shape != (2500, 12):
         raise ValueError(f"Expected ecg/waveform shape (2500, 12), got {x.shape} in {hd5.filename}")
-    return x[:, :, np.newaxis]
+    return x
+
+
+def _upsample_ecg(x, n_samples):
+    """Linearly interpolate each lead of a (samples, leads) ECG to n_samples."""
+    x_old = np.arange(x.shape[0])
+    x_new = np.linspace(0, x.shape[0] - 1, n_samples)
+    return np.stack([np.interp(x_new, x_old, x[:, lead]) for lead in range(x.shape[1])], axis=-1).astype(np.float32)
+
+
+def echonext_ecg_2500_12_from_hd5(tm, hd5, dependents=None):
+    """Return ECG waveform as 2500 x 12 x 1."""
+    return _read_ecg_2500_12(hd5)[:, :, np.newaxis]
+
+
+def echonext_ecg_2500_from_hd5(tm, hd5, dependents=None):
+    """Return ECG waveform as 2500 x 12, for 1D convolutions."""
+    return _read_ecg_2500_12(hd5)
+
+
+def echonext_ecg_5000_from_hd5(tm, hd5, dependents=None):
+    """Return ECG waveform linearly upsampled from 2500 x 12 to 5000 x 12."""
+    return _upsample_ecg(_read_ecg_2500_12(hd5), 5000)
 
 
 def echonext_ecg_1x2500x12_from_hd5(tm, hd5, dependents=None):
@@ -55,6 +76,18 @@ echonext_ecg_2500_12 = TensorMap(
     "echonext_ecg_2500_12",
     shape=(2500, 12, 1),
     tensor_from_file=echonext_ecg_2500_12_from_hd5,
+)
+
+echonext_ecg_2500 = TensorMap(
+    "echonext_ecg_2500",
+    shape=(2500, 12),
+    tensor_from_file=echonext_ecg_2500_from_hd5,
+)
+
+echonext_ecg_5000 = TensorMap(
+    "echonext_ecg_5000",
+    shape=(5000, 12),
+    tensor_from_file=echonext_ecg_5000_from_hd5,
 )
 
 echonext_ecg_1x2500x12 = TensorMap(
