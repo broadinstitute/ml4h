@@ -3,7 +3,8 @@
 import tensorflow as tf
 
 
-def build_study_attention_model(embedding_dim, spec, num_heads=4, key_dim=64, dropout=0.1):
+def build_study_attention_model(embedding_dim, spec, num_heads=4, key_dim=64,
+                                dropout=0.1, pooling='attention'):
     """Predict the same DROID heads once per study from a variable-length clip set.
 
     The mask is explicit so padded clips cannot act as keys or enter the pooled
@@ -17,7 +18,16 @@ def build_study_attention_model(embedding_dim, spec, num_heads=4, key_dim=64, dr
     )(embeddings, embeddings, attention_mask=tf.expand_dims(mask, axis=1))
     features = tf.keras.layers.LayerNormalization(name='attention_norm')(embeddings + attended)
     valid = tf.cast(tf.expand_dims(mask, axis=-1), features.dtype)
-    pooled = tf.reduce_sum(features * valid, axis=1) / tf.reduce_sum(valid, axis=1)
+    if pooling == 'attention':
+        scores = tf.keras.layers.Dense(1, name='attention_pool_score')(features)
+        scores = tf.where(tf.expand_dims(mask, axis=-1), scores,
+                          tf.fill(tf.shape(scores), tf.cast(-1e9, scores.dtype)))
+        weights = tf.nn.softmax(scores, axis=1)
+        pooled = tf.reduce_sum(features * weights, axis=1)
+    elif pooling == 'mean':
+        pooled = tf.reduce_sum(features * valid, axis=1) / tf.reduce_sum(valid, axis=1)
+    else:
+        raise ValueError("pooling must be 'attention' or 'mean'.")
     pooled = tf.keras.layers.Dropout(dropout, name='study_dropout')(pooled)
 
     outputs = []

@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from data_descriptions.study_embeddings import (
     assign_splits, join_embeddings_wide, make_study_dataset, make_study_records,
+    smoke_test_splits,
 )
 from model_descriptions.droid_model import TrainedRun, head_spec, validate_survival_tasks
 from model_descriptions.study_attention import build_study_attention_model
@@ -66,7 +67,7 @@ def test_study_grouping_and_patient_splits(tmp_path):
 def test_mask_and_permutation_do_not_change_study_prediction():
     tf.keras.utils.set_random_seed(7)
     model = build_study_attention_model(4, _run().head_spec, num_heads=2, key_dim=2,
-                                        dropout=0)
+                                        dropout=0, pooling='attention')
     clips = np.array([[1., 2., 3., 4.], [4., 3., 2., 1.]], np.float32)
     plain = model({'embeddings': clips[None],
                    'mask': np.array([[True, True]])}, training=False)
@@ -80,3 +81,25 @@ def test_mask_and_permutation_do_not_change_study_prediction():
     np.testing.assert_allclose(plain, padded, atol=1e-5)
     np.testing.assert_allclose(plain, permuted, atol=1e-5)
     assert plain.shape == (1, 5)
+
+
+def test_mean_pooling_remains_available_as_baseline():
+    model = build_study_attention_model(4, _run().head_spec, pooling='mean')
+    prediction = model({'embeddings': np.ones((1, 2, 4), np.float32),
+                        'mask': np.array([[True, True]])})
+    assert prediction.shape == (1, 5)
+
+
+def test_smoke_test_selects_100_distinct_patients():
+    splits = {
+        'patient_train': list(range(1, 201)),
+        'patient_valid': list(range(201, 251)),
+        'patient_internal_test': list(range(251, 301)),
+        'patient_test': list(range(301, 351)),
+    }
+    subset, patient_ids = smoke_test_splits(splits, 100)
+    assert len(subset['patient_train']) == 80
+    assert len(subset['patient_valid']) == 10
+    assert len(subset['patient_internal_test']) == 10
+    assert subset['patient_test'] == []
+    assert len(patient_ids) == 100

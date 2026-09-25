@@ -106,10 +106,11 @@ predictions.
 ### Study-level attention from saved embeddings
 
 `echo_study_attention_training_recipe.py` trains one prediction per study from the
-saved clip embeddings. It uses one masked self-attention layer, mean pooling over
-valid clips, and the source run's regression, classification, and discrete-time
+saved clip embeddings. It uses one masked self-attention layer, learned attention
+pooling over valid clips, and the source run's regression, classification, and discrete-time
 survival outputs. All eligible views from the embedding run enter the same
-study; no fixed clip limit or view ordering is imposed.
+study; no fixed clip limit or view ordering is imposed. `--pooling mean` retains
+the equal-weight baseline.
 
 Run it in the DROID TensorFlow image (on Apple Silicon, use
 `--platform linux/amd64`):
@@ -144,3 +145,22 @@ Study assignment follows the patient train/valid/test lists in `--splits_file`.
 embeddings are present. The recipe saves a new run with
 source provenance, study counts, best weights, validation artifacts, and one
 prediction row per validation or test study.
+
+For a small end-to-end check, `--smoke_test_patients 100` uses the first 80
+training, 10 validation, and 10 internal-test patients from the split file
+(external test if no internal test list is available). It reads only those
+patients' embedding rows and fails if any selected patient lacks eligible clips.
+
+The Batch smoke-test job is in `batch_jobs/study_attention_test/`. Once this
+`ml4h` branch is pushed, submit it with:
+
+```commandline
+bash model_zoo/DROID/batch_jobs/study_attention_test/submit-test.sh \
+    gs://.../artifacts/training_runs/RUN
+```
+
+An optional second argument overrides the inference embedding directory. The
+job uses the required DROID image on an 8-CPU VM, trains for two epochs with
+learned attention pooling, and writes its results under
+`gs://mgb-home/alalusim/droid-af/artifacts/study_attention_tests/`. It uses saved
+embeddings and does not decode echo videos.

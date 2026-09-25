@@ -32,8 +32,14 @@ def embedding_files(directories):
     return sorted(set(files))
 
 
-def read_embeddings(paths):
-    tables = [read_parquet(path) for path in paths]
+def read_embeddings(paths, patient_ids=None):
+    tables = []
+    for path in paths:
+        table = read_parquet(path)
+        if patient_ids is not None:
+            patients = table['sample_id'].astype(str).str.split('_', n=1).str[0].astype(int)
+            table = table.loc[patients.isin(patient_ids)]
+        tables.append(table)
     df = pd.concat(tables, ignore_index=True)
     columns = sorted(
         (c for c in df if c.startswith('embedding_') and c[10:].isdigit()),
@@ -62,11 +68,15 @@ def select_source_views(wide, params):
 
 
 def join_embeddings_wide(embeddings, wide_files, params, output_labels, survival_tasks,
-                         source_selected_path=None, output_scaling=None):
+                         source_selected_path=None, output_scaling=None,
+                         patient_ids=None):
     tables = []
     for path in wide_files:
         table = read_parquet(path)
         table = select_source_views(table, params)
+        if patient_ids is not None:
+            patients = table['sample_id'].astype(str).str.split('_', n=1).str[0].astype(int)
+            table = table.loc[patients.isin(patient_ids)].copy()
         if output_scaling and path != source_selected_path:
             for label, stats in output_scaling.items():
                 if label in table:
@@ -106,6 +116,32 @@ def join_embeddings_wide(embeddings, wide_files, params, output_labels, survival
         raise ValueError('No sample_id values match between embeddings and wide files.')
     logging.info('Matched %d of %d embeddings to eligible wide-file rows.', len(merged), len(embeddings))
     return merged
+
+
+def smoke_test_splits(splits, n_patients):
+    """Choose a deterministic 80/10/10 patient subset from existing split lists."""
+    if n_patients < 10 or n_patients % 10:
+        raise ValueError('--smoke_test_patients must be a multiple of 10 and at least 10.')
+    n_train = n_patients * 8 // 10
+    n_valid = n_patients // 10
+    n_test = n_patients - n_train - n_valid
+    train = splits['patient_train'][:n_train]
+    valid = splits['patient_valid'][:n_valid]
+    test_key = ('patient_internal_test'
+                if len(splits.get('patient_internal_test', [])) >= n_test
+                else 'patient_test')
+    test = splits.get(test_key, [])[:n_test]
+    if len(train) != n_train or len(valid) != n_valid or len(test) != n_test:
+        raise ValueError('The splits file lacks enough patients for the requested smoke test.')
+    chosen = dict(splits)
+    chosen['patient_train'] = train
+    chosen['patient_valid'] = valid
+    chosen['patient_internal_test'] = test if test_key == 'patient_internal_test' else []
+    chosen['patient_test'] = test if test_key == 'patient_test' else []
+    patient_ids = set(map(int, train + valid + test))
+    if len(patient_ids) != n_patients:
+        raise ValueError('The selected patient splits overlap.')
+    return chosen, patient_ids
 
 
 def _classification_index(mapping, value):

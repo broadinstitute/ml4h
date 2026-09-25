@@ -19,7 +19,7 @@ import tensorflow as tf
 from ml4h.metrics import survival_likelihood_loss
 from data_descriptions.study_embeddings import (
     assign_splits, embedding_files, join_embeddings_wide, make_study_dataset,
-    make_study_records, read_embeddings,
+    make_study_records, read_embeddings, smoke_test_splits,
 )
 from droid_callbacks import _survival_metrics_report
 from echo_supervised_training_recipe import WarmupCosineDecay
@@ -181,17 +181,22 @@ def main(args):
     split_path = args.splits_file or params['splits_file']
     splits = read_json(split_path)
     train_subset = args.n_train_patients or params.get('n_train_patients', 'all')
+    patient_ids = None
+    if args.smoke_test_patients is not None:
+        splits, patient_ids = smoke_test_splits(splits, args.smoke_test_patients)
+        train_subset = 'all'
 
     selected_path = f'{source_dir}/wide_df_selected.pq'
     wide_files = args.wide_file or [selected_path]
     embedding_dirs = args.embeddings_dir or [_default_embedding_root(source_dir)]
     paths = embedding_files(embedding_dirs)
-    embeddings, columns = read_embeddings(paths)
+    embeddings, columns = read_embeddings(paths, patient_ids=patient_ids)
     scaling_path = f'{source_dir}/{OUTPUT_SCALING_FILE}'
     output_scaling = read_json(scaling_path) if tf.io.gfile.exists(scaling_path) else {}
     merged = join_embeddings_wide(
         embeddings, wide_files, params, run.output_labels, run.survival_tasks,
         source_selected_path=selected_path, output_scaling=output_scaling,
+        patient_ids=patient_ids,
     )
     records = make_study_records(merged, columns, run)
     del embeddings, merged
@@ -200,6 +205,14 @@ def main(args):
         logging.info('%s: %d studies, %d patients, %d clips', name, len(values),
                      len({record['patient_id'] for record in values}),
                      sum(len(record['sample_ids']) for record in values))
+    if patient_ids is not None:
+        represented = {record['patient_id'] for record in records}
+        if represented != patient_ids:
+            missing = sorted(patient_ids - represented)
+            raise ValueError(
+                f'{len(missing)} selected smoke-test patients have no eligible '
+                f'embeddings and wide-file labels. Examples: {missing[:10]}',
+            )
     if not assigned['train'] or not assigned['valid']:
         raise ValueError('Training and validation each need at least one eligible study.')
 
@@ -217,7 +230,7 @@ def main(args):
 
     model = build_study_attention_model(
         embedding_dim, run.head_spec, args.attention_heads,
-        args.attention_key_dim, args.dropout,
+        args.attention_key_dim, args.dropout, args.pooling,
     )
     losses = {}
     if run.n_regression:
@@ -286,6 +299,10 @@ def make_parser():
     parser.add_argument('--splits_file', help='Defaults to the source run splits file.')
     parser.add_argument('--n_train_patients',
                         help='Defaults to the source run training subset; use all for all training patients.')
+    parser.add_argument('--smoke_test_patients', type=int,
+                        help='Use exactly this many patient IDs, split 80/10/10 across '
+                             'train/valid/internal-test (or external test). Overrides the source '
+                             'training-subset size and filters embedding shards before joining.')
     parser.add_argument('--output_labels', action='append',
                         help='Override source run regression/classification outputs (repeatable).')
     parser.add_argument('--output_labels_types',
@@ -299,6 +316,8 @@ def make_parser():
     parser.add_argument('--attention_heads', type=int, default=4)
     parser.add_argument('--attention_key_dim', type=int, default=64)
     parser.add_argument('--dropout', type=float, default=0.1)
+    parser.add_argument('--pooling', choices=['attention', 'mean'], default='attention',
+                        help='Pool post-attention clip features into one study vector.')
     parser.add_argument('--optimizer', choices=['adam', 'adamw', 'rmsprop'])
     parser.add_argument('--learning_rate', type=float)
     parser.add_argument('--lr_schedule', choices=['constant', 'cosine'])

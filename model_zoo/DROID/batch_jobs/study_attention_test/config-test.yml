@@ -1,0 +1,55 @@
+taskGroups:
+  - taskSpec:
+      computeResource:
+        cpuMilli: 8000
+        memoryMib: 28000
+      runnables:
+        - container:
+            imageUri: us-central1-docker.pkg.dev/mgh-force-1711739579/maa-docker/droid-tf-2-19:latest
+            commands:
+              - /bin/bash
+              - -c
+              - |
+                  set -euo pipefail
+                  export GIT_LFS_SKIP_SMUDGE=1
+                  git clone --depth 1 --branch feat/droid-study-attention-survival \
+                    https://x-access-token:${GH_TOKEN}@github.com/broadinstitute/ml4h.git /workspace/ml4h
+                  git -C /workspace/ml4h checkout __ML4H_COMMIT__
+                  bash /workspace/ml4h/model_zoo/DROID/batch_jobs/study_attention_test/run-test.sh
+          environment:
+            variables:
+              TRAINING_RUN_DIR: "__TRAINING_RUN_DIR__"
+              EMBEDDINGS_DIR: "__EMBEDDINGS_DIR__"
+              OUTPUT_ROOT: gs://mgb-home/alalusim/droid-af/artifacts/study_attention_tests
+            secretVariables:
+              GH_TOKEN: projects/mgh-force-1711739579/secrets/maa-droid-af-gh-token/versions/latest
+      volumes:
+        - gcs:
+            remotePath: mgb-home/alalusim/droid-af
+          mountPath: /mnt/disks/droid-af
+      maxRetryCount: 0
+      maxRunDuration: 21600s
+    taskCount: 1
+    parallelism: 1
+
+logsPolicy:
+  destination: CLOUD_LOGGING
+
+allocationPolicy:
+  serviceAccount:
+    email: maa-batch-jobs@mgh-force-1711739579.iam.gserviceaccount.com
+  instances:
+    - policy:
+        machineType: e2-standard-8
+        provisioningModel: STANDARD
+        bootDisk:
+          type: pd-balanced
+          sizeGb: 100
+  location:
+    allowedLocations:
+      - zones/us-central1-a
+  network:
+    networkInterfaces:
+      - network: projects/mgh-force-1711739579/global/networks/default
+        subnetwork: projects/mgh-force-1711739579/regions/us-central1/subnetworks/default
+        noExternalIpAddress: true
