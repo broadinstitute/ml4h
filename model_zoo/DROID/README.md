@@ -102,3 +102,45 @@ classification head (per-class probabilities are in `prediction_{split_idx}_one_
 `survival_<task>_cumulative`. `--extract_embeddings` also saves the fine-tuned encoder's `embedding_i`
 columns, one row per clip, to the matching `inference_embeddings_*` folder, computed in the same pass as the
 predictions.
+
+### Study-level attention from saved embeddings
+
+`echo_study_attention_training_recipe.py` trains one prediction per study from the
+saved clip embeddings. It uses one masked self-attention layer, mean pooling over
+valid clips, and the source run's regression, classification, and discrete-time
+survival outputs. All eligible views from the embedding run enter the same
+study; no fixed clip limit or view ordering is imposed.
+
+Run it in the DROID TensorFlow image (on Apple Silicon, use
+`--platform linux/amd64`):
+
+```commandline
+python model_zoo/DROID/echo_study_attention_training_recipe.py \
+    --source_run_dir gs://.../artifacts/training_runs/EXPERIMENT/RUN
+```
+
+The source run provides its selected views, labels, survival task, patient split
+file, training subset, optimizer, schedule, and early stopping defaults. The
+recipe looks for embeddings in
+`gs://.../artifacts/inference/RUN/inference_embeddings_*/prediction_*.pq` and
+uses the run's `wide_df_selected.pq` for labels. All those paths and the
+training settings have CLI overrides. The input Parquet shards must cover every
+eligible wide-file clip; missing or duplicate embeddings fail before training.
+
+If test embeddings and labels were produced separately, pass both wide files
+and both inference output roots explicitly:
+
+```commandline
+python model_zoo/DROID/echo_study_attention_training_recipe.py \
+    --source_run_dir gs://.../artifacts/training_runs/EXPERIMENT/RUN \
+    --embeddings_dir gs://.../artifacts/inference/RUN \
+    --embeddings_dir gs://.../artifacts/test_inference/RUN \
+    --wide_file gs://.../artifacts/training_runs/EXPERIMENT/RUN/wide_df_selected.pq \
+    --wide_file /mnt/disks/droid-af/data/droid_af_wide_test.pq
+```
+
+Study assignment follows the patient train/valid/test lists in `--splits_file`.
+`patient_internal_test` and `patient_test` are evaluated separately if their
+embeddings are present. The recipe saves a new run with
+source provenance, study counts, best weights, validation artifacts, and one
+prediction row per validation or test study.
