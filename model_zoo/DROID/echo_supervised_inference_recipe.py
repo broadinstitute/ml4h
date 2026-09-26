@@ -1,11 +1,13 @@
 import argparse
-import io
 import logging
 import os
 import sys
+from contextlib import ExitStack
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import tensorflow as tf
 
 from data_descriptions.echo import LmdbEchoStudyVideoDataDescription
@@ -19,11 +21,40 @@ tf.get_logger().setLevel(logging.ERROR)
 SAVE_ONEHOT_DF_FOR_EACH_CLASS = True
 
 
-def _write_parquet(df, path):
-    buffer = io.BytesIO()
-    df.to_parquet(buffer)
-    with tf.io.gfile.GFile(path, 'wb') as pq_file:
-        pq_file.write(buffer.getvalue())
+class _ParquetBatchWriter:
+    """Write batches to one Parquet file without retaining the full file in RAM."""
+
+    def __init__(self, path):
+        self.path = path
+        self.temporary_path = f'{path}.tmp'
+        self.parquet_file = None
+        self.writer = None
+
+    def __enter__(self):
+        self.parquet_file = tf.io.gfile.GFile(self.temporary_path, 'wb')
+        return self
+
+    def write(self, df):
+        table = pa.Table.from_pandas(df, preserve_index=False)
+        if self.writer is None:
+            self.writer = pq.ParquetWriter(self.parquet_file, table.schema)
+        self.writer.write_table(table)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            if self.writer is not None:
+                self.writer.close()
+            self.parquet_file.close()
+            if exc_type is None:
+                if self.writer is None:
+                    raise ValueError(f'No prediction batches were produced for {self.path}')
+                tf.io.gfile.rename(self.temporary_path, self.path, overwrite=True)
+            elif tf.io.gfile.exists(self.temporary_path):
+                tf.io.gfile.remove(self.temporary_path)
+        except Exception:
+            if tf.io.gfile.exists(self.temporary_path):
+                tf.io.gfile.remove(self.temporary_path)
+            raise
 
 
 def main(
@@ -171,45 +202,62 @@ def main(
     def prediction_path(fname_suffix='', folder=output_folder):
         return os.path.join(folder, f'prediction_{split_idx}' + fname_suffix + '.pq')
 
-    def columns_df(pred, column_prefix='prediction'):
-        df = pd.DataFrame({'sample_id': inference_ids_split})
+    def columns_df(pred, column_prefix='prediction', sample_ids=None):
+        df = pd.DataFrame({'sample_id': sample_ids})
         for i_p in range(pred.shape[1]):
             df[f'{column_prefix}_{i_p}'] = pred[:, i_p]
         return df
 
-    # One pass over the clips; with --extract_embeddings the encoder output is returned alongside the heads.
-    if extract_embeddings:
-        predictions = with_embeddings(model_plus_head, encoder).predict(io_inference_ds, verbose=1)
-        embeddings, predictions = predictions[0], predictions[1:]
-        _write_parquet(columns_df(embeddings, 'embedding'),
-                       prediction_path(folder=make_output_folder('inference_embeddings')))
-    else:
-        predictions = model_plus_head.predict(io_inference_ds, verbose=1)
-        if not isinstance(predictions, (list, tuple)):
-            predictions = [predictions]
+    # Write each bounded batch as it is inferred, keeping only one batch of predictions in memory.
+    embedding_model = with_embeddings(model_plus_head, encoder) if extract_embeddings else None
+    embedding_folder = make_output_folder('inference_embeddings') if extract_embeddings else None
+    output_names = model_plus_head.output_names
+    with ExitStack() as writers:
+        prediction_writer = writers.enter_context(_ParquetBatchWriter(prediction_path()))
+        onehot_writers = {}
+        for output_name in output_names:
+            if output_name.startswith('cls_') and SAVE_ONEHOT_DF_FOR_EACH_CLASS:
+                cls_name = output_name[len('cls_'):]
+                onehot_writers[cls_name] = writers.enter_context(
+                    _ParquetBatchWriter(prediction_path('_one_hot_' + cls_name)))
+        embedding_writer = None
+        if extract_embeddings:
+            embedding_writer = writers.enter_context(
+                _ParquetBatchWriter(prediction_path(folder=embedding_folder)))
 
-    # Outputs follow the model: regression ('echolab'), one 'cls_<label>' per classification
-    # task, then one 'survival_<task>' per survival task.
-    df = pd.DataFrame({'sample_id': inference_ids_split})
-    for output_name, pred in zip(model_plus_head.output_names, predictions):
-        if output_name == 'echolab':
-            for i_p in range(pred.shape[1]):
-                df[f'prediction_{i_p}'] = pred[:, i_p]
-        elif output_name.startswith('cls_'):
-            # Class labels go in the joint file; per-class probabilities in a separate file (flag dependent)
-            cls_name = output_name[len('cls_'):]
-            if SAVE_ONEHOT_DF_FOR_EACH_CLASS:
-                _write_parquet(columns_df(pred), prediction_path('_one_hot_' + cls_name))
-            cls_map_inv = {v: k for k, v in run.cls_category_map_dicts[cls_name].items()}
-            df[cls_name] = [cls_map_inv[i] for i in pred.argmax(axis=1)]
-        elif output_name.startswith('survival_'):
-            # Conditional survival probability per interval and cumulative survival over the whole window
-            for i_p in range(pred.shape[1]):
-                df[f'{output_name}_{i_p}'] = pred[:, i_p]
-            df[f'{output_name}_cumulative'] = np.prod(pred, axis=1)
-        else:
-            raise ValueError(f'Unexpected model output {output_name}')
-    _write_parquet(df, prediction_path())
+        row_offset = 0
+        for images in io_inference_ds:
+            batch_size_actual = int(tf.shape(images)[0].numpy())
+            batch_ids = inference_ids_split[row_offset:row_offset + batch_size_actual]
+            row_offset += batch_size_actual
+
+            batch_outputs = (embedding_model if extract_embeddings else model_plus_head)(images, training=False)
+            if not isinstance(batch_outputs, (list, tuple)):
+                batch_outputs = [batch_outputs]
+            batch_outputs = [np.asarray(output.numpy()) for output in batch_outputs]
+
+            if extract_embeddings:
+                embedding_writer.write(columns_df(batch_outputs[0], 'embedding', batch_ids))
+                batch_outputs = batch_outputs[1:]
+
+            df = pd.DataFrame({'sample_id': batch_ids})
+            for output_name, pred in zip(output_names, batch_outputs):
+                if output_name == 'echolab':
+                    for i_p in range(pred.shape[1]):
+                        df[f'prediction_{i_p}'] = pred[:, i_p]
+                elif output_name.startswith('cls_'):
+                    cls_name = output_name[len('cls_'):]
+                    if cls_name in onehot_writers:
+                        onehot_writers[cls_name].write(columns_df(pred, 'prediction', batch_ids))
+                    cls_map_inv = {v: k for k, v in run.cls_category_map_dicts[cls_name].items()}
+                    df[cls_name] = [cls_map_inv[i] for i in pred.argmax(axis=1)]
+                elif output_name.startswith('survival_'):
+                    for i_p in range(pred.shape[1]):
+                        df[f'{output_name}_{i_p}'] = pred[:, i_p]
+                    df[f'{output_name}_cumulative'] = np.prod(pred, axis=1)
+                else:
+                    raise ValueError(f'Unexpected model output {output_name}')
+            prediction_writer.write(df)
 
 
 if __name__ == "__main__":
