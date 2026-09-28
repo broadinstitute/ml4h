@@ -170,6 +170,7 @@ def main(
         logging.info(mean_outputs)
         logging.info(std_outputs)
 
+    train_ids = list(set(train_ids).intersection(set(working_ids)))
     valid_ids = list(set(valid_ids).intersection(set(working_ids)))
     print(f"valid_ids: {len(valid_ids)}") 
 
@@ -224,7 +225,7 @@ def main(
         # ---------------------------------------------------------------- #
     )
 
-    body_train_ids = tf.data.Dataset.from_tensor_slices(working_ids).shuffle(len(working_ids),
+    body_train_ids = tf.data.Dataset.from_tensor_slices(train_ids).shuffle(len(train_ids),
                                                                            reshuffle_each_iteration=True).batch(
         batch_size, drop_remainder=True)
     print(f"body_train_ids: {len(body_train_ids)}")
