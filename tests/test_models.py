@@ -133,6 +133,43 @@ class TestMakeMultimodalMultitaskModel:
         """
         assert_model_trains(input_output_tmaps[0], input_output_tmaps[1])
 
+    def test_kronecker_merge_three_modalities(self):
+        input_tmaps = [TensorMap(f'kron_input_{i}', shape=(2,)) for i in range(3)]
+        output_tmaps = [TensorMap('kron_output', shape=(1,))]
+        params = DEFAULT_PARAMS.copy()
+        params['encoder_blocks'] = ['dense_encode']
+        params['merge_blocks'] = ['kronecker']
+        params['decoder_blocks'] = ['dense_decode']
+        params['dense_layers'] = [4, 2]
+
+        m, _, _, _ = make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            **params,
+        )
+        assert_model_trains(input_tmaps, output_tmaps, m)
+
+    def test_paired_kronecker_merge_multiple_pairs(self):
+        input_tmaps = [TensorMap(f'paired_kron_input_{i}', shape=(2,)) for i in range(3)]
+        output_tmaps = [TensorMap('paired_kron_output', shape=(1,))]
+        pairs = [(input_tmaps[0], input_tmaps[1]), (input_tmaps[1], input_tmaps[2])]
+        params = DEFAULT_PARAMS.copy()
+        params['encoder_blocks'] = ['dense_encode']
+        params['merge_blocks'] = ['pair']
+        params['decoder_blocks'] = ['dense_decode']
+        params['dense_layers'] = [4, 2]
+        params['pair_loss'] = 'contrastive'
+        params['pair_merge'] = 'kronecker'
+        params['batch_size'] = 2
+
+        m, _, _, _ = make_multimodal_multitask_model(
+            input_tmaps,
+            output_tmaps,
+            pairs=pairs,
+            **params,
+        )
+        assert_model_trains(input_tmaps, output_tmaps, m)
+
     @pytest.mark.slow
     @pytest.mark.parametrize(
         'input_tmaps',

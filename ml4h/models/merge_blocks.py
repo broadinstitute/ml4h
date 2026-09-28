@@ -1,4 +1,5 @@
 import logging
+from itertools import combinations
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -66,7 +67,7 @@ class FlatConcatDenseBlock(Block):
 
 class KroneckerBlock(Block):
     """
-    Outer-product of all paired inputs, applies a dense layer
+    Pairwise outer-product of inputs, applies a dense layer
     """
     def __init__(
             self,
@@ -79,7 +80,6 @@ class KroneckerBlock(Block):
             **kwargs,
     ):
         self.pairs = pairs
-        self.encoding_size = dense_layers[-1]
         self.fully_connected = DenseBlock(
             widths=dense_layers,
             activation=activation,
@@ -90,9 +90,32 @@ class KroneckerBlock(Block):
         ) if dense_layers else None
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
-        if len(y) == 2:
-            y = KroneckerProductLayer(self.encoding_size)(y)
+        if intermediates is None:
+            raise ValueError("KroneckerBlock requires intermediate tensors to merge.")
+        flattened = {tm: Flatten()(tensors[-1]) for tm, tensors in intermediates.items()}
+        if not flattened:
+            raise ValueError("KroneckerBlock requires at least one intermediate tensor to merge.")
+        if self.pairs:
+            missing = [tm for pair in self.pairs for tm in pair if tm not in flattened]
+            if missing:
+                raise ValueError(f"KroneckerBlock pairs contain TensorMaps with no intermediate tensors: {missing}")
+            kroneckers = [
+                KroneckerProductLayer()([flattened[left], flattened[right]])
+                for left, right in self.pairs
+            ]
+            y = concatenate(kroneckers) if len(kroneckers) > 1 else kroneckers[0]
+        else:
+            tensors = list(flattened.values())
+            if len(tensors) == 1:
+                y = tensors[0]
+            elif len(tensors) == 2:
+                y = KroneckerProductLayer()(tensors)
+            else:
+                kroneckers = [
+                    KroneckerProductLayer()([left, right])
+                    for left, right in combinations(tensors, 2)
+                ]
+                y = concatenate(kroneckers)
 
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
@@ -373,8 +396,11 @@ class PairLossBlock(Block):
     #@tf.function()
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
         y = []
+        pair_outputs = []
         for left, right in self.pairs:
-            y.extend(self.loss_layer([intermediates[left][-1], intermediates[right][-1]]))
+            pair_output = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
+            pair_outputs.append(pair_output)
+            y.extend(pair_output)
         if self.pair_merge == 'average':
             return Average()(y)
         elif self.pair_merge == 'concat':
@@ -383,8 +409,8 @@ class PairLossBlock(Block):
             return DropoutMergeLayer()(y)
         elif self.pair_merge == 'kronecker':
             krons = []
-            for left, right in self.pairs:
-                kron = KroneckerProductLayer(self.encoding_size)(y)
+            for pair_output in pair_outputs:
+                kron = KroneckerProductLayer()(pair_output)
                 krons.append(kron)
             if len(self.pairs) > 1:
                 kron = concatenate(krons)

@@ -83,6 +83,72 @@ def _recompile_for_fair_test(model):
     return model
 
 
+class _EchoPredictionModel(tf.keras.Model):
+    def call(self, inputs, training=False):
+        return {
+            "regression_task": inputs["regression_prediction"],
+            "binary_task": inputs["binary_prediction"],
+        }
+
+
+def test_evaluate_multitask_performance_data_includes_ci_and_counts():
+    regression_truth = np.arange(8, dtype=np.float32)[:, None]
+    regression_prediction = (np.arange(8, dtype=np.float32) + 0.1)[:, None]
+    binary_truth = np.array([0, 0, 0, 1, 1, 1, 0, 1], dtype=np.float32)[:, None]
+    binary_prediction = np.array(
+        [0.05, 0.1, 0.2, 0.8, 0.9, 0.7, 0.3, 0.95],
+        dtype=np.float32,
+    )[:, None]
+
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (
+            {
+                "regression_prediction": regression_prediction,
+                "binary_prediction": binary_prediction,
+            },
+            {
+                "regression_task": regression_truth,
+                "binary_task": binary_truth,
+            },
+            {
+                "regression_task": np.array(
+                    [0, 1, 1, 1, 1, 1, 1, 1],
+                    dtype=np.float32,
+                )[:, None],
+                "binary_task": np.array(
+                    [1, 1, 1, 1, 1, 1, 1, 0],
+                    dtype=np.float32,
+                )[:, None],
+            },
+        ),
+    ).batch(4)
+
+    metrics = evaluate_multitask_on_dataset(
+        "echo_model",
+        _EchoPredictionModel(),
+        dataset,
+        regression_targets=["regression_task"],
+        binary_targets=["binary_task"],
+        verbose=False,
+        n_bootstraps=100,
+    )
+
+    assert len(metrics) == 3
+    for row in metrics:
+        assert "CI_95_lower" in row
+        assert "CI_95_upper" in row
+        assert row["CI_95_lower"] <= row["CI_95_upper"]
+        assert "n" in row
+
+    regression_row = next(row for row in metrics if row["Task"] == "regression_task")
+    assert regression_row["n"] == 7
+
+    binary_rows = [row for row in metrics if row["Task"] == "binary_task"]
+    assert {row["Metric"] for row in binary_rows} == {"auROC", "auPRC"}
+    assert all(row["n"] == 7 for row in binary_rows)
+    assert all(row["n_positive"] == 3 for row in binary_rows)
+
+
 def test_build_embedding_transformer_positional_embedding_toggle():
     params = dict(
         input_numeric_cols=["feature_0", "feature_1"],
@@ -114,6 +180,65 @@ def test_build_embedding_transformer_positional_embedding_toggle():
     assert "add_pos" in with_pos_layer_names
     assert "pos_embedding" not in without_pos_layer_names
     assert "add_pos" not in without_pos_layer_names
+
+
+def test_build_embedding_transformer_handles_padded_categorical_tokens():
+    max_len = 4
+    num_features = 3
+
+    num = np.array(
+        [
+            [[1.0, 0.0, 0.5], [0.5, 0.0, 0.2], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [[0.0, 1.0, 0.5], [0.2, 0.5, 0.1], [0.1, 0.2, 0.0], [0.0, 0.0, 0.0]],
+            [[1.0, 1.0, 0.0], [0.4, 0.1, 0.3], [0.2, 0.1, 0.1], [0.1, 0.0, 0.1]],
+            [[0.5, 0.5, 0.5], [0.3, 0.2, 0.2], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+        ],
+        dtype=np.float32,
+    )
+    mask = np.array(
+        [
+            [True, True, False, False],
+            [True, True, True, False],
+            [True, True, True, True],
+            [True, True, False, False],
+        ],
+        dtype=bool,
+    )
+    view = np.array(
+        [
+            [1, 2, 0, 0],
+            [2, 1, 1, 0],
+            [1, 2, 1, 2],
+            [2, 2, 0, 0],
+        ],
+        dtype=np.int32,
+    )
+    outputs = {"regression_task": np.array([[0.1], [0.2], [0.3], [0.4]], dtype=np.float32)}
+
+    with _cpu_device():
+        model, _ = build_embedding_transformer(
+            input_numeric_cols=[f"feature_{i}" for i in range(num_features)],
+            regression_targets=["regression_task"],
+            binary_targets=[],
+            max_len=max_len,
+            emb_dim=4,
+            token_hidden=8,
+            transformer_dim=8,
+            num_heads=2,
+            num_layers=1,
+            dropout=0.0,
+            view2id={"apical": 1, "parasternal": 2},
+            learning_rate=1e-3,
+        )
+        history = model.fit(
+            {"num": num, "mask": mask, "view": view},
+            outputs,
+            epochs=1,
+            batch_size=2,
+            verbose=0,
+        )
+
+    assert np.isfinite(history.history["loss"][-1])
 
 
 @pytest.mark.parametrize("use_categorical", [False, True])
@@ -186,8 +311,8 @@ def test_build_general_embedding_transformer_learns_easy_tasks(use_categorical, 
             "general_embedding_transformer",
             model,
             eval_ds,
-            REGRESSION_TARGETS=["regression_task"],
-            BINARY_TARGETS=["binary_task"],
+            regression_targets=["regression_task"],
+            binary_targets=["binary_task"],
             verbose=False,
         )
 
@@ -258,8 +383,8 @@ def test_build_embedding_transformer_learns_easy_tasks(capsys):
             "embedding_transformer",
             model,
             eval_ds,
-            REGRESSION_TARGETS=["regression_task"],
-            BINARY_TARGETS=["binary_task"],
+            regression_targets=["regression_task"],
+            binary_targets=["binary_task"],
             verbose=False,
         )
 
