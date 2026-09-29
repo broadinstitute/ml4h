@@ -203,10 +203,9 @@ def main(
         return os.path.join(folder, f'prediction_{split_idx}' + fname_suffix + '.pq')
 
     def columns_df(pred, column_prefix='prediction', sample_ids=None):
-        df = pd.DataFrame({'sample_id': sample_ids})
-        for i_p in range(pred.shape[1]):
-            df[f'{column_prefix}_{i_p}'] = pred[:, i_p]
-        return df
+        columns = {'sample_id': sample_ids}
+        columns.update({f'{column_prefix}_{i_p}': pred[:, i_p] for i_p in range(pred.shape[1])})
+        return pd.DataFrame(columns)
 
     # Write each bounded batch as it is inferred, keeping only one batch of predictions in memory.
     embedding_model = with_embeddings(model_plus_head, encoder) if extract_embeddings else None
@@ -240,24 +239,22 @@ def main(
                 embedding_writer.write(columns_df(batch_outputs[0], 'embedding', batch_ids))
                 batch_outputs = batch_outputs[1:]
 
-            df = pd.DataFrame({'sample_id': batch_ids})
+            columns = {'sample_id': batch_ids}
             for output_name, pred in zip(output_names, batch_outputs):
                 if output_name == 'echolab':
-                    for i_p in range(pred.shape[1]):
-                        df[f'prediction_{i_p}'] = pred[:, i_p]
+                    columns.update({f'prediction_{i_p}': pred[:, i_p] for i_p in range(pred.shape[1])})
                 elif output_name.startswith('cls_'):
                     cls_name = output_name[len('cls_'):]
                     if cls_name in onehot_writers:
                         onehot_writers[cls_name].write(columns_df(pred, 'prediction', batch_ids))
                     cls_map_inv = {v: k for k, v in run.cls_category_map_dicts[cls_name].items()}
-                    df[cls_name] = [cls_map_inv[i] for i in pred.argmax(axis=1)]
+                    columns[cls_name] = [cls_map_inv[i] for i in pred.argmax(axis=1)]
                 elif output_name.startswith('survival_'):
-                    for i_p in range(pred.shape[1]):
-                        df[f'{output_name}_{i_p}'] = pred[:, i_p]
-                    df[f'{output_name}_cumulative'] = np.prod(pred, axis=1)
+                    columns.update({f'{output_name}_{i_p}': pred[:, i_p] for i_p in range(pred.shape[1])})
+                    columns[f'{output_name}_cumulative'] = np.prod(pred, axis=1)
                 else:
                     raise ValueError(f'Unexpected model output {output_name}')
-            prediction_writer.write(df)
+            prediction_writer.write(pd.DataFrame(columns))
 
 
 if __name__ == "__main__":
