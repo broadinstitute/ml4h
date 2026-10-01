@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+import tempfile
 from contextlib import ExitStack
 
 import numpy as np
@@ -26,35 +27,32 @@ class _ParquetBatchWriter:
 
     def __init__(self, path):
         self.path = path
-        self.temporary_path = f'{path}.tmp'
-        self.parquet_file = None
+        self.local_path = None
         self.writer = None
 
     def __enter__(self):
-        self.parquet_file = tf.io.gfile.GFile(self.temporary_path, 'wb')
+        # pyarrow cannot write to tf.io.gfile.GFile (it lacks `closed`), so stage
+        # the file locally and copy it to the (possibly gs://) destination on success.
+        fd, self.local_path = tempfile.mkstemp(suffix='.pq')
+        os.close(fd)
         return self
 
     def write(self, df):
         table = pa.Table.from_pandas(df, preserve_index=False)
         if self.writer is None:
-            self.writer = pq.ParquetWriter(self.parquet_file, table.schema)
+            self.writer = pq.ParquetWriter(self.local_path, table.schema)
         self.writer.write_table(table)
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             if self.writer is not None:
                 self.writer.close()
-            self.parquet_file.close()
             if exc_type is None:
                 if self.writer is None:
                     raise ValueError(f'No prediction batches were produced for {self.path}')
-                tf.io.gfile.rename(self.temporary_path, self.path, overwrite=True)
-            elif tf.io.gfile.exists(self.temporary_path):
-                tf.io.gfile.remove(self.temporary_path)
-        except Exception:
-            if tf.io.gfile.exists(self.temporary_path):
-                tf.io.gfile.remove(self.temporary_path)
-            raise
+                tf.io.gfile.copy(self.local_path, self.path, overwrite=True)
+        finally:
+            os.remove(self.local_path)
 
 
 def main(
