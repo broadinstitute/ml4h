@@ -38,6 +38,7 @@ from ml4h.models.merge_blocks import GlobalAveragePoolBlock, EncodeIdentityBlock
 
 from ml4h.models.merge_blocks import FlatConcatDenseBlock, FlatConcatBlock, AverageBlock, PairLossBlock, ReduceMean, ContrastiveLossLayer
 from ml4h.models.conv_blocks import ConvEncoderBlock, ConvEncoderMergeBlock, ConvDecoderBlock, ConvUnetDecoderBlock, ResidualBlock, PoolBlock, ConvUp, ConvDown
+from ml4h.models.inception_blocks import InceptionTimeEncoderBlock, InceptionTimeDecoderBlock
 
 
 BLOCK_CLASSES = {
@@ -45,6 +46,8 @@ BLOCK_CLASSES = {
     'merge_conv_encode': ConvEncoderMergeBlock,
     'conv_decode': ConvDecoderBlock,
     'unet_conv_decode': ConvUnetDecoderBlock,
+    'inception_encode': InceptionTimeEncoderBlock,
+    'inception_decode': InceptionTimeDecoderBlock,
     'conv_up': ConvUp,
     'conv_down': ConvDown,
     'residual': ResidualBlock,

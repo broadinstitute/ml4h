@@ -203,6 +203,11 @@ def parse_args():
     parser.add_argument('--merge_blocks', nargs='*', default=['concat'], help='List of merge blocks.')
     parser.add_argument('--decoder_blocks', nargs='*', default=['conv_decode', 'dense_decode'], help='List of decoding blocks.')
     parser.add_argument('--block_size', default=3, type=int, help='Number of convolutional layers within a block.')
+    parser.add_argument('--inception_filters', nargs='*', default=[32, 32, 32], type=int, help='List of filter counts per branch, one entry per InceptionTime stage.')
+    parser.add_argument('--inception_kernel_sizes', nargs='*', default=[10, 20, 40], type=int, help='Kernel widths for the parallel conv branches inside each InceptionTime module.')
+    parser.add_argument('--inception_bottleneck_size', default=32, type=int, help='Channel size of the InceptionTime bottleneck conv (0 to disable).')
+    parser.add_argument('--inception_modules_per_stage', default=3, type=int, help='Number of InceptionTime modules stacked within each stage before the residual shortcut and pooling/upsampling.')
+    parser.add_argument('--inception_use_residual', default=True, type=lambda x: x.lower() == 'true', help='Add a residual shortcut across each InceptionTime stage.')
     parser.add_argument(
         '--u_connect', nargs=2, action='append',
         help='U-Net connect first TensorMap to second TensorMap. They must be the same shape except for number of channels. Can be provided multiple times.',
