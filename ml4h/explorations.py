@@ -299,7 +299,9 @@ def predictions_to_pngs(
                 input_map = im
             elif tm.shape == im.shape:
                 input_map = im
-        logging.info(f"Write predictions as PNGs TensorMap:{tm.name}, y shape:{y.shape} labels:{labels[tm.output_name()].shape} folder:{folder}")
+        has_labels = labels is not None and tm.output_name() in labels
+        labels_shape = labels[tm.output_name()].shape if has_labels else None
+        logging.info(f"Write predictions as PNGs TensorMap:{tm.name}, y shape:{y.shape} labels:{labels_shape} folder:{folder}")
         vmin = np.min(data[input_map.input_name()])
         vmax = np.max(data[input_map.input_name()])
         if tm.is_mesh():
@@ -310,19 +312,23 @@ def predictions_to_pngs(
                     cols = max(2, int(math.ceil(math.sqrt(sample_data.shape[-1]))))
                     rows = max(2, int(math.ceil(sample_data.shape[-1] / cols)))
                     path_prefix = f'{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}'
-                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {labels[tm.output_name()][i]} Vmin {vmin} Vmax{vmax}")
-                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=[labels[tm.output_name()][i], y[i]])
+                    true_bbox = labels[tm.output_name()][i] if has_labels else None
+                    logging.info(f"sample_data shape: {sample_data.shape} cols {cols}, {rows} Predicted BBox: {y[i]}, True BBox: {true_bbox} Vmin {vmin} Vmax{vmax}")
+                    bboxes = [true_bbox, y[i]] if has_labels else [y[i]]
+                    _plot_3d_tensor_slices_as_gray(sample_data, path_prefix, cols, rows, bboxes=bboxes)
                 else:
                     fig, ax = plt.subplots(1)
                     if input_map.axes() == 3 and input_map.shape[-1] == 1:
                         ax.imshow(data[input_map.input_name()][i, :, :, 0], cmap='gray', vmin=vmin, vmax=vmax)
                     elif input_map.axes() == 2:
                         ax.imshow(data[input_map.input_name()][i, :, :], cmap='gray', vmin=vmin, vmax=vmax)
-                    corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
-                    ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                    if has_labels:
+                        corner, width, height = _2d_bbox_to_corner_and_size(labels[tm.output_name()][i])
+                        ax.add_patch(matplotlib.patches.Rectangle(corner, width, height, linewidth=1, edgecolor='g', facecolor='none'))
+                        logging.info(f"True BBox: {corner}, {width}, {height} Vmin {vmin} Vmax{vmax}")
                     y_corner, y_width, y_height = _2d_bbox_to_corner_and_size(y[i])
                     ax.add_patch(matplotlib.patches.Rectangle(y_corner, y_width, y_height, linewidth=1, edgecolor='y', facecolor='none'))
-                    logging.info(f"True BBox: {corner}, {width}, {height} Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
+                    logging.info(f"Predicted BBox: {y_corner}, {y_width}, {y_height} Vmin {vmin} Vmax{vmax}")
                 plt.savefig(f"{folder}{sample_id}_bbox_batch_{i:02d}{IMAGE_EXT}")
         elif tm.axes() == 2:
             fig = plt.figure(figsize=(SUBPLOT_SIZE, SUBPLOT_SIZE * 3))
@@ -331,7 +337,8 @@ def predictions_to_pngs(
                 title = f'{tm.name}_{sample_id}_reconstruction'
                 for j in range(tm.shape[1]):
                     plt.subplot(tm.shape[1], 1, j + 1)
-                    plt.plot(labels[tm.output_name()][i, :, j], c='k', linestyle='--', label='original')
+                    if has_labels:
+                        plt.plot(labels[tm.output_name()][i, :, j], c='k', linestyle='--', label='original')
                     plt.plot(y[i, :, j], c='b', label='reconstruction')
                     if j == 0:
                         plt.title(title)
@@ -343,10 +350,12 @@ def predictions_to_pngs(
             for i in range(y.shape[0]):
                 sample_id = os.path.basename(paths[i]).replace(TENSOR_EXT, '')
                 if tm.is_categorical():
-                    plt.imsave(f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1), cmap='plasma')
+                    if has_labels:
+                        plt.imsave(f"{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}", np.argmax(labels[tm.output_name()][i], axis=-1), cmap='plasma')
                     plt.imsave(f"{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}", np.argmax(y[i], axis=-1), cmap='plasma')
                 else:
-                    plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', labels[tm.output_name()][i, :, :, 0], cmap='gray')
+                    if has_labels:
+                        plt.imsave(f'{folder}{sample_id}_{tm.name}_truth_{i:02d}{IMAGE_EXT}', labels[tm.output_name()][i, :, :, 0], cmap='gray')
                     plt.imsave(f'{folder}{sample_id}_{tm.name}_prediction_{i:02d}{IMAGE_EXT}', y[i, :, :, 0], cmap='gray')
         elif len(tm.shape) == 4:
             for i in range(y.shape[0]):
@@ -354,12 +363,14 @@ def predictions_to_pngs(
                 for j in range(y.shape[3]):
                     image_path_base = f'{folder}{sample_id}_{tm.name}_{i:03d}_{j:03d}'
                     if tm.is_categorical():
-                        truth = np.argmax(labels[tm.output_name()][i, :, :, j, :], axis=-1)
+                        if has_labels:
+                            truth = np.argmax(labels[tm.output_name()][i, :, :, j, :], axis=-1)
+                            plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='plasma')
                         prediction = np.argmax(y[i, :, :, j, :], axis=-1)
-                        plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', truth, cmap='plasma')
                         plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', prediction, cmap='plasma')
                     else:
-                        plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
+                        if has_labels:
+                            plt.imsave(f'{image_path_base}_truth{IMAGE_EXT}', labels[tm.output_name()][i, :, :, j, 0], cmap='gray')
                         plt.imsave(f'{image_path_base}_prediction{IMAGE_EXT}', y[i, :, :, j, :], cmap='gray')
 
 

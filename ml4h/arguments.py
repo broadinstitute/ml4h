@@ -386,6 +386,7 @@ def parse_args():
 
     # Arguments for explorations/infer_stats_from_segmented_regions
     parser.add_argument('--analyze_ground_truth', default=False, action='store_true', help='Whether or not to filter by images with ground truth segmentations, for comparison')
+    parser.add_argument('--skip_ground_truth', default=False, action='store_true', help='Run plot_predictions on images without ground truth segmentations: only input and prediction PNGs are written')
     parser.add_argument('--structures_to_analyze', nargs='*', default=[], help='Structure names to include in the .tsv files and scatter plots. Must be in the same order as the output channel map. Use + to merge structures before postprocessing, and ++ to merge structures after postprocessing. E.g., --structures_to_analyze interventricular_septum LV_free_wall anterolateral_pap posteromedial_pap interventricular_septum+LV_free_wall anterolateral_pap++posteromedial_pap')
     parser.add_argument('--erosion_radius', nargs='*', default=[], type=int, help='Radius of the unit disk structuring element for erosion preprocessing, optionally as a list per structure to analyze')
     parser.add_argument('--intensity_thresh', type=float, help='Threshold value for preprocessing')

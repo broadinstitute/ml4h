@@ -965,9 +965,18 @@ def pca_on_hidden_inference(args):
 
 
 def plot_predictions(args):
+    # with --skip_ground_truth, exclude the output maps from the generator so images
+    # without ground truth segmentations can be batched; the output maps are restored
+    # afterwards because predictions_to_pngs needs them, but no labels are plotted
+    tmp_output_tensors, tmp_tensor_maps_out = args.output_tensors, args.tensor_maps_out
+    if args.skip_ground_truth:
+        args.output_tensors, args.tensor_maps_out = [], []
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
+    args.output_tensors, args.tensor_maps_out = tmp_output_tensors, tmp_tensor_maps_out
     model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
     data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    if args.skip_ground_truth:
+        labels = None
     predictions = model.predict(data, batch_size=args.batch_size)
     if len(args.tensor_maps_out) == 1:
         predictions = [predictions]
