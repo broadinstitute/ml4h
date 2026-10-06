@@ -772,12 +772,11 @@ def _intensity_thresh_auto(
         structure = unit_disk(intensity_thresh_auto_region_radius)
         lv_seg = np.logical_and(binary_dilation(paps_seg, structure), lv_seg)
 
-    # Returns (thresh, hist_suspect, kmeans_suspect), flagging images whose intensity distributions don't separate cleanly.
-    # hist_suspect is computed for every mode; kmeans_suspect only for the kmeans modes
+    # Returns (thresh, suspect), flagging images whose intensity distributions don't separate cleanly.
     paps_intensities = list(np.ma.masked_where(np.invert(paps_seg), img).compressed())
     lv_cavity_intensities = list(np.ma.masked_where(np.invert(lv_seg), img).compressed())
     if len(paps_intensities) == 0:
-        return None, False, False
+        return None, False
 
     # clip ends
     lv_cavity_intensities = np.array(lv_cavity_intensities)
@@ -785,38 +784,34 @@ def _intensity_thresh_auto(
     lv_cavity_intensities = lv_cavity_intensities[(lv_cavity_intensities >= intensity_thresh_auto_clip_low) & (lv_cavity_intensities <= intensity_thresh_auto_clip_high)]
     paps_intensities = paps_intensities[(paps_intensities >= intensity_thresh_auto_clip_low) & (paps_intensities <= intensity_thresh_auto_clip_high)]
     if paps_intensities.size == 0 or lv_cavity_intensities.size == 0:
-        return None, False, False
+        return None, False
 
     paps_min = np.min(paps_intensities)
     lv_cavity_max = np.max(lv_cavity_intensities)
     bins = np.linspace(paps_min, lv_cavity_max, 100)
 
-    # Kernel density estimation and histogram-based thresh (always computed for the hist_suspect check)
-    kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(lv_cavity_intensities[:, np.newaxis])
-    dens_lv_cavity = np.exp(kde.score_samples(np.array(bins)[:, np.newaxis]))
-    kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(paps_intensities[:, np.newaxis])
-    dens_paps = np.exp(kde.score_samples(np.array(bins)[:, np.newaxis]))
-    dens_diff = dens_lv_cavity - dens_paps
-    # suspect if the densities never cross within the bins
-    hist_suspect = paps_min >= lv_cavity_max or not (np.any(dens_diff > 0) and np.any(dens_diff < 0))
-
+    # Kernel density estimation and histogram-based thresh
     if intensity_thresh_auto in ['image_hist', 'region_hist']:
-        return bins[np.argmin(np.abs(dens_diff))], hist_suspect, False
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(lv_cavity_intensities[:, np.newaxis])
+        dens_lv_cavity = np.exp(kde.score_samples(np.array(bins)[:, np.newaxis]))
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(paps_intensities[:, np.newaxis])
+        dens_paps = np.exp(kde.score_samples(np.array(bins)[:, np.newaxis]))
+        dens_diff = dens_lv_cavity - dens_paps
+        # suspect if the densities never cross within the bins
+        hist_suspect = paps_min >= lv_cavity_max or not (np.any(dens_diff > 0) and np.any(dens_diff < 0))
+        return bins[np.argmin(np.abs(dens_diff))], hist_suspect
 
     # kmeans: in 1D, the decision boundary is the midpoint of the two cluster centers
     elif intensity_thresh_auto in ['image_kmeans', 'region_kmeans']:
         X = np.concatenate([lv_cavity_intensities, paps_intensities])
         X = X.reshape(-1, 1).astype('float')
         if np.unique(X).size < 2:
-            return None, hist_suspect, True
+            return None, True
         kmeans = KMeans(n_clusters=2, random_state=0, n_init="auto").fit(X)
         thresh = float(np.mean(kmeans.cluster_centers_))
-        # suspect if the boundary falls outside [min paps, max lv cavity] (this used to crash);
-        # skip thresholding for these rather than relabelling all or none of the paps
+        # suspect if the boundary falls outside [min paps, max lv cavity]
         kmeans_suspect = not (paps_min < thresh < lv_cavity_max)
-        if kmeans_suspect:
-            return None, hist_suspect, True
-        return thresh, hist_suspect, False
+        return thresh, kmeans_suspect
 
 def _scatter_plots_from_segmented_region_stats(
     inference_tsv_true, inference_tsv_pred, output_folder, id, input_name, output_name,
@@ -959,8 +954,7 @@ def infer_stats_from_segmented_regions(args):
         intensity_thresh_out_channel = tm_out.channel_map[args.intensity_thresh_out_structure]
         if args.intensity_thresh_auto:
             threshes = []
-            hist_suspect_paths = []
-            kmeans_suspect_paths = []
+            suspect_paths = []
 
     # Get the dates
     with open(args.app_csv, mode='r') as dates_file:
@@ -1032,16 +1026,14 @@ def infer_stats_from_segmented_regions(args):
 
             if do_intensity_thresh:
                 if args.intensity_thresh_auto:
-                    this_intensity_thresh, hist_suspect, kmeans_suspect = _intensity_thresh_auto(
+                    this_intensity_thresh, suspect = _intensity_thresh_auto(
                         y_pred, img, args.intensity_thresh_auto, intensity_thresh_in_channels, intensity_thresh_out_channel,
                         args.intensity_thresh_auto_region_radius, args.intensity_thresh_auto_clip_low, args.intensity_thresh_auto_clip_high,
                     )
                     if this_intensity_thresh is not None:
                         threshes.append(this_intensity_thresh)
-                    if hist_suspect:
-                        hist_suspect_paths.append(tensor_paths[0])
-                    if kmeans_suspect:
-                        kmeans_suspect_paths.append(tensor_paths[0])
+                    if suspect:
+                        suspect_paths.append(tensor_paths[0])
                 else:
                     this_intensity_thresh = args.intensity_thresh
 
@@ -1080,14 +1072,15 @@ def infer_stats_from_segmented_regions(args):
 
     if args.intensity_thresh_auto:
         logging.info(f"Average post-processing threshold was {np.mean(threshes)}")
-        logging.info(
-            f"{len(hist_suspect_paths)} of {stats_counter['count']} images would have suspect histogram thresholds "
-            f"(pap and LV cavity densities never cross): {hist_suspect_paths}",
-        )
+        if args.intensity_thresh_auto in ['image_hist', 'region_hist']:
+            logging.info(
+                f"{len(suspect_paths)} of {stats_counter['count']} images had suspect histogram thresholds: "
+                f"{suspect_paths}",
+            )
         if args.intensity_thresh_auto in ['image_kmeans', 'region_kmeans']:
             logging.info(
-                f"{len(kmeans_suspect_paths)} of {stats_counter['count']} images had suspect kmeans thresholds "
-                f"(boundary outside [min pap, max LV cavity] intensity), so thresholding was skipped: {kmeans_suspect_paths}",
+                f"{len(suspect_paths)} of {stats_counter['count']} images had suspect kmeans thresholds: "
+                f"{suspect_paths}",
             )
 
     # Scatter plots
