@@ -66,7 +66,7 @@ def invert_colormap(png_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--predictions', required=True, help="Folder of '_prediction_' PNGs from plot_predictions.")
-    parser.add_argument('--output_folder', required=True, help='Folder to write mask PNGs and manifest.tsv.')
+    parser.add_argument('--output_folder', required=True, help='Folder to write mask PNGs.')
     parser.add_argument('--instance_number', default='1', help='Annotation instance suffix for the hd5 key.')
     args = parser.parse_args()
 
@@ -75,25 +75,17 @@ def main():
     if not prediction_pngs:
         raise ValueError(f'No prediction PNGs found in {args.predictions}')
 
-    manifest_path = os.path.join(args.output_folder, 'manifest.tsv')
-    with open(manifest_path, 'w') as manifest_file:
-        manifest = csv.writer(manifest_file, delimiter='\t')
-        manifest.writerow(['sample_id', 'dicom_file', 'instance_number'])
+    for png_path in prediction_pngs:
+        sample_id = os.path.basename(png_path).split('_')[0]
+        channels = invert_colormap(png_path)
+        label_map = CHANNEL_TO_RAW_LABEL[channels]
 
-        for png_path in prediction_pngs:
-            sample_id = os.path.basename(png_path).split('_')[0]
-            channels = invert_colormap(png_path)
-            label_map = CHANNEL_TO_RAW_LABEL[channels]
-
-            mask = np.zeros(label_map.shape + (3,), dtype=np.uint8)
-            mask[..., 0] = label_map
-            dicom_file = f'{sample_id}_t1map'
-            mask_path = os.path.join(args.output_folder, f'{dicom_file}.png.mask.png')
-            imageio.imwrite(mask_path, mask)
-            manifest.writerow([sample_id, dicom_file, args.instance_number])
-            print(f'Wrote {mask_path} with raw labels {sorted(np.unique(label_map).tolist())}')
-
-    print(f'Wrote manifest to {manifest_path}')
+        mask = np.zeros(label_map.shape + (3,), dtype=np.uint8)
+        mask[..., 0] = label_map
+        dicom_file = f'{sample_id}_t1map'
+        mask_path = os.path.join(args.output_folder, f'{dicom_file}.png.mask.png')
+        imageio.imwrite(mask_path, mask)
+        print(f'Wrote {mask_path} with raw labels {sorted(np.unique(label_map).tolist())}')
 
 
 if __name__ == '__main__':
