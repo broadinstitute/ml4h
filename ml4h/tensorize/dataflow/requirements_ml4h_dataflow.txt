@@ -30,7 +30,7 @@ comm==0.1.2
 constantly==15.1.0
 contourpy==1.0.7
 crcmod==1.7
-cryptography==39.0.0
+cryptography==41.0.3
 cycler==0.11.0
 db-dtypes==1.0.5
 debugpy==1.6.5
