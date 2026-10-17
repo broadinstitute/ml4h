@@ -311,6 +311,19 @@ age_2 = TensorMap(
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
 
+def _validate_age_2_wide_dummy(tm, tensor, hd5):
+    if (tensor == tm.sentinel).all():
+        return
+    make_range_validator(1, 120)(tm, tensor, hd5)
+
+
+age_2_wide_dummy = TensorMap(
+    'age_from_wide_csv', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='log_cosh', sentinel=0, validator=_validate_age_2_wide_dummy,
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+)
+
 age_2_wide = TensorMap(
     'age_from_wide_csv', Interpretation.CONTINUOUS,
     path_prefix='continuous', loss='log_cosh', validator=make_range_validator(1, 120),
