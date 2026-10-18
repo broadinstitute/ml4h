@@ -323,6 +323,12 @@ age_2_wide_dummy = TensorMap(
     normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
     channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
 )
+age_in_days_dummy = TensorMap(
+    'age_in_days', Interpretation.CONTINUOUS,
+    path_prefix='continuous', loss='log_cosh', sentinel=0, validator=_validate_age_2_wide_dummy,
+    normalization=Standardize(mean=63.35798891483556, std=7.554638350423902),
+    channel_map={'21003_Age-when-attended-assessment-centre_2_0': 0},
+)
 
 age_2_wide = TensorMap(
     'age_from_wide_csv', Interpretation.CONTINUOUS,
@@ -370,6 +376,11 @@ sex_dummy1 = TensorMap(
 )
 sex_dummy2 = TensorMap(
     'is_female', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
+     path_prefix='categorical', annotation_units=2,
+    channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
+)
+is_male_dummy = TensorMap(
+    'is_male', Interpretation.CATEGORICAL, storage_type=StorageType.CATEGORICAL_FLAG,
      path_prefix='categorical', annotation_units=2,
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
