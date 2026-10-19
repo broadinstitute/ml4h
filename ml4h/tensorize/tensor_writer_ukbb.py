@@ -28,7 +28,7 @@ import zipfile
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
-import nibabel as nib
+#import nibabel as nib
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw  # Polygon to mask
 import xml.etree.ElementTree as et
