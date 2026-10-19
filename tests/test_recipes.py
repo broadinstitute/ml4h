@@ -1,4 +1,5 @@
 import os
+import json
 import pytest
 import logging
 import pandas as pd
@@ -6,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 from ml4h.recipes import inference_file_name, _hidden_file_name,save_to_google_cloud
 from ml4h.recipes import train_legacy, train_multimodal_multitask
@@ -24,6 +26,54 @@ from ml4h.TensorMap import TensorMap, Interpretation
 
 
 class TestRecipes:
+    @pytest.mark.parametrize('empty_test_set', [False, True])
+    def test_train_transformer_on_parquet_saves_categorical_metrics(self, monkeypatch, tmp_path, empty_test_set):
+        from ml4h import recipes
+
+        df = pd.DataFrame({'value': [1, 2, 3], 'category': [0, 1, 2]})
+        input_path = tmp_path / 'input.pq'
+        df.to_parquet(input_path, index=False)
+        output_dir = tmp_path / 'multiclass'
+        output_dir.mkdir()
+        batch = (
+            {}, {'category': tf.constant([0, 1, 2])},
+            {'category': tf.constant([1.0, 1.0, 1.0])},
+        )
+        model = Mock(return_value={'category': tf.constant([
+            [0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8],
+        ])})
+        monkeypatch.setattr(recipes.keras.models, 'load_model', lambda _: model)
+        monkeypatch.setattr(recipes, 'df_to_datasets_from_generator', lambda *a: ([], [], [] if empty_test_set else [batch]))
+        monkeypatch.setattr(recipes, 'plot_metric_history', Mock())
+        radar, heatmap = Mock(), Mock()
+        monkeypatch.setattr(recipes, 'radar_performance', radar)
+        monkeypatch.setattr(recipes, 'heatmap_performance', heatmap)
+        args = SimpleNamespace(
+            transformer_input_file=str(input_path), transformer_label_file=None,
+            input_numeric_columns=['value'], input_categorical_columns=[],
+            latent_dimensions_start=0, latent_dimensions=0,
+            target_regression_columns=[], target_binary_columns=[],
+            target_categorical_columns=['category'], num_classes=None,
+            group_column='mrn', sort_column='visit', sort_column_ascend=True,
+            transformer_max_size=8, batch_size=3, train_csv=None, valid_csv=None, test_csv=None,
+            model_file='fake.keras', inspect_model=False, output_folder=str(tmp_path),
+            id='multiclass', patience=1, save_last_model=False, training_steps=1,
+            validation_steps=1, epochs=1, test_steps=1,
+        )
+        recipes.train_transformer_on_parquet(args)
+        with open(output_dir / 'metrics_multiclass.json') as metrics_file:
+            rows = json.load(metrics_file)
+        if empty_test_set:
+            assert rows == []
+            radar.assert_not_called()
+            heatmap.assert_not_called()
+        else:
+            assert {row['Metric'] for row in rows} == {'ACC', 'auROC', 'auPRC'}
+            assert all(row['Task'] == 'category' and row['n'] == 3 for row in rows)
+            assert all(row['Score'] == 1.0 for row in rows)
+            radar.assert_called_once()
+            heatmap.assert_called_once()
+
     def test_infer_transformer_on_parquet_fast_outputs_unique_test_groups(self, monkeypatch, tmp_path):
         class FakeModel:
             output_names = ['target']

@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 import tensorflow as tf
+from sklearn.metrics import accuracy_score, average_precision_score, roc_auc_score
 
 from ml4h.models.transformer_blocks_embedding import (
     build_embedding_transformer,
@@ -147,6 +148,73 @@ def test_evaluate_multitask_performance_data_includes_ci_and_counts():
     assert {row["Metric"] for row in binary_rows} == {"auROC", "auPRC"}
     assert all(row["n"] == 7 for row in binary_rows)
     assert all(row["n_positive"] == 3 for row in binary_rows)
+
+
+@pytest.mark.parametrize("steps", [None, 3])
+@pytest.mark.parametrize("label_column", [False, True])
+def test_evaluate_multitask_categorical_metrics(steps, label_column):
+    truth = np.array([0, 1, 2, 0, 1, 2, -1])
+    prob = np.array([
+        [0.7, 0.2, 0.1], [0.2, 0.6, 0.2], [0.1, 0.3, 0.6],
+        [0.2, 0.5, 0.3], [0.4, 0.5, 0.1], [0.2, 0.5, 0.3],
+        [0.0, 0.0, 1.0],
+    ], dtype=np.float32)
+    binary = (truth == 1).astype(np.float32)
+    outputs = {
+        "class_task": truth[:, None] if label_column else truth,
+        "regression_task": np.arange(7, dtype=np.float32),
+        "binary_task": binary,
+        "two_class_task": binary,
+    }
+    predictions = {
+        "class_task": prob,
+        "regression_task": outputs["regression_task"][:, None],
+        "binary_task": prob[:, 1:2],
+        "two_class_task": np.column_stack([1 - prob[:, 1], prob[:, 1]]),
+    }
+    weights = {t: np.array([1, 1, 1, 1, 1, 1, 0], dtype=np.float32) for t in outputs}
+    dataset = tf.data.Dataset.from_tensor_slices((predictions, outputs, weights)).batch(3)
+    if steps is not None:
+        dataset = dataset.repeat()
+    kwargs = dict(
+        name="echo", model=lambda x, training=False: x, dataset=dataset,
+        regression_targets=["regression_task"], binary_targets=["binary_task"],
+        categorical_targets=["class_task", "two_class_task"], steps=steps,
+        verbose=False, n_bootstraps=50, bootstrap_seed=7,
+    )
+    rows = evaluate_multitask_on_dataset(**kwargs)
+    assert rows == evaluate_multitask_on_dataset(**kwargs)
+    assert len(rows) == 9
+    assert all(row["n"] == 6 for row in rows)
+    assert _metric_value(rows, "regression_task", "R^2") == 1.0
+    for task, labels in [("class_task", truth[:6]), ("two_class_task", binary[:6].astype(int))]:
+        prediction = predictions[task][:6]
+        one_hot = np.eye(prediction.shape[1])[labels]
+        assert _metric_value(rows, task, "auROC") == pytest.approx(roc_auc_score(one_hot, prediction))
+        assert _metric_value(rows, task, "auPRC") == pytest.approx(average_precision_score(one_hot, prediction))
+        assert _metric_value(rows, task, "ACC") == accuracy_score(labels, prediction.argmax(axis=1))
+        for row in (r for r in rows if r["Task"] == task):
+            assert 0 <= row["CI_95_lower"] <= row["CI_95_upper"] <= 1
+            assert "n_positive" not in row
+
+
+@pytest.mark.parametrize("weights", [[1, 1], [0, 0]])
+def test_evaluate_multitask_categorical_missing_classes_and_labels(weights):
+    dataset = tf.data.Dataset.from_tensor_slices((
+        {"task": [[0.8, 0.1, 0.1], [0.2, 0.7, 0.1]]},
+        {"task": [0, 1]}, {"task": weights},
+    )).batch(1)
+    kwargs = dict(categorical_targets=["task"], n_bootstraps=10, verbose=False)
+    rows = evaluate_multitask_on_dataset("echo", lambda x, training=False: x, dataset, [], [], **kwargs)
+    if any(weights):
+        assert np.isnan(_metric_value(rows, "task", "auROC"))
+        assert _metric_value(rows, "task", "ACC") == 1.0
+        assert _metric_value(rows, "task", "auPRC") == pytest.approx(2 / 3)
+    else:
+        assert rows == []
+    assert evaluate_multitask_on_dataset(
+        "echo", lambda x, training=False: x, dataset, [], [], steps=0, **kwargs,
+    ) == []
 
 
 def test_build_embedding_transformer_positional_embedding_toggle():

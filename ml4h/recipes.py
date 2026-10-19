@@ -1011,19 +1011,18 @@ def train_transformer_on_parquet_stream(args):
     plot_metric_history(
         history, args.training_steps, args.id, f"{args.output_folder}/{args.id}/"
     )
-    if len(args.target_categorical_columns) == 0:
-        metrics = evaluate_multitask_on_dataset(
-            args.id,
-            model,
-            test_ds,
-            args.target_regression_columns,
-            args.target_binary_columns,
-            steps=args.test_steps,
-        )
+    metrics = evaluate_multitask_on_dataset(
+        args.id,
+        model,
+        test_ds,
+        args.target_regression_columns,
+        args.target_binary_columns,
+        steps=args.test_steps,
+        categorical_targets=args.target_categorical_columns,
+    )
+    if metrics:
         radar_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
         heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
-    else:
-        metrics = {}
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
 
@@ -1064,13 +1063,6 @@ def train_transformer_on_parquet(args):
 
     # Compute binary class prevalences for weighted loss
     binary_class_prevalences = None
-    # if args.target_binary_columns:
-    #     binary_class_prevalences = compute_binary_class_prevalences(
-    #         df=df,
-    #         aggregate_column=args.group_column,
-    #         binary_targets=args.target_binary_columns,
-    #         train_csv=args.train_csv,
-    #     )
 
     if args.target_categorical_columns and args.num_classes is None:
         vc = df[args.target_categorical_columns[0]].value_counts()
@@ -1137,12 +1129,13 @@ def train_transformer_on_parquet(args):
     )
     model.save(f'{args.output_folder}/{args.id}/{args.id}.keras')  # includes architecture + weights + compile config
     plot_metric_history(history, args.training_steps, args.id, f'{args.output_folder}/{args.id}/')
-    if len(args.target_categorical_columns) == 0:
-        metrics = evaluate_multitask_on_dataset(args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns, steps=args.test_steps)
+    metrics = evaluate_multitask_on_dataset(
+        args.id, model, test_ds, args.target_regression_columns, args.target_binary_columns,
+        steps=args.test_steps, categorical_targets=args.target_categorical_columns,
+    )
+    if metrics:
         radar_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
         heatmap_performance(pd.DataFrame(metrics), f'{args.output_folder}/{args.id}/')
-    else:
-        metrics = {}
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
     logging.info(f"Saved performance metrics at: {args.output_folder}/{args.id}/metrics_{args.id}.json")
