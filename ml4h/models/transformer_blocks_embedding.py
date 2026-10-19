@@ -979,11 +979,14 @@ def evaluate_multitask_on_dataset(
     """Evaluate a multitask model and return score rows with 95% bootstrap CIs.
 
     Each row in the returned performance data includes CI_95_lower,
-    CI_95_upper, and n. Binary target rows also include n_positive.
+    CI_95_upper, and n. Binary and per-class rows also include n_positive.
     Categorical targets use sparse, zero-based class labels and probability
-    matrices. Their rows report ACC and macro-averaged one-vs-rest auROC and
-    auPRC across all output classes. Undefined AUROC scores (including when
-    a class is absent) are NaN; undefined bootstrap replicates are excluded.
+    matrices. Each class has a task named <target>_class_<index> with one-vs-rest
+    auROC, auPRC, and ACC, plus percentage prevalence. Per-class ACC compares
+    membership in that class with the model's argmax class decision. Overall
+    multiclass ACC is also reported under the original target name. Undefined
+    AUROC scores (including absent classes) are NaN; undefined bootstrap
+    replicates are excluded.
     """
     categorical_targets = categorical_targets or []
     targets = regression_targets + binary_targets + categorical_targets
@@ -1139,7 +1142,7 @@ def evaluate_multitask_on_dataset(
         performance_data.append(
             _performance_data_row(name, t, "auPRC", auprc, auprc_ci, n, n_positive)
         )
-    # Categorical tasks: bootstrap whole samples, keeping class scores together.
+    # Categorical tasks: evaluate each output class against all other classes.
     for t in categorical_targets:
         if y_true[t].size == 0:
             continue
@@ -1148,28 +1151,40 @@ def evaluate_multitask_on_dataset(
             continue
         yt = y_true[t][msk].astype("int32")
         prob = y_pred[t][msk]
-        truth = np.eye(prob.shape[1], dtype="int32")[yt]
-
-        def categorical_accuracy(truth, prediction):
-            return accuracy_score(truth.argmax(axis=1), prediction.argmax(axis=1))
-
-        for metric_name, metric in (
-            ("auROC", roc_auc_score),
-            ("auPRC", average_precision_score),
-            ("ACC", categorical_accuracy),
-        ):
-            score = _safe_metric_score(metric, truth, prob)
-            ci = _bootstrap_metric_confidence_interval(
-                truth, prob, metric, rng, n_bootstraps,
-            )
-            performance_data.append(
-                _performance_data_row(name, t, metric_name, score, ci, len(yt))
-            )
-            if verbose:
-                logging.info(
-                    f"{t:30s}  {metric_name}: {score:.4f}  "
-                    f"95% CI: ({ci[0]:.4f}, {ci[1]:.4f})  n: {len(yt)}"
+        predicted_class = prob.argmax(axis=1)
+        n = len(yt)
+        for class_index in range(prob.shape[1]):
+            task = f"{t}_class_{class_index}"
+            truth = (yt == class_index).astype("int32")
+            n_positive = int(truth.sum())
+            for metric_name, metric, prediction in (
+                ("auROC", roc_auc_score, prob[:, class_index]),
+                ("auPRC", average_precision_score, prob[:, class_index]),
+                ("ACC", accuracy_score, predicted_class == class_index),
+            ):
+                score = _safe_metric_score(metric, truth, prediction)
+                ci = _bootstrap_metric_confidence_interval(
+                    truth, prediction, metric, rng, n_bootstraps,
                 )
+                row = _performance_data_row(name, task, metric_name, score, ci, n, n_positive)
+                row["prevalence"] = 100.0 * n_positive / n
+                performance_data.append(row)
+                if verbose:
+                    logging.info(
+                        f"{task:30s}  {metric_name}: {score:.4f}  "
+                        f"95% CI: ({ci[0]:.4f}, {ci[1]:.4f})  n: {n}  "
+                        f"n_positive: {n_positive}  prevalence: {row['prevalence']:.2f}%"
+                    )
+        acc = _safe_metric_score(accuracy_score, yt, predicted_class)
+        acc_ci = _bootstrap_metric_confidence_interval(
+            yt, predicted_class, accuracy_score, rng, n_bootstraps,
+        )
+        performance_data.append(_performance_data_row(name, t, "ACC", acc, acc_ci, n))
+        if verbose:
+            logging.info(
+                f"{t:30s}  ACC: {acc:.4f}  "
+                f"95% CI: ({acc_ci[0]:.4f}, {acc_ci[1]:.4f})  n: {n}"
+            )
     if verbose:
         logging.info("\n=== Evaluation on dataset ===")
         for t in regression_targets:

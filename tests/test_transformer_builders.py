@@ -184,18 +184,25 @@ def test_evaluate_multitask_categorical_metrics(steps, label_column):
     )
     rows = evaluate_multitask_on_dataset(**kwargs)
     assert rows == evaluate_multitask_on_dataset(**kwargs)
-    assert len(rows) == 9
+    assert len(rows) == 20
     assert all(row["n"] == 6 for row in rows)
     assert _metric_value(rows, "regression_task", "R^2") == 1.0
     for task, labels in [("class_task", truth[:6]), ("two_class_task", binary[:6].astype(int))]:
         prediction = predictions[task][:6]
-        one_hot = np.eye(prediction.shape[1])[labels]
-        assert _metric_value(rows, task, "auROC") == pytest.approx(roc_auc_score(one_hot, prediction))
-        assert _metric_value(rows, task, "auPRC") == pytest.approx(average_precision_score(one_hot, prediction))
         assert _metric_value(rows, task, "ACC") == accuracy_score(labels, prediction.argmax(axis=1))
-        for row in (r for r in rows if r["Task"] == task):
-            assert 0 <= row["CI_95_lower"] <= row["CI_95_upper"] <= 1
-            assert "n_positive" not in row
+        for class_index in range(prediction.shape[1]):
+            class_task = f"{task}_class_{class_index}"
+            class_truth = labels == class_index
+            class_prob = prediction[:, class_index]
+            assert _metric_value(rows, class_task, "auROC") == pytest.approx(roc_auc_score(class_truth, class_prob))
+            assert _metric_value(rows, class_task, "auPRC") == pytest.approx(average_precision_score(class_truth, class_prob))
+            assert _metric_value(rows, class_task, "ACC") == accuracy_score(class_truth, prediction.argmax(axis=1) == class_index)
+            class_rows = [r for r in rows if r["Task"] == class_task]
+            assert {r["Metric"] for r in class_rows} == {"auROC", "auPRC", "ACC"}
+            for row in class_rows:
+                assert 0 <= row["CI_95_lower"] <= row["CI_95_upper"] <= 1
+                assert row["n_positive"] == int(class_truth.sum())
+                assert row["prevalence"] == pytest.approx(100 * class_truth.mean())
 
 
 @pytest.mark.parametrize("weights", [[1, 1], [0, 0]])
@@ -207,9 +214,17 @@ def test_evaluate_multitask_categorical_missing_classes_and_labels(weights):
     kwargs = dict(categorical_targets=["task"], n_bootstraps=10, verbose=False)
     rows = evaluate_multitask_on_dataset("echo", lambda x, training=False: x, dataset, [], [], **kwargs)
     if any(weights):
-        assert np.isnan(_metric_value(rows, "task", "auROC"))
+        assert len(rows) == 10
+        assert np.isnan(_metric_value(rows, "task_class_2", "auROC"))
+        absent_roc = next(r for r in rows if r["Task"] == "task_class_2" and r["Metric"] == "auROC")
+        assert np.isnan(absent_roc["CI_95_lower"])
+        assert np.isnan(absent_roc["CI_95_upper"])
+        assert absent_roc["n_positive"] == 0
+        assert absent_roc["prevalence"] == 0
+        assert _metric_value(rows, "task_class_0", "auROC") == 1.0
+        assert _metric_value(rows, "task_class_1", "auROC") == 1.0
         assert _metric_value(rows, "task", "ACC") == 1.0
-        assert _metric_value(rows, "task", "auPRC") == pytest.approx(2 / 3)
+        assert _metric_value(rows, "task_class_2", "auPRC") == 0.0
     else:
         assert rows == []
     assert evaluate_multitask_on_dataset(

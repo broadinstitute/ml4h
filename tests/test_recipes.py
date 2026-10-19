@@ -68,11 +68,18 @@ class TestRecipes:
             radar.assert_not_called()
             heatmap.assert_not_called()
         else:
+            assert len(rows) == 10
             assert {row['Metric'] for row in rows} == {'ACC', 'auROC', 'auPRC'}
-            assert all(row['Task'] == 'category' and row['n'] == 3 for row in rows)
+            assert {row['Task'] for row in rows} == {
+                'category', 'category_class_0', 'category_class_1', 'category_class_2',
+            }
+            assert all(row['n'] == 3 for row in rows)
             assert all(row['Score'] == 1.0 for row in rows)
+            assert all(row['n_positive'] == 1 for row in rows if row['Task'] != 'category')
             radar.assert_called_once()
             heatmap.assert_called_once()
+            assert set(radar.call_args.args[0]['Task']) == {row['Task'] for row in rows}
+            assert set(heatmap.call_args.args[0]['Task']) == {row['Task'] for row in rows}
 
     def test_infer_transformer_on_parquet_fast_outputs_unique_test_groups(self, monkeypatch, tmp_path):
         class FakeModel:
