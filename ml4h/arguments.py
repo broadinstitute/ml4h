@@ -25,7 +25,7 @@ from collections import defaultdict
 from typing import Set, Dict, List, Optional, Tuple
 
 from ml4h.logger import load_config
-from ml4h.TensorMap import TensorMap, TimeSeriesOrder
+from ml4h.TensorMap import TensorMap, TimeSeriesOrder, Interpretation
 from ml4h.defines import IMPUTATION_RANDOM, IMPUTATION_MEAN
 from ml4h.tensormap.mgb.dynamic import make_mgb_dynamic_tensor_maps
 from ml4h.tensormap.tensor_map_maker import generate_categorical_tensor_map_from_file, \
@@ -315,6 +315,13 @@ def parse_args():
     parser.add_argument(
          '--transformer_label_file', help='File with target labels for transformers',
     )
+    parser.add_argument('--transformer_test_file', help='Held-out parquet file for train_transformer_for_survival.')
+    parser.add_argument('--survival_phecode', help='Phecode string used in the parquet diagnosis column (<phecode>__start_date).')
+    parser.add_argument('--survival_intervals', default=20, type=int, help='Number of discrete survival intervals.')
+    parser.add_argument('--survival_days_window', default=3650, type=int, help='Survival prediction horizon in days.')
+    parser.add_argument('--survival_test_screen_days', default=1000, type=int,
+                        help='First N recorded test days to screen for postdiagnosis data and use as test inputs.')
+    parser.add_argument('--survival_num_curves', default=64, type=int, help='Maximum number of individual survival curves to plot.')
     parser.add_argument(
          '--transformer_size', default=64, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
@@ -669,6 +676,20 @@ def _process_args(args):
     #         )
 
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
+    if args.mode == 'train_transformer_for_survival':
+        if not args.survival_phecode or not args.transformer_input_file or not args.transformer_test_file:
+            raise ValueError('train_transformer_for_survival requires --survival_phecode, '
+                             '--transformer_input_file and --transformer_test_file.')
+        if args.tensor_maps_out:
+            raise ValueError('Use --survival_phecode instead of --output_tensors for train_transformer_for_survival.')
+        if min(args.survival_intervals, args.survival_days_window, args.survival_test_screen_days) <= 0:
+            raise ValueError('Survival intervals, horizon and test screening days must be positive.')
+        if args.survival_num_curves < 0:
+            raise ValueError('survival_num_curves must be nonnegative.')
+        args.tensor_maps_out.append(TensorMap(
+            args.survival_phecode, Interpretation.SURVIVAL_CURVE,
+            shape=(2 * args.survival_intervals,), days_window=args.survival_days_window,
+        ))
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
 

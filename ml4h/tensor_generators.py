@@ -57,6 +57,163 @@ Batch = Dict[Path, np.ndarray]
 BatchFunction = Callable[[Batch, Batch, bool, List[Path], 'kwargs'], Any]
 
 
+def survival_curve_tensor(tm, event, follow_up_days):
+    """Encode [left, right) bins; censoring credits only fully observed intervals."""
+    if len(tm.shape) != 1 or tm.shape[0] <= 0 or tm.shape[0] % 2 or tm.days_window <= 0:
+        raise ValueError('A survival TensorMap needs shape=(2 * intervals,) and a positive horizon.')
+    if not np.isfinite(follow_up_days) or follow_up_days < 0:
+        raise ValueError('Follow-up must be finite and nonnegative.')
+    intervals = tm.shape[0] // 2
+    edges = np.linspace(0, tm.days_window, intervals + 1)
+    target = np.zeros(tm.shape, dtype=np.float32)
+    target[:intervals] = edges[1:] <= min(follow_up_days, tm.days_window)
+    if event and follow_up_days < tm.days_window:
+        index = np.searchsorted(edges, follow_up_days, side='right') - 1
+        target[intervals + index] = 1
+    return target
+
+
+class SurvivalParquetData:
+    """Participant windows and survival targets from pre-split participant-day data.
+
+    Train/valid retain prevalent and postdiagnosis rows. Training samples a start
+    uniformly over the entire history, then takes consecutive recorded rows up to
+    max_len. Test screening precedes context truncation and excludes participants
+    with any date strictly after diagnosis in their first test_screen_days rows.
+    Labels always use the first date of the selected window as time zero.
+    """
+
+    def __init__(self, df, tm, feature_cols, max_len, batch_size, seed=12878, test_screen_days=1000):
+        if min(max_len, batch_size, test_screen_days) <= 0:
+            raise ValueError('Context size, batch size and test screening days must be positive.')
+        if not feature_cols or len(set(feature_cols)) != len(feature_cols):
+            raise ValueError('Provide nonempty, unique numeric feature columns.')
+        if not tm.is_survival_curve():
+            raise ValueError('Expected a SURVIVAL_CURVE TensorMap.')
+        survival_curve_tensor(tm, False, 0)  # Validate shape/horizon before loading batches.
+        self.tm = tm
+        self.feature_cols = list(feature_cols)
+        self.max_len = max_len
+        self.batch_size = batch_size
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
+        self.diagnosis_col = f'{tm.name}__start_date'
+        self.records = {split: [] for split in ('train', 'valid', 'test')}
+        self.excluded = {split: 0 for split in self.records}
+
+        df = df.copy()
+        for column in ('date', 'last_encounter_date', self.diagnosis_col):
+            df[column] = pd.to_datetime(df[column], errors='raise').dt.normalize()
+        if df[['person_id', 'date', 'split', 'last_encounter_date']].isna().any().any():
+            raise ValueError('Missing participant IDs, dates, splits or censoring dates.')
+        if not df['split'].isin(self.records).all():
+            raise ValueError('Expected split values train, valid and test.')
+        if df.duplicated(['person_id', 'date']).any():
+            raise ValueError('Duplicate participant-days.')
+        if (df.groupby('person_id')['split'].nunique() != 1).any():
+            raise ValueError('Participant leakage between splits.')
+
+        for pid, group in df.groupby('person_id', sort=False):
+            group = group.sort_values('date')
+            for column in ('last_encounter_date', self.diagnosis_col):
+                if group[column].nunique(dropna=False) != 1:
+                    raise ValueError(f'Inconsistent {column} for participant {pid}.')
+            split = group['split'].iloc[0]
+            last = group['last_encounter_date'].iloc[0]
+            diagnosis = group[self.diagnosis_col].iloc[0]
+            n_available = len(group)
+            if (group['date'] > last).any():
+                raise ValueError(f'Input after last encounter for participant {pid}.')
+            if split == 'test':
+                group = group.iloc[:test_screen_days]
+                if pd.notna(diagnosis) and (group['date'] > diagnosis).any():
+                    self.excluded[split] += 1
+                    continue
+            if split != 'train':
+                group = group.iloc[:max_len]
+            values = group[self.feature_cols].to_numpy(dtype=np.float32)
+            if not np.isfinite(values).all():
+                raise ValueError(f'Missing/nonfinite input features for participant {pid}; impute before training.')
+            event = pd.notna(diagnosis) and diagnosis <= last
+            self.records[split].append(dict(
+                person_id=pid, x=values, dates=group['date'].to_numpy(),
+                diagnosis=diagnosis, endpoint=diagnosis if event else last,
+                event=bool(event), n_available=n_available,
+            ))
+        logging.info('Survival participants retained: %s; excluded: %s',
+                     {s: len(r) for s, r in self.records.items()}, self.excluded)
+        if not all(self.records.values()):
+            raise ValueError('An eligible survival split is empty.')
+
+    @classmethod
+    def from_args(cls, args, tm):
+        if args.latent_dimensions < 0 or args.latent_dimensions_start < 0:
+            raise ValueError('Latent dimensions and starting index must be nonnegative.')
+        feature_cols = list(args.input_numeric_columns) + [
+            f'latent_{i}' for i in range(args.latent_dimensions_start,
+                                       args.latent_dimensions_start + args.latent_dimensions)
+        ]
+        columns = list(dict.fromkeys([
+            'person_id', 'date', 'split', 'last_encounter_date', f'{tm.name}__start_date',
+        ] + feature_cols))
+        frames = []
+        for path, splits in ((args.transformer_input_file, ('train', 'valid')),
+                             (args.transformer_test_file, ('test',))):
+            frame = pd.read_parquet(path, columns=columns)
+            if not frame['split'].isin(splits).all():
+                raise ValueError(f'Unexpected split values in {path}; expected {splits}.')
+            frames.append(frame)
+        return cls(pd.concat(frames, ignore_index=True), tm, feature_cols,
+                   args.transformer_max_size, args.batch_size, args.random_seed,
+                   args.survival_test_screen_days)
+
+    def record_target(self, record, start, length):
+        if start < 0 or length <= 0 or start + length > len(record['x']):
+            raise ValueError('Invalid participant window.')
+        origin = pd.Timestamp(record['dates'][start])
+        follow_up = (record['endpoint'] - origin) / pd.Timedelta(days=1)
+        if record['event']:
+            follow_up = max(0.0, follow_up)
+        return origin, follow_up, survival_curve_tensor(self.tm, record['event'], follow_up)
+
+    def iter_windows(self, split, shuffle=None, seed=None):
+        rng = np.random.default_rng(seed) if seed is not None else self.rng
+        rows = self.records[split]
+        shuffle = split == 'train' if shuffle is None else shuffle
+        order = rng.permutation(len(rows)) if shuffle else range(len(rows))
+        for index in order:
+            record = rows[index]
+            start = int(rng.integers(len(record['x']))) if split == 'train' else 0
+            length = min(self.max_len, len(record['x']) - start)
+            yield record, start, length
+
+    def generator(self, split, shuffle=None, seed=None):
+        for record, start, length in self.iter_windows(split, shuffle, seed):
+            _, _, target = self.record_target(record, start, length)
+            yield ({'num': record['x'][start:start + length], 'mask': np.ones(length, dtype=bool)},
+                   {self.tm.output_name(): target})
+
+    def batches(self, split):
+        return math.ceil(len(self.records[split]) / self.batch_size)
+
+    def dataset(self, split, shuffle=None, seed=None):
+        name = self.tm.output_name()
+        dataset = tf.data.Dataset.from_generator(
+            lambda: self.generator(split, shuffle, seed),
+            output_signature=(
+                {'num': tf.TensorSpec((None, len(self.feature_cols)), tf.float32),
+                 'mask': tf.TensorSpec((None,), tf.bool)},
+                {name: tf.TensorSpec(self.tm.shape, tf.float32)},
+            ),
+        ).padded_batch(
+            self.batch_size,
+            padded_shapes=({'num': [self.max_len, len(self.feature_cols)], 'mask': [self.max_len]},
+                           {name: list(self.tm.shape)}),
+            padding_values=({'num': np.float32(0), 'mask': False}, {name: np.float32(0)}),
+        )
+        return dataset.apply(tf.data.experimental.assert_cardinality(self.batches(split))).prefetch(tf.data.AUTOTUNE)
+
+
 class _ShufflePaths(Iterator):
 
     def __init__(self, paths: List[Path]):

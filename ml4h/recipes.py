@@ -27,6 +27,7 @@ from ml4h.models.inspect import saliency_map
 from ml4h.models.transformer_blocks_embedding import (
     evaluate_multitask_on_dataset,
     build_general_embedding_transformer, build_embedding_transformer,
+    build_survival_transformer,
     _bootstrap_metric_confidence_interval,
     _performance_data_row,
     _safe_metric_score,
@@ -34,7 +35,7 @@ from ml4h.models.transformer_blocks_embedding import (
 )
 from ml4h.optimizers import find_learning_rate
 from ml4h.defines import TENSOR_EXT, MODEL_EXT
-from ml4h.models.train import train_model_from_generators
+from ml4h.models.train import train_model_from_generators, train_survival_transformer
 from ml4h.tensormap.tensor_map_maker import write_tensor_maps
 from ml4h.tensorize.tensor_writer_mgb import write_tensors_mgb
 from ml4h.models.model_factory import make_multimodal_multitask_model
@@ -46,6 +47,7 @@ from ml4h.plots import (
     plot_metric_history,
     radar_performance,
     heatmap_performance,
+    evaluate_survival_transformer,
 )
 from ml4h.plots import plot_dice, subplot_roc_per_class, plot_tsne, plot_survival
 from ml4h.tensor_generators import (
@@ -55,6 +57,7 @@ from ml4h.tensor_generators import (
     df_to_datasets_from_generator, LongitudinalDataloader, LongitudinalDataloaderFast,
     compute_binary_class_prevalences,
     split_group_ids_from_dataframe,
+    SurvivalParquetData,
 )
 from ml4h.plots import (
     evaluate_predictions,
@@ -73,6 +76,7 @@ from ml4h.explorations import (
     ecg_dates,
     predictions_to_pngs,
     sample_from_language_model,
+    inspect_survival_batch,
 )
 from ml4h.explorations import (
     plot_while_learning,
@@ -195,6 +199,8 @@ def run(args):
             train_transformer_on_parquet_stream(args)
         elif "train_transformer_on_parquet" == args.mode:
             train_transformer_on_parquet(args)
+        elif "train_transformer_for_survival" == args.mode:
+            train_transformer_for_survival(args)
         elif "infer_transformer_on_parquet" == args.mode:
             infer_transformer_on_parquet(args)
         elif "infer_trajectory_transformer_on_parquet" == args.mode:
@@ -1025,6 +1031,32 @@ def train_transformer_on_parquet_stream(args):
         heatmap_performance(pd.DataFrame(metrics), f"{args.output_folder}/{args.id}/")
     with open(f'{args.output_folder}/{args.id}/metrics_{args.id}.json', "w") as f:
         json.dump(metrics, f)
+
+
+def train_transformer_for_survival(args):
+    """Train a participant-day transformer with a phecode SURVIVAL_CURVE output."""
+    if len(args.tensor_maps_out) != 1 or not args.tensor_maps_out[0].is_survival_curve():
+        raise ValueError('train_transformer_for_survival requires one SURVIVAL_CURVE output.')
+    keras.utils.set_random_seed(args.random_seed)
+    folder = os.path.join(args.output_folder, args.id)
+    os.makedirs(folder, exist_ok=True)
+    tm = args.tensor_maps_out[0]
+    data = SurvivalParquetData.from_args(args, tm)
+    model = build_survival_transformer(args, data.feature_cols, tm)
+    if args.inspect_model:
+        inspect_survival_batch(data, folder)
+        model.summary(print_fn=logging.info)
+        keras.utils.plot_model(
+            model, to_file=os.path.join(folder, f'architecture_{args.id}.png'),
+            show_shapes=True, show_layer_names=args.inspect_show_labels, dpi=args.dpi,
+        )
+    model = train_survival_transformer(args, model, data)
+    performance_data = evaluate_survival_transformer(model, data, args, folder)
+    metrics_path = os.path.join(folder, f'metrics_{args.id}.json')
+    with open(metrics_path, 'w') as metrics_file:
+        json.dump(performance_data, metrics_file, allow_nan=False)
+    logging.info('Saved survival performance metrics at %s', metrics_path)
+    return performance_data
 
 
 def train_transformer_on_parquet(args):

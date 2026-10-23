@@ -676,6 +676,7 @@ def build_embedding_transformer(
         num_classes=None,
         label_weights=None,
         use_positional_embedding=False,
+        survival_tensor_maps=None,
 ):
     """
     Build an embedding transformer model.
@@ -691,6 +692,7 @@ def build_embedding_transformer(
             to each token before the transformer blocks.
     """
     categorical_targets = categorical_targets or []
+    survival_tensor_maps = survival_tensor_maps or []
     if categorical_targets and num_classes is None:
         raise ValueError(
             "num_classes must be specified when using categorical_targets. "
@@ -769,6 +771,10 @@ def build_embedding_transformer(
         outputs[t] = layers.Dense(1, activation='sigmoid', name=t)(h)
     for t in categorical_targets:
         outputs[t] = layers.Dense(num_classes, activation='softmax', name=t)(h)
+    for tm in survival_tensor_maps:
+        outputs[tm.output_name()] = layers.Dense(
+            tm.shape[0], activation=tm.activation, name=tm.output_name(),
+        )(h)
 
     if view2id is not None:
         model_inputs = {'view': inp_view, 'num': inp_num, 'mask': inp_mask}
@@ -787,6 +793,7 @@ def build_embedding_transformer(
 
     # Losses / metrics
     losses = {t: 'mse' for t in regression_targets}
+    losses.update({tm.output_name(): tm.loss for tm in survival_tensor_maps})
     for t in binary_targets:
         if binary_class_prevalences is not None and t in binary_class_prevalences:
             prevalence = binary_class_prevalences[t]
@@ -819,6 +826,39 @@ def build_embedding_transformer(
     )
 
     return model, model_explain
+
+
+def build_survival_transformer(args, feature_cols, tm):
+    """Build the parquet survival model using the shared transformer CLI settings."""
+    if not tm.is_survival_curve():
+        raise ValueError('Expected a SURVIVAL_CURVE output.')
+    if args.model_file:
+        model = keras.models.load_model(args.model_file, compile=False)
+        if not isinstance(model.input, dict) or set(model.input) != {'num', 'mask'}:
+            raise ValueError('Saved survival transformer must have num and mask inputs.')
+        if (tuple(model.input['num'].shape[1:]) != (args.transformer_max_size, len(feature_cols))
+                or tuple(model.input['mask'].shape[1:]) != (args.transformer_max_size,)):
+            raise ValueError('Saved model context size/features do not match the requested data.')
+        if (not isinstance(model.output, dict) or set(model.output) != {tm.output_name()}
+                or tuple(model.output[tm.output_name()].shape[1:]) != tm.shape):
+            raise ValueError('Saved model output does not match the survival TensorMap.')
+        return model
+    if args.attention_heads <= 0 or args.transformer_size < args.attention_heads:
+        raise ValueError('Transformer size must be at least the positive number of attention heads.')
+    model, _ = build_embedding_transformer(
+        input_numeric_cols=feature_cols, regression_targets=[], binary_targets=[],
+        max_len=args.transformer_max_size,
+        emb_dim=args.transformer_scalar_embed,
+        token_hidden=args.transformer_latent_embed,
+        transformer_dim=args.transformer_size,
+        num_heads=args.attention_heads,
+        num_layers=args.transformer_layers,
+        dropout=args.transformer_dropout_rate,
+        view2id=None, learning_rate=args.learning_rate,
+        use_positional_embedding=args.transformer_positional_embedding,
+        survival_tensor_maps=[tm],
+    )
+    return model
 
 
 def _safe_metric_score(

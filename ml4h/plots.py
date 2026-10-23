@@ -1214,6 +1214,164 @@ def subplot_comparison_scatters(
     logging.info(f"Saved scatter comparisons together at: {figure_path}")
 
 
+def survival_kaplan_meier(times, events):
+    """Return KM steps, removing censored participants and handling tied times."""
+    times = np.asarray(times, dtype=float)
+    events = np.asarray(events, dtype=bool)
+    if times.ndim != 1 or times.shape != events.shape or not len(times):
+        raise ValueError('KM needs nonempty aligned one-dimensional times and events.')
+    if not np.isfinite(times).all() or (times < 0).any():
+        raise ValueError('KM times must be finite and nonnegative.')
+    unique_times, inverse, counts = np.unique(times, return_inverse=True, return_counts=True)
+    deaths = np.bincount(inverse, weights=events, minlength=len(unique_times))
+    at_risk = len(times) - np.r_[0, np.cumsum(counts[:-1])]
+    survival = np.cumprod(1.0 - deaths / at_risk)
+    return np.r_[0.0, unique_times], np.r_[1.0, survival]
+
+
+def plot_transformer_survival(
+    tm, prediction, truth, follow_up_days, event_observed, participant_ids,
+    title, folder, dpi=150, width=9, height=7, num_curves=64,
+):
+    """Plot survival using exact endpoint dates; return scalar performance metrics.
+
+    Horizon calibration/Brier use known outcomes only, not IPCW adjustment.
+    Bin probabilities are conditional survival; the second output half is unused.
+    """
+    prediction, truth = np.asarray(prediction), np.asarray(truth)
+    raw_follow_up = np.asarray(follow_up_days, dtype=float)
+    observed = np.asarray(event_observed, dtype=bool)
+    n = len(prediction)
+    if (not n or prediction.shape != (n, tm.shape[0]) or truth.shape != prediction.shape
+            or raw_follow_up.shape != (n,) or observed.shape != (n,) or len(participant_ids) != n):
+        raise ValueError('Survival predictions, targets, dates and IDs must have matching rows/shapes.')
+    if not np.isfinite(prediction).all() or ((prediction < 0) | (prediction > 1)).any():
+        raise ValueError('Survival probabilities must be finite and between zero and one.')
+    if not np.isfinite(raw_follow_up).all() or (raw_follow_up < 0).any():
+        raise ValueError('Follow-up must be finite and nonnegative.')
+    intervals, horizon = tm.shape[0] // 2, float(tm.days_window)
+    time_grid = np.linspace(0, horizon, intervals + 1)
+    events = observed & (raw_follow_up < horizon)
+    follow_up = np.minimum(raw_follow_up, horizon)
+    if not np.array_equal(events.astype(int), truth[:, intervals:].sum(axis=1)):
+        raise ValueError('Exact event dates disagree with survival targets.')
+    survival = np.column_stack([np.ones(n), np.cumprod(prediction[:, :intervals], axis=1)])
+    risk = 1.0 - survival[:, -1]
+    metrics = {'n_test': n, 'n_events': int(events.sum())}
+    try:
+        with np.errstate(divide='ignore', invalid='ignore'):
+            scores = concordance_index_censored(events, follow_up, risk)
+        metrics.update(dict(zip(
+            ('c_index', 'concordant', 'discordant', 'tied_risk', 'tied_time'),
+            (float(scores[0]), *(int(score) for score in scores[1:])),
+        )))
+    except ValueError as exc:
+        logging.warning('C-index unavailable: %s', exc)
+        metrics['c_index'] = float('nan')
+
+    os.makedirs(folder, exist_ok=True)
+
+    def finish(fig, ax, filename):
+        ax.set(xlabel='Follow-up time (days)', ylabel='Survival probability', xlim=(0, horizon))
+        ax.legend(loc='best', ncol=5)
+        fig.tight_layout()
+        fig.savefig(os.path.join(folder, filename), dpi=dpi)
+        plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    km_times, km_survival = survival_kaplan_meier(follow_up, events)
+    ax.step(km_times, km_survival, where='post', label='Observed Kaplan–Meier')
+    ax.step(time_grid, survival.mean(axis=0), where='post', label='Mean predicted survival')
+    ax.set_title(f"{title}\nC-index: {metrics['c_index']:.3f}; N={n}, events={events.sum()}")
+    finish(fig, ax, 'population_survival.png')
+
+    if num_curves > 0:
+        fig, ax = plt.subplots(figsize=(width * 2, height * 2), dpi=dpi)
+        for i in range(min(num_curves, n)):
+            endpoint, curve = follow_up[i], survival[i]
+            if events[i]:
+                status, color, marker = 'Event', 'red', 'x'
+            elif endpoint < horizon:
+                status, color, marker = 'Censored', 'blue', '|'
+            else:
+                status, color, marker = 'Survived', 'green', 'o'
+            # Interpolation between bin edges is for visualization only.
+            before = time_grid < endpoint
+            endpoint_survival = float(np.interp(endpoint, time_grid, curve))
+            ax.plot(np.r_[time_grid[before], endpoint], np.r_[curve[before], endpoint_survival],
+                    color=color, alpha=0.75, linewidth=1.5,
+                    label=f'{status}: {participant_ids[i]} S({endpoint:.0f}d)={endpoint_survival:.2f}')
+            ax.plot(endpoint, endpoint_survival, marker=marker, color=color, markersize=7, linestyle='none')
+            if events[i]:
+                ax.annotate(f'Diagnosed day {endpoint:.0f}: {participant_ids[i]}',
+                            xy=(endpoint, endpoint_survival), xytext=(5, 5),
+                            textcoords='offset points', fontsize=8, color=color)
+        ax.set_title(f'{title}: individual predicted survival')
+        finish(fig, ax, 'individual_survival.png')
+
+    known = events | (raw_follow_up >= horizon)
+    metrics['n_calibration_known'] = int(known.sum())
+    metrics['brier_known_outcomes'] = float('nan')
+    if known.any():
+        metrics['brier_known_outcomes'] = float(np.mean((risk[known] - events[known]) ** 2))
+        plot_prediction_calibration(
+            prediction=risk[known, None], truth=events[known, None].astype(float),
+            labels={tm.name: 0}, title=f'{title}_at_{horizon:g}_days_known_outcomes',
+            prefix=folder, n_bins=10, dpi=dpi, width=width, height=height,
+        )
+        plt.close(plt.gcf())
+    else:
+        logging.warning('No known horizon outcomes; skipping calibration.')
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    ax.step(km_times, km_survival, where='post', label=f'Overall observed (n={n})',
+            color='black', linestyle='--', linewidth=2)
+    threshold = np.median(risk)
+    for label, selected, color in (('High risk', risk > threshold, 'red'),
+                                   ('Low risk', risk <= threshold, 'green')):
+        if selected.any():
+            times, values = survival_kaplan_meier(follow_up[selected], events[selected])
+            ax.step(times, values, where='post', label=f'{label} (n={selected.sum()})', color=color)
+    ax.set_title(f'{title}: survival by median predicted risk')
+    finish(fig, ax, 'risk_stratified_survival.png')
+    return metrics
+
+
+def evaluate_survival_transformer(model, data, args, folder):
+    """Collect predictions/targets together in test record order and return train-style metric rows."""
+    if args.test_steps == 0:
+        return []
+    dataset = data.dataset('test')
+    if args.test_steps > 0:
+        dataset = dataset.take(args.test_steps)
+    predictions, targets = [], []
+    name = data.tm.output_name()
+    for inputs, labels in dataset:
+        predictions.append(np.asarray(model(inputs, training=False)[name]))
+        targets.append(np.asarray(labels[name]))
+    prediction, truth = np.concatenate(predictions), np.concatenate(targets)
+    records = data.records['test'][:len(prediction)]
+    follow_up = [(r['endpoint'] - pd.Timestamp(r['dates'][0])) / pd.Timedelta(days=1) for r in records]
+    metrics = plot_transformer_survival(
+        data.tm, prediction, truth, follow_up, [r['event'] for r in records],
+        [str(r['person_id']) for r in records], args.id, folder,
+        dpi=args.dpi, width=args.plot_width, height=args.plot_height,
+        num_curves=args.survival_num_curves,
+    )
+    # Match the train recipe's tabular JSON. Unestimated confidence intervals and
+    # undefined scores are null, so the file is valid JSON even with no events.
+    rows = []
+    for metric, score in metrics.items():
+        rows.append({
+            'Model': args.id, 'Task': data.tm.name, 'Metric': metric,
+            'Score': score if np.isfinite(score) else None,
+            'CI_95_lower': None, 'CI_95_upper': None,
+            'n': metrics['n_calibration_known'] if metric == 'brier_known_outcomes' else metrics['n_test'],
+            'n_positive': metrics['n_events'],
+        })
+    return rows
+
+
 def plot_survivorship(
     events: np.ndarray, days_follow_up: np.ndarray, predictions: np.ndarray, title: str,
     prefix: str = './figures/', days_window: int = 1825, dpi: int = 300, width: int = 6, height: int = 6,

@@ -21,10 +21,78 @@ Pipelines:
 Recipes modes:
 * [explore](#explore)
 * [train](#train)
+* [train_transformer_for_survival](#train_transformer_for_survival)
 * [test](#test)
 * [infer](#infer)
 
 # Examples
+
+## train_transformer_for_survival
+
+Train one phecode survival transformer from participant-day parquet files. The
+train/validation file must contain `split=train/valid`, and the held-out file
+must contain `split=test`. Required columns are `person_id`, `date`, `split`,
+`last_encounter_date`, `<phecode>__start_date`, and the requested numeric/latent
+features. Use a string phecode, including any decimal point. Features must already
+be numeric, finite, and preprocessed; fit preprocessing on training data only.
+
+```bash
+python -m ml4h.recipes \
+  --mode train_transformer_for_survival \
+  --id phecode_250_2_survival --output_folder ./runs \
+  --survival_phecode 250.2 \
+  --transformer_input_file /data/250.2__trainval__noblank.pq \
+  --transformer_test_file /data/250.2__test.pq \
+  --latent_dimensions 14 --input_numeric_columns delta_norm \
+  --transformer_max_size 1000 --transformer_positional_embedding \
+  --transformer_scalar_embed 16 --transformer_latent_embed 64 \
+  --transformer_size 64 --attention_heads 4 --transformer_layers 2 \
+  --transformer_dropout_rate 0.1 \
+  --survival_intervals 20 --survival_days_window 3650 \
+  --survival_test_screen_days 1000 --survival_num_curves 64 \
+  --batch_size 4 --epochs 50 --learning_rate 0.0001 --patience 8 \
+  --training_steps 0 --validation_steps 0 --test_steps -1 \
+  --dpi 150 --plot_width 9 --plot_height 7 --inspect_model
+```
+
+Training samples only the start position, uniformly over each participant's full
+chronologically sorted history, then takes consecutive recorded days up to the
+context size. Windows near the end may be shorter; missing calendar days are not
+inserted. Follow-up starts at the sampled first date and ends at diagnosis or last
+encounter, capped at the prediction horizon. Diagnoses on/before the sampled start
+are encoded as time-zero events. Training and validation retain prevalent and
+postdiagnosis data, including days labelled `12`; day/participant class labels are
+not used to construct the date-based survival target. Both trainval parquet variants
+therefore give the same survival inputs/targets when their dates and features match.
+
+Validation uses each participant's first context window. Testing first excludes
+participants with **any date strictly after diagnosis among their first 1,000
+recorded days** (configurable with `--survival_test_screen_days`), then uses the first
+context window within that period. The supplied participant splits are preserved
+and checked for leakage. This task uses observations after the survival origin;
+it is not a forecast conditioned only on observations available at that origin.
+
+Positive `--training_steps` trains on a repeating stream for that many batches per
+epoch; zero or negative uses one participant pass. Positive `--validation_steps`
+caps validation batches; zero or negative evaluates all validation participants.
+Positive `--test_steps` caps test batches, zero skips testing, and negative evaluates
+all eligible test participants. Existing transformer defaults remain unchanged, so
+specify the 14 latent features and 1,000-day context as shown above.
+
+The run directory contains `<id>.keras` (best validation epoch, or last epoch with
+`--save_last_model`), loss history, population/individual/risk-stratified survival
+plots, horizon calibration, and `metrics_<id>.json`. Metrics use the training
+recipe's `Model`, `Task`, `Metric`, `Score`, `CI_95_lower`, `CI_95_upper`, `n` and
+`n_positive` columns. Confidence intervals are not estimated here; they and
+undefined scores are JSON `null`. Calibration/Brier scores use participants with
+known horizon outcomes and are not censoring-adjusted population estimates.
+
+`--inspect_model` additionally logs a real sampled training batch and writes
+`survival_inspection_{summary,feature_means,targets}.tsv` plus an architecture plot.
+Inspection reports window dates, origin-relative status, postdiagnosis input days,
+feature means excluding padding, and both survival-target masks. Its independent
+seed does not advance the training sampling RNG. `--model_file` loads a compatible
+saved model for further training with the requested optimizer settings.
 
 ## Tensorization
 TODO

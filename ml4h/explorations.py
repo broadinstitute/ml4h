@@ -50,6 +50,60 @@ from scipy.ndimage import binary_erosion, binary_dilation
 CSV_EXT = '.tsv'
 
 
+def inspect_survival_batch(data, folder):
+    """Log/save one real training batch, reproducing sampled windows without advancing training RNG."""
+    from itertools import islice
+
+    inputs, labels = next(iter(data.dataset('train', shuffle=False, seed=data.seed)))
+    values = inputs['num'].numpy()
+    masks = inputs['mask'].numpy().astype(bool)
+    targets = labels[data.tm.output_name()].numpy()
+    windows = islice(data.iter_windows('train', shuffle=False, seed=data.seed), len(values))
+    intervals = data.tm.shape[0] // 2
+    edges = np.linspace(0, data.tm.days_window, intervals + 1)
+    summaries, means, target_rows = [], [], []
+    for i, (record, start, length) in enumerate(windows):
+        observed = values[i, masks[i]]
+        dates = pd.DatetimeIndex(record['dates'][start:start + length])
+        origin, follow_up, target = data.record_target(record, start, length)
+        np.testing.assert_array_equal(observed, record['x'][start:start + length])
+        np.testing.assert_array_equal(targets[i], target)
+        diagnosis = record['diagnosis']
+        status = ('control' if pd.isna(diagnosis) else 'prevalent' if diagnosis <= origin
+                  else 'incident' if record['event'] else 'censored_before_diagnosis')
+        event_bins = np.flatnonzero(target[intervals:])
+        event_interval = (f'[{edges[event_bins[0]]:g}, {edges[event_bins[0] + 1]:g})'
+                          if len(event_bins) else 'none (censored within/at horizon)')
+        summaries.append(dict(
+            person_id=record['person_id'], available_days=record['n_available'],
+            window_start_index=start, sampled_days=length, padding_days=int((~masks[i]).sum()),
+            input_first=dates[0], input_last=dates[-1], diagnosis=diagnosis,
+            status_at_window_start=status,
+            postdiagnosis_input_days=int((dates > diagnosis).sum()) if pd.notna(diagnosis) else 0,
+            followup_origin=origin, followup_days=follow_up,
+            followup_within_horizon=min(follow_up, data.tm.days_window),
+            event_interval_days=event_interval,
+        ))
+        means.append(dict(person_id=record['person_id'], **{
+            column: float(mean) for column, mean in zip(data.feature_cols, observed.mean(axis=0))
+        }))
+        target_rows.append(dict(
+            person_id=record['person_id'],
+            survived_interval_mask=target[:intervals].astype(int).tolist(),
+            event_interval_mask=target[intervals:].astype(int).tolist(),
+        ))
+    logging.info('Survival batch inputs: %s; targets: %s; interval edges (days): %s',
+                 {k: tuple(v.shape) for k, v in inputs.items()}, targets.shape, edges)
+    os.makedirs(folder, exist_ok=True)
+    tables = {'summary': pd.DataFrame(summaries), 'feature_means': pd.DataFrame(means),
+              'targets': pd.DataFrame(target_rows)}
+    for name, table in tables.items():
+        logging.info('Survival inspection %s (feature means exclude padding, in stored units):\n%s',
+                     name, table.to_string(index=False))
+        table.to_csv(os.path.join(folder, f'survival_inspection_{name}.tsv'), sep='\t', index=False)
+    return tables
+
+
 def stratify_and_project_latent_space(
     stratify_column: str,stratify_thresh: float,stratify_std: float,latent_cols: List[str],
     latent_df: pd.DataFrame,

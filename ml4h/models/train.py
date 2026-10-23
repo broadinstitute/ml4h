@@ -30,6 +30,47 @@ from ml4h.models.model_factory import get_custom_objects, make_multimodal_multit
 from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
 
+def train_survival_transformer(args, model, data):
+    """Train/checkpoint the survival model, honoring the shared training CLI options.
+
+    Positive training_steps uses a repeating stream; zero/negative means one full
+    participant pass per epoch. Validation is deterministic and never repeated
+    within an evaluation. Saved models retain their survival loss configuration.
+    """
+    from ml4h.metrics import JsonLossMetricsCallback
+    from ml4h.optimizers import get_optimizer
+
+    folder = os.path.join(args.output_folder, args.id)
+    os.makedirs(folder, exist_ok=True)
+    model_file = os.path.join(folder, f'{args.id}.keras')
+    steps = args.training_steps if args.training_steps > 0 else data.batches('train')
+    model.compile(
+        optimizer=get_optimizer(args.optimizer, args.learning_rate, steps,
+                                args.learning_rate_schedule, optimizer_kwargs={'clipnorm': 1.0}),
+        loss={data.tm.output_name(): data.tm.loss},
+    )
+    train_ds = data.dataset('train')
+    if args.training_steps > 0:
+        train_ds = train_ds.repeat()
+    valid_steps = (min(args.validation_steps, data.batches('valid'))
+                   if args.validation_steps > 0 else data.batches('valid'))
+    callbacks = _get_callbacks(args.patience, model_file, args.save_last_model)
+    if args.learning_rate_schedule is not None:
+        callbacks = [callback for callback in callbacks if not isinstance(callback, ReduceLROnPlateau)]
+    callbacks.append(JsonLossMetricsCallback(folder + os.sep))
+    history = model.fit(
+        train_ds, steps_per_epoch=steps, epochs=args.epochs,
+        validation_data=data.dataset('valid'), validation_steps=valid_steps,
+        callbacks=callbacks, verbose=1,
+    )
+    # Evaluate the saved best (or explicitly requested last) epoch, not the last
+    # in-memory weights left after early stopping. Restore the survival loss.
+    model = keras.models.load_model(model_file, custom_objects={'loss': data.tm.loss})
+    plot_metric_history(history, steps, args.id, folder)
+    logging.info('Saved survival transformer at %s', model_file)
+    return model
+
+
 def train_model_from_generators(
     model: Model,
     generate_train: Iterable,
