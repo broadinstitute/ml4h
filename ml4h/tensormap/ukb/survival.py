@@ -285,17 +285,6 @@ mgb_af_wrt_instance2 = TensorMap(
         start_date_is_attribute=True, incidence_only=True,
     ),
 )
-mgb_cad_wrt_instance2 = TensorMap(
-    'cad_event',
-    Interpretation.SURVIVAL_CURVE,
-    shape=(50,),
-    days_window=DAYS_IN_5_YEARS,
-    tensor_from_file=_survival_tensor(
-        'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_5_YEARS,
-        disease_name_override='coronary_artery_disease',
-        start_date_is_attribute=True, incidence_only=False,
-    ),
-)
 mgb_dm_wrt_instance2 = TensorMap(
     'dm_event',
     Interpretation.SURVIVAL_CURVE,
@@ -418,7 +407,7 @@ mgb_cad_wrt_instance2 = TensorMap(
     tensor_from_file=_survival_tensor(
         'ukb_ecg_rest/ecg_rest_text/instance_0', DAYS_IN_10_YEARS,
         disease_name_override='coronary_artery_disease',
-        start_date_is_attribute=True, incidence_only=True,
+        start_date_is_attribute=True, incidence_only=False,
     ),
 )
 mgb_stroke_wrt_instance2 = TensorMap(
