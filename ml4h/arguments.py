@@ -322,6 +322,8 @@ def parse_args():
     parser.add_argument('--survival_test_screen_days', default=1000, type=int,
                         help='First N recorded test days to screen for postdiagnosis data and use as test inputs.')
     parser.add_argument('--survival_num_curves', default=64, type=int, help='Maximum number of individual survival curves to plot.')
+    parser.add_argument('--survival_bootstraps', default=1000, type=int,
+                        help='Participant bootstrap replicates for the survival C-index 95%% CI; 0 disables it. Uses random_seed.')
     parser.add_argument(
          '--transformer_size', default=64, type=int,
          help='Number of output neurons in Transformer encoders and decoders, '
@@ -686,6 +688,8 @@ def _process_args(args):
             raise ValueError('Survival intervals, horizon and test screening days must be positive.')
         if args.survival_num_curves < 0:
             raise ValueError('survival_num_curves must be nonnegative.')
+        if args.survival_bootstraps < 0:
+            raise ValueError('survival_bootstraps must be nonnegative.')
         args.tensor_maps_out.append(TensorMap(
             args.survival_phecode, Interpretation.SURVIVAL_CURVE,
             shape=(2 * args.survival_intervals,), days_window=args.survival_days_window,

@@ -83,8 +83,14 @@ The run directory contains `<id>.keras` (best validation epoch, or last epoch wi
 `--save_last_model`), loss history, population/individual/risk-stratified survival
 plots, horizon calibration, and `metrics_<id>.json`. Metrics use the training
 recipe's `Model`, `Task`, `Metric`, `Score`, `CI_95_lower`, `CI_95_upper`, `n` and
-`n_positive` columns. Confidence intervals are not estimated here; they and
-undefined scores are JSON `null`. Calibration/Brier scores use participants with
+`n_positive` columns. The C-index row includes a 95% percentile bootstrap interval
+in `CI_95_lower` and `CI_95_upper`, resampling evaluated test participants with
+replacement while keeping each participant's event, follow-up, and risk together.
+`--survival_bootstraps` controls the number of replicates (default 1,000; 0 disables
+the interval), with reproducibility controlled by `--random_seed`. Replicates with
+no comparable pairs are omitted. Undefined scores, intervals with no valid
+replicates, and intervals for other metrics are JSON `null`.
+Calibration/Brier scores use participants with
 known horizon outcomes and are not censoring-adjusted population estimates.
 
 `--inspect_model` additionally logs a real sampled training batch and writes

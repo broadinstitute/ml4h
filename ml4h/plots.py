@@ -1229,9 +1229,26 @@ def survival_kaplan_meier(times, events):
     return np.r_[0.0, unique_times], np.r_[1.0, survival]
 
 
+def bootstrap_survival_c_index(events, follow_up, risk, n_bootstraps=1000, seed=METRIC_BOOTSTRAP_SEED):
+    """95% percentile CI from paired participant resampling, omitting undefined replicates."""
+    if n_bootstraps < 0:
+        raise ValueError('The number of survival bootstrap replicates must be nonnegative.')
+    outcomes = np.column_stack([events, follow_up])
+
+    def score(sample_outcomes, sample_risk):
+        return concordance_index_censored(
+            sample_outcomes[:, 0].astype(bool), sample_outcomes[:, 1], sample_risk,
+        )[0]
+
+    return _bootstrap_metric_confidence_interval(
+        outcomes, np.asarray(risk), score, np.random.RandomState(seed), n_bootstraps,
+    )
+
+
 def plot_transformer_survival(
     tm, prediction, truth, follow_up_days, event_observed, participant_ids,
     title, folder, dpi=150, width=9, height=7, num_curves=64,
+    n_bootstraps=1000, bootstrap_seed=METRIC_BOOTSTRAP_SEED,
 ):
     """Plot survival using exact endpoint dates; return scalar performance metrics.
 
@@ -1269,6 +1286,14 @@ def plot_transformer_survival(
         logging.warning('C-index unavailable: %s', exc)
         metrics['c_index'] = float('nan')
 
+    ci_lower, ci_upper = (float('nan'), float('nan'))
+    if np.isfinite(metrics['c_index']):
+        ci_lower, ci_upper = bootstrap_survival_c_index(
+            events, follow_up, risk, n_bootstraps=n_bootstraps, seed=bootstrap_seed,
+        )
+    metrics['c_index_ci_95_lower'] = ci_lower
+    metrics['c_index_ci_95_upper'] = ci_upper
+
     os.makedirs(folder, exist_ok=True)
 
     def finish(fig, ax, filename):
@@ -1282,7 +1307,8 @@ def plot_transformer_survival(
     km_times, km_survival = survival_kaplan_meier(follow_up, events)
     ax.step(km_times, km_survival, where='post', label='Observed Kaplan–Meier')
     ax.step(time_grid, survival.mean(axis=0), where='post', label='Mean predicted survival')
-    ax.set_title(f"{title}\nC-index: {metrics['c_index']:.3f}; N={n}, events={events.sum()}")
+    ci_label = f' (95% CI: {ci_lower:.3f}–{ci_upper:.3f})' if np.isfinite(ci_lower) else ''
+    ax.set_title(f"{title}\nC-index: {metrics['c_index']:.3f}{ci_label}; N={n}, events={events.sum()}")
     finish(fig, ax, 'population_survival.png')
 
     if num_curves > 0:
@@ -1357,15 +1383,19 @@ def evaluate_survival_transformer(model, data, args, folder):
         [str(r['person_id']) for r in records], args.id, folder,
         dpi=args.dpi, width=args.plot_width, height=args.plot_height,
         num_curves=args.survival_num_curves,
+        n_bootstraps=args.survival_bootstraps, bootstrap_seed=args.random_seed,
     )
     # Match the train recipe's tabular JSON. Unestimated confidence intervals and
     # undefined scores are null, so the file is valid JSON even with no events.
+    c_index_ci = (metrics.pop('c_index_ci_95_lower'), metrics.pop('c_index_ci_95_upper'))
     rows = []
     for metric, score in metrics.items():
+        lower, upper = c_index_ci if metric == 'c_index' else (float('nan'), float('nan'))
         rows.append({
             'Model': args.id, 'Task': data.tm.name, 'Metric': metric,
             'Score': score if np.isfinite(score) else None,
-            'CI_95_lower': None, 'CI_95_upper': None,
+            'CI_95_lower': float(lower) if np.isfinite(lower) else None,
+            'CI_95_upper': float(upper) if np.isfinite(upper) else None,
             'n': metrics['n_calibration_known'] if metric == 'brier_known_outcomes' else metrics['n_test'],
             'n_positive': metrics['n_events'],
         })
