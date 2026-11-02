@@ -78,8 +78,9 @@ class SurvivalParquetData:
 
     Train/valid retain prevalent and postdiagnosis rows. Training samples a start
     uniformly over the entire history, then takes consecutive recorded rows up to
-    max_len. Test inputs use the first max_len recorded rows. Participants diagnosed
-    on/before that window's last date plus test_blanking_days are excluded entirely.
+    max_len. Test inputs use the first max_len recorded rows strictly before
+    diagnosis minus test_blanking_days. Participants with no eligible rows are
+    excluded; controls use their first max_len recorded rows.
     Labels always use the first date of the selected window as time zero.
     """
 
@@ -126,13 +127,14 @@ class SurvivalParquetData:
             n_available = len(group)
             if (group['date'] > last).any():
                 raise ValueError(f'Input after last encounter for participant {pid}.')
-            if split != 'train':
-                group = group.iloc[:max_len]
-            if split == 'test':
-                cutoff = group['date'].iloc[-1] + pd.Timedelta(days=test_blanking_days)
-                if pd.notna(diagnosis) and diagnosis <= cutoff:
+            if split == 'test' and pd.notna(diagnosis):
+                cutoff = diagnosis - pd.Timedelta(days=test_blanking_days)
+                group = group.loc[group['date'] < cutoff]
+                if group.empty:
                     self.excluded[split] += 1
                     continue
+            if split != 'train':
+                group = group.iloc[:max_len]
             values = group[self.feature_cols].to_numpy(dtype=np.float32)
             if not np.isfinite(values).all():
                 raise ValueError(f'Missing/nonfinite input features for participant {pid}; impute before training.')

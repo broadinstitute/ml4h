@@ -65,18 +65,20 @@ postdiagnosis data, including days labelled `12`; day/participant class labels a
 not used to construct the date-based survival target. Both trainval parquet variants
 therefore give the same survival inputs/targets when their dates and features match.
 
-Validation and testing use each participant's first `--transformer_max_size`
-recorded days (or all available days for shorter histories). Testing then excludes
-the entire participant when diagnosis is **on or before the last input date plus
-`--survival_test_blanking_days` calendar days**. The default of 0 excludes diagnoses
-on/before the last input date; 180 additionally excludes diagnoses within the next
-180 days, including exactly day 180. Controls remain eligible. Missing calendar
-days are not inserted, and input windows are not shortened based on diagnosis.
-Follow-up still starts at the first input date. Training and validation are not
-filtered by this test-only rule.
+Validation uses each participant's first `--transformer_max_size` recorded days
+(or all available days for shorter histories). Testing first keeps only input
+dates **strictly before diagnosis minus `--survival_test_blanking_days` calendar
+days**, then takes the first `--transformer_max_size` remaining rows. The default
+of 0 removes diagnosis-day and postdiagnosis inputs; 180 also removes inputs in
+the preceding 180 days, including the cutoff date. A participant is excluded only
+if no eligible input days remain. For example, diagnosis 190 days after the first
+daily observation with a 180-day gap leaves the first 10 observations (days 0–9).
+Controls use their first context window. Missing calendar days are not inserted.
+Follow-up still starts at the first retained input date and runs to diagnosis or
+censoring, not to the input cutoff. Training and validation are unchanged.
 
 This replaces `--survival_test_screen_days`; remove that old flag from existing
-commands. Only `--transformer_max_size` now limits test input length. The supplied
+commands. `--transformer_max_size` caps the eligible test input length. The supplied
 participant splits are preserved and checked for leakage. This task uses
 observations after the survival origin; it is not a forecast conditioned only on
 observations available at that origin.

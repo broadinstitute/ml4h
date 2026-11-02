@@ -320,8 +320,8 @@ def parse_args():
     parser.add_argument('--survival_intervals', default=20, type=int, help='Number of discrete survival intervals.')
     parser.add_argument('--survival_days_window', default=3650, type=int, help='Survival prediction horizon in days.')
     parser.add_argument('--survival_test_blanking_days', default=0, type=int,
-                        help='Exclude test participants diagnosed on/before the last input date plus this many '
-                             'calendar days. 0 excludes disease present by the end of the input window.')
+                        help='Keep test input dates strictly before diagnosis minus this many calendar days, '
+                             'up to transformer_max_size rows. Exclude participants with no eligible input days.')
     parser.add_argument('--survival_num_curves', default=64, type=int, help='Maximum number of individual survival curves to plot.')
     parser.add_argument('--survival_bootstraps', default=1000, type=int,
                         help='Participant bootstrap replicates for the survival C-index 95%% CI; 0 disables it. Uses random_seed.')
