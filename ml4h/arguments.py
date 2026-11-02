@@ -319,8 +319,9 @@ def parse_args():
     parser.add_argument('--survival_phecode', help='Phecode string used in the parquet diagnosis column (<phecode>__start_date).')
     parser.add_argument('--survival_intervals', default=20, type=int, help='Number of discrete survival intervals.')
     parser.add_argument('--survival_days_window', default=3650, type=int, help='Survival prediction horizon in days.')
-    parser.add_argument('--survival_test_screen_days', default=1000, type=int,
-                        help='First N recorded test days to screen for postdiagnosis data and use as test inputs.')
+    parser.add_argument('--survival_test_blanking_days', default=0, type=int,
+                        help='Exclude test participants diagnosed on/before the last input date plus this many '
+                             'calendar days. 0 excludes disease present by the end of the input window.')
     parser.add_argument('--survival_num_curves', default=64, type=int, help='Maximum number of individual survival curves to plot.')
     parser.add_argument('--survival_bootstraps', default=1000, type=int,
                         help='Participant bootstrap replicates for the survival C-index 95%% CI; 0 disables it. Uses random_seed.')
@@ -684,8 +685,10 @@ def _process_args(args):
                              '--transformer_input_file and --transformer_test_file.')
         if args.tensor_maps_out:
             raise ValueError('Use --survival_phecode instead of --output_tensors for train_transformer_for_survival.')
-        if min(args.survival_intervals, args.survival_days_window, args.survival_test_screen_days) <= 0:
-            raise ValueError('Survival intervals, horizon and test screening days must be positive.')
+        if min(args.survival_intervals, args.survival_days_window) <= 0:
+            raise ValueError('Survival intervals and horizon must be positive.')
+        if args.survival_test_blanking_days < 0:
+            raise ValueError('survival_test_blanking_days must be nonnegative.')
         if args.survival_num_curves < 0:
             raise ValueError('survival_num_curves must be nonnegative.')
         if args.survival_bootstraps < 0:

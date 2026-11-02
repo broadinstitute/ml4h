@@ -49,7 +49,7 @@ python -m ml4h.recipes \
   --transformer_size 64 --attention_heads 4 --transformer_layers 2 \
   --transformer_dropout_rate 0.1 \
   --survival_intervals 20 --survival_days_window 3650 \
-  --survival_test_screen_days 1000 --survival_num_curves 64 \
+  --survival_test_blanking_days 180 --survival_num_curves 64 \
   --batch_size 4 --epochs 50 --learning_rate 0.0001 --patience 8 \
   --training_steps 0 --validation_steps 0 --test_steps -1 \
   --dpi 150 --plot_width 9 --plot_height 7 --inspect_model
@@ -65,12 +65,21 @@ postdiagnosis data, including days labelled `12`; day/participant class labels a
 not used to construct the date-based survival target. Both trainval parquet variants
 therefore give the same survival inputs/targets when their dates and features match.
 
-Validation uses each participant's first context window. Testing first excludes
-participants with **any date strictly after diagnosis among their first 1,000
-recorded days** (configurable with `--survival_test_screen_days`), then uses the first
-context window within that period. The supplied participant splits are preserved
-and checked for leakage. This task uses observations after the survival origin;
-it is not a forecast conditioned only on observations available at that origin.
+Validation and testing use each participant's first `--transformer_max_size`
+recorded days (or all available days for shorter histories). Testing then excludes
+the entire participant when diagnosis is **on or before the last input date plus
+`--survival_test_blanking_days` calendar days**. The default of 0 excludes diagnoses
+on/before the last input date; 180 additionally excludes diagnoses within the next
+180 days, including exactly day 180. Controls remain eligible. Missing calendar
+days are not inserted, and input windows are not shortened based on diagnosis.
+Follow-up still starts at the first input date. Training and validation are not
+filtered by this test-only rule.
+
+This replaces `--survival_test_screen_days`; remove that old flag from existing
+commands. Only `--transformer_max_size` now limits test input length. The supplied
+participant splits are preserved and checked for leakage. This task uses
+observations after the survival origin; it is not a forecast conditioned only on
+observations available at that origin.
 
 Positive `--training_steps` trains on a repeating stream for that many batches per
 epoch; zero or negative uses one participant pass. Positive `--validation_steps`
@@ -90,6 +99,13 @@ replacement while keeping each participant's event, follow-up, and risk together
 the interval), with reproducibility controlled by `--random_seed`. Replicates with
 no comparable pairs are omitted. Undefined scores, intervals with no valid
 replicates, and intervals for other metrics are JSON `null`.
+The C-index row also records `CI_status` (`ok`, `disabled`, `undefined_c_index`, or
+`no_valid_bootstraps`), `bootstrap_requested`, `bootstrap_attempted`,
+`bootstrap_valid`, and `bootstrap_seed`. If a resample fails, its first failure
+message is recorded as `bootstrap_first_failure`. The run log prints these
+diagnostics with the score and bounds. The upper-bound field is `CI_95_upper`,
+not `CI_95_higher`. Existing metrics files are not changed retroactively; rerun
+evaluation with the updated code to populate these fields.
 Calibration/Brier scores use participants with
 known horizon outcomes and are not censoring-adjusted population estimates.
 

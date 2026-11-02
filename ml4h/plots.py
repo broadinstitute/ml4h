@@ -1229,20 +1229,48 @@ def survival_kaplan_meier(times, events):
     return np.r_[0.0, unique_times], np.r_[1.0, survival]
 
 
-def bootstrap_survival_c_index(events, follow_up, risk, n_bootstraps=1000, seed=METRIC_BOOTSTRAP_SEED):
-    """95% percentile CI from paired participant resampling, omitting undefined replicates."""
+def bootstrap_survival_c_index(
+    events, follow_up, risk, n_bootstraps=1000, seed=METRIC_BOOTSTRAP_SEED, return_diagnostics=False,
+):
+    """95% paired-participant percentile CI; optionally report why bounds are unavailable."""
     if n_bootstraps < 0:
         raise ValueError('The number of survival bootstrap replicates must be nonnegative.')
-    outcomes = np.column_stack([events, follow_up])
-
-    def score(sample_outcomes, sample_risk):
-        return concordance_index_censored(
-            sample_outcomes[:, 0].astype(bool), sample_outcomes[:, 1], sample_risk,
-        )[0]
-
-    return _bootstrap_metric_confidence_interval(
-        outcomes, np.asarray(risk), score, np.random.RandomState(seed), n_bootstraps,
-    )
+    events = np.asarray(events, dtype=bool)
+    follow_up, risk = np.asarray(follow_up, dtype=float), np.asarray(risk, dtype=float)
+    if events.ndim != 1 or events.shape != follow_up.shape or events.shape != risk.shape:
+        raise ValueError('Bootstrap events, follow-up and risk must be aligned one-dimensional arrays.')
+    if not np.isfinite(follow_up).all() or (follow_up < 0).any() or not np.isfinite(risk).all():
+        raise ValueError('Bootstrap inputs must be finite, with nonnegative follow-up.')
+    rng = np.random.RandomState(seed)
+    scores, first_failure = [], None
+    attempted = 0
+    if len(events):
+        for _ in range(n_bootstraps):
+            indices = rng.randint(0, len(events), size=len(events))
+            attempted += 1
+            try:
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    score = concordance_index_censored(events[indices], follow_up[indices], risk[indices])[0]
+            except ValueError as exc:
+                first_failure = first_failure or str(exc)
+                continue
+            if np.isfinite(score):
+                scores.append(score)
+            else:
+                first_failure = first_failure or 'C-index is nonfinite (no comparable pairs).'
+    ci = (float('nan'), float('nan'))
+    if scores:
+        ci = tuple(float(bound) for bound in np.percentile(
+            scores, [METRIC_CI_LOWER_PERCENTILE, METRIC_CI_UPPER_PERCENTILE],
+        ))
+    diagnostics = {
+        'CI_status': 'ok' if scores else 'disabled' if n_bootstraps == 0 else 'no_valid_bootstraps',
+        'bootstrap_requested': int(n_bootstraps), 'bootstrap_attempted': attempted,
+        'bootstrap_valid': len(scores), 'bootstrap_seed': int(seed),
+    }
+    if first_failure:
+        diagnostics['bootstrap_first_failure'] = first_failure
+    return (ci, diagnostics) if return_diagnostics else ci
 
 
 def plot_transformer_survival(
@@ -1250,7 +1278,7 @@ def plot_transformer_survival(
     title, folder, dpi=150, width=9, height=7, num_curves=64,
     n_bootstraps=1000, bootstrap_seed=METRIC_BOOTSTRAP_SEED,
 ):
-    """Plot survival using exact endpoint dates; return scalar performance metrics.
+    """Plot survival using exact endpoint dates; return metrics and bootstrap diagnostics.
 
     Horizon calibration/Brier use known outcomes only, not IPCW adjustment.
     Bin probabilities are conditional survival; the second output half is unused.
@@ -1287,12 +1315,20 @@ def plot_transformer_survival(
         metrics['c_index'] = float('nan')
 
     ci_lower, ci_upper = (float('nan'), float('nan'))
+    diagnostics = {
+        'CI_status': 'undefined_c_index', 'bootstrap_requested': int(n_bootstraps),
+        'bootstrap_attempted': 0, 'bootstrap_valid': 0, 'bootstrap_seed': int(bootstrap_seed),
+    }
     if np.isfinite(metrics['c_index']):
-        ci_lower, ci_upper = bootstrap_survival_c_index(
-            events, follow_up, risk, n_bootstraps=n_bootstraps, seed=bootstrap_seed,
+        (ci_lower, ci_upper), diagnostics = bootstrap_survival_c_index(
+            events, follow_up, risk, n_bootstraps=n_bootstraps, seed=bootstrap_seed, return_diagnostics=True,
         )
     metrics['c_index_ci_95_lower'] = ci_lower
     metrics['c_index_ci_95_upper'] = ci_upper
+    metrics['c_index_bootstrap'] = diagnostics
+    log_ci = logging.info if diagnostics['CI_status'] == 'ok' else logging.warning
+    log_ci('Survival C-index=%s, 95%% CI=(%s, %s), n=%d, events=%d; bootstrap=%s',
+           metrics['c_index'], ci_lower, ci_upper, n, int(events.sum()), diagnostics)
 
     os.makedirs(folder, exist_ok=True)
 
@@ -1388,6 +1424,7 @@ def evaluate_survival_transformer(model, data, args, folder):
     # Match the train recipe's tabular JSON. Unestimated confidence intervals and
     # undefined scores are null, so the file is valid JSON even with no events.
     c_index_ci = (metrics.pop('c_index_ci_95_lower'), metrics.pop('c_index_ci_95_upper'))
+    c_index_bootstrap = metrics.pop('c_index_bootstrap')
     rows = []
     for metric, score in metrics.items():
         lower, upper = c_index_ci if metric == 'c_index' else (float('nan'), float('nan'))
@@ -1399,6 +1436,8 @@ def evaluate_survival_transformer(model, data, args, folder):
             'n': metrics['n_calibration_known'] if metric == 'brier_known_outcomes' else metrics['n_test'],
             'n_positive': metrics['n_events'],
         })
+        if metric == 'c_index':
+            rows[-1].update(c_index_bootstrap)
     return rows
 
 

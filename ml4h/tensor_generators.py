@@ -78,14 +78,16 @@ class SurvivalParquetData:
 
     Train/valid retain prevalent and postdiagnosis rows. Training samples a start
     uniformly over the entire history, then takes consecutive recorded rows up to
-    max_len. Test screening precedes context truncation and excludes participants
-    with any date strictly after diagnosis in their first test_screen_days rows.
+    max_len. Test inputs use the first max_len recorded rows. Participants diagnosed
+    on/before that window's last date plus test_blanking_days are excluded entirely.
     Labels always use the first date of the selected window as time zero.
     """
 
-    def __init__(self, df, tm, feature_cols, max_len, batch_size, seed=12878, test_screen_days=1000):
-        if min(max_len, batch_size, test_screen_days) <= 0:
-            raise ValueError('Context size, batch size and test screening days must be positive.')
+    def __init__(self, df, tm, feature_cols, max_len, batch_size, seed=12878, test_blanking_days=0):
+        if min(max_len, batch_size) <= 0:
+            raise ValueError('Context size and batch size must be positive.')
+        if test_blanking_days < 0:
+            raise ValueError('Test blanking days must be nonnegative.')
         if not feature_cols or len(set(feature_cols)) != len(feature_cols):
             raise ValueError('Provide nonempty, unique numeric feature columns.')
         if not tm.is_survival_curve():
@@ -124,13 +126,13 @@ class SurvivalParquetData:
             n_available = len(group)
             if (group['date'] > last).any():
                 raise ValueError(f'Input after last encounter for participant {pid}.')
-            if split == 'test':
-                group = group.iloc[:test_screen_days]
-                if pd.notna(diagnosis) and (group['date'] > diagnosis).any():
-                    self.excluded[split] += 1
-                    continue
             if split != 'train':
                 group = group.iloc[:max_len]
+            if split == 'test':
+                cutoff = group['date'].iloc[-1] + pd.Timedelta(days=test_blanking_days)
+                if pd.notna(diagnosis) and diagnosis <= cutoff:
+                    self.excluded[split] += 1
+                    continue
             values = group[self.feature_cols].to_numpy(dtype=np.float32)
             if not np.isfinite(values).all():
                 raise ValueError(f'Missing/nonfinite input features for participant {pid}; impute before training.')
@@ -165,7 +167,7 @@ class SurvivalParquetData:
             frames.append(frame)
         return cls(pd.concat(frames, ignore_index=True), tm, feature_cols,
                    args.transformer_max_size, args.batch_size, args.random_seed,
-                   args.survival_test_screen_days)
+                   test_blanking_days=args.survival_test_blanking_days)
 
     def record_target(self, record, start, length):
         if start < 0 or length <= 0 or start + length > len(record['x']):
