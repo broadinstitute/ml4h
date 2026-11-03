@@ -1,4 +1,5 @@
 import logging
+import os
 import warnings
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -832,7 +833,7 @@ def build_survival_transformer(args, feature_cols, tm):
     """Build the parquet survival model using the shared transformer CLI settings."""
     if not tm.is_survival_curve():
         raise ValueError('Expected a SURVIVAL_CURVE output.')
-    if args.model_file:
+    if args.model_file and os.fspath(args.model_file).lower().endswith('.keras'):
         model = keras.models.load_model(args.model_file, compile=False)
         if not isinstance(model.input, dict) or set(model.input) != {'num', 'mask'}:
             raise ValueError('Saved survival transformer must have num and mask inputs.')
@@ -842,6 +843,7 @@ def build_survival_transformer(args, feature_cols, tm):
         if (not isinstance(model.output, dict) or set(model.output) != {tm.output_name()}
                 or tuple(model.output[tm.output_name()].shape[1:]) != tm.shape):
             raise ValueError('Saved model output does not match the survival TensorMap.')
+        logging.info('Loaded survival transformer from %s', args.model_file)
         return model
     if args.attention_heads <= 0 or args.transformer_size < args.attention_heads:
         raise ValueError('Transformer size must be at least the positive number of attention heads.')
