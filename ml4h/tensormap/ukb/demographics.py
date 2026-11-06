@@ -612,7 +612,11 @@ cad = TensorMap(
     storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
     channel_map={'no_coronary_artery_disease':0, 'coronary_artery_disease': 1},
 )
-
+cad_dummy = TensorMap(
+    'cad', Interpretation.CATEGORICAL, loss='categorical_crossentropy',
+    storage_type=StorageType.CATEGORICAL_FLAG, path_prefix='categorical',
+    channel_map={'no_coronary_artery_disease':0, 'coronary_artery_disease': 1},
+)
 target_bmi = TensorMap(
     'target_bmi', Interpretation.CONTINUOUS, shape=(1,),
 )
