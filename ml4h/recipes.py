@@ -2536,7 +2536,7 @@ def infer_hidden_layer_multimodal_multitask(args):
         mixup_alpha=args.mixup_alpha,
     )
     generate_test.set_worker_paths(tensor_paths)
-    full_model = legacy_multimodal_multitask_model(**args.__dict__)
+    full_model = make_multimodal_multitask_model(**args.__dict__)
     embed_model = make_hidden_layer_model(
         full_model, args.tensor_maps_in, args.hidden_layer
     )
