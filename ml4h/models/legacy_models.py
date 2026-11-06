@@ -326,39 +326,34 @@ def make_hidden_layer_model_from_file(parent_file: str, tensor_maps_in: List[Ten
 
 
 def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap], output_layer_name: str) -> Model:
-    target_layer = None
-    # TODO: handle more nested models?
-    for layer in parent_model.layers:
-        if isinstance(layer, Model):
-            try:
-                target_layer = layer.get_layer(output_layer_name)
-                parent_inputs = [layer.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+    """Extract a layer using the inputs of its own graph.
+
+    For layers inside a nested model, the returned model accepts that nested
+    model's inputs. ``tensor_maps_in`` is retained for caller compatibility.
+    """
+    graph_model = parent_model
+    try:
+        target_layer = parent_model.get_layer(output_layer_name)
+    except ValueError:
+        # TODO: handle more nested models?
+        for layer in parent_model.layers:
+            if isinstance(layer, Model):
+                try:
+                    target_layer = layer.get_layer(output_layer_name)
+                except ValueError:
+                    continue
+                graph_model = layer
                 logging.info(f'Found {output_layer_name} nested in layer model: {layer.name}')
                 break
-            except ValueError:
-                logging.debug(f'Value error searching for layer: {output_layer_name} at layer: {layer.name}')
-                continue
-    if not target_layer:
-        target_layer = parent_model.get_layer(output_layer_name)
-        parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
-    
-    if parent_model.inputs:
-        parent_inputs = parent_model.inputs
-    else:
-        # Fallback: create synthetic inputs from tensor_maps_in
-        parent_inputs = []
-        for tm in tensor_maps_in:
-            input_tensor = Input(shape=tm.shape, name=tm.input_name())
-            parent_inputs.append(input_tensor)
-        # Optionally warn
-        logging.warning("parent_model.inputs was empty. Created synthetic Inputs.")
-    dummy_input = {
-        tm.input_name(): np.zeros((1,) + tuple(tm.shape)) for tm in tensor_maps_in
-    }
-    intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
-    # If we do not predict here then the graph is disconnected, I do not know why?!
-    intermediate_layer_model.predict(dummy_input, verbose=0)
-    return intermediate_layer_model
+        else:
+            raise
+
+    # A nested Model's .output belongs to its internal graph. Its inputs can
+    # have the same names as parent_model.inputs but be different tensors.
+    # Mixing those graphs creates duplicate InputLayers or a disconnected graph.
+    if isinstance(target_layer, Model):
+        graph_model = target_layer
+    return Model(inputs=graph_model.inputs, outputs=target_layer.output)
 Tensor = tf.Tensor
 Encoder = Callable[[Tensor], Tuple[Tensor, List[Tensor]]]
 Decoder = Callable[[Tensor, Dict[TensorMap, List[Tensor]], Dict[TensorMap, Tensor]], Tensor]
