@@ -8,24 +8,25 @@ ECG2HF-Subtype is a deep learning model developed using a previously validated E
 
 **Input:**
 - **Modality:** 12-lead resting ECG
-- **Expected shape:** `(batch, time, leads)` — confirm against released model
-- **Sampling rate:** Confirm against released model
-- **Normalization:** Confirm against training preprocessing
+- **Expected shape:** `(batch, time, leads)` = `(B, 5000, 12)`
+- **Sampling rate:** 500 Hz (10 seconds => 5000 samples)
 
 **Outputs:**
 - **10-year risk prediction for incident HFrEF** (LVEF <50%)
 - **10-year risk prediction for incident HFpEF** (LVEF ≥50%)
+- **Survival curve prediction for incident heart failure** 
+- **Survival curve prediction for death**
+- **Sex classification**
+- **Age regression**
 
-*Note: The exact output structure, including any auxiliary prediction heads, should be verified against the released model.*
 
 ## Model Weights and Inference
 
-The pretrained model weights will be available in this directory.
 
 If stored using Git LFS, the model can be downloaded using:
 
 ```bash
-git lfs pull --include model_zoo/ECG2HF-Subtype/<model_filename>
+git lfs pull --include model_zoo/ECG2HF-Subtype/ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.keras
 ```
 
 To load the model and generate predictions in a Jupyter notebook using the ML4H environment:
@@ -34,18 +35,38 @@ To load the model and generate predictions in a Jupyter notebook using the ML4H 
 import numpy as np
 from tensorflow.keras.models import load_model
 
-model = load_model("./<model_filename>", compile=False)
+model = load_model("./ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.h5", compile=False)
 
 # Replace with a correctly preprocessed ECG
 ecg = np.random.random((1, 5000, 12)).astype(np.float32)
 
 prediction = model(ecg)
+```  
 
+The model has 6 output heads: 10-year risk prediction for incident HF subtype defined using NLP definition, 10-year risk prediction for incident HF subtype defined using ICD codes, the survival curve prediction for incident heart failure, the survival curve prediction for death, sex classification and age regression. Those outputs can be accessed with:  
+
+```python
 for name, pred in zip(model.output_names, prediction):
-    print(f"{name}: {pred}")
+    otm = output_tensormaps[name]
+    if otm.is_categorical():
+        if (otm.name == 'hf_nlp_lvef_type'):
+            print(f'NLP defined HFrEF Risk prediction is: {pred[0, 1]}')
+            print(f'NLP defined HFpEF Risk prediction is: {pred[0, 2]}')
+        elif (otm.name == 'primary_lvef_type'):
+            print(f'ICD code defined HFrEF Risk prediction is: {pred[0, 1]}')
+            print(f'ICD code defined HFpEF Risk prediction is: {pred[0, 2]}')
+        else:
+            print(f'{otm} prediction is {pred[0,1]}')
+    elif otm.is_survival_curve():
+        intervals = otm.shape[-1] // 2
+        days_per_bin = 1 + (2*otm.days_window) // intervals
+        predicted_survivals = np.cumprod(pred[:, :intervals], axis=1)
+        print(f'Stroke Risk {otm} prediction is: {str(1 - predicted_survivals[0, -1])}')
+    else:
+        print(f'{otm} prediction is {pred}')
 ```
 
-The example illustrates the model-loading workflow. Input dimensions, preprocessing, output interpretation, and the final model filename must be confirmed before using the model for inference. Random inputs do not produce clinically meaningful predictions.
+
 
 ## Study Design
 
