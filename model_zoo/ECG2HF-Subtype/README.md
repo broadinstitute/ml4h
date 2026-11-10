@@ -65,7 +65,7 @@ for name, pred in zip(model.output_names, prediction):
         intervals = otm.shape[-1] // 2
         days_per_bin = 1 + (2*otm.days_window) // intervals
         predicted_survivals = np.cumprod(pred[:, :intervals], axis=1)
-        print(f'Stroke Risk {otm} prediction is: {str(1 - predicted_survivals[0, -1])}')
+        print(f'Risk prediction for {otm.name} is: {str(1 - predicted_survivals[0, -1])}')
     else:
         print(f'{otm} prediction is {pred}')
 ```
