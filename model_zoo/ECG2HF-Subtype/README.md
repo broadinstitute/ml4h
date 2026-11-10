@@ -1,4 +1,4 @@
-# ECG2HF-Subtype — Deep Learning to Predict Incident Heart Failure Subtypes
+# ECG2HF-Subtype — Electrocardiogram-based Artificial Intelligence to Predict Incident Heart Failure With Preserved vs Reduced Ejection Fraction
 
 This directory contains the model and code for predicting the 10-year risk of incident heart failure with reduced ejection fraction (HFrEF) and heart failure with preserved ejection fraction (HFpEF) from 12-lead resting electrocardiograms (ECGs), as described in our [Journal of Cardiac Failure paper](https://doi.org/10.1016/j.cardfail.2026.08.022).
 
@@ -35,14 +35,14 @@ To load the model and generate predictions in a Jupyter notebook using the ML4H 
 import numpy as np
 from tensorflow.keras.models import load_model
 
-model = load_model("./ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.h5", compile=False)
+model = load_model("./ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.keras", compile=False)
 
 ecg = np.random.random((1, 5000, 12)).astype(np.float32)
 
 prediction = model(ecg)
 ```  
 
-The model has 6 output heads: 10-year risk prediction for incident HF subtype defined using NLP definition, 10-year risk prediction for incident HF subtype defined using ICD codes, the survival curve prediction for incident heart failure, the survival curve prediction for death, sex classification and age regression. Those outputs can be accessed with:  
+The model has 7 output heads: 10-year risk prediction for incident HF subtype defined using NLP definition, 10-year risk prediction for incident HF subtype defined using ICD codes, the survival curve prediction for incident heart failure (defined by NLP), the survival curve prediction for incident heart failure (defined by ICD codes), the survival curve prediction for death, sex classification and age regression. Those outputs can be accessed with:  
 
 ```python
 for name, pred in zip(model.output_names, prediction):
