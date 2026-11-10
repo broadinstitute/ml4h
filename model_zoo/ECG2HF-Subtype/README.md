@@ -107,7 +107,9 @@ ECG2HF-Subtype builds upon a previously validated convolutional neural network a
 
 The model processes ECG waveforms to learn representations associated with subsequent heart failure risk, with separate predictions for incident HFrEF and HFpEF.
 
-*Add architecture diagram*
+<p align="center">
+  <img src="architecture_ecg_hfsubtype.png" alt="Model Architecture" width="700">
+</p>
 
 
 
