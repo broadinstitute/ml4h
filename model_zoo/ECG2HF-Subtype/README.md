@@ -90,7 +90,6 @@ ECG2HF-Subtype demonstrated consistent discrimination of incident HFrEF and HFpE
 | BWH | 0.88 (0.87–0.89) | 0.79 (0.77–0.80) |
 | BIDMC | 0.88 (0.86–0.89) | 0.81 (0.80–0.82) |
 
-Values in parentheses represent 95% confidence intervals.
 
 The model consistently outperformed age and sex alone for both heart failure subtypes.
 
@@ -102,24 +101,16 @@ These findings suggest that deep learning applied to routine ECGs may enable sub
 
 ECG2HF-Subtype builds upon a previously validated convolutional neural network architecture for ECG-based heart failure prediction.
 
-The model processes resting ECG waveforms to learn representations associated with subsequent heart failure risk, with separate predictions for incident HFrEF and HFpEF.
+The model processes ECG waveforms to learn representations associated with subsequent heart failure risk, with separate predictions for incident HFrEF and HFpEF.
 
-*Add architecture diagram and the exact output-head descriptions after confirming the final model implementation.*
+*Add architecture diagram*
 
-## Citation
 
-If you use ECG2HF-Subtype in your research, please cite:
 
-Khurshid S, D'Souza V, Friedman SF, et al. Electrocardiogram-based artificial intelligence to predict incident heart failure with preserved versus reduced ejection fraction. *Journal of Cardiac Failure*. 2026.
 
-https://doi.org/10.1016/j.cardfail.2026.08.022
 
-## Related Models
+## Related Model:
 
 - [ECG2HF](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/ECG2HF) — Deep learning for incident heart failure prediction.
-- [ECG2Stroke](https://github.com/broadinstitute/ml4h/tree/master/model_zoo/ECG2Stroke) — Deep learning for incident ischemic stroke prediction.
-- [ML4H Repository](https://github.com/broadinstitute/ml4h) — Machine Learning for Health at the Broad Institute.
 
-## Intended Use
 
-ECG2HF-Subtype is intended for research applications involving ECG-based heart failure risk prediction. It has not been established as a standalone clinical diagnostic tool or validated for independent clinical decision-making.
