@@ -252,6 +252,16 @@ is_male_mgb = TensorMap(
     channel_map={'Sex_Female_0_0': 0, 'Sex_Male_0_0': 1}, loss='categorical_crossentropy',
 )
 
+mgb_hf_nlp_subtype = TensorMap(name='hf_nlp_lvef_type', interpretation=Interpretation.CATEGORICAL,
+                             storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+                             channel_map={'No_HF_nlp': 0, 'HFref_nlp':1, 'HFpef_nlp':2},
+                             loss= 'weighted_crossentropy')
+
+mgb_hf_primary_subtype = TensorMap(name='primary_lvef_type', interpretation=Interpretation.CATEGORICAL,
+                              storage_type=StorageType.CATEGORICAL_INDEX, path_prefix='categorical',
+                              channel_map={'No_HF_prim': 0, 'HFref_prim':1, 'HFpef_prim':2},
+                              loss= 'weighted_crossentropy')
+
 age_in_days = TensorMap(
     'age_in_days', Interpretation.CONTINUOUS,
     path_prefix='continuous', loss='log_cosh',
