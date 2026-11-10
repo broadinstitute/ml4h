@@ -58,3 +58,5 @@ model_zoo/ECG2Stroke/ecg2stroke_performance.png filter=lfs diff=lfs merge=lfs -t
 model_zoo/DROID-RV/synthetic_data/data/wide_file.parquet filter=lfs diff=lfs merge=lfs -text
 model_zoo/DROID-RV/synthetic_data/data/lmdb/**/*.mdb filter=lfs diff=lfs merge=lfs -text
 model_zoo/DROID-RV/synthetic_data/data/lmdb/**/*.pq filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG2HF-Subtype/*.keras filter=lfs diff=lfs merge=lfs -text
+model_zoo/ECG2HF-Subtype/ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.keras filter=lfs diff=lfs merge=lfs -text
