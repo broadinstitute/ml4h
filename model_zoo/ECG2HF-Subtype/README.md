@@ -23,7 +23,7 @@ ECG2HF-Subtype is a deep learning model developed using a previously validated E
 ## Model Weights and Inference
 
 
-If stored using Git LFS, the model can be downloaded using:
+The raw model file is stored using git lfs so you must have it installed and localize the full ~95MB file with:
 
 ```bash
 git lfs pull --include model_zoo/ECG2HF-Subtype/ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.keras
@@ -34,6 +34,11 @@ To load the model and generate predictions in a Jupyter notebook using the ML4H 
 ```python
 import numpy as np
 from tensorflow.keras.models import load_model
+from ml4h.tensormap.ukb.demographics import age_in_days, is_male_mgb, mgb_hf_nlp_subtype, mgb_hf_primary_subtype
+from ml4h.tensormap.ukb.survival import mgb_hf_nlp_wrt_instance2, mgb_hf_primary_wrt_instance2, mgb_death_wrt_instance2
+
+output_tensormaps = {tm.output_name(): tm for tm in [mgb_hf_nlp_wrt_instance2, mgb_hf_primary_wrt_instance2, mgb_death_wrt_instance2, 
+                      is_male_mgb, mgb_hf_nlp_subtype, mgb_hf_primary_subtype, age_in_days]}
 
 model = load_model("./ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.keras", compile=False)
 
