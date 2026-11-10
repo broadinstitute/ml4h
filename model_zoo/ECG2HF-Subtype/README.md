@@ -37,7 +37,6 @@ from tensorflow.keras.models import load_model
 
 model = load_model("./ecg_hfsubtype_wce_osp_8_10_v2024_03_20_20_21_16.h5", compile=False)
 
-# Replace with a correctly preprocessed ECG
 ecg = np.random.random((1, 5000, 12)).astype(np.float32)
 
 prediction = model(ecg)
