@@ -1090,19 +1090,51 @@ class DiffusionModel(keras.Model):
         plt.show()
         plt.close()
 
+def _serialize_tensor_map_for_diffusion(tensor_map):
+    """Serialize the TensorMap metadata needed to rebuild diffusion model inputs."""
+    return {
+        'name': tensor_map.name,
+        'interpretation': tensor_map.interpretation.name,
+        'shape': list(tensor_map.shape),
+        'channel_map': tensor_map.channel_map,
+    }
+
+
+def _deserialize_tensor_map_for_diffusion(config):
+    return TensorMap(
+        name=config['name'],
+        interpretation=Interpretation[config['interpretation']],
+        shape=tuple(config['shape']),
+        channel_map=config.get('channel_map'),
+    )
+
+
 @register_keras_serializable()
 class DiffusionController(keras.Model):
     def __init__(
             self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
             attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
             inspect_model, supervisor=None, supervision_scalar=0.01, encoder_file=None,
+            control_embed_model=None, autoencoder_control=None, **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.input_map = tensor_map
         self.batch_size = batch_size
         self.output_maps = output_maps
-        if encoder_file:
+        self.widths = widths
+        self.block_depth = block_depth
+        self.conv_x = conv_x
+        self.control_size = control_size
+        self.attention_start = attention_start
+        self.attention_heads = attention_heads
+        self.attention_modulo = attention_modulo
+        self.diffusion_loss = diffusion_loss
+        self.condition_strategy = condition_strategy
+        if control_embed_model is not None:
+            self.autoencoder_control = bool(autoencoder_control)
+            self.control_embed_model = control_embed_model
+        elif encoder_file:
             self.autoencoder_control = True
             self.control_embed_model = load_model(encoder_file, compile=False)
             logging.info(f'loaded encoder for DiffAE at: {encoder_file}')
@@ -1121,8 +1153,41 @@ class DiffusionController(keras.Model):
 
     def get_config(self):
         config = super().get_config().copy()
-        config.update({'sigmoid_beta': self.beta, 'batch_size': self.batch_size})
+        config.update({
+            'tensor_map': _serialize_tensor_map_for_diffusion(self.input_map),
+            'output_maps': [_serialize_tensor_map_for_diffusion(tm) for tm in self.output_maps],
+            'batch_size': self.batch_size,
+            'widths': self.widths,
+            'block_depth': self.block_depth,
+            'conv_x': self.conv_x,
+            'control_size': self.control_size,
+            'attention_start': self.attention_start,
+            'attention_heads': self.attention_heads,
+            'attention_modulo': self.attention_modulo,
+            'diffusion_loss': self.diffusion_loss,
+            'sigmoid_beta': self.beta,
+            'condition_strategy': self.condition_strategy,
+            'inspect_model': self.inspect_model,
+            'supervisor': keras.saving.serialize_keras_object(self.supervisor) if self.supervisor is not None else None,
+            'supervision_scalar': self.supervision_scalar,
+            'control_embed_model': keras.saving.serialize_keras_object(self.control_embed_model),
+            'encoder_file': None,
+            'autoencoder_control': self.autoencoder_control,
+        })
         return config
+
+    @classmethod
+    def from_config(cls, config):
+        config = config.copy()
+        config['tensor_map'] = _deserialize_tensor_map_for_diffusion(config['tensor_map'])
+        config['output_maps'] = [_deserialize_tensor_map_for_diffusion(tm) for tm in config['output_maps']]
+        supervisor_config = config.pop('supervisor', None)
+        config['supervisor'] = (
+            keras.saving.deserialize_keras_object(supervisor_config) if supervisor_config is not None else None
+        )
+        config['control_embed_model'] = keras.saving.deserialize_keras_object(config['control_embed_model'])
+        config['encoder_file'] = None
+        return cls(**config)
 
     def compile(self, **kwargs):
         super().compile(**kwargs)

@@ -220,40 +220,64 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
 
 def train_diffusion_control_model(args, supervised=False):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    if supervised:
-        supervised_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
-        model = DiffusionController(
-            args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
-            args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
-            args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, supervised_model, args.supervision_scalar,
-            args.encoder_file,
-        )
-    else:
-        model = DiffusionController(
-            args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
-            args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
-            args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, encoder_file = args.encoder_file,
-        )
 
     loss = keras.losses.MeanAbsoluteError() if args.diffusion_loss == 'mean_absolute_error' else keras.losses.MeanSquaredError()
-
     batch = next(iter(generate_train))
     for k in batch[0]:
         logging.info(f"input {k} {batch[0][k].shape}")
-        feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
-    model.normalizer.adapt(feature_batch)
-    model.compile(
-        optimizer=tf.keras.optimizers.AdamW(
-            learning_rate=args.learning_rate, weight_decay=1e-4,
-        ),
-        loss=loss,
-    )
-    checkpoint_path = f"{args.output_folder}{args.id}/{args.id}.weights.h5"
+
+    run_dir = os.path.join(args.output_folder, args.id)
+    os.makedirs(run_dir, exist_ok=True)
+    checkpoint_path = os.path.join(run_dir, f"{args.id}.keras")
+
+    legacy_checkpoint_path = os.path.join(run_dir, f"{args.id}.weights.h5")
+    if os.path.exists(legacy_checkpoint_path):
+        logging.warning(
+            'Found legacy weights-only checkpoint at %s; it will not be loaded. '
+            'This training run resumes only from a .keras checkpoint.',
+            legacy_checkpoint_path,
+        )
+
+    checkpoint_exists = os.path.exists(checkpoint_path)
+    if checkpoint_exists:
+        model = keras.models.load_model(checkpoint_path)
+        logging.info(f'Loaded full model checkpoint, including optimizer state, from: {checkpoint_path}')
+    else:
+        if supervised:
+            supervised_model, _, _, _ = make_multimodal_multitask_model(**args.__dict__)
+            model = DiffusionController(
+                args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+                args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
+                args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, supervised_model, args.supervision_scalar,
+                args.encoder_file,
+            )
+        else:
+            model = DiffusionController(
+                args.tensor_maps_in[0], args.tensor_maps_out, args.batch_size, args.dense_blocks, args.block_size, args.conv_x,
+                args.dense_layers[0], args.attention_window, args.attention_heads, args.attention_modulo, args.diffusion_loss,
+                args.sigmoid_beta, args.diffusion_condition_strategy, args.inspect_model, encoder_file=args.encoder_file,
+            )
+
+        model.compile(
+            optimizer=tf.keras.optimizers.AdamW(
+                learning_rate=args.learning_rate, weight_decay=1e-4,
+            ),
+            loss=loss,
+        )
+        images = batch[0][model.input_map.input_name()]
+        noise_rates = tf.zeros(
+            [model.batch_size] + [1] * model.input_map.axes(),
+            dtype=images.dtype,
+        )
+        model.normalizer.adapt(images)
+        _ = model(((images, noise_rates), batch[1]))
+        logging.info(f'No checkpoint at: {checkpoint_path}')
+
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
-        save_weights_only=True,
+        save_weights_only=False,
         monitor="val_i_loss",
         mode="min",
         save_best_only=True,
@@ -295,22 +319,19 @@ def train_diffusion_control_model(args, supervised=False):
             plot_partial = partial(model.plot_images, reseed=args.random_seed, prefix=prefix_value)
         callbacks.append(keras.callbacks.LambdaCallback(on_epoch_end=plot_partial))
 
-    images = batch[0][model.input_map.input_name()]
-    # (2) create a dummy noise_rates tensor of the right shape
-    noise_rates = tf.zeros(
-        [model.batch_size] + [1] * model.input_map.axes(),
-        dtype=images.dtype,
-    )
-    # (3) adapt your normalizer, if you hadn’t already
-    model.normalizer.adapt(images)
-    # (4) call the model once
-    _ = model(((images, noise_rates), batch[1]))
-
-    if os.path.exists(checkpoint_path):
-        model.load_weights(checkpoint_path)
-        logging.info(f'Loaded weights from model checkpoint at: {checkpoint_path}')
-    else:
-        logging.info(f'No checkpoint at: {checkpoint_path}')
+    if checkpoint_exists:
+        baseline_metrics = model.evaluate(
+            generate_valid,
+            steps=args.validation_steps,
+            return_dict=True,
+            verbose=0,
+        )
+        baseline_val_loss = float(baseline_metrics['i_loss'])
+        checkpoint_callback.best = baseline_val_loss
+        logging.info(
+            'Seeded best val_i_loss from the loaded checkpoint: %.6f',
+            baseline_val_loss,
+        )
 
     history = model.fit(
         generate_train,
@@ -321,7 +342,7 @@ def train_diffusion_control_model(args, supervised=False):
         callbacks=callbacks,
     )
     plot_metric_history(history, args.training_steps, args.id, os.path.dirname(checkpoint_path))
-    model.load_weights(checkpoint_path)
+    model = keras.models.load_model(checkpoint_path)
     if args.encoder_file is not None:
         model.control_embed_model.save(args.encoder_file)
         logging.info(f'Saved diffusion optimized encoder at: {args.encoder_file}')
