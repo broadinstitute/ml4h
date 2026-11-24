@@ -558,7 +558,7 @@ class DiffusionModel(keras.Model):
             prediction_type: 'eps' for noise prediction, 'v' for v-prediction (better for high resolution)
             sampler: 'ddpm' for original sampler, 'ddim' for deterministic higher-quality sampling
         """
-        super().__init__()
+        super().__init__(name=name, **kwargs)
 
         self.tensor_map     = tensor_map
         self.batch_size     = batch_size
@@ -594,7 +594,7 @@ class DiffusionModel(keras.Model):
         # now re-inject exactly the args your __init__ needs:
         logging.info(f'Saving tensormap as: {str(self.tensor_map)}')
         config.update({
-            "tensor_map":     str(self.tensor_map),        # or .to_config() if needed
+            "tensor_map":     _serialize_tensor_map_for_diffusion(self.tensor_map),
             "batch_size":     self.batch_size,
             "widths":         self.widths,
             "block_depth":    self.block_depth,
@@ -612,8 +612,8 @@ class DiffusionModel(keras.Model):
 
     @classmethod
     def from_config(cls, config):
-        tm_string = config.pop("tensor_map")
-        config['tensor_map'] = TensorMap('lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1))
+        config = config.copy()
+        config['tensor_map'] = _deserialize_tensor_map_for_diffusion(config['tensor_map'])
         return cls(**config)
 
     def compile(self, **kwargs):
