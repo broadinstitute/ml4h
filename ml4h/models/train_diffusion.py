@@ -19,12 +19,27 @@ from ml4h.models.diffusion_blocks import DiffusionModel, DiffusionController
 from ml4h.tensor_generators import test_train_valid_tensor_generators, big_batch_from_minibatch_generator
 
 
+class LoggingModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
+    def on_epoch_end(self, epoch, logs=None):
+        previous_best = self.best
+        current_value = (logs or {}).get(self.monitor)
+        super().on_epoch_end(epoch, logs)
+        if current_value is not None and self.best != previous_best:
+            logging.info(
+                'Updated model checkpoint %s at epoch %d (%s=%.6f; previous best=%s).',
+                self.filepath,
+                epoch + 1,
+                self.monitor,
+                float(current_value),
+                previous_best,
+            )
+
+
 def train_diffusion_model(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     batch = next(iter(generate_train))
     for k in batch[0]:
         logging.info(f"input {k} {batch[0][k].shape}")
-        feature_batch = batch[0][k]
     for k in batch[1]:
         logging.info(f"label {k} {batch[1][k].shape}")
 
@@ -63,7 +78,7 @@ def train_diffusion_model(args):
         _ = model((images, noise_rates))
         logging.info(f'No checkpoint at: {checkpoint_path}')
 
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+    checkpoint_callback = LoggingModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=False,
         monitor="val_i_loss",
@@ -147,7 +162,7 @@ def get_eval_model(args, model_file, output_tmap):
 def regress_on_batch(diffuser, regressor, controls, tm_out, batch_size):
     control_batch = {tm_out.output_name(): controls}
 
-    control_embed = diffuser.control_embed_model(control_batch)
+    control_embed = diffuser.embed_control(control_batch)
     generated_images = diffuser.generate(
         control_embed,
         num_images=batch_size,
@@ -215,7 +230,7 @@ def interpolate_controlled_generations(diffuser, tensor_maps_out, control_tm, ba
             else:
                 control_batch[cm.output_name()] = np.zeros((batch_size,) + cm.shape)
 
-        control_embed = diffuser.control_embed_model(control_batch)
+        control_embed = diffuser.embed_control(control_batch)
         generated_images = diffuser.generate(
             control_embed,
             num_images=batch_size,
@@ -298,7 +313,7 @@ def train_diffusion_control_model(args, supervised=False):
         _ = model(((images, noise_rates), batch[1]))
         logging.info(f'No checkpoint at: {checkpoint_path}')
 
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+    checkpoint_callback = LoggingModelCheckpoint(
         filepath=checkpoint_path,
         save_weights_only=False,
         monitor="val_i_loss",
@@ -443,7 +458,8 @@ def test_diffusion_control_model(args, unconditioned=False, supervised=False):
         if unconditioned:
             generated_images = model.generate(num_images=args.batch_size, diffusion_steps=50)
         else:
-            control_embed = model.control_embed_model(batch[1])
+            control_batch = batch[0] if model.autoencoder_control else batch[1]
+            control_embed = model.embed_control(control_batch)
             generated_images = model.generate(control_embed, num_images=args.batch_size, diffusion_steps=50)
         kid_values.append(calculate_kid(feature_batch, generated_images))
         fid_values.append(calculate_fid(feature_batch, generated_images))
