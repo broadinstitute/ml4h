@@ -1004,7 +1004,6 @@ class DiffusionModel(keras.Model):
         self, images_original, diffusion_amount=0, epoch=None, logs=None, num_rows=2, num_cols=2, prefix='./figures/',
     ):
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(num_rows*num_cols,) + self.tensor_map.shape)
 
@@ -1511,7 +1510,6 @@ class DiffusionController(keras.Model):
             epoch=None, logs=None, num_rows=4, num_cols=4, prefix='./figures/',
     ):
         images = batch[0][self.input_map.input_name()]
-        self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
         diffusion_times = diffusion_amount * tf.ones(shape=[self.batch_size] + [1] * self.input_map.axes())

@@ -402,7 +402,6 @@ def train_diffusion_control_model(args, supervised=False):
                                            f'{args.output_folder}/{args.id}/', args.interpolate_min,
                                            args.interpolate_max, args.interpolate_step)
 
-        model.normalizer.adapt(images)
         if model.input_map.axes() == 2:
             model.plot_ecgs(num_rows=2, prefix=os.path.dirname(checkpoint_path))
         else:
