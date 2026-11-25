@@ -558,7 +558,7 @@ class DiffusionModel(keras.Model):
             prediction_type: 'eps' for noise prediction, 'v' for v-prediction (better for high resolution)
             sampler: 'ddpm' for original sampler, 'ddim' for deterministic higher-quality sampling
         """
-        super().__init__()
+        super().__init__(name=name, **kwargs)
 
         self.tensor_map     = tensor_map
         self.batch_size     = batch_size
@@ -574,6 +574,7 @@ class DiffusionModel(keras.Model):
         self.sampler = sampler
 
         self.normalizer = layers.Normalization()
+        self.normalizer.build((None,) + tuple(self.tensor_map.shape))
         self.network = get_network(
             self.tensor_map.shape, widths, block_depth, kernel_size,
             attention_resolutions=self.attention_resolutions,
@@ -594,7 +595,7 @@ class DiffusionModel(keras.Model):
         # now re-inject exactly the args your __init__ needs:
         logging.info(f'Saving tensormap as: {str(self.tensor_map)}')
         config.update({
-            "tensor_map":     str(self.tensor_map),        # or .to_config() if needed
+            "tensor_map":     _serialize_tensor_map_for_diffusion(self.tensor_map),
             "batch_size":     self.batch_size,
             "widths":         self.widths,
             "block_depth":    self.block_depth,
@@ -612,8 +613,8 @@ class DiffusionModel(keras.Model):
 
     @classmethod
     def from_config(cls, config):
-        tm_string = config.pop("tensor_map")
-        config['tensor_map'] = TensorMap('lax_4ch_random_slice_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1))
+        config = config.copy()
+        config['tensor_map'] = _deserialize_tensor_map_for_diffusion(config['tensor_map'])
         return cls(**config)
 
     def compile(self, **kwargs):
@@ -626,6 +627,17 @@ class DiffusionModel(keras.Model):
         if self.tensor_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name = "kid", input_shape = self.tensor_map.shape, kernel_image_size=299)
             self.ms_ssim = MultiScaleSSIM()
+
+    def get_compile_config(self):
+        return super().get_compile_config()
+
+    def compile_from_config(self, config):
+        if not config:
+            return
+        compile_config = keras.saving.deserialize_keras_object(config)
+        self.compile(**compile_config)
+        if hasattr(self.optimizer, "build") and not self.optimizer.built:
+            self.optimizer.build(self.network.trainable_weights)
 
     @property
     def metrics(self):
@@ -992,7 +1004,6 @@ class DiffusionModel(keras.Model):
         self, images_original, diffusion_amount=0, epoch=None, logs=None, num_rows=2, num_cols=2, prefix='./figures/',
     ):
         images = images_original[0][self.tensor_map.input_name()]
-        self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(num_rows*num_cols,) + self.tensor_map.shape)
 
@@ -1090,19 +1101,51 @@ class DiffusionModel(keras.Model):
         plt.show()
         plt.close()
 
+def _serialize_tensor_map_for_diffusion(tensor_map):
+    """Serialize the TensorMap metadata needed to rebuild diffusion model inputs."""
+    return {
+        'name': tensor_map.name,
+        'interpretation': tensor_map.interpretation.name,
+        'shape': list(tensor_map.shape),
+        'channel_map': tensor_map.channel_map,
+    }
+
+
+def _deserialize_tensor_map_for_diffusion(config):
+    return TensorMap(
+        name=config['name'],
+        interpretation=Interpretation[config['interpretation']],
+        shape=tuple(config['shape']),
+        channel_map=config.get('channel_map'),
+    )
+
+
 @register_keras_serializable()
 class DiffusionController(keras.Model):
     def __init__(
             self, tensor_map, output_maps, batch_size, widths, block_depth, conv_x, control_size,
             attention_start, attention_heads, attention_modulo, diffusion_loss, sigmoid_beta, condition_strategy,
             inspect_model, supervisor=None, supervision_scalar=0.01, encoder_file=None,
+            control_embed_model=None, autoencoder_control=None, **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.input_map = tensor_map
         self.batch_size = batch_size
         self.output_maps = output_maps
-        if encoder_file:
+        self.widths = widths
+        self.block_depth = block_depth
+        self.conv_x = conv_x
+        self.control_size = control_size
+        self.attention_start = attention_start
+        self.attention_heads = attention_heads
+        self.attention_modulo = attention_modulo
+        self.diffusion_loss = diffusion_loss
+        self.condition_strategy = condition_strategy
+        if control_embed_model is not None:
+            self.autoencoder_control = bool(autoencoder_control)
+            self.control_embed_model = control_embed_model
+        elif encoder_file:
             self.autoencoder_control = True
             self.control_embed_model = load_model(encoder_file, compile=False)
             logging.info(f'loaded encoder for DiffAE at: {encoder_file}')
@@ -1110,6 +1153,7 @@ class DiffusionController(keras.Model):
             self.autoencoder_control = False
             self.control_embed_model = get_control_embed_model(self.output_maps, control_size)
         self.normalizer = layers.Normalization()
+        self.normalizer.build((None,) + tuple(self.input_map.shape))
         self.network = get_control_network(self.input_map.shape, widths, block_depth, conv_x, control_size,
                                            attention_start, attention_heads, attention_modulo, condition_strategy)
         self.ema_network = keras.models.clone_model(self.network)
@@ -1121,8 +1165,41 @@ class DiffusionController(keras.Model):
 
     def get_config(self):
         config = super().get_config().copy()
-        config.update({'sigmoid_beta': self.beta, 'batch_size': self.batch_size})
+        config.update({
+            'tensor_map': _serialize_tensor_map_for_diffusion(self.input_map),
+            'output_maps': [_serialize_tensor_map_for_diffusion(tm) for tm in self.output_maps],
+            'batch_size': self.batch_size,
+            'widths': self.widths,
+            'block_depth': self.block_depth,
+            'conv_x': self.conv_x,
+            'control_size': self.control_size,
+            'attention_start': self.attention_start,
+            'attention_heads': self.attention_heads,
+            'attention_modulo': self.attention_modulo,
+            'diffusion_loss': self.diffusion_loss,
+            'sigmoid_beta': self.beta,
+            'condition_strategy': self.condition_strategy,
+            'inspect_model': self.inspect_model,
+            'supervisor': keras.saving.serialize_keras_object(self.supervisor) if self.supervisor is not None else None,
+            'supervision_scalar': self.supervision_scalar,
+            'control_embed_model': keras.saving.serialize_keras_object(self.control_embed_model),
+            'encoder_file': None,
+            'autoencoder_control': self.autoencoder_control,
+        })
         return config
+
+    @classmethod
+    def from_config(cls, config):
+        config = config.copy()
+        config['tensor_map'] = _deserialize_tensor_map_for_diffusion(config['tensor_map'])
+        config['output_maps'] = [_deserialize_tensor_map_for_diffusion(tm) for tm in config['output_maps']]
+        supervisor_config = config.pop('supervisor', None)
+        config['supervisor'] = (
+            keras.saving.deserialize_keras_object(supervisor_config) if supervisor_config is not None else None
+        )
+        config['control_embed_model'] = keras.saving.deserialize_keras_object(config['control_embed_model'])
+        config['encoder_file'] = None
+        return cls(**config)
 
     def compile(self, **kwargs):
         super().compile(**kwargs)
@@ -1135,6 +1212,30 @@ class DiffusionController(keras.Model):
         if self.input_map.axes() == 3 and self.inspect_model:
             self.kid = KernelInceptionDistance(name="kid", input_shape=self.input_map.shape, kernel_image_size=299)
             self.ms_ssim = MultiScaleSSIM()
+
+    def get_compile_config(self):
+        return super().get_compile_config()
+
+    def compile_from_config(self, config):
+        if not config:
+            return
+        compile_config = keras.saving.deserialize_keras_object(config)
+        self.compile(**compile_config)
+        if hasattr(self.optimizer, "build") and not self.optimizer.built:
+            optimized_variables = list(self.network.trainable_weights)
+            if self.supervisor is not None:
+                optimized_variables = list(self.supervisor.trainable_weights) + optimized_variables
+            self.optimizer.build(optimized_variables)
+
+    def embed_control(self, control_values):
+        """Call the control embedder using its expected single- or multi-input structure."""
+        if self.autoencoder_control:
+            return self.control_embed_model(control_values)
+        if isinstance(control_values, dict):
+            control_values = [control_values[tm.output_name()] for tm in self.output_maps]
+        if len(self.output_maps) == 1 and isinstance(control_values, (tuple, list)):
+            control_values = control_values[0]
+        return self.control_embed_model(control_values)
 
     @property
     def metrics(self):
@@ -1235,10 +1336,7 @@ class DiffusionController(keras.Model):
         # self.normalizer.adapt(images)
         images = self.normalizer(images, training=True)
 
-        if self.autoencoder_control:
-            control_embed = self.control_embed_model(batch[0])
-        else:
-            control_embed = self.control_embed_model(batch[1])
+        control_embed = self.embed_control(batch[0] if self.autoencoder_control else batch[1])
 
         noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
 
@@ -1303,10 +1401,7 @@ class DiffusionController(keras.Model):
         # self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
 
-        if self.autoencoder_control:
-            control_embed = self.control_embed_model(batch[0])
-        else:
-            control_embed = self.control_embed_model(batch[1])
+        control_embed = self.embed_control(batch[0] if self.autoencoder_control else batch[1])
 
         noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
 
@@ -1368,10 +1463,7 @@ class DiffusionController(keras.Model):
           2. You can use model((noisy_images, noise_rates)) for inference
         """
         noisy_images, noise_rates = batch[0]
-        if self.autoencoder_control:
-            control_embed = self.control_embed_model(noisy_images)
-        else:
-            control_embed = self.control_embed_model(batch[1])
+        control_embed = self.embed_control(noisy_images if self.autoencoder_control else batch[1])
         # re-compute signal_rates
         signal_rates = tf.sqrt(1.0 - tf.square(noise_rates))
         # this returns (pred_noises, pred_images)
@@ -1385,7 +1477,7 @@ class DiffusionController(keras.Model):
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
         print(f'\nControl batch keys: {list(control_batch.keys())}')
-        control_embed = self.control_embed_model(control_batch)
+        control_embed = self.embed_control(control_batch)
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
@@ -1418,7 +1510,6 @@ class DiffusionController(keras.Model):
             epoch=None, logs=None, num_rows=4, num_cols=4, prefix='./figures/',
     ):
         images = batch[0][self.input_map.input_name()]
-        self.normalizer.adapt(images)
         images = self.normalizer(images, training=False)
         noises = tf.random.normal(shape=(self.batch_size,) + self.input_map.shape)
         diffusion_times = diffusion_amount * tf.ones(shape=[self.batch_size] + [1] * self.input_map.axes())
@@ -1426,10 +1517,7 @@ class DiffusionController(keras.Model):
         # mix the images with noises accordingly
         noisy_images = signal_rates * images + noise_rates * noises
 
-        if self.autoencoder_control:
-            control_embed = self.control_embed_model(batch[0])
-        else:
-            control_embed = self.control_embed_model(batch[1])
+        control_embed = self.embed_control(batch[0] if self.autoencoder_control else batch[1])
 
         # use the network to separate noisy images to their components
         pred_noises, generated_images = self.denoise(
@@ -1479,7 +1567,7 @@ class DiffusionController(keras.Model):
             self, control_batch, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None,
             renoise=None,
     ):
-        control_embed = self.control_embed_model(control_batch)
+        control_embed = self.embed_control(control_batch)
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
@@ -1538,7 +1626,7 @@ class DiffusionController(keras.Model):
         return generated_images
 
     def control_plot_images_noise(self, control_batch, initial_noise, epoch=None, logs=None, num_rows=2, num_cols=8):
-        control_embed = self.control_embed_model(control_batch)
+        control_embed = self.embed_control(control_batch)
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate_from_noise(
             control_embed,
@@ -1569,7 +1657,7 @@ class DiffusionController(keras.Model):
             self, control_batch, epoch=None, logs=None, num_rows=2, num_cols=8, reseed=None,
             renoise=None,
     ):
-        control_embed = self.control_embed_model(control_batch)
+        control_embed = self.embed_control(control_batch)
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
             control_embed,
@@ -1601,7 +1689,7 @@ class DiffusionController(keras.Model):
                 control_batch[cm.output_name()][:, 0] = 1  # all female
 
         print(f'\nControl batch keys: {list(control_batch.keys())}')
-        control_embed = self.control_embed_model(control_batch)
+        control_embed = self.embed_control(control_batch)
 
         # plot random generated images for visual evaluation of generation quality
         generated_images = self.generate(
