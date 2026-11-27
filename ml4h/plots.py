@@ -4132,8 +4132,8 @@ def heatmap_performance(df, prefix="./figures/", show=False):
         fig_height = max(4, len(pivot_df) * 0.75)
         plt.figure(figsize=(fig_width, fig_height))
         score_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
-            "score_saturated_high",
-            ["#f7fbff", "#c6dbef", "#6baed6", "#1f9e89", "#084081"],
+            "score_saturated_low",
+            list(reversed(["#f7fbff", "#c6dbef", "#6baed6", "#1f9e89", "#084081"])),
         )
         im = plt.imshow(
             pivot_df.values,

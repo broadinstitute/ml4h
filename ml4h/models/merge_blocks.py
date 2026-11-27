@@ -506,8 +506,8 @@ def contrastive_difference(left: Tensor, right: Tensor, batch_size: int, tempera
 
     # identity matrix (np.eye) matches left row modality with right column modality
     labels = tf.convert_to_tensor(np.eye(batch_size), dtype=tf.float32)
-    loss_left = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_left, labels)
-    loss_right = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_right, labels)
+    loss_left = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(labels, prob_left)
+    loss_right = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(labels, prob_right)
     loss = (loss_left + loss_right)/2
     return loss / batch_size
 
