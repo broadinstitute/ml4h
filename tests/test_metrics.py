@@ -2,7 +2,13 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from ml4h.metrics import dice, per_class_dice
+from ml4h.metrics import (
+    _unpack_truth_into_events,
+    concordance_index,
+    concordance_index_censored,
+    dice,
+    per_class_dice,
+)
 
 SIMPLE_LABELS = {'background': 0, 'foreground': 1}
 THREE_LABELS  = {'background': 0, 'class_a': 1, 'class_b': 2}
@@ -181,3 +187,57 @@ class TestPerClassDice:
         assert coeff_background == pytest.approx(0.8415175080299377, abs=1e-5)
         assert coeff_class_a    == pytest.approx(0.8051831722259521, abs=1e-5)
         assert coeff_class_b    == pytest.approx(0.8122745752334595, abs=1e-5)
+
+
+class TestSurvivalConcordanceIndex:
+    def test_unpack_truth_distinguishes_interval_zero_and_one(self):
+        # 4 intervals:
+        #   row 0: event in interval 0 ([0,0,0,0 | 1,0,0,0]) -> time 0
+        #   row 1: event in interval 1 ([1,0,0,0 | 0,1,0,0]) -> time 1
+        #   row 2: censored in interval 0 ([0,0,0,0 | 0,0,0,0]) -> time 0
+        #   row 3: event in interval 3 ([1,1,1,0 | 0,0,0,1]) -> time 3
+        #   row 4: survived all 4 intervals ([1,1,1,1 | 0,0,0,0]) -> time 4
+        truth = np.array([
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [1, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [1, 1, 1, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 0, 0, 0, 0],
+        ], dtype=np.float32)
+
+        event_indicator, event_time = _unpack_truth_into_events(truth, intervals=4)
+        assert event_indicator.tolist() == [True, True, False, True, False]
+        assert event_time.tolist() == [0, 1, 0, 3, 4]
+
+    def test_unpack_truth_single_interval(self):
+        truth = np.array([
+            [0, 1],
+            [1, 0],
+        ], dtype=np.float32)
+        event_indicator, event_time = _unpack_truth_into_events(truth, intervals=1)
+        assert event_indicator.tolist() == [True, False]
+        assert event_time.tolist() == [0, 1]
+
+    def test_concordance_index_interval_zero_vs_one_matches_reference(self):
+        truth = np.array([
+            [0, 0, 0, 0, 1, 0, 0, 0],  # event at t=0
+            [1, 0, 0, 0, 0, 1, 0, 0],  # event at t=1
+            [0, 0, 0, 0, 0, 0, 0, 0],  # censored at t=0
+            [1, 1, 1, 1, 0, 0, 0, 0],  # survived all 4 intervals (t=4)
+        ], dtype=np.float32)
+        pred = np.array([
+            [0.1, 1.0, 1.0, 1.0, 0, 0, 0, 0],
+            [0.5, 1.0, 1.0, 1.0, 0, 0, 0, 0],
+            [0.2, 1.0, 1.0, 1.0, 0, 0, 0, 0],
+            [0.9, 1.0, 1.0, 1.0, 0, 0, 0, 0],
+        ], dtype=np.float32)
+
+        result = concordance_index(pred, truth)
+        expected_events = np.array([True, True, False, False])
+        expected_times = np.array([0, 1, 0, 4])
+        expected_risk = -np.cumprod(pred[:, :4], axis=-1)[:, -1]
+        ref = concordance_index_censored(expected_events, expected_times, expected_risk)
+
+        assert result == ref
+        assert result[0] == pytest.approx(1.0)
+        assert result[1:] == (4, 0, 0, 1)
